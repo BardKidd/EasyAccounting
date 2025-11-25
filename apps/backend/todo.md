@@ -54,7 +54,7 @@
 
 | 欄位              | 類型            | 說明                       |
 | ----------------- | --------------- | -------------------------- |
-| id                | INTEGER (PK)    | 主鍵                       |
+| id                | UUID (PK)       | 主鍵                       |
 | username          | STRING          | 使用者名稱                 |
 | email             | STRING (UNIQUE) | Email (用於登入和發送提醒) |
 | password          | STRING          | 密碼 (加密後)              |
@@ -66,17 +66,17 @@
 
 ### 2. Category (分類) - 自關聯設計
 
-| 欄位      | 類型                   | 說明                    |
-| --------- | ---------------------- | ----------------------- |
-| id        | INTEGER (PK)           | 主鍵                    |
-| userId    | INTEGER (FK)           | 所屬使用者              |
-| name      | STRING                 | 分類名稱                |
-| type      | ENUM                   | 'income' 或 'expense'   |
-| parentId  | INTEGER (FK, nullable) | 父分類 ID               |
-| icon      | STRING                 | 圖示名稱                |
-| color     | STRING                 | 顏色代碼 (如 '#FF5733') |
-| createdAt | DATE                   | 建立時間                |
-| updatedAt | DATE                   | 更新時間                |
+| 欄位      | 類型                | 說明                       |
+| --------- | ------------------- | -------------------------- |
+| id        | UUID (PK)           | 主鍵                       |
+| userId    | UUID (FK, nullable) | 所屬使用者 (NULL=系統預設) |
+| name      | STRING              | 分類名稱                   |
+| type      | ENUM                | 'income' 或 'expense'      |
+| parentId  | UUID (FK, nullable) | 父分類 ID                  |
+| icon      | STRING              | 圖示名稱                   |
+| color     | STRING              | 顏色代碼 (如 '#FF5733')    |
+| createdAt | DATE                | 建立時間                   |
+| updatedAt | DATE                | 更新時間                   |
 
 **階層結構範例:**
 
@@ -105,8 +105,8 @@
 
 | 欄位           | 類型          | 說明                          | 適用類型  |
 | -------------- | ------------- | ----------------------------- | --------- |
-| id             | INTEGER (PK)  | 主鍵                          | 全部      |
-| userId         | INTEGER (FK)  | 所屬使用者                    | 全部      |
+| id             | UUID (PK)     | 主鍵                          | 全部      |
+| userId         | UUID (FK)     | 所屬使用者                    | 全部      |
 | name           | STRING        | 帳戶名稱                      | 全部      |
 | type           | ENUM          | 'cash', 'bank', 'credit_card' | 全部      |
 | balance        | DECIMAL(10,2) | 當前餘額                      | 錢包/銀行 |
@@ -133,10 +133,10 @@
 
 | 欄位        | 類型          | 說明                  |
 | ----------- | ------------- | --------------------- |
-| id          | INTEGER (PK)  | 主鍵                  |
-| userId      | INTEGER (FK)  | 所屬使用者            |
-| accountId   | INTEGER (FK)  | 使用的帳戶            |
-| categoryId  | INTEGER (FK)  | 交易分類              |
+| id          | UUID (PK)     | 主鍵                  |
+| userId      | UUID (FK)     | 所屬使用者            |
+| accountId   | UUID (FK)     | 使用的帳戶            |
+| categoryId  | UUID (FK)     | 交易分類              |
 | amount      | DECIMAL(10,2) | 金額                  |
 | type        | ENUM          | 'income' 或 'expense' |
 | description | TEXT          | 備註說明              |
@@ -350,17 +350,25 @@ Account (1) → (N) Transaction
 
 ### 階段 3: 分類管理 (自關聯) ⭐
 
-- [ ] `POST /categories` - 新增分類 (可指定 parentId 建立子分類)
-- [ ] `GET /categories` - 取得所有分類 (樹狀結構,包含子分類)
-- [ ] `GET /categories/:id/children` - 取得指定分類的子分類
-- [ ] `PUT /categories/:id` - 更新分類資訊
-- [ ] `DELETE /categories/:id` - 刪除分類 (需檢查是否有交易使用)
+- [x] `POST /categories` - 新增分類 (可指定 parentId 建立子分類)
+- [x] `GET /categories` - 取得所有分類 (樹狀結構,包含子分類)
+- [x] `GET /categories/:id` - 取得指定分類的子分類
+- [x] `PUT /categories/:id` - 更新分類資訊
+- [x] `DELETE /categories/:id` - 刪除分類
 
 **學習重點:**
 
 - Sequelize 自關聯設計 (parentId)
 - 使用 `include` 查詢子分類
 - 樹狀結構的資料處理
+
+**已完成:**
+
+- ✅ 建立 Category Model (支援自關聯)
+- ✅ 實作 CRUD API endpoints
+- ✅ 使用 Zod 進行請求驗證
+- ✅ 使用 TypeScript 型別定義
+- ✅ 實作 `getChildren()` 魔法方法查詢子分類
 
 ### 階段 4: 帳戶管理
 
@@ -565,6 +573,61 @@ NODE_ENV=development
 - 信用卡提醒使用 `lastNotifiedAt` 避免同一天重複發送
 - 分類刪除時需檢查是否有交易記錄使用該分類
 
-```
+## 📊 資料庫關聯圖 (ER Diagram)
 
+```mermaid
+erDiagram
+    User ||--o{ Category : "擁有 (has)"
+    User ||--o{ Account : "擁有 (has)"
+    User ||--o{ Transaction : "擁有 (has)"
+
+    Category ||--o{ Category : "子分類 (children)"
+    Category ||--o{ Transaction : "包含 (has)"
+
+    Account ||--o{ Transaction : "包含 (has)"
+
+    User {
+        uuid id PK
+        string username
+        string email
+        string password
+        boolean emailNotification
+    }
+
+    Category {
+        uuid id PK
+        uuid userId FK
+        string name
+        enum type "income/expense"
+        uuid parentId FK "Self-referencing"
+        string icon
+        string color
+    }
+
+    Account {
+        uuid id PK
+        uuid userId FK
+        string name
+        enum type "cash/bank/credit_card"
+        decimal balance "Wallet/Bank only"
+        string lastFourDigits "Credit Card only"
+        int billingDay "Credit Card only"
+        int paymentDay "Credit Card only"
+        decimal creditLimit "Credit Card only"
+        decimal unpaidAmount "Credit Card only"
+        date lastNotifiedAt
+        boolean isActive
+    }
+
+    Transaction {
+        uuid id PK
+        uuid userId FK
+        uuid accountId FK
+        uuid categoryId FK
+        decimal amount
+        enum type "income/expense"
+        string description
+        date date
+        boolean isBilled "Credit Card only"
+    }
 ```
