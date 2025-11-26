@@ -341,12 +341,38 @@ Account (1) → (N) Transaction
 - [ ] 在 `app.js` 定義所有關聯
 - [ ] 執行 `sequelize.sync()` 建立資料表
 
-### 階段 2: 使用者功能
+### 階段 2: 使用者功能 (認證)
 
 - [ ] `POST /auth/register` - 註冊使用者 (密碼需加密)
 - [ ] `POST /auth/login` - 登入並回傳 JWT token
 - [ ] `GET /auth/me` - 取得當前使用者資訊 (需驗證 JWT)
 - [ ] `PUT /auth/me` - 更新使用者設定 (emailNotification)
+
+**備註:** JWT 認證功能留待未來學習後實作
+
+### 階段 2.5: 使用者 CRUD 管理 ✅
+
+- [x] `POST /user` - 新增使用者 (密碼使用 bcrypt 加密)
+- [x] `GET /users` - 取得所有使用者 (過濾已刪除的使用者)
+- [x] `GET /user/:id` - 取得單一使用者 (檢查是否已刪除)
+- [x] `PUT /user/:id` - 更新使用者資訊
+- [x] `DELETE /user/:id` - 軟刪除使用者 (使用 deletedAt)
+
+**學習重點:**
+
+- bcrypt 密碼加密
+- 軟刪除機制 (Soft Delete)
+- 使用 Zod 進行請求驗證
+- Service 層抽離邏輯
+
+**已完成:**
+
+- ✅ 建立 User Model
+- ✅ 實作完整 CRUD API endpoints
+- ✅ 密碼加密處理
+- ✅ 軟刪除機制 (deletedAt)
+- ✅ 建立 userServices 抽離共用邏輯
+- ✅ 使用 TypeScript 型別定義
 
 ### 階段 3: 分類管理 (自關聯) ⭐
 

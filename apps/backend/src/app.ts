@@ -4,12 +4,17 @@ import sequelize from './utils/database';
 
 import User from './models/user';
 import Category from './models/category';
+
+import userRoute from './routes/userRoute';
 import categoryRoute from './routes/categoryRoute';
+
 const app = express();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
 app.use('/api', categoryRoute);
+app.use('/api', userRoute);
 
 User.hasMany(Category);
 Category.belongsTo(User);
