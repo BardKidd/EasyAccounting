@@ -44,6 +44,8 @@ const getChildrenCategories = async (req: Request, res: Response) => {
         message: 'Category not found',
       });
     }
+    // getChildren() 是 Sequelize 提供的 Magic Method，可以自動找到關聯的資料
+    // 可以去看 app.ts 裡面的 as 命名。假如 as 為 subCategories，這裡就會改為 getSubCategories。
     const childrenCategories = await category.getChildren(); // as any 為了不要讓這個 Magic 出來的方法不被 TypeScript 給標記為錯誤
 
     let sortedCategories: CategoryType[] = [];

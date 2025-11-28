@@ -14,6 +14,7 @@
 
 - 🔔 **Email 提醒信用卡繳費** - 自動排程檢查並發送提醒
 - 📊 **匯出 Excel 報表** - 產生完整的收支明細表
+- 📢 **系統公告 (MongoDB)** - 練習 NoSQL 與 SQL 混合架構
 
 ## 💡 業務流程
 
@@ -150,6 +151,26 @@
 - 所有交易都關聯到一個帳戶
 - `isBilled` 用於追蹤信用卡交易是否已出帳
 - 金額使用 `DECIMAL(10,2)` 確保精確度
+
+---
+
+### 5. Announcement (系統公告) - MongoDB
+
+| 欄位      | 類型     | 說明                  |
+| --------- | -------- | --------------------- |
+| \_id      | ObjectId | 主鍵                  |
+| title     | String   | 公告標題              |
+| content   | String   | 公告內容 (支援 HTML)  |
+| type      | String   | 'maintenance', 'news' |
+| isActive  | Boolean  | 是否顯示              |
+| createdAt | Date     | 建立時間              |
+| expiresAt | Date     | 過期時間 (TTL Index)  |
+
+**設計重點:**
+
+- 使用 MongoDB 儲存
+- 練習 TTL Index (時間到自動刪除)
+- 獨立於關聯式資料庫
 
 ---
 
@@ -497,6 +518,16 @@ Account (1) → (N) Transaction
 - [ ] 加入錯誤處理 (try-catch)
 - [ ] 加入輸入驗證 (express-validator)
 - [ ] 為常用欄位建立資料庫索引
+
+### 階段 10: MongoDB 練習 (系統公告)
+
+- [x] 安裝 `mongoose`
+- [x] 建立 Announcement Schema
+- [x] `POST /announcements` - 發布公告 (管理員)
+- [x] `GET /announcements` - 取得有效公告
+- [x] 練習 MongoDB TTL Index (設定過期時間)
+- [ ] `PUT /announcements/:id` - 編輯公告
+- [ ] `DELETE /announcements/:id` - 刪除公告
 
 ---
 
