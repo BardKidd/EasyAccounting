@@ -1,6 +1,6 @@
 import express from 'express';
 import path from 'path';
-import sequelize from './utils/database';
+import sequelize from './utils/postgres';
 import mongoConnection from './utils/mongodb';
 
 import User from './models/user';

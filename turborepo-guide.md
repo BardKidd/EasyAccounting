@@ -1,154 +1,154 @@
-# Turborepo 完整說明文件
+# Turborepo Complete Guide
 
-## 目錄
+## Table of Contents
 
-1. [什麼是 Turborepo](#什麼是-turborepo)
-2. [核心概念](#核心概念)
-3. [底層運作機制](#底層運作機制)
-4. [套件管理器選擇](#套件管理器選擇)
-5. [基礎設定](#基礎設定)
-6. [運作方式](#運作方式)
-7. [進階功能](#進階功能)
-
----
-
-## 什麼是 Turborepo
-
-Turborepo 是一個專為 JavaScript 和 TypeScript 專案設計的**高效能建置系統**,特別針對 **Monorepo** (單一儲存庫) 架構進行最佳化。它由 Vercel 團隊開發,目標是解決大型 Monorepo 專案在建置速度和開發體驗上的挑戰。
-
-### 主要特色
-
-- 🚀 **極致快速**: 透過智慧快取和平行執行,大幅減少建置時間
-- 🔄 **增量建置**: 只重新建置有變更的部分
-- 🌐 **遠端快取**: 團隊成員和 CI/CD 環境共享建置快取
-- 📦 **零執行時開銷**: 不會干擾執行時程式碼或修改 sourcemap
-- 🔧 **易於整合**: 與現有的 npm、yarn、pnpm 專案無縫整合
+1. [What is Turborepo](#what-is-turborepo)
+2. [Core Concepts](#core-concepts)
+3. [Underlying Mechanisms](#underlying-mechanisms)
+4. [Package Manager Selection](#package-manager-selection)
+5. [Basic Configuration](#basic-configuration)
+6. [How It Works](#how-it-works)
+7. [Advanced Features](#advanced-features)
 
 ---
 
-## 核心概念
+## What is Turborepo
 
-### 1. Monorepo 架構
+Turborepo is a **high-performance build system** designed for JavaScript and TypeScript projects, specifically optimized for **Monorepo** (single repository) architectures. Developed by the Vercel team, it aims to solve the challenges of build speed and developer experience in large Monorepo projects.
 
-Turborepo 建立在 JavaScript 套件管理器的 workspace 功能之上,典型的專案結構如下:
+### Key Features
+
+- 🚀 **Extremely Fast**: Significantly reduces build times through smart caching and parallel execution.
+- 🔄 **Incremental Builds**: Only rebuilds what has changed.
+- 🌐 **Remote Caching**: Shares build caches between team members and CI/CD environments.
+- 📦 **Zero Runtime Overhead**: Does not interfere with runtime code or modify sourcemaps.
+- 🔧 **Easy Integration**: Seamlessly integrates with existing npm, yarn, and pnpm projects.
+
+---
+
+## Core Concepts
+
+### 1. Monorepo Architecture
+
+Turborepo builds upon the workspace features of JavaScript package managers. A typical project structure looks like this:
 
 ```
 my-monorepo/
 ├── apps/
-│   ├── web/          # Next.js 應用程式
-│   └── mobile/       # React Native 應用程式
+│   ├── web/          # Next.js application
+│   └── mobile/       # React Native application
 ├── packages/
-│   ├── ui/           # 共用 UI 元件庫
-│   ├── utils/        # 共用工具函式
-│   └── tsconfig/     # 共用 TypeScript 設定
-├── package.json      # 根目錄 package.json
-├── turbo.json        # Turborepo 設定檔
+│   ├── ui/           # Shared UI component library
+│   ├── utils/        # Shared utility functions
+│   └── tsconfig/     # Shared TypeScript configuration
+├── package.json      # Root package.json
+├── turbo.json        # Turborepo configuration file
 └── pnpm-workspace.yaml
 ```
 
-### 2. 任務 (Tasks)
+### 2. Tasks
 
-任務是指在 `package.json` 中定義的 scripts,例如:
+Tasks are scripts defined in `package.json`, for example:
 
-- `build`: 建置專案
-- `test`: 執行測試
-- `lint`: 程式碼檢查
-- `dev`: 開發伺服器
+- `build`: Build the project
+- `test`: Run tests
+- `lint`: Code linting
+- `dev`: Development server
 
-### 3. 依賴圖 (Dependency Graph)
+### 3. Dependency Graph
 
-Turborepo 會自動分析專案之間的依賴關係,建立一個依賴圖。這讓 Turborepo 能夠:
+Turborepo automatically analyzes dependencies between projects to create a dependency graph. This allows Turborepo to:
 
-- 以正確的順序執行任務
-- 識別哪些專案需要重新建置
-- 最大化平行執行的機會
+- Execute tasks in the correct order
+- Identify which projects need to be rebuilt
+- Maximize opportunities for parallel execution
 
-### 4. 快取 (Caching)
+### 4. Caching
 
-Turborepo 的核心哲學是:**永遠不要重複計算已經完成的工作**。
+The core philosophy of Turborepo is: **Never recompute work that has already been done.**
 
 ---
 
-## 底層運作機制
+## Underlying Mechanisms
 
-### 1. 快取指紋 (Cache Fingerprinting)
+### 1. Cache Fingerprinting
 
-Turborepo 為每個任務執行生成一個唯一的「指紋」(hash),這個指紋由以下因素組成:
+Turborepo generates a unique "fingerprint" (hash) for each task execution. This fingerprint consists of the following factors:
 
-#### 檔案內容
+#### File Contents
 
-- 使用**內容感知演算法**對檔案內容進行雜湊
-- 忽略檔案的時間戳記等無關的中繼資料
-- 只有當檔案的**實際內容**改變時,才會觸發重新執行
+- Hashes file contents using a **content-aware algorithm**
+- Ignores irrelevant metadata like file timestamps
+- Only triggers re-execution when the **actual content** of the file changes
 
-#### 環境變數
+#### Environment Variables
 
-- 在 `turbo.json` 中指定的環境變數會影響快取
-- 環境變數改變會導致快取失效
+- Environment variables specified in `turbo.json` affect the cache
+- Changing environment variables causes cache invalidation
 
-#### 依賴關係
+#### Dependencies
 
-- `package.json` 和 lock 檔案的內容
-- 專案之間的依賴關係
+- Contents of `package.json` and lock files
+- Dependencies between projects
 
-#### 任務設定
+#### Task Configuration
 
-- `turbo.json` 中的任務設定
-- 任務的 `inputs` 和 `outputs` 定義
+- Task settings in `turbo.json`
+- `inputs` and `outputs` definitions for tasks
 
-### 2. 快取命中與未命中
+### 2. Cache Hits and Misses
 
 ```mermaid
 flowchart TD
-    A[執行 turbo run build] --> B[計算任務指紋]
-    B --> C{快取中是否存在?}
-    C -->|是| D[快取命中 Cache Hit]
-    C -->|否| E[快取未命中 Cache Miss]
-    D --> F[從快取還原輸出檔案]
-    E --> G[執行任務]
-    G --> H[將輸出儲存到快取]
-    F --> I[任務完成]
+    A[Execute turbo run build] --> B[Calculate task fingerprint]
+    B --> C{Exists in cache?}
+    C -->|Yes| D[Cache Hit]
+    C -->|No| E[Cache Miss]
+    D --> F[Restore output files from cache]
+    E --> G[Execute task]
+    G --> H[Save output to cache]
+    F --> I[Task complete]
     H --> I
 ```
 
-**快取命中 (Cache Hit)**:
+**Cache Hit**:
 
-- Turborepo 找到匹配的指紋
-- 直接從快取還原先前儲存的輸出檔案
-- 跳過任務執行,節省大量時間
+- Turborepo finds a matching fingerprint
+- Directly restores previously saved output files from the cache
+- Skips task execution, saving a significant amount of time
 
-**快取未命中 (Cache Miss)**:
+**Cache Miss**:
 
-- 沒有找到匹配的指紋
-- 正常執行任務
-- 將輸出檔案儲存到快取供未來使用
+- No matching fingerprint found
+- Executes the task normally
+- Saves output files to the cache for future use
 
-### 3. 本地快取 vs 遠端快取
+### 3. Local Cache vs. Remote Cache
 
-#### 本地快取 (Local Cache)
+#### Local Cache
 
-- 預設啟用
-- 快取儲存在本地檔案系統 (`.turbo/cache/`)
-- 只對單一開發者的機器有效
+- Enabled by default
+- Cache stored in the local file system (`.turbo/cache/`)
+- Only effective for a single developer's machine
 
-#### 遠端快取 (Remote Cache)
+#### Remote Cache
 
-- 需要額外設定
-- 快取儲存在雲端伺服器
-- 整個團隊和 CI/CD 環境共享快取
-- **巨大優勢**: CI 伺服器可以使用開發者本地建置的快取,反之亦然
+- Requires additional configuration
+- Cache stored on a cloud server
+- Shared across the entire team and CI/CD environment
+- **Huge Advantage**: CI servers can use caches built locally by developers, and vice versa
 
 ```mermaid
 flowchart LR
-    A[開發者 A] -->|上傳快取| C[遠端快取伺服器]
-    B[開發者 B] -->|下載快取| C
-    D[CI/CD] -->|下載快取| C
-    A -->|下載快取| C
+    A[Developer A] -->|Upload Cache| C[Remote Cache Server]
+    B[Developer B] -->|Download Cache| C
+    D[CI/CD] -->|Download Cache| C
+    A -->|Download Cache| C
 ```
 
-### 4. 平行執行 (Parallel Execution)
+### 4. Parallel Execution
 
-Turborepo 會分析任務之間的依賴關係,並盡可能平行執行獨立的任務:
+Turborepo analyzes dependencies between tasks and executes independent tasks in parallel whenever possible:
 
 ```mermaid
 graph TD
@@ -158,215 +158,215 @@ graph TD
     A --> D
 ```
 
-在上圖中:
+In the diagram above:
 
-- `packages/ui:build` 和 `packages/utils:build` 可以**同時執行**
-- `apps/web:build` 和 `apps/mobile:build` 必須等待依賴完成後才能執行
-- 但 `apps/web:build` 和 `apps/mobile:build` 之間可以**平行執行**
+- `packages/ui:build` and `packages/utils:build` can **run simultaneously**
+- `apps/web:build` and `apps/mobile:build` must wait for dependencies to complete before running
+- But `apps/web:build` and `apps/mobile:build` can **run in parallel** with each other
 
-### 5. 增量建置 (Incremental Builds)
+### 5. Incremental Builds
 
-Turborepo 只會重新建置有變更的部分:
+Turborepo only rebuilds parts that have changed:
 
-1. **變更偵測**: 透過檔案內容雜湊偵測變更
-2. **影響分析**: 分析哪些套件受到變更影響
-3. **選擇性執行**: 只執行受影響套件的任務
+1. **Change Detection**: Detects changes via file content hashing
+2. **Impact Analysis**: Analyzes which packages are affected by the changes
+3. **Selective Execution**: Only executes tasks for affected packages
 
 ---
 
-## 套件管理器選擇
+## Package Manager Selection
 
-### Turborepo 支援的套件管理器
+### Package Managers Supported by Turborepo
 
-Turborepo **並不強制使用特定的套件管理器**,它同時支援:
+Turborepo **does not enforce a specific package manager**; it supports:
 
-- **npm** - Node.js 預設套件管理器
-- **yarn** - Facebook 開發的套件管理器
-- **pnpm** - 高效能的套件管理器
+- **npm** - Default Node.js package manager
+- **yarn** - Package manager developed by Facebook
+- **pnpm** - High-performance package manager
 
-Turborepo 會自動偵測你使用的套件管理器,無需額外設定。
+Turborepo automatically detects the package manager you are using without extra configuration.
 
-### 為什麼推薦 pnpm？
+### Why Recommend pnpm?
 
-雖然三種套件管理器都可以使用,但 **pnpm 在 Monorepo 場景下有顯著優勢**:
+Although all three package managers can be used, **pnpm has significant advantages in Monorepo scenarios**:
 
-#### 1. 極致的安裝速度 ⚡
+#### 1. Extreme Installation Speed ⚡
 
-根據 2025 年的效能測試:
+According to 2025 performance tests:
 
-- **比 npm 快 65%**
-- 在大型 Monorepo 中,清空快取後的安裝速度是 npm 的 **3 倍**
-- 即使有快取,也比 Yarn 更快
+- **65% faster than npm**
+- In large Monorepos, installation speed after clearing cache is **3 times** that of npm
+- Even with cache, it is faster than Yarn
 
-#### 2. 驚人的磁碟空間節省 💾
+#### 2. Amazing Disk Space Savings 💾
 
-**npm/yarn 的做法** (重複儲存):
+**npm/yarn Approach** (Duplicate storage):
 
 ```
 my-monorepo/
 ├── apps/web/node_modules/react (5MB)
 ├── apps/mobile/node_modules/react (5MB)
 └── packages/ui/node_modules/react (5MB)
-總共：15MB ❌ 浪費 10MB
+Total: 15MB ❌ Wasted 10MB
 ```
 
-**pnpm 的做法** (符號連結):
+**pnpm Approach** (Symlinks):
 
 ```
 ~/.pnpm-store/
-└── react@18.2.0 (5MB) ← 只儲存一次
+└── react@18.2.0 (5MB) ← Stored only once
 
 my-monorepo/
 ├── apps/web/node_modules/react → symlink
 ├── apps/mobile/node_modules/react → symlink
 └── packages/ui/node_modules/react → symlink
-總共：5MB ✅ 節省 67% 空間
+Total: 5MB ✅ Saved 67% space
 ```
 
-**實際案例**:
+**Real-world Case**:
 
-- 10 個套件的 Monorepo
+- Monorepo with 10 packages
   - npm: ~1.2 GB
   - pnpm: ~300 MB
 
-#### 3. 嚴格的依賴隔離 🔒
+#### 3. Strict Dependency Isolation 🔒
 
-這是 pnpm 最重要的優勢之一！
+This is one of pnpm's most important advantages!
 
-**什麼是「幽靈依賴」(Phantom Dependencies)？**
+**What are "Phantom Dependencies"?**
 
 ```javascript
 // apps/web/package.json
 {
   "dependencies": {
-    "next": "^14.0.0"  // Next.js 內部依賴 react
+    "next": "^14.0.0"  // Next.js internally depends on react
   }
 }
 
-// 在你的程式碼中
+// In your code
 import React from 'react'
 ```
 
-**不同套件管理器的行為**:
+**Behavior of Different Package Managers**:
 
-| 套件管理器   | 行為        | 問題              |
-| ------------ | ----------- | ----------------- |
-| **npm/yarn** | ✅ 可以運作 | ❌ 隱藏的依賴風險 |
-| **pnpm**     | ❌ 會報錯   | ✅ 強制明確宣告   |
+| Package Manager | Behavior  | Issue                            |
+| --------------- | --------- | -------------------------------- |
+| **npm/yarn**    | ✅ Works  | ❌ Hidden dependency risk        |
+| **pnpm**        | ❌ Errors | ✅ Enforces explicit declaration |
 
-**為什麼這很重要？**
+**Why is this important?**
 
-使用 npm/yarn 時:
+When using npm/yarn:
 
-- 你可以使用沒有明確宣告的依賴（因為它們被「提升」到根目錄）
-- 當其他套件移除該依賴時,你的程式碼會突然壞掉
-- 在 Docker 建置時可能出現「找不到模組」的錯誤
+- You can use dependencies that are not explicitly declared (because they are "hoisted" to the root)
+- When another package removes that dependency, your code suddenly breaks
+- "Module not found" errors may occur during Docker builds
 
-使用 pnpm 時:
+When using pnpm:
 
-- **強制你明確宣告所有依賴**
-- 每個套件只能存取自己 `package.json` 中宣告的依賴
-- 更可靠、更可預測的建置過程
+- **Forces you to explicitly declare all dependencies**
+- Each package can only access dependencies declared in its own `package.json`
+- More reliable and predictable build process
 
-#### 4. 更乾淨的 Docker 建置 🐳
+#### 4. Cleaner Docker Builds 🐳
 
 ```dockerfile
 FROM node:20-alpine
 
-# pnpm 確保每個 app 明確宣告依賴
-# 不會意外包含不需要的套件
+# pnpm ensures each app explicitly declares dependencies
+# No accidental inclusion of unneeded packages
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# 產生的 Docker image 更小、更快
+# Resulting Docker image is smaller and faster
 ```
 
-**優勢**:
+**Advantages**:
 
-- 沒有幽靈依賴,Docker 建置更可靠
-- 只包含明確宣告的依賴,image 更小
-- 減少「本地可以運作,Docker 卻失敗」的問題
+- No phantom dependencies, Docker builds are more reliable
+- Only includes explicitly declared dependencies, smaller image size
+- Reduces "works locally, fails in Docker" issues
 
-#### 5. 完美搭配 Turborepo 🚀
+#### 5. Perfect Match with Turborepo 🚀
 
 ```bash
-# Turborepo 的快取 + pnpm 的速度 = 極致效能
+# Turborepo's cache + pnpm's speed = Extreme Performance
 turbo run build
 
-# 第一次執行:
-# - pnpm 快速安裝依賴
-# - Turborepo 執行建置並快取
+# First run:
+# - pnpm quickly installs dependencies
+# - Turborepo runs build and caches
 
-# 第二次執行（沒有變更）:
-# - pnpm 從 symlink 瞬間完成
-# - Turborepo 從快取還原
-# 總時間：幾乎為 0！
+# Second run (no changes):
+# - pnpm completes instantly from symlinks
+# - Turborepo restores from cache
+# Total time: Almost 0!
 ```
 
-### 套件管理器效能比較 (2025)
+### Package Manager Performance Comparison (2025)
 
-| 特性              | npm             | yarn    | pnpm        |
-| ----------------- | --------------- | ------- | ----------- |
-| **安裝速度**      | 慢              | 中等    | ⭐ **最快** |
-| **磁碟空間**      | 大量重複        | 有改善  | ⭐ **最省** |
-| **依賴隔離**      | ❌ 寬鬆         | ❌ 寬鬆 | ⭐ **嚴格** |
-| **Monorepo 支援** | 基本            | 良好    | ⭐ **優秀** |
-| **學習曲線**      | 簡單            | 簡單    | 簡單        |
-| **生態系統**      | ⭐ 最大         | 大      | 成長中      |
-| **預設安裝**      | ⭐ Node.js 內建 | 需安裝  | 需安裝      |
+| Feature                  | npm                 | yarn             | pnpm                  |
+| ------------------------ | ------------------- | ---------------- | --------------------- |
+| **Installation Speed**   | Slow                | Medium           | ⭐ **Fastest**        |
+| **Disk Space**           | Massive duplication | Improved         | ⭐ **Most Efficient** |
+| **Dependency Isolation** | ❌ Loose            | ❌ Loose         | ⭐ **Strict**         |
+| **Monorepo Support**     | Basic               | Good             | ⭐ **Excellent**      |
+| **Learning Curve**       | Simple              | Simple           | Simple                |
+| **Ecosystem**            | ⭐ Largest          | Large            | Growing               |
+| **Default Install**      | ⭐ Node.js Built-in | Requires Install | Requires Install      |
 
-### 如何選擇？
+### How to Choose?
 
-#### ✅ 使用 pnpm 如果:
+#### ✅ Use pnpm if:
 
-- 你在開發 Monorepo（強烈推薦）
-- 你重視建置速度和磁碟空間
-- 你想要更可靠的依賴管理
-- 你需要在 Docker 中建置
-- 你想要最佳的開發體驗
+- You are developing a Monorepo (Highly Recommended)
+- You value build speed and disk space
+- You want more reliable dependency management
+- You need to build in Docker
+- You want the best developer experience
 
-#### ✅ 使用 npm 如果:
+#### ✅ Use npm if:
 
-- 你的專案很小且簡單
-- 你想要最大的相容性
-- 你不想安裝額外工具
-- 你的團隊不熟悉其他工具
+- Your project is small and simple
+- You want maximum compatibility
+- You don't want to install extra tools
+- Your team is not familiar with other tools
 
-#### ✅ 使用 yarn 如果:
+#### ✅ Use yarn if:
 
-- 你已經在使用 yarn
-- 你需要 Plug'n'Play (PnP) 功能
-- 你的團隊熟悉 yarn 工作流程
+- You are already using yarn
+- You need Plug'n'Play (PnP) features
+- Your team is familiar with the yarn workflow
 
-### pnpm 快速上手
+### pnpm Quick Start
 
-#### 安裝 pnpm
+#### Install pnpm
 
 ```bash
-# 使用 npm 安裝
+# Install using npm
 npm install -g pnpm
 
-# 使用 Homebrew (macOS)
+# Use Homebrew (macOS)
 brew install pnpm
 
-# 使用 Corepack (Node.js 16.13+)
+# Use Corepack (Node.js 16.13+)
 corepack enable
 corepack prepare pnpm@latest --activate
 ```
 
-#### 基本指令對照
+#### Basic Command Comparison
 
-| npm                   | pnpm                 | 說明     |
-| --------------------- | -------------------- | -------- |
-| `npm install`         | `pnpm install`       | 安裝依賴 |
-| `npm install <pkg>`   | `pnpm add <pkg>`     | 新增套件 |
-| `npm uninstall <pkg>` | `pnpm remove <pkg>`  | 移除套件 |
-| `npm run <script>`    | `pnpm <script>`      | 執行腳本 |
-| `npx <command>`       | `pnpm dlx <command>` | 執行套件 |
+| npm                   | pnpm                 | Description          |
+| --------------------- | -------------------- | -------------------- |
+| `npm install`         | `pnpm install`       | Install dependencies |
+| `npm install <pkg>`   | `pnpm add <pkg>`     | Add package          |
+| `npm uninstall <pkg>` | `pnpm remove <pkg>`  | Remove package       |
+| `npm run <script>`    | `pnpm <script>`      | Run script           |
+| `npx <command>`       | `pnpm dlx <command>` | Execute package      |
 
-#### 建立 pnpm workspace
+#### Create pnpm workspace
 
-在根目錄建立 `pnpm-workspace.yaml`:
+Create `pnpm-workspace.yaml` in the root directory:
 
 ```yaml
 packages:
@@ -374,57 +374,57 @@ packages:
   - 'packages/*'
 ```
 
-### 底層運作原理
+### Underlying Principles
 
-#### pnpm 的內容尋址儲存 (Content-Addressable Store)
+#### pnpm's Content-Addressable Store
 
 ```mermaid
 flowchart TD
-    A[安裝 react@18.2.0] --> B{檢查全域儲存}
-    B -->|不存在| C[下載到 ~/.pnpm-store]
-    B -->|已存在| D[跳過下載]
-    C --> E[建立硬連結到 node_modules]
+    A[Install react@18.2.0] --> B{Check global store}
+    B -->|Not exists| C[Download to ~/.pnpm-store]
+    B -->|Exists| D[Skip download]
+    C --> E[Create hard link to node_modules]
     D --> E
-    E --> F[建立符號連結供套件使用]
+    E --> F[Create symlink for package usage]
 ```
 
-**關鍵概念**:
+**Key Concepts**:
 
-1. **全域儲存**: 所有套件只儲存一次在 `~/.pnpm-store`
-2. **硬連結 (Hard Link)**: 將套件連結到專案的 `node_modules/.pnpm`
-3. **符號連結 (Symlink)**: 從 `node_modules/<package>` 指向 `.pnpm` 中的實際檔案
+1. **Global Store**: All packages are stored only once in `~/.pnpm-store`
+2. **Hard Link**: Links the package to the project's `node_modules/.pnpm`
+3. **Symlink**: Points from `node_modules/<package>` to the actual file in `.pnpm`
 
-**優勢**:
+**Advantages**:
 
-- 不同專案共享相同版本的套件
-- 不佔用額外磁碟空間
-- 安裝速度極快
+- Different projects share the same version of packages
+- No extra disk space usage
+- Extremely fast installation speed
 
 ---
 
-## 基礎設定
+## Basic Configuration
 
-### 1. 安裝 Turborepo
+### 1. Install Turborepo
 
-#### 建立新專案
+#### Create a New Project
 
 ```bash
 npx create-turbo@latest
 ```
 
-#### 在現有專案中安裝
+#### Install in an Existing Project
 
 ```bash
 npm install turbo --save-dev
-# 或
+# or
 pnpm add turbo -D
-# 或
+# or
 yarn add turbo -D
 ```
 
-### 2. 設定 Workspace
+### 2. Configure Workspace
 
-在根目錄的 `package.json` 中設定 workspaces:
+Configure workspaces in the root `package.json`:
 
 ```json
 {
@@ -443,9 +443,9 @@ yarn add turbo -D
 }
 ```
 
-### 3. 建立 turbo.json
+### 3. Create turbo.json
 
-在根目錄建立 `turbo.json` 設定檔:
+Create a `turbo.json` configuration file in the root directory:
 
 ```json
 {
@@ -473,34 +473,34 @@ yarn add turbo -D
 }
 ```
 
-### 4. turbo.json 設定詳解
+### 4. turbo.json Configuration Details
 
-#### 頂層屬性
+#### Top-level Properties
 
 **`$schema`**
 
-- 提供 IDE 自動完成和驗證支援
-- 連結到 Turborepo 的 JSON schema
+- Provides IDE autocomplete and validation support
+- Links to Turborepo's JSON schema
 
 **`globalDependencies`**
 
-- 全域依賴檔案的 glob 模式陣列
-- 這些檔案變更時,會使所有任務的快取失效
-- 預設包含根目錄的 `package.json` 和 lock 檔案
+- Array of glob patterns for global dependency files
+- Changes to these files invalidate the cache for all tasks
+- Defaults include root `package.json` and lock file
 
 **`globalEnv`**
 
-- 影響所有任務雜湊的環境變數清單
-- 這些環境變數改變會導致所有任務快取失效
+- List of environment variables that affect all task hashes
+- Changes to these environment variables invalidate all task caches
 
 **`globalPassThroughEnv`**
 
-- 要傳遞給所有任務的環境變數
-- 啟用嚴格環境變數模式
+- Environment variables to pass through to all tasks
+- Enables strict environment variable mode
 
-#### 任務設定
+#### Task Configuration
 
-**`dependsOn`** - 任務依賴
+**`dependsOn`** - Task Dependencies
 
 ```json
 {
@@ -510,10 +510,10 @@ yarn add turbo -D
 }
 ```
 
-- `^taskName`: **拓撲依賴**,表示所有依賴套件的 `taskName` 必須先完成
-- `taskName`: 同一套件內的任務依賴
+- `^taskName`: **Topological dependency**, means `taskName` of all dependent packages must complete first
+- `taskName`: Task dependency within the same package
 
-**`outputs`** - 輸出檔案
+**`outputs`** - Output Files
 
 ```json
 {
@@ -523,12 +523,12 @@ yarn add turbo -D
 }
 ```
 
-- 指定任務產生的檔案,Turborepo 會快取這些檔案
-- 支援 glob 模式
-- 使用 `!` 排除特定檔案
-- **重要**: 如果沒有宣告 `outputs`,Turborepo 不會快取任何檔案
+- Specifies files generated by the task; Turborepo will cache these files
+- Supports glob patterns
+- Use `!` to exclude specific files
+- **Important**: If `outputs` is not declared, Turborepo will not cache any files
 
-**`inputs`** - 輸入檔案
+**`inputs`** - Input Files
 
 ```json
 {
@@ -538,11 +538,11 @@ yarn add turbo -D
 }
 ```
 
-- 定義影響任務快取雜湊的檔案
-- 只有這些檔案變更時,任務才會重新執行
-- 提供精確的快取失效控制
+- Defines files that affect the task's cache hash
+- Task re-runs only when these files change
+- Provides precise cache invalidation control
 
-**`cache`** - 快取控制
+**`cache`** - Cache Control
 
 ```json
 {
@@ -552,10 +552,10 @@ yarn add turbo -D
 }
 ```
 
-- 明確啟用或停用特定任務的快取
-- 開發伺服器 (`dev`) 通常設為 `false`
+- Explicitly enable or disable cache for specific tasks
+- Development server (`dev`) is usually set to `false`
 
-**`env`** - 任務特定環境變數
+**`env`** - Task-specific Environment Variables
 
 ```json
 {
@@ -565,9 +565,9 @@ yarn add turbo -D
 }
 ```
 
-- 影響特定任務快取雜湊的環境變數
+- Environment variables that affect the cache hash of a specific task
 
-**`outputMode`** - 輸出模式
+**`outputMode`** - Output Mode
 
 ```json
 {
@@ -577,121 +577,121 @@ yarn add turbo -D
 }
 ```
 
-- `full`: 顯示所有輸出
-- `new-only`: 只顯示新的輸出
-- `hash-only`: 只顯示雜湊
-- `errors-only`: 只顯示錯誤
+- `full`: Show all output
+- `new-only`: Show only new output
+- `hash-only`: Show only hashes
+- `errors-only`: Show only errors
 
 ---
 
-## 運作方式
+## How It Works
 
-### 1. 執行任務
+### 1. Running Tasks
 
-#### 基本用法
+#### Basic Usage
 
 ```bash
-# 執行所有套件的 build 任務
+# Run build task for all packages
 turbo run build
 
-# 執行多個任務
+# Run multiple tasks
 turbo run build test lint
 
-# 只執行特定套件的任務
+# Run tasks for a specific package only
 turbo run build --filter=web
 
-# 執行受影響的套件
+# Run affected packages
 turbo run build --filter=[HEAD^1]
 ```
 
-#### Filter 語法
+#### Filter Syntax
 
 ```bash
-# 只執行 web 套件
+# Run only web package
 --filter=web
 
-# 執行 web 及其依賴
+# Run web and its dependencies
 --filter=web...
 
-# 執行依賴 web 的套件
+# Run packages that depend on web
 --filter=...web
 
-# 執行多個套件
+# Run multiple packages
 --filter={web,mobile}
 
-# 基於 git 變更
---filter=[HEAD^1]        # 與上一個 commit 比較
---filter=[main]          # 與 main 分支比較
---filter=[origin/main]   # 與遠端 main 分支比較
+# Based on git changes
+--filter=[HEAD^1]        # Compare with previous commit
+--filter=[main]          # Compare with main branch
+--filter=[origin/main]   # Compare with remote main branch
 ```
 
-### 2. 任務執行流程
+### 2. Task Execution Flow
 
 ```mermaid
 flowchart TD
-    A[turbo run build] --> B[讀取 turbo.json]
-    B --> C[建立依賴圖]
-    C --> D[分析任務依賴]
-    D --> E[計算每個任務的雜湊]
-    E --> F{檢查快取}
-    F -->|命中| G[還原快取輸出]
-    F -->|未命中| H[執行任務]
-    H --> I[儲存輸出到快取]
-    G --> J[標記為完成]
+    A[turbo run build] --> B[Read turbo.json]
+    B --> C[Create dependency graph]
+    C --> D[Analyze task dependencies]
+    D --> E[Calculate hash for each task]
+    E --> F{Check cache}
+    F -->|Hit| G[Restore cached output]
+    F -->|Miss| H[Execute task]
+    H --> I[Save output to cache]
+    G --> J[Mark as complete]
     I --> J
-    J --> K{還有待執行任務?}
-    K -->|是| E
-    K -->|否| L[完成]
+    J --> K{More tasks to run?}
+    K -->|Yes| E
+    K -->|No| L[Complete]
 ```
 
-### 3. 開發模式
+### 3. Development Mode
 
 ```bash
-# 啟動開發伺服器
+# Start development server
 turbo run dev
 
-# 使用 watch 模式
+# Use watch mode
 turbo run build --watch
 ```
 
-**Watch 模式特色**:
+**Watch Mode Features**:
 
-- 自動偵測檔案變更
-- 依賴感知的任務重新執行
-- 只重新執行受影響的任務
+- Automatically detects file changes
+- Dependency-aware task re-execution
+- Only re-runs affected tasks
 
-### 4. 快取管理
+### 4. Cache Management
 
 ```bash
-# 檢視快取狀態
+# View cache status
 turbo run build --dry-run
 
-# 強制跳過快取
+# Force skip cache
 turbo run build --force
 
-# 清除本地快取
+# Clear local cache
 rm -rf .turbo/cache
 ```
 
 ---
 
-## 進階功能
+## Advanced Features
 
-### 1. 遠端快取設定
+### 1. Remote Cache Configuration
 
-#### 使用 Vercel 遠端快取 (免費)
+#### Use Vercel Remote Cache (Free)
 
 ```bash
-# 登入
+# Login
 turbo login
 
-# 連結專案
+# Link project
 turbo link
 ```
 
-#### 自訂遠端快取
+#### Custom Remote Cache
 
-建立 `.turbo/config.json`:
+Create `.turbo/config.json`:
 
 ```json
 {
@@ -701,7 +701,7 @@ turbo link
 }
 ```
 
-或使用環境變數:
+Or use environment variables:
 
 ```bash
 export TURBO_API="https://your-cache-server.com"
@@ -709,9 +709,9 @@ export TURBO_TOKEN="your-token"
 export TURBO_TEAM="your-team-id"
 ```
 
-#### 快取簽章驗證
+#### Cache Signature Verification
 
-在 `turbo.json` 中啟用:
+Enable in `turbo.json`:
 
 ```json
 {
@@ -721,52 +721,52 @@ export TURBO_TEAM="your-team-id"
 }
 ```
 
-設定簽章金鑰:
+Set signature key:
 
 ```bash
 export TURBO_REMOTE_CACHE_SIGNATURE_KEY="your-secret-key"
 ```
 
-### 2. Pruning (修剪)
+### 2. Pruning
 
-建立只包含特定應用程式及其依賴的子集,用於部署:
+Create a subset containing only a specific application and its dependencies, used for deployment:
 
 ```bash
-# 修剪出 web 應用程式
+# Prune the web application
 turbo prune --scope=web
 
-# 產生的結構
+# Generated structure
 out/
 ├── package.json
 ├── turbo.json
 ├── apps/
 │   └── web/
 └── packages/
-    └── ui/  # 只包含 web 依賴的套件
+    └── ui/  # Contains only packages web depends on
 ```
 
-**使用場景**:
+**Use Cases**:
 
-- Docker 多階段建置
-- 減少部署大小
-- 加速 CI/CD
+- Docker multi-stage builds
+- Reduce deployment size
+- Speed up CI/CD
 
-### 3. 視覺化依賴圖
+### 3. Visualize Dependency Graph
 
 ```bash
-# 產生依賴圖
+# Generate dependency graph
 turbo run build --graph
 
-# 產生 DOT 格式
+# Generate DOT format
 turbo run build --graph=graph.dot
 
-# 使用 Graphviz 視覺化
+# Visualize using Graphviz
 dot -Tpng graph.dot -o graph.png
 ```
 
-### 4. 互動式任務
+### 4. Interactive Tasks
 
-Turborepo 2.0+ 支援互動式任務:
+Turborepo 2.0+ supports interactive tasks:
 
 ```json
 {
@@ -778,11 +778,11 @@ Turborepo 2.0+ 支援互動式任務:
 }
 ```
 
-允許你進入特定任務的 shell,傳遞輸入。
+Allows you to enter the shell of a specific task to pass input.
 
-### 5. 套件層級設定
+### 5. Package-Level Configuration
 
-在個別套件中建立 `turbo.json`:
+Create `turbo.json` in individual packages:
 
 ```json
 {
@@ -797,9 +797,9 @@ Turborepo 2.0+ 支援互動式任務:
 
 ---
 
-## 效能最佳化建議
+## Performance Optimization Tips
 
-### 1. 精確定義 inputs 和 outputs
+### 1. Precisely Define inputs and outputs
 
 ```json
 {
@@ -810,105 +810,105 @@ Turborepo 2.0+ 支援互動式任務:
 }
 ```
 
-### 2. 使用遠端快取
+### 2. Use Remote Cache
 
-- 團隊共享快取可節省 50-90% 的建置時間
-- CI/CD 環境特別受益
+- Shared team cache can save 50-90% of build time
+- CI/CD environments benefit significantly
 
-### 3. 合理設定 dependsOn
+### 3. Reasonably Configure dependsOn
 
 ```json
 {
   "test": {
-    "dependsOn": ["^build"] // 只依賴依賴套件的 build
+    "dependsOn": ["^build"] // Only depends on build of dependent packages
   },
   "lint": {
-    "dependsOn": [] // 不依賴其他任務,可平行執行
+    "dependsOn": [] // No dependencies, can run in parallel
   }
 }
 ```
 
-### 4. 排除不必要的檔案
+### 4. Exclude Unnecessary Files
 
 ```json
 {
   "build": {
     "outputs": [
       "dist/**",
-      "!dist/**/*.map" // 排除 source map
+      "!dist/**/*.map" // Exclude source maps
     ]
   }
 }
 ```
 
-### 5. 使用 --filter 減少執行範圍
+### 5. Use --filter to Reduce Execution Scope
 
 ```bash
-# 只建置變更的套件
+# Build only changed packages
 turbo run build --filter=[HEAD^1]
 ```
 
 ---
 
-## 常見問題
+## FAQ
 
-### Q1: Turborepo 與 Nx 的差異?
+### Q1: Difference between Turborepo and Nx?
 
 **Turborepo**:
 
-- 更輕量,配置簡單
-- 專注於快取和任務執行
-- 與現有工具鏈整合良好
-- 適合已有建置工具的專案
+- Lightweight, simple configuration
+- Focuses on caching and task execution
+- Integrates well with existing toolchains
+- Suitable for projects with existing build tools
 
 **Nx**:
 
-- 功能更豐富
-- 內建程式碼產生器
-- 更多的專案模板
-- 適合從零開始的專案
+- Feature-rich
+- Built-in code generators
+- More project templates
+- Suitable for projects starting from scratch
 
-### Q2: 快取會佔用多少空間?
+### Q2: How much space does the cache take?
 
-- 本地快取預設無限制
-- 可以定期清理 `.turbo/cache/`
-- 遠端快取由服務提供商管理
+- Local cache has no limit by default
+- Can periodically clean `.turbo/cache/`
+- Remote cache is managed by the service provider
 
-### Q3: 如何除錯快取問題?
+### Q3: How to debug cache issues?
 
 ```bash
-# 使用 --dry-run 檢視快取狀態
+# Use --dry-run to view cache status
 turbo run build --dry-run
 
-# 使用 --force 跳過快取
+# Use --force to skip cache
 turbo run build --force
 
-# 檢視詳細日誌
+# View detailed logs
 turbo run build --verbosity=2
 ```
 
-### Q4: 可以在非 Monorepo 專案使用嗎?
+### Q4: Can it be used in non-Monorepo projects?
 
-可以,但效益較小。Turborepo 的主要優勢在於管理多個相互依賴的套件。
-
----
-
-## 總結
-
-Turborepo 透過以下機制大幅提升 Monorepo 的建置效能:
-
-1. **智慧快取**: 基於內容的快取指紋,永不重複計算
-2. **遠端快取**: 團隊和 CI/CD 共享建置成果
-3. **平行執行**: 最大化利用 CPU 資源
-4. **增量建置**: 只建置變更的部分
-5. **依賴感知**: 智慧的任務編排
-
-這些特性結合起來,可以將建置時間從數十分鐘縮短到數秒鐘,大幅提升開發體驗和 CI/CD 效率。
+Yes, but the benefits are smaller. Turborepo's main advantage lies in managing multiple interdependent packages.
 
 ---
 
-## 參考資源
+## Summary
 
-- [Turborepo 官方文件](https://turbo.build/repo/docs)
+Turborepo significantly improves Monorepo build performance through the following mechanisms:
+
+1. **Smart Caching**: Content-based cache fingerprinting, never recompute
+2. **Remote Caching**: Share build results across team and CI/CD
+3. **Parallel Execution**: Maximize CPU resource utilization
+4. **Incremental Builds**: Build only what changed
+5. **Dependency Awareness**: Intelligent task orchestration
+
+Combined, these features can reduce build times from tens of minutes to seconds, greatly enhancing developer experience and CI/CD efficiency.
+
+---
+
+## Resources
+
+- [Turborepo Official Documentation](https://turbo.build/repo/docs)
 - [Turborepo GitHub](https://github.com/vercel/turbo)
-- [Vercel 遠端快取](https://vercel.com/docs/monorepos/remote-caching)
+- [Vercel Remote Caching](https://vercel.com/docs/monorepos/remote-caching)

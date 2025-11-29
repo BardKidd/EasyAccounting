@@ -526,8 +526,8 @@ Account (1) → (N) Transaction
 - [x] `POST /announcements` - 發布公告 (管理員)
 - [x] `GET /announcements` - 取得有效公告
 - [x] 練習 MongoDB TTL Index (設定過期時間)
-- [ ] `PUT /announcements/:id` - 編輯公告
-- [ ] `DELETE /announcements/:id` - 刪除公告
+- [x] `PUT /announcements/:id` - 編輯公告
+- [x] `DELETE /announcements/:id` - 刪除公告
 
 ---
 

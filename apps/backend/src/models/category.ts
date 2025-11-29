@@ -1,5 +1,5 @@
 import Sequelize from 'sequelize';
-import sequelize from '../utils/database';
+import sequelize from '../utils/postgres';
 import { MainType, SubType, DetailType } from '@repo/shared';
 
 const allCategories = [
