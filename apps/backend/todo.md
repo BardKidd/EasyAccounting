@@ -353,14 +353,28 @@ Account (1) → (N) Transaction
 
 ## ✅ 作業任務
 
-### 階段 1: 環境設定
+### 階段 1: 環境設定 ✅
 
-- [ ] 建立專案 `expense-tracker-api`
-- [ ] 安裝套件: `express`, `sequelize`, `pg`, `pg-hstore`
-- [ ] 安裝額外套件: `nodemailer`, `exceljs`, `node-cron`, `bcrypt`, `jsonwebtoken`, `dotenv`
-- [ ] 建立 4 個 Model 檔案: User, Category, Account, Transaction
-- [ ] 在 `app.js` 定義所有關聯
-- [ ] 執行 `sequelize.sync()` 建立資料表
+- [x] 建立專案 `expense-tracker-api`
+- [x] 安裝套件: `express`, `sequelize`, `pg`, `pg-hstore`
+- [x] 安裝額外套件: `nodemailer`, `exceljs`, `node-cron`, `bcrypt`, `jsonwebtoken`, `dotenv`
+- [x] 建立 4 個 Model 檔案: User, Category, Account, Transaction
+- [x] 在 `app.js` 定義所有關聯
+- [x] 執行 `sequelize.sync()` 建立資料表
+
+**已完成:**
+
+- ✅ 建立 User Model (UUID, 軟刪除)
+- ✅ 建立 Category Model (自關聯, parentId)
+- ✅ 建立 Account Model (支援多種帳戶類型: 現金、銀行、信用卡、證券戶)
+- ✅ 建立 Transaction Model (關聯 User, Account, Category)
+- ✅ 定義所有關聯關係:
+  - User → Category, Account, Transaction (一對多)
+  - Category → Category (自關聯)
+  - Category → Transaction (一對多)
+  - Account → Transaction (一對多)
+- ✅ 設定 TABLE_DEFAULT_SETTING (schema, paranoid, timestamps, freezeTableName)
+- ✅ 建立 Sequelize Migration 機制
 
 ### 階段 2: 使用者功能 (認證)
 

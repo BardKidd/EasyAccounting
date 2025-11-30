@@ -1,4 +1,4 @@
-import { Sequelize } from 'sequelize';
+import { Sequelize, ModelOptions } from 'sequelize';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -13,5 +13,12 @@ const sequelize = new Sequelize(
     port: parseInt(process.env.PG_PORT || '5432', 10),
   }
 );
+
+export const TABLE_DEFAULT_SETTING: ModelOptions = {
+  schema: 'accounting',
+  paranoid: true,
+  timestamps: true,
+  freezeTableName: true,
+};
 
 export default sequelize;

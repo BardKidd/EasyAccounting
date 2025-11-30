@@ -1,5 +1,5 @@
 import Sequelize from 'sequelize';
-import sequelize from '../utils/postgres';
+import sequelize, { TABLE_DEFAULT_SETTING } from '../utils/postgres';
 
 const User = sequelize.define(
   'user',
@@ -9,9 +9,8 @@ const User = sequelize.define(
       allowNull: false,
       primaryKey: true,
       defaultValue: Sequelize.UUIDV4,
-      unique: true,
     },
-    username: {
+    name: {
       type: Sequelize.STRING,
       allowNull: false,
     },
@@ -24,26 +23,8 @@ const User = sequelize.define(
       type: Sequelize.STRING,
       allowNull: false,
     },
-    emailNotification: {
-      type: Sequelize.BOOLEAN,
-      allowNull: false,
-    },
-    createdAt: {
-      type: Sequelize.DATE,
-      allowNull: false,
-    },
-    updatedAt: {
-      type: Sequelize.DATE,
-      allowNull: false,
-    },
-    deletedAt: {
-      type: Sequelize.DATE,
-      defaultValue: null,
-    },
   },
-  {
-    schema: 'accounting',
-  }
+  TABLE_DEFAULT_SETTING
 );
 
 export default User;

@@ -1,5 +1,5 @@
 import Sequelize from 'sequelize';
-import sequelize from '../utils/postgres';
+import sequelize, { TABLE_DEFAULT_SETTING } from '../utils/postgres';
 import { MainType, SubType, DetailType } from '@repo/shared';
 
 const allCategories = [
@@ -16,18 +16,16 @@ const Category = sequelize.define(
       allowNull: false,
       primaryKey: true,
       defaultValue: Sequelize.UUIDV4,
-      unique: true,
     },
     // 只有 user 自己建立的才會有 id，預設的項目就不會有。
     userId: {
       type: Sequelize.UUID,
       references: {
-        model: 'users', // 去 DB 看會幫你建立的是複數寫法
+        model: 'user',
         key: 'id',
       },
       allowNull: true, // 允許 null,但需要在 API 層驗證是否有傳遞
-      onDelete: 'CASCADE',
-      onUpdate: 'CASCADE',
+      // onDelete: 'CASCADE', // 已經使用 paranoid 了，這裡沒意義。
     },
     name: {
       type: Sequelize.STRING,
@@ -42,11 +40,10 @@ const Category = sequelize.define(
       allowNull: true,
       // 前端傳入 parentId 時會在這裡去關聯 id 資料，所以實際上關聯兩筆資料是透過這裡去關聯的。
       references: {
-        model: 'categories', // 去 DB 看會幫你建立的是複數寫法
+        model: 'category',
         key: 'id',
       },
-      onDelete: 'CASCADE',
-      onUpdate: 'CASCADE',
+      // onDelete: 'CASCADE', // 已經使用 paranoid 了，這裡沒意義。
     },
     icon: {
       type: Sequelize.STRING,
@@ -56,18 +53,8 @@ const Category = sequelize.define(
       type: Sequelize.STRING,
       allowNull: true,
     },
-    createdAt: {
-      type: Sequelize.DATE,
-      allowNull: false,
-    },
-    updatedAt: {
-      type: Sequelize.DATE,
-      allowNull: false,
-    },
   },
-  {
-    schema: 'accounting',
-  }
+  { ...TABLE_DEFAULT_SETTING, paranoid: false } // 目前覺得類別被刪除就被刪除了，反正只能刪除自己建立的資料
 );
 
 export default Category;

@@ -47,3 +47,23 @@ export enum DetailType {
   RETURN = '退款',
   EXCHANGE = '兌換',
 }
+
+export enum AccountType {
+  CASH = '現金',
+  BANK = '銀行',
+  CREDIT_CARD = '信用卡',
+  SECURITIES_ACCOUNT = '證券戶',
+  OTHER = '其他',
+}
+
+export enum PaymentStatus {
+  PENDING = '待繳',
+  PAID = '已繳',
+  OVERDUE = '逾期',
+}
+
+export enum PaymentFrequency {
+  ONE_TIME = '單次',
+  RECURRING = '週期',
+  INSTALLMENT = '分期',
+}

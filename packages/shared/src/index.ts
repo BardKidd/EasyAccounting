@@ -1,4 +1,4 @@
-// 匯出所有常數
+// 匯出所有 ENUM
 export * from './constants';
 
 // 匯出所有 schemas
