@@ -23,6 +23,11 @@ const User = sequelize.define(
       type: Sequelize.STRING,
       allowNull: false,
     },
+    emailNotification: {
+      type: Sequelize.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   TABLE_DEFAULT_SETTING
 );

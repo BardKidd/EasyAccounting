@@ -6,7 +6,7 @@ import userController from '../controllers/userController';
 const router: Router = express.Router();
 
 router.post('/user', validate(createUserSchema), userController.addUser);
-router.get('/users', userController.getUsers);
+router.get('/user', userController.getUsers);
 router.get('/user/:id', userController.getUser);
 router.put('/user/:id', validate(createUserSchema), userController.editUser);
 router.delete('/user/:id', userController.deleteUser);

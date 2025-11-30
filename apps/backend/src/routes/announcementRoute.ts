@@ -6,16 +6,16 @@ import { postAnnouncementSchema, updateAnnouncementSchema } from '@repo/shared';
 const router: Router = Router();
 
 router.post(
-  '/announcements',
+  '/announcement',
   validate(postAnnouncementSchema),
   announcementController.createAnnouncement
 );
-router.get('/announcements', announcementController.getAnnouncements);
+router.get('/announcement', announcementController.getAnnouncements);
 router.put(
-  '/announcements/:id',
+  '/announcement/:id',
   validate(updateAnnouncementSchema),
   announcementController.updateAnnouncement
 );
-router.delete('/announcements/:id', announcementController.deleteAnnouncement);
+router.delete('/announcement/:id', announcementController.deleteAnnouncement);
 
 export default router;

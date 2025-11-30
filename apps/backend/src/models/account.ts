@@ -1,6 +1,6 @@
 import Sequelize from 'sequelize';
 import sequelize, { TABLE_DEFAULT_SETTING } from '../utils/postgres';
-import { AccountType, PaymentStatus } from '@repo/shared';
+import { Account as AccountEnum, PaymentStatus } from '@repo/shared';
 
 const Account = sequelize.define(
   'account',
@@ -24,7 +24,7 @@ const Account = sequelize.define(
       allowNull: false,
     },
     type: {
-      type: Sequelize.ENUM(...Object.values(AccountType)),
+      type: Sequelize.ENUM(...Object.values(AccountEnum)),
       allowNull: false,
     },
     balance: {
@@ -68,7 +68,7 @@ const Account = sequelize.define(
       type: Sequelize.ENUM(...Object.values(PaymentStatus)),
       allowNull: true,
     },
-    daysUnitDue: Sequelize.INTEGER,
+    daysUntilDue: Sequelize.INTEGER,
   },
   TABLE_DEFAULT_SETTING
 );

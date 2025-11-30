@@ -23,7 +23,7 @@ const getUsers = (req: Request, res: Response) => {
         .map((userInstance) => {
           const userJson = userInstance.toJSON();
           return {
-            username: userJson.username,
+            name: userJson.name,
             email: userJson.email,
             emailNotification: userJson.emailNotification,
           };
@@ -45,7 +45,7 @@ const getUser = (req: Request, res: Response) => {
       return;
     }
     const sortedUser: UserType = {
-      username: userJson.username,
+      name: userJson.name,
       email: userJson.email,
       emailNotification: userJson.emailNotification,
     };

@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const createUserSchema = z.object({
-  username: z.string().min(1, 'Username is required'),
-  email: z.string().email(),
-  password: z.string().min(8, 'Password must be at least 8 characters long'),
+  name: z.string().min(1, '使用者名稱為必填'),
+  email: z.string().email('請輸入有效的電子郵件地址'),
+  password: z.string().min(8, '密碼至少需要 8 個字元'),
   emailNotification: z.boolean().default(false),
 });
 

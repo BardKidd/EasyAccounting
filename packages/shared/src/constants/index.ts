@@ -48,7 +48,7 @@ export enum DetailType {
   EXCHANGE = '兌換',
 }
 
-export enum AccountType {
+export enum Account {
   CASH = '現金',
   BANK = '銀行',
   CREDIT_CARD = '信用卡',

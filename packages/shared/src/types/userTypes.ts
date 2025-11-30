@@ -1,5 +1,5 @@
 export interface UserType {
-  username: string;
+  name: string;
   email: string;
   emailNotification: boolean;
 }
