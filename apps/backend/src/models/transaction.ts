@@ -1,8 +1,10 @@
-import Sequelize from 'sequelize';
+import Sequelize, { Model } from 'sequelize';
 import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
-import { MainType, PaymentFrequency } from '@repo/shared';
+import { TransactionType, MainType, PaymentFrequency } from '@repo/shared';
 
-const Transaction = sequelize.define(
+interface TransactionInstance extends Model<TransactionType>, TransactionType {}
+
+const Transaction = sequelize.define<TransactionInstance>(
   'transaction',
   {
     id: {

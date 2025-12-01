@@ -18,12 +18,16 @@ const createTransaction = (req: Request, res: Response) => {
 
 const getTransactionsByDate = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
-    const result = await Transaction.findAll({
-      where: {
-        ...req.body,
-        date: req.params.date,
-      },
-    });
+    const { date } = req.params;
+    if (!date) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json(responseHelper(false, null, 'Date is required', null));
+    }
+    const result = await transactionServices.getTransactionsByDate(
+      req.body,
+      date
+    );
 
     return res
       .status(StatusCodes.OK)

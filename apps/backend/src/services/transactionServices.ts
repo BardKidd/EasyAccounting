@@ -1,4 +1,9 @@
-import { CreateTransactionSchema, MainType } from '@repo/shared';
+import {
+  CreateTransactionSchema,
+  GetTransactionsByDateSchema,
+  MainType,
+  TransactionType,
+} from '@repo/shared';
 import { simplifyTransaction } from '@/utils/common';
 import Transaction from '@/models/transaction';
 import Account from '@/models/account';
@@ -21,6 +26,30 @@ const createTransaction = async (data: CreateTransactionSchema) => {
   });
 };
 
+const getTransactionsByDate = async (
+  data: GetTransactionsByDateSchema,
+  date: string
+) => {
+  const instance = await Transaction.findAll({
+    where: {
+      ...data,
+      date,
+    },
+  });
+  let result: TransactionType[] = [];
+
+  if (instance.length > 0) {
+    result = instance.map((item) => {
+      item = item.toJSON();
+      const { id, createdAt, updatedAt, deletedAt, ...other } = item;
+      return other;
+    });
+  }
+
+  return result;
+};
+
 export default {
   createTransaction,
+  getTransactionsByDate,
 };
