@@ -49,7 +49,21 @@ const getTransactionsByDate = async (
   return result;
 };
 
+const getTransactionById = async (id: string) => {
+  const instance = await Transaction.findByPk(id);
+  let result: TransactionType | null = null;
+
+  if (instance) {
+    result = instance.toJSON();
+    const { id, createdAt, updatedAt, deletedAt, ...other } = result;
+    return other;
+  }
+
+  return result;
+};
+
 export default {
   createTransaction,
   getTransactionsByDate,
+  getTransactionById,
 };

@@ -10,12 +10,12 @@ const router: Router = express.Router();
 
 // 拿到整該年/月/日的交易
 router.get(
-  '/transaction/:date',
+  '/transaction/date/:date',
   validate(getTransactionsByDateSchema),
   transactionController.getTransactionsByDate
 );
 // 某筆詳細資料
-// router.get('/transaction/:id', transactionController.getTransactionById);
+router.get('/transaction/id/:id', transactionController.getTransactionById);
 // router.post(
 //   '/transaction',
 //   validate(createTransactionSchema),

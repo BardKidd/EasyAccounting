@@ -24,6 +24,7 @@ const getTransactionsByDate = (req: Request, res: Response) => {
         .status(StatusCodes.BAD_REQUEST)
         .json(responseHelper(false, null, 'Date is required', null));
     }
+
     const result = await transactionServices.getTransactionsByDate(
       req.body,
       date
@@ -37,7 +38,25 @@ const getTransactionsByDate = (req: Request, res: Response) => {
   });
 };
 
+const getTransactionById = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const { id } = req.params;
+    if (!id) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json(responseHelper(false, null, 'Id is required', null));
+    }
+
+    const result = await transactionServices.getTransactionById(id);
+
+    return res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, result, 'Get transaction successfully', null));
+  });
+};
+
 export default {
   createTransaction,
   getTransactionsByDate,
+  getTransactionById,
 };
