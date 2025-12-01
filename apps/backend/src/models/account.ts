@@ -1,5 +1,5 @@
 import Sequelize, { Model } from 'sequelize';
-import sequelize, { TABLE_DEFAULT_SETTING } from '../utils/postgres';
+import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
 import {
   Account as AccountEnum,
   AccountType,

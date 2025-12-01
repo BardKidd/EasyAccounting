@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { simplifyTryCatch } from '../utils/common';
-import Account from '../models/account';
+import { simplifyTryCatch } from '@/utils/common';
+import Account from '@/models/account';
 import { StatusCodes } from 'http-status-codes';
 
 const getAccountsByUser = (req: Request, res: Response) => {

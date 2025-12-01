@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { simplifyTryCatch, responseHelper } from '../utils/common';
-import Transaction from '../models/transaction';
+import { simplifyTryCatch, responseHelper } from '@/utils/common';
+import Transaction from '@/models/transaction';
 import { StatusCodes } from 'http-status-codes';
-import transactionServices from '../services/transactionServices';
+import transactionServices from '@/services/transactionServices';
 
 const createTransaction = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {

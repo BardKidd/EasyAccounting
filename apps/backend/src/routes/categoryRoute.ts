@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
-import categoryController from '../controllers/categoryController';
-import { validate } from '../middlewares/validate';
+import categoryController from '@/controllers/categoryController';
+import { validate } from '@/middlewares/validate';
 import { createCategorySchema, updateCategorySchema } from '@repo/shared';
 
 const router: Router = express.Router();

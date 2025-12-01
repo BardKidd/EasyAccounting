@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import Announcement from '../models/announcement';
-import { simplifyTryCatch } from '../utils/common';
+import Announcement from '@/models/announcement';
+import { simplifyTryCatch } from '@/utils/common';
 
 const createAnnouncement = async (req: Request, res: Response) => {
   await simplifyTryCatch(req, res, async () => {

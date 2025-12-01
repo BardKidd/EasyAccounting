@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
-import { simplifyTryCatch } from '../utils/common';
-import User from '../models/user';
+import { simplifyTryCatch } from '@/utils/common';
+import User from '@/models/user';
 import { StatusCodes } from 'http-status-codes';
 import bcrypt from 'bcrypt';
 import { UserType } from '@repo/shared';
-import userServices from '../services/userServices';
+import userServices from '@/services/userServices';
 
 const isUserDeleted = (user: UserType & { deletedAt: Date }) => {
   return !!user.deletedAt;

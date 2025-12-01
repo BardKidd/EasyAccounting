@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { Transaction } from 'sequelize';
-import sequelize from '../utils/postgres';
+import sequelize from '@/utils/postgres';
 import { ResponseHelper, ErrorObject } from '@repo/shared';
 
 export const simplifyTryCatch = async (

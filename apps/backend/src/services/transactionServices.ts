@@ -1,7 +1,7 @@
 import { CreateTransactionSchema, MainType } from '@repo/shared';
-import { simplifyTransaction } from '../utils/common';
-import Transaction from '../models/transaction';
-import Account from '../models/account';
+import { simplifyTransaction } from '@/utils/common';
+import Transaction from '@/models/transaction';
+import Account from '@/models/account';
 
 const createTransaction = async (data: CreateTransactionSchema) => {
   return await simplifyTransaction(async (t) => {

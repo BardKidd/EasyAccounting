@@ -1,5 +1,5 @@
 import Sequelize from 'sequelize';
-import sequelize, { TABLE_DEFAULT_SETTING } from '../utils/postgres';
+import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
 import { MainType, PaymentFrequency } from '@repo/shared';
 
 const Transaction = sequelize.define(

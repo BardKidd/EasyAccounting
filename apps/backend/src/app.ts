@@ -1,18 +1,18 @@
 import express from 'express';
 import path from 'path';
-import sequelize from './utils/postgres';
-import mongoConnection from './utils/mongodb';
+import sequelize from '@/utils/postgres';
+import mongoConnection from '@/utils/mongodb';
 
-import User from './models/user';
-import Category from './models/category';
-import Account from './models/account';
-import Transaction from './models/transaction';
+import User from '@/models/user';
+import Category from '@/models/category';
+import Account from '@/models/account';
+import Transaction from '@/models/transaction';
 
-import userRoute from './routes/userRoute';
-import categoryRoute from './routes/categoryRoute';
-import announcementRoute from './routes/announcementRoute';
-import accountRoute from './routes/accountRoute';
-import transactionRoute from './routes/transactionRoute';
+import userRoute from '@/routes/userRoute';
+import categoryRoute from '@/routes/categoryRoute';
+import announcementRoute from '@/routes/announcementRoute';
+import accountRoute from '@/routes/accountRoute';
+import transactionRoute from '@/routes/transactionRoute';
 
 const app = express();
 

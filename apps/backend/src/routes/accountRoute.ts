@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
-import { validate } from '../middlewares/validate';
+import { validate } from '@/middlewares/validate';
 import { createAccountSchema, updateAccountSchema } from '@repo/shared';
-import accountController from '../controllers/accountController';
+import accountController from '@/controllers/accountController';
 
 const router: Router = express.Router();
 

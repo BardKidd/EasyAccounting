@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
-import { validate } from '../middlewares/validate';
+import { validate } from '@/middlewares/validate';
 import { createUserSchema } from '@repo/shared';
-import userController from '../controllers/userController';
+import userController from '@/controllers/userController';
 
 const router: Router = express.Router();
 

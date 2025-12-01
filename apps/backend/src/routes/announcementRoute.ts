@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import announcementController from '../controllers/announcementController';
-import { validate } from '../middlewares/validate';
+import announcementController from '@/controllers/announcementController';
+import { validate } from '@/middlewares/validate';
 import { postAnnouncementSchema, updateAnnouncementSchema } from '@repo/shared';
 
 const router: Router = Router();

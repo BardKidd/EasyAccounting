@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import Category from '../models/category';
-import User from '../models/user';
-import { simplifyTryCatch } from '../utils/common';
+import Category from '@/models/category';
+import User from '@/models/user';
+import { simplifyTryCatch } from '@/utils/common';
 import { CategoryType } from '@repo/shared';
 
 const getAllCategories = async (req: Request, res: Response) => {
