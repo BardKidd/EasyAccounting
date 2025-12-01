@@ -234,7 +234,7 @@ Account (1) → (N) Transaction
 ### 交易記錄 (核心)
 
 - `POST /transactions` - 新增交易 (自動更新帳戶餘額)
-- `GET /transactions` - 取得所有交易 (支援篩選、分頁)
+- `GET /transactions/:date` - 取得指定日期所有交易
 - `GET /transactions/:id` - 取得單筆交易詳情
 - `PUT /transactions/:id` - 更新交易 (重新計算餘額)
 - `DELETE /transactions/:id` - 刪除交易 (還原餘額)
@@ -702,3 +702,10 @@ erDiagram
         boolean isBilled "Credit Card only"
     }
 ```
+
+## 未來規劃 (Post-MVP)
+
+- **多幣別支援 (Currency Support)**
+  - 目前專案僅支援新台幣 (TWD)
+  - 未來需在 Account 和 Transaction 增加 currency 欄位
+  - 需考慮匯率換算問題

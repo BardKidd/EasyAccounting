@@ -12,6 +12,7 @@ import userRoute from './routes/userRoute';
 import categoryRoute from './routes/categoryRoute';
 import announcementRoute from './routes/announcementRoute';
 import accountRoute from './routes/accountRoute';
+import transactionRoute from './routes/transactionRoute';
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use('/api', categoryRoute);
 app.use('/api', userRoute);
 app.use('/api', announcementRoute);
 app.use('/api', accountRoute);
+app.use('/api', transactionRoute);
 
 User.hasMany(Category);
 User.hasMany(Account);

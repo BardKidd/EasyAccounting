@@ -47,10 +47,12 @@ const Transaction = sequelize.define(
       type: Sequelize.TEXT,
       allowNull: true,
     },
+    // 年月日
     date: {
-      type: Sequelize.DATE,
+      type: Sequelize.DATEONLY,
       allowNull: false,
     },
+    // 時分秒
     time: {
       type: Sequelize.TIME,
       allowNull: false,

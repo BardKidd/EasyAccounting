@@ -15,4 +15,5 @@ export interface CreditAccountType extends AccountType {
   billingDay: Date;
   nextBillingDate: Date;
   paymentStatus: string;
+  daysUntilDue: number;
 }

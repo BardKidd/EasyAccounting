@@ -1,8 +1,18 @@
-import Sequelize from 'sequelize';
+import Sequelize, { Model } from 'sequelize';
 import sequelize, { TABLE_DEFAULT_SETTING } from '../utils/postgres';
-import { Account as AccountEnum, PaymentStatus } from '@repo/shared';
+import {
+  Account as AccountEnum,
+  AccountType,
+  PaymentStatus,
+  CreditAccountType,
+} from '@repo/shared';
 
-const Account = sequelize.define(
+type AccountAttributes = AccountType & Partial<CreditAccountType>;
+
+// 這個型別說明建立出來的 Model instance 要包含 AccountAttributes 的所有屬性，當使用 toJson() 後會剩下 AccountAttributes 的所有屬性
+interface AccountInstance extends Model<AccountAttributes>, AccountAttributes {}
+
+const Account = sequelize.define<AccountInstance>(
   'account',
   {
     id: {
@@ -68,7 +78,10 @@ const Account = sequelize.define(
       type: Sequelize.ENUM(...Object.values(PaymentStatus)),
       allowNull: true,
     },
-    daysUntilDue: Sequelize.INTEGER,
+    daysUntilDue: {
+      type: Sequelize.INTEGER,
+      allowNull: true,
+    },
   },
   TABLE_DEFAULT_SETTING
 );
