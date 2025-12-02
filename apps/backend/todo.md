@@ -229,7 +229,6 @@ Account (1) → (N) Transaction
 - `GET /accounts/:id` - 取得單一帳戶詳情
 - `PUT /accounts/:id` - 更新帳戶資訊
 - `DELETE /accounts/:id` - 刪除帳戶
-- `GET /accounts/summary` - 取得帳戶總覽 (總餘額、總欠款)
 
 ### 交易記錄 (核心)
 
@@ -376,15 +375,6 @@ Account (1) → (N) Transaction
 - ✅ 設定 TABLE_DEFAULT_SETTING (schema, paranoid, timestamps, freezeTableName)
 - ✅ 建立 Sequelize Migration 機制
 
-### 階段 2: 使用者功能 (認證)
-
-- [ ] `POST /auth/register` - 註冊使用者 (密碼需加密)
-- [ ] `POST /auth/login` - 登入並回傳 JWT token
-- [ ] `GET /auth/me` - 取得當前使用者資訊 (需驗證 JWT)
-- [ ] `PUT /auth/me` - 更新使用者設定 (emailNotification)
-
-**備註:** JWT 認證功能留待未來學習後實作
-
 ### 階段 2.5: 使用者 CRUD 管理 ✅
 
 - [x] `POST /user` - 新增使用者 (密碼使用 bcrypt 加密)
@@ -433,12 +423,11 @@ Account (1) → (N) Transaction
 
 ### 階段 4: 帳戶管理
 
-- [ ] `POST /accounts` - 新增帳戶 (根據 type 決定是錢包或信用卡)
-- [ ] `GET /accounts` - 取得所有帳戶
-- [ ] `GET /accounts/:id` - 取得單一帳戶詳情
-- [ ] `PUT /accounts/:id` - 更新帳戶資訊
-- [ ] `DELETE /accounts/:id` - 刪除帳戶 (需檢查是否有交易記錄)
-- [ ] `GET /accounts/summary` - 總覽 (總餘額、總欠款)
+- [x] `POST /accounts` - 新增帳戶 (根據 type 決定是錢包或信用卡)
+- [x] `GET /accounts` - 取得所有帳戶
+- [x] `GET /accounts/:id` - 取得單一帳戶詳情
+- [x] `PUT /accounts/:id` - 更新帳戶資訊
+- [x] `DELETE /accounts/:id` - 刪除帳戶 (需檢查是否有交易記錄)
 
 **學習重點:**
 
@@ -447,11 +436,11 @@ Account (1) → (N) Transaction
 
 ### 階段 5: 交易記錄 (核心功能) ⭐⭐⭐
 
-- [ ] `POST /transactions` - 新增交易並自動更新帳戶餘額
-- [ ] `GET /transactions` - 取得所有交易 (支援篩選、分頁、包含關聯)
-- [ ] `GET /transactions/:id` - 取得單筆交易詳情
-- [ ] `PUT /transactions/:id` - 更新交易 (需重新計算餘額變化)
-- [ ] `DELETE /transactions/:id` - 刪除交易 (需還原帳戶餘額)
+- [x] `POST /transactions` - 新增交易並自動更新帳戶餘額
+- [x] `GET /transactions` - 取得所有交易 (支援篩選、分頁、包含關聯)
+- [x] `GET /transactions/:id` - 取得單筆交易詳情
+- [x] `PUT /transactions/:id` - 更新交易 (需重新計算餘額變化)
+- [x] `DELETE /transactions/:id` - 刪除交易 (需還原帳戶餘額)
 
 **學習重點:**
 
