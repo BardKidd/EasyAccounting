@@ -38,6 +38,9 @@ importers:
       http-status-codes:
         specifier: ^2.3.0
         version: 2.3.0
+      jose:
+        specifier: ^6.1.2
+        version: 6.1.2
       mongodb:
         specifier: ^7.0.0
         version: 7.0.0
@@ -1577,6 +1580,9 @@ packages:
   jiti@2.6.1:
     resolution: {integrity: sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ==}
     hasBin: true
+
+  jose@6.1.2:
+    resolution: {integrity: sha512-MpcPtHLE5EmztuFIqB0vzHAWJPpmN1E6L4oo+kze56LIs3MyXIj9ZHMDxqOvkP38gBR7K1v3jqd4WU2+nrfONQ==}
 
   js-beautify@1.15.4:
     resolution: {integrity: sha512-9/KXeZUKKJwqCXUdBxFJ3vPh467OCckSBmYDwSK/EtV090K+iMJ7zx2S3HLVDIWFQdqMIsZWbnaGiba18aWhaA==}
@@ -4040,6 +4046,8 @@ snapshots:
       '@pkgjs/parseargs': 0.11.0
 
   jiti@2.6.1: {}
+
+  jose@6.1.2: {}
 
   js-beautify@1.15.4:
     dependencies:
