@@ -16,21 +16,16 @@ router.get(
 );
 // 某筆詳細資料
 router.get('/transaction/id/:id', transactionController.getTransactionById);
-// router.post(
-//   '/transaction',
-//   validate(createTransactionSchema),
-//   transactionController.createTransaction
-// );
 router.post(
   '/transaction',
   validate(createTransactionSchema),
   transactionController.createTransaction
 );
-// router.put(
-//   '/transaction/:id',
-//   validate(updateTransactionSchema),
-//   transactionController.updateTransaction
-// );
-// router.delete('/transaction/:id', transactionController.deleteTransaction);
+router.put(
+  '/transaction/:id',
+  validate(updateTransactionSchema),
+  transactionController.updateIncomeExpense
+);
+router.delete('/transaction/:id', transactionController.deleteTransaction);
 
 export default router;

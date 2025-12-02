@@ -55,8 +55,48 @@ const getTransactionById = (req: Request, res: Response) => {
   });
 };
 
+const updateIncomeExpense = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const { id } = req.params;
+    if (!id) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json(responseHelper(false, null, 'Id is required', null));
+    }
+
+    const result = await transactionServices.updateIncomeExpense(id, req.body);
+
+    return res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(true, result, 'Update transaction successfully', null)
+      );
+  });
+};
+
+const deleteTransaction = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const { id } = req.params;
+    if (!id) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json(responseHelper(false, null, 'Id is required', null));
+    }
+
+    const result = await transactionServices.deleteTransaction(id);
+
+    return res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(true, result, 'Delete transaction successfully', null)
+      );
+  });
+};
+
 export default {
   createTransaction,
   getTransactionsByDate,
   getTransactionById,
+  updateIncomeExpense,
+  deleteTransaction,
 };
