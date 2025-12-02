@@ -16,12 +16,10 @@
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.5",
-    "@types/node": "^22.15.3",
     "@types/pg": "^8.15.6",
     "sequelize-cli": "^6.6.3",
     "ts-node": "^10.9.2",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "tsx": "^4.21.0"
   },
   "dependencies": {
     "@repo/shared": "workspace:*",
@@ -33,7 +31,6 @@
     "mongoose": "^9.0.0",
     "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",
-    "sequelize": "^6.37.7",
-    "zod": "^3.22.4"
+    "sequelize": "^6.37.7"
   }
 }
