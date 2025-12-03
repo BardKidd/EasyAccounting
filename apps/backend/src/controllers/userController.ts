@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { simplifyTryCatch } from '@/utils/common';
+import { simplifyTryCatch, responseHelper } from '@/utils/common';
 import User from '@/models/user';
 import { StatusCodes } from 'http-status-codes';
 import bcrypt from 'bcrypt';
@@ -29,7 +29,9 @@ const getUsers = (req: Request, res: Response) => {
           };
         });
     }
-    res.status(StatusCodes.OK).json(sortedUsers);
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, sortedUsers, 'Get users successfully', null));
   });
 };
 
@@ -39,9 +41,9 @@ const getUser = (req: Request, res: Response) => {
     if (!userInstance) return;
     const userJson = userInstance.toJSON();
     if (isUserDeleted(userJson)) {
-      res.status(StatusCodes.NOT_FOUND).json({
-        message: 'User not found',
-      });
+      res
+        .status(StatusCodes.NOT_FOUND)
+        .json(responseHelper(false, null, 'User not found', null));
       return;
     }
     const sortedUser: UserType = {
@@ -49,7 +51,9 @@ const getUser = (req: Request, res: Response) => {
       email: userJson.email,
       emailNotification: userJson.emailNotification,
     };
-    res.status(StatusCodes.OK).json(sortedUser);
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, sortedUser, 'Get user successfully', null));
   });
 };
 
@@ -61,9 +65,9 @@ const addUser = (req: Request, res: Response) => {
       ...otherData,
       password: hashedPassword,
     });
-    res.status(StatusCodes.CREATED).json({
-      message: 'User created successfully',
-    });
+    res
+      .status(StatusCodes.CREATED)
+      .json(responseHelper(true, null, 'User created successfully', null));
   });
 };
 
@@ -77,9 +81,9 @@ const editUser = (req: Request, res: Response) => {
       ...otherData,
       password: hashedPassword,
     });
-    res.status(StatusCodes.OK).json({
-      message: 'User updated successfully',
-    });
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, 'User updated successfully', null));
   });
 };
 
@@ -90,9 +94,9 @@ const deleteUser = (req: Request, res: Response) => {
     await userInstance.update({
       deletedAt: new Date(),
     });
-    res.status(StatusCodes.OK).json({
-      message: 'User deleted successfully',
-    });
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, 'User deleted successfully', null));
   });
 };
 

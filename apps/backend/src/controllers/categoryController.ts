@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import Category from '@/models/category';
 import User from '@/models/user';
-import { simplifyTryCatch } from '@/utils/common';
+import { simplifyTryCatch, responseHelper } from '@/utils/common';
 import { CategoryType } from '@repo/shared';
 
 const getAllCategories = async (req: Request, res: Response) => {
@@ -28,10 +28,16 @@ const getAllCategories = async (req: Request, res: Response) => {
         };
       });
     }
-    res.status(StatusCodes.OK).json({
-      message: 'Categories fetched successfully',
-      data: sortedCategories,
-    });
+    res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(
+          true,
+          sortedCategories,
+          'Categories fetched successfully',
+          null
+        )
+      );
   });
 };
 
@@ -40,9 +46,9 @@ const getChildrenCategories = async (req: Request, res: Response) => {
     const categoryId = req.params.id;
     const category = (await Category.findByPk(categoryId)) as any;
     if (!category) {
-      return res.status(StatusCodes.NOT_FOUND).json({
-        message: 'Category not found',
-      });
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json(responseHelper(false, null, 'Category not found', null));
     }
     // getChildren() 是 Sequelize 提供的 Magic Method，可以自動找到關聯的資料
     // 可以去看 app.ts 裡面的 as 命名。假如 as 為 subCategories，這裡就會改為 getSubCategories。
@@ -61,10 +67,16 @@ const getChildrenCategories = async (req: Request, res: Response) => {
         };
       });
     }
-    res.status(StatusCodes.OK).json({
-      message: 'Children categories fetched successfully',
-      data: sortedCategories,
-    });
+    res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(
+          true,
+          sortedCategories,
+          'Children categories fetched successfully',
+          null
+        )
+      );
   });
 };
 
@@ -74,15 +86,15 @@ const postCategory = async (req: Request, res: Response) => {
     if (userId) {
       const user = await User.findByPk(userId);
       if (user && user.getDataValue('deletedAt')) {
-        return res.status(StatusCodes.FORBIDDEN).json({
-          message: 'User is deleted',
-        });
+        return res
+          .status(StatusCodes.FORBIDDEN)
+          .json(responseHelper(false, null, 'User is deleted', null));
       }
     }
     await Category.create(req.body);
-    res.status(StatusCodes.CREATED).json({
-      message: 'Category created successfully',
-    });
+    res
+      .status(StatusCodes.CREATED)
+      .json(responseHelper(true, null, 'Category created successfully', null));
   });
 };
 
@@ -91,14 +103,14 @@ const putCategory = async (req: Request, res: Response) => {
     const categoryId = req.params.id;
     const category = await Category.findByPk(categoryId);
     if (!category) {
-      return res.status(StatusCodes.NOT_FOUND).json({
-        message: 'Category not found',
-      });
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json(responseHelper(false, null, 'Category not found', null));
     }
     await category.update(req.body); // 不需要使用 where,因為已經有 category instance 了
-    res.status(StatusCodes.OK).json({
-      message: 'Category updated successfully',
-    });
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, 'Category updated successfully', null));
   });
 };
 
@@ -107,14 +119,14 @@ const deleteCategory = async (req: Request, res: Response) => {
     const categoryId = req.params.id;
     const category = await Category.findByPk(categoryId);
     if (!category) {
-      return res.status(StatusCodes.NOT_FOUND).json({
-        message: 'Category not found',
-      });
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json(responseHelper(false, null, 'Category not found', null));
     }
     await category.destroy();
-    res.status(StatusCodes.OK).json({
-      message: 'Category deleted successfully',
-    });
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, 'Category deleted successfully', null));
   });
 };
 

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { simplifyTryCatch } from '@/utils/common';
+import { simplifyTryCatch, responseHelper } from '@/utils/common';
 import Account from '@/models/account';
 import { StatusCodes } from 'http-status-codes';
 
@@ -10,14 +10,20 @@ const getAccountsByUser = (req: Request, res: Response) => {
         userId: req.params.userId,
       },
     });
-    return res.status(StatusCodes.OK).json(accounts);
+    return res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, accounts, 'Get accounts successfully', null));
   });
 };
 
 const addAccount = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const account = await Account.create(req.body);
-    return res.status(StatusCodes.CREATED).json(account);
+    return res
+      .status(StatusCodes.CREATED)
+      .json(
+        responseHelper(true, account, 'Account created successfully', null)
+      );
   });
 };
 
@@ -28,9 +34,9 @@ const editAccount = (req: Request, res: Response) => {
         id: req.params.accountId,
       },
     });
-    return res.status(StatusCodes.OK).json({
-      message: '該帳戶已更新',
-    });
+    return res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, '該帳戶已更新', null));
   });
 };
 
@@ -41,9 +47,9 @@ const deleteAccount = (req: Request, res: Response) => {
         id: req.params.accountId,
       },
     });
-    return res.status(StatusCodes.OK).json({
-      message: '該帳戶已刪除',
-    });
+    return res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, '該帳戶已刪除', null));
   });
 };
 

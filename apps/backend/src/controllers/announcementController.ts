@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Announcement from '@/models/announcement';
-import { simplifyTryCatch } from '@/utils/common';
+import { simplifyTryCatch, responseHelper } from '@/utils/common';
+import { StatusCodes } from 'http-status-codes';
 
 const createAnnouncement = async (req: Request, res: Response) => {
   await simplifyTryCatch(req, res, async () => {
@@ -13,7 +14,16 @@ const createAnnouncement = async (req: Request, res: Response) => {
       expiresAt, // 如果有傳這個，時間到 MongoDB 會自動刪除
     });
 
-    res.status(201).json(announcement);
+    res
+      .status(StatusCodes.CREATED)
+      .json(
+        responseHelper(
+          true,
+          announcement,
+          'Announcement created successfully',
+          null
+        )
+      );
   });
 };
 
@@ -23,7 +33,16 @@ const getAnnouncements = async (req: Request, res: Response) => {
       createdAt: -1,
     }); // 按時間倒序
 
-    res.status(200).json(announcements);
+    res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(
+          true,
+          announcements,
+          'Get announcements successfully',
+          null
+        )
+      );
   });
 };
 
@@ -40,9 +59,20 @@ const updateAnnouncement = async (req: Request, res: Response) => {
     });
 
     if (result) {
-      res.status(200).json(result);
+      res
+        .status(StatusCodes.OK)
+        .json(
+          responseHelper(
+            true,
+            result,
+            'Announcement updated successfully',
+            null
+          )
+        );
     } else {
-      res.status(404).json({ message: 'Announcement not found' });
+      res
+        .status(StatusCodes.NOT_FOUND)
+        .json(responseHelper(false, null, 'Announcement not found', null));
     }
   });
 };
@@ -54,9 +84,20 @@ const deleteAnnouncement = async (req: Request, res: Response) => {
     const result = await Announcement.findByIdAndDelete(id);
 
     if (result) {
-      res.status(200).json(result);
+      res
+        .status(StatusCodes.OK)
+        .json(
+          responseHelper(
+            true,
+            result,
+            'Announcement deleted successfully',
+            null
+          )
+        );
     } else {
-      res.status(404).json({ message: 'Announcement not found' });
+      res
+        .status(StatusCodes.NOT_FOUND)
+        .json(responseHelper(false, null, 'Announcement not found', null));
     }
   });
 };
