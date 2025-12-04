@@ -7,6 +7,8 @@ const SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 const JWT_ACCESS_IN = '15m';
 const JWT_REFRESH_IN = '7d';
+const ACCESS_TOKEN_MAX_AGE = 15 * 60 * 1000;
+const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 interface TokenPayload {
   userId: string;
@@ -17,7 +19,6 @@ const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'prd',
   sameSite: 'strict' as const,
-  maxAge: 15 * 60 * 1000,
 };
 
 export const generateAccessToken = async (payload: TokenPayload) => {
@@ -53,8 +54,18 @@ export const verifyToken = async (token: string) => {
   }
 };
 
-export const setAuthCookie = (res: Response, token: string) => {
-  res.cookie('token', token, COOKIE_OPTIONS);
+export const setAccessCookie = (res: Response, token: string) => {
+  res.cookie('accessToken', token, {
+    ...COOKIE_OPTIONS,
+    maxAge: ACCESS_TOKEN_MAX_AGE,
+  });
+};
+
+export const setRefreshCookie = (res: Response, token: string) => {
+  res.cookie('refreshToken', token, {
+    ...COOKIE_OPTIONS,
+    maxAge: REFRESH_TOKEN_MAX_AGE,
+  });
 };
 
 export const clearAuthCookie = (res: Response) => {

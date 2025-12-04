@@ -6,7 +6,11 @@ import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Wallet } from 'lucide-react';
-import { registerSchema, type RegisterInput } from '@repo/shared';
+import {
+  registerSchema,
+  ResponseHelper,
+  type RegisterInput,
+} from '@repo/shared';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -26,6 +30,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { apiHandler, simplifyTryCatch } from '@/lib/utils';
+import { toast } from 'sonner';
 
 type RegisterFormValues = RegisterInput;
 
@@ -39,20 +45,21 @@ export default function RegisterPage() {
       name: '',
       email: '',
       password: '',
+      confirmPassword: '',
     },
   });
 
   async function onSubmit(data: RegisterFormValues) {
-    setIsLoading(true);
-
-    // TODO: 實作註冊邏輯
-    console.log(data);
-
-    // 模擬 API 呼叫
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    setIsLoading(false);
-    router.push('/dashboard');
+    simplifyTryCatch(async () => {
+      setIsLoading(true);
+      const { confirmPassword, ...registerData } = data;
+      const url = '/user';
+      const result = await apiHandler(url, 'post', registerData, false);
+      if (result.isSuccess) {
+        toast.success(result.message);
+        router.push('/login');
+      }
+    }, setIsLoading);
   }
 
   return (
@@ -79,9 +86,8 @@ export default function RegisterPage() {
                   <FormLabel>姓名</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="王小明"
+                      placeholder="請輸入您的名字"
                       autoComplete="name"
-                      disabled={isLoading}
                       {...field}
                     />
                   </FormControl>
@@ -97,10 +103,9 @@ export default function RegisterPage() {
                   <FormLabel>電子郵件</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="your@email.com"
+                      placeholder="請輸入您的電子郵件"
                       type="email"
                       autoComplete="email"
-                      disabled={isLoading}
                       {...field}
                     />
                   </FormControl>
@@ -116,9 +121,26 @@ export default function RegisterPage() {
                   <FormLabel>密碼</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="••••••••"
+                      placeholder="請輸入您的密碼"
                       type="password"
-                      autoComplete="new-password"
+                      autoComplete="new-password" // 用於瀏覽器跳出儲存提示
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>確認密碼</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="請再次輸入您的密碼"
+                      type="password"
                       disabled={isLoading}
                       {...field}
                     />

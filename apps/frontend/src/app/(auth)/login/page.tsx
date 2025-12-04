@@ -26,6 +26,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { apiHandler, simplifyTryCatch } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,16 +42,14 @@ export default function LoginPage() {
   });
 
   async function onSubmit(data: LoginInput) {
-    setIsLoading(true);
-
-    // TODO: 實作登入邏輯
-    console.log(data);
-
-    // 模擬 API 呼叫
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    setIsLoading(false);
-    router.push('/dashboard');
+    simplifyTryCatch(async () => {
+      const url = '/login';
+      const result = await apiHandler(url, 'post', data, false);
+      if (result.isSuccess) {
+        toast.success(result.message);
+        router.push('/dashboard');
+      }
+    }, setIsLoading);
   }
 
   return (
@@ -79,7 +79,6 @@ export default function LoginPage() {
                       placeholder="your@email.com"
                       type="email"
                       autoComplete="email"
-                      disabled={isLoading}
                       {...field}
                     />
                   </FormControl>
@@ -98,7 +97,6 @@ export default function LoginPage() {
                       placeholder="••••••••"
                       type="password"
                       autoComplete="current-password"
-                      disabled={isLoading}
                       {...field}
                     />
                   </FormControl>

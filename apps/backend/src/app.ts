@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import cors from 'cors';
 import sequelize from '@/utils/postgres';
 import mongoConnection from '@/utils/mongodb';
 
@@ -13,8 +14,17 @@ import categoryRoute from '@/routes/categoryRoute';
 import announcementRoute from '@/routes/announcementRoute';
 import accountRoute from '@/routes/accountRoute';
 import transactionRoute from '@/routes/transactionRoute';
+import authRoute from '@/routes/authRoute';
 
 const app = express();
+
+// CORS 設定
+app.use(
+  cors({
+    origin: 'http://localhost:8080',
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -24,6 +34,7 @@ app.use('/api', userRoute);
 app.use('/api', announcementRoute);
 app.use('/api', accountRoute);
 app.use('/api', transactionRoute);
+app.use('/api', authRoute);
 
 User.hasMany(Category);
 User.hasMany(Account);

@@ -1,7 +1,17 @@
-import Sequelize from 'sequelize';
+import Sequelize, { Model } from 'sequelize';
 import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
 
-const User = sequelize.define(
+type UserAttributes = {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  emailNotification: boolean;
+};
+
+interface UserInstance extends Model<UserAttributes>, UserAttributes {}
+
+const User = sequelize.define<UserInstance>(
   'user',
   {
     id: {
