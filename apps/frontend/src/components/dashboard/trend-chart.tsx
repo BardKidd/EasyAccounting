@@ -4,6 +4,9 @@ import ReactECharts from 'echarts-for-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function TrendChart() {
+  // 空資料狀態
+  const hasData = false;
+
   const option = {
     tooltip: {
       trigger: 'axis',
@@ -21,7 +24,7 @@ export function TrendChart() {
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: ['1月', '2月', '3月', '4月', '5月', '6月', '7月'],
+      data: [],
       axisLine: {
         lineStyle: {
           color: '#888',
@@ -44,7 +47,7 @@ export function TrendChart() {
         name: '收入',
         type: 'line',
         smooth: true,
-        data: [12000, 13200, 10100, 13400, 9000, 23000, 21000],
+        data: [],
         itemStyle: {
           color: '#10b981', // emerald-500
         },
@@ -72,7 +75,7 @@ export function TrendChart() {
         name: '支出',
         type: 'line',
         smooth: true,
-        data: [8000, 8200, 9100, 8400, 10000, 11000, 9500],
+        data: [],
         itemStyle: {
           color: '#f43f5e', // rose-500
         },
@@ -105,10 +108,24 @@ export function TrendChart() {
         <CardTitle>收支趨勢</CardTitle>
       </CardHeader>
       <CardContent className="pl-2">
-        <ReactECharts
-          option={option}
-          style={{ height: '350px', width: '100%' }}
-        />
+        {!hasData ? (
+          <div
+            className="flex items-center justify-center"
+            style={{ height: '350px' }}
+          >
+            <div className="text-center">
+              <p className="text-muted-foreground">尚無足夠資料顯示趨勢圖</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                開始記帳後即可查看收支趨勢
+              </p>
+            </div>
+          </div>
+        ) : (
+          <ReactECharts
+            option={option}
+            style={{ height: '350px', width: '100%' }}
+          />
+        )}
       </CardContent>
     </Card>
   );

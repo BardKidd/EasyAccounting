@@ -79,7 +79,7 @@ export function NewTransactionSheet() {
           <div className="grid gap-2">
             <Label htmlFor="amount">金額</Label>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-muted-foreground">
+              <span className="absolute left-3 top-1.5 text-muted-foreground">
                 $
               </span>
               <Input
