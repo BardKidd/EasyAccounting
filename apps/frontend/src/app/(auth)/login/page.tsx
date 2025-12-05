@@ -44,7 +44,7 @@ export default function LoginPage() {
   async function onSubmit(data: LoginInput) {
     simplifyTryCatch(async () => {
       const url = '/login';
-      const result = await apiHandler(url, 'post', data, false);
+      const result = await apiHandler(url, 'post', data);
       console.log(result);
       if (result.isSuccess) {
         toast.success(result.message);

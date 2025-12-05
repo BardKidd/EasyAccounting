@@ -69,7 +69,6 @@ export async function apiHandler(
   url: string,
   method: string,
   data: any,
-  isNeedValidation = true,
   headers?: any
 ): Promise<ResponseHelper<any>> {
   const domain = process.env.NEXT_PUBLIC_API_DOMAIN;

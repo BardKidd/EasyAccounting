@@ -50,7 +50,7 @@ export default function RegisterPage() {
       setIsLoading(true);
       const { confirmPassword, ...registerData } = data;
       const url = '/user';
-      const result = await apiHandler(url, 'post', registerData, false);
+      const result = await apiHandler(url, 'post', registerData);
       if (result.isSuccess) {
         toast.success(result.message);
         router.push('/login');
