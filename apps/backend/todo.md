@@ -16,6 +16,57 @@
 - 📊 **匯出 Excel 報表** - 產生完整的收支明細表
 - 📢 **系統公告 (MongoDB)** - 練習 NoSQL 與 SQL 混合架構
 
+## 🏗️ 系統架構設計 (MVP 上線規劃)
+
+### 1. 部署架構 (Azure App Service)
+
+> 💡 **目標**: 前後端部署至 Azure，並使用 Nginx 做反向代理。
+
+- **運算資源**: **Azure App Service (Linux)**
+  - **方案選擇**:
+    - **F1 (Free)**: 免費，但每天有 CPU 分鐘數限制，且無 "Always On" (閒置會休眠，冷啟動慢)。適合開發測試。
+    - **B1 (Basic)**: 開發用最便宜付費版 (~$13 USD/月)，支援 Always On 和自訂網域。建議 MVP 上線使用此方案以免系統睡著。
+  - **部署方式**:
+    - **Option A (簡單)**: 直接使用 App Service 的 Node.js 環境部署。App Service 本身前方已有負載平衡，對於 MVP 來說其實不一定需要自架 Nginx。
+    - **Option B (進階 - Docker)**: 將 Nginx + Node.js 包在 Docker Image 中部署。這樣可以完全掌控 Nginx 設定 (gzip, cache header, reverse proxy rules)。
+      - _成本_: 與 Option A 相同（看 App Service 本體價格）。
+
+### 2. 資料庫 (Database)
+
+- **關聯式資料庫 (PostgreSQL)**:
+  - **Azure Database for PostgreSQL**: 價格較高 (最便宜 Flexible Server 也要 ~$15-20 USD+/月，雖然有 12 個月免費額度但過了就要錢)。
+  - **替代方案 (MVP 推薦)**: **Neon** 或 **Supabase** (皆提供 PostgreSQL Serverless 免費層)，可大幅降低 MVP 成本。
+- **NoSQL 資料庫 (MongoDB)**:
+  - **MongoDB Atlas**: 使用官方雲端服務的 **M0 Free Tier** (永久免費，512MB 儲存)。連接字串直接設定在 App Service 環境變數即可。
+  - **用途**: 儲存系統公告、非結構化 User 其他資訊。
+
+### 3. 靜態資源 (Static Assets)
+
+- **儲存**: **Azure Blob Storage**
+  - **用途**: 存放使用者上傳的頭像、收據圖片、或前端 build 出來的靜態檔。
+  - **成本**: 極低 (以 GB 計費)，MVP 用量幾乎可忽略。
+- **CDN (內容傳遞網路)**:
+  - **建議**: 若要加速讀取，需在 Blob 前面掛一個 **Azure CDN** (Standard Microsoft Tier)，將 Blob 設為 Origin。Azure CDN 也有免費流量額度。
+
+### 4. CI/CD (GitHub Actions)
+
+- **流程**:
+  1. **Push to main**: 觸發 GitHub Action。
+  2. **Build**: 建置 Docker Image 或直接 `npm build`。
+  3. **Deploy**:
+     - 若用 Docker: Push image to **Azure Container Registry (ACR)** (需微小費用) → App Service 拉取更新。
+     - 若用 Code: 使用 `azure/webapps-deploy` Action 直接部署程式碼。
+- **成本**: GitHub Free Tier 每月有 2000 分鐘 Action 時間，MVP 綽綽有餘。
+
+### 5. 訊息佇列 (Message Queue) - (尚未決定/暫緩)
+
+- **現狀**: MVP 階段流量不大，暫不需要複雜的 MQ (如 RabbitMQ, Azure Service Bus)。
+- **替代**:
+  - 簡單的非同步任務可先用 `setTimeout` 或 `node-cron` 處理。
+  - 若真的需要 (如大量 Email 發送)，可使用 **Redis (Upstash Free Tier)** 搭配 BullMQ。
+
+---
+
 ## 💡 業務流程
 
 ### 記帳流程
@@ -56,7 +107,7 @@
 | 欄位              | 類型            | 說明                       |
 | ----------------- | --------------- | -------------------------- |
 | id                | UUID (PK)       | 主鍵                       |
-| username          | STRING          | 使用者名稱                 |
+| name              | STRING          | 使用者名稱                 |
 | email             | STRING (UNIQUE) | Email (用於登入和發送提醒) |
 | password          | STRING          | 密碼 (加密後)              |
 | emailNotification | BOOLEAN         | 是否啟用 Email 提醒        |
@@ -104,53 +155,57 @@
 
 ### 3. Account (帳戶) - 統一管理錢包和信用卡
 
-| 欄位           | 類型          | 說明                          | 適用類型  |
-| -------------- | ------------- | ----------------------------- | --------- |
-| id             | UUID (PK)     | 主鍵                          | 全部      |
-| userId         | UUID (FK)     | 所屬使用者                    | 全部      |
-| name           | STRING        | 帳戶名稱                      | 全部      |
-| type           | ENUM          | 'cash', 'bank', 'credit_card' | 全部      |
-| balance        | DECIMAL(10,2) | 當前餘額                      | 錢包/銀行 |
-| lastFourDigits | STRING        | 卡號後四碼                    | 信用卡    |
-| billingDay     | INTEGER       | 帳單日 (1-31)                 | 信用卡    |
-| paymentDay     | INTEGER       | 繳款日 (1-31)                 | 信用卡    |
-| creditLimit    | DECIMAL(10,2) | 信用額度                      | 信用卡    |
-| unpaidAmount   | DECIMAL(10,2) | 未出帳金額                    | 信用卡    |
-| lastNotifiedAt | DATE          | 上次提醒時間                  | 信用卡    |
-| isActive       | BOOLEAN       | 是否啟用                      | 全部      |
-| createdAt      | DATE          | 建立時間                      | 全部      |
-| updatedAt      | DATE          | 更新時間                      | 全部      |
+| 欄位            | 類型          | 說明                          | 適用類型  |
+| --------------- | ------------- | ----------------------------- | --------- |
+| id              | UUID (PK)     | 主鍵                          | 全部      |
+| userId          | UUID (FK)     | 所屬使用者                    | 全部      |
+| name            | STRING        | 帳戶名稱                      | 全部      |
+| type            | ENUM          | 'cash', 'bank', 'credit_card' | 全部      |
+| balance         | DECIMAL(10,5) | 當前餘額                      | 錢包/銀行 |
+| icon            | STRING        | 圖示                          | 全部      |
+| color           | STRING        | 顏色                          | 全部      |
+| isActive        | BOOLEAN       | 是否啟用                      | 全部      |
+| creditLimit     | DECIMAL(10,5) | 信用額度                      | 信用卡    |
+| unpaidAmount    | DECIMAL(10,5) | 未出帳金額                    | 信用卡    |
+| billingDay      | DATE          | 帳單日                        | 信用卡    |
+| nextBillingDate | DATE          | 下次繳款日                    | 信用卡    |
+| paymentStatus   | ENUM          | 繳款狀態                      | 信用卡    |
+| daysUntilDue    | INTEGER       | 距離繳款日天數                | 信用卡    |
+| createdAt       | DATE          | 建立時間                      | 全部      |
+| updatedAt       | DATE          | 更新時間                      | 全部      |
 
 **設計重點:**
 
 - 使用 `type` 欄位區分帳戶類型
 - 錢包/銀行使用 `balance` 欄位
 - 信用卡使用 `unpaidAmount` 追蹤未出帳金額
-- `lastNotifiedAt` 避免同一天重複提醒
+- 包含 `icon` 與 `color` 讓前端顯示更豐富
 
 ---
 
 ### 4. Transaction (交易記錄)
 
-| 欄位        | 類型          | 說明                  |
-| ----------- | ------------- | --------------------- |
-| id          | UUID (PK)     | 主鍵                  |
-| userId      | UUID (FK)     | 所屬使用者            |
-| accountId   | UUID (FK)     | 使用的帳戶            |
-| categoryId  | UUID (FK)     | 交易分類              |
-| amount      | DECIMAL(10,2) | 金額                  |
-| type        | ENUM          | 'income' 或 'expense' |
-| description | TEXT          | 備註說明              |
-| date        | DATE          | 交易日期              |
-| isBilled    | BOOLEAN       | 是否已出帳 (信用卡用) |
-| createdAt   | DATE          | 建立時間              |
-| updatedAt   | DATE          | 更新時間              |
+| 欄位             | 類型          | 說明                  |
+| ---------------- | ------------- | --------------------- |
+| id               | UUID (PK)     | 主鍵                  |
+| userId           | UUID (FK)     | 所屬使用者            |
+| accountId        | UUID (FK)     | 使用的帳戶            |
+| categoryId       | UUID (FK)     | 交易分類              |
+| amount           | DECIMAL(10,5) | 金額                  |
+| type             | ENUM          | 'income' 或 'expense' |
+| description      | TEXT          | 備註說明              |
+| date             | DATEONLY      | 交易日期 (年月日)     |
+| time             | TIME          | 交易時間 (時分秒)     |
+| receipt          | STRING        | 收據/發票路徑         |
+| paymentFrequency | ENUM          | 付款頻率 (單次/週期)  |
+| createdAt        | DATE          | 建立時間              |
+| updatedAt        | DATE          | 更新時間              |
 
 **設計重點:**
 
 - 所有交易都關聯到一個帳戶
-- `isBilled` 用於追蹤信用卡交易是否已出帳
-- 金額使用 `DECIMAL(10,2)` 確保精確度
+- 分離 `date` 和 `time` 欄位
+- 金額使用 `DECIMAL(10,5)` 確保精確度
 
 ---
 
@@ -208,35 +263,38 @@ Account (1) → (N) Transaction
 
 ### 認證相關
 
-- `POST /auth/register` - 註冊新使用者
-- `POST /auth/login` - 登入 (回傳 JWT token)
-- `GET /auth/me` - 取得當前使用者資訊
-- `PUT /auth/me` - 更新使用者設定
+- `POST /login` - 登入 (回傳 JWT token)
+
+### 使用者管理
+
+- `POST /user` - 註冊新使用者
+- `GET /user` - 取得所有使用者
+- `GET /user/:id` - 取得指定使用者資訊
+- `PUT /user/:id` - 更新使用者設定
+- `DELETE /user/:id` - 刪除使用者
 
 ### 分類管理
 
-- `POST /categories` - 新增分類 (可指定 parentId)
-- `GET /categories` - 取得所有分類 (樹狀結構)
-- `GET /categories/:id` - 取得單一分類
-- `GET /categories/:id/children` - 取得子分類列表
-- `PUT /categories/:id` - 更新分類
-- `DELETE /categories/:id` - 刪除分類
+- `POST /category` - 新增分類 (可指定 parentId)
+- `GET /category` - 取得所有分類
+- `GET /category/:id` - 取得指定分類的子分類
+- `PUT /category/:id` - 更新分類
+- `DELETE /category/:id` - 刪除分類
 
 ### 帳戶管理
 
-- `POST /accounts` - 新增帳戶 (錢包或信用卡)
-- `GET /accounts` - 取得所有帳戶
-- `GET /accounts/:id` - 取得單一帳戶詳情
-- `PUT /accounts/:id` - 更新帳戶資訊
-- `DELETE /accounts/:id` - 刪除帳戶
+- `POST /account` - 新增帳戶 (錢包或信用卡)
+- `GET /personnel-accounts` - 取得使用者的所有帳戶
+- `PUT /account/:accountId` - 更新帳戶資訊
+- `DELETE /account/:accountId` - 刪除帳戶
 
 ### 交易記錄 (核心)
 
-- `POST /transactions` - 新增交易 (自動更新帳戶餘額)
-- `GET /transactions/:date` - 取得指定日期所有交易
-- `GET /transactions/:id` - 取得單筆交易詳情
-- `PUT /transactions/:id` - 更新交易 (重新計算餘額)
-- `DELETE /transactions/:id` - 刪除交易 (還原餘額)
+- `POST /transaction` - 新增交易 (自動更新帳戶餘額)
+- `GET /transaction/date/:date` - 取得指定日期所有交易
+- `GET /transaction/id/:id` - 取得單筆交易詳情
+- `PUT /transaction/:id` - 更新交易 (重新計算餘額)
+- `DELETE /transaction/:id` - 刪除交易 (還原餘額)
 
 ### 統計查詢
 
@@ -256,6 +314,13 @@ Account (1) → (N) Transaction
 - `GET /export/transactions` - 匯出交易記錄 (支援日期範圍)
 - `GET /export/monthly/:year/:month` - 匯出指定月份報表
 - `GET /export/category/:categoryId` - 匯出指定分類的交易
+
+### 系統公告
+
+- `POST /announcement` - 發布公告
+- `GET /announcement` - 取得公告
+- `PUT /announcement/:id` - 更新公告
+- `DELETE /announcement/:id` - 刪除公告
 
 ---
 
@@ -458,7 +523,7 @@ Account (1) → (N) Transaction
 
 - [ ] `GET /statistics/summary` - 總覽 (總收入、總支出、淨值)
 - [ ] `GET /statistics/monthly` - 本月收支統計
-- [ ] `GET /statistics/category` - 分類支出統計 (用於圓餅圖)
+- [ ] `GET /statistics/category` - 分類支出統計 (圓餅圖資料)
 - [ ] `GET /statistics/trend` - 收支趨勢 (最近 6 個月,用於折線圖)
 
 **學習重點:**
