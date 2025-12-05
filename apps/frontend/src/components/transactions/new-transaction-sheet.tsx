@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import { useState } from 'react';
 import { CalendarIcon, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -33,8 +33,8 @@ import {
 } from '@/components/ui/popover';
 
 export function NewTransactionSheet() {
-  const [date, setDate] = React.useState<Date>();
-  const [type, setType] = React.useState<'income' | 'expense'>('expense');
+  const [date, setDate] = useState<Date>();
+  const [type, setType] = useState<'income' | 'expense'>('expense');
 
   return (
     <Sheet>
@@ -108,12 +108,7 @@ export function NewTransactionSheet() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                />
+                <Calendar mode="single" selected={date} onSelect={setDate} />
               </PopoverContent>
             </Popover>
           </div>
