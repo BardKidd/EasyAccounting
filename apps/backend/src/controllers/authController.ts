@@ -27,7 +27,7 @@ const login = (req: Request, res: Response) => {
     const compareResult = await comparePassword(password, user.password);
     if (!compareResult) {
       return res
-        .status(StatusCodes.UNAUTHORIZED)
+        .status(StatusCodes.BAD_REQUEST)
         .json(responseHelper(false, null, 'Invalid password', null));
     }
 

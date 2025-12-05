@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
 import { responseHelper } from '@/utils/common';
+import { StatusCodes } from 'http-status-codes';
+import { z } from '@repo/shared';
 
 export const validate = (schema: z.ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -9,7 +10,7 @@ export const validate = (schema: z.ZodSchema) => {
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json(
+        return res.status(StatusCodes.BAD_REQUEST).json(
           responseHelper(
             false,
             null,

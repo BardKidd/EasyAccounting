@@ -5,9 +5,10 @@ import { StatusCodes } from 'http-status-codes';
 
 const getAccountsByUser = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
+    const { userId } = req.cookies.user;
     const accounts = await Account.findAll({
       where: {
-        userId: req.params.userId,
+        userId,
       },
     });
     return res
@@ -18,7 +19,13 @@ const getAccountsByUser = (req: Request, res: Response) => {
 
 const addAccount = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
-    const account = await Account.create(req.body);
+    const { userId } = req.cookies.user;
+    const data = {
+      ...req.body,
+      userId,
+    };
+
+    const account = await Account.create(data);
     return res
       .status(StatusCodes.CREATED)
       .json(
@@ -29,7 +36,13 @@ const addAccount = (req: Request, res: Response) => {
 
 const editAccount = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
-    await Account.update(req.body, {
+    const { userId } = req.cookies.user;
+    const data = {
+      ...req.body,
+      userId,
+    };
+
+    await Account.update(data, {
       where: {
         id: req.params.accountId,
       },
@@ -42,9 +55,11 @@ const editAccount = (req: Request, res: Response) => {
 
 const deleteAccount = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
+    const { userId } = req.cookies.user;
     await Account.destroy({
       where: {
         id: req.params.accountId,
+        userId,
       },
     });
     return res

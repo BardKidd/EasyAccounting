@@ -45,6 +45,7 @@ export default function LoginPage() {
     simplifyTryCatch(async () => {
       const url = '/login';
       const result = await apiHandler(url, 'post', data, false);
+      console.log(result);
       if (result.isSuccess) {
         toast.success(result.message);
         router.push('/dashboard');

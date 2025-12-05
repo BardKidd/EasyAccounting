@@ -17,3 +17,7 @@ export interface TransactionType {
   updatedAt?: string;
   deletedAt?: string | null;
 }
+
+export interface TransactionTypeWhenOperate extends TransactionType {
+  targetAccountId: string;
+}

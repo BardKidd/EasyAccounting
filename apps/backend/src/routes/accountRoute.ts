@@ -10,7 +10,7 @@ router.post(
   validate(createAccountSchema),
   accountController.addAccount
 );
-router.get('/account/:userId', accountController.getAccountsByUser);
+router.get('/personnel-accounts', accountController.getAccountsByUser);
 router.put(
   '/account/:accountId',
   validate(updateAccountSchema),

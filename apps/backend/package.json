@@ -9,6 +9,7 @@
     "db:migrate": "sh -c 'read -p \"Migration Name: \" NAME && npx sequelize-cli migration:generate --name \"$NAME\"'",
     "db:migrate:up": "sh -c 'read -p \"Enter Environment (dev/prd): \" ENV && NODE_ENV=$ENV npx sequelize-cli db:migrate'",
     "db:migrate:down": "sh -c 'read -p \"Enter Environment (dev/prd): \" ENV && NODE_ENV=$ENV npx sequelize-cli db:migrate:undo'",
+    "db:seed:generate": "sh -c 'read -p \"Seed Name: \" NAME && npx sequelize-cli seed:generate --name \"$NAME\"'",
     "db:seed": "sh -c 'read -p \"Enter Environment (dev/prd): \" ENV && NODE_ENV=$ENV npx sequelize-cli db:seed:all'",
     "db:seed:undo": "sh -c 'read -p \"Enter Environment (dev/prd): \" ENV && NODE_ENV=$ENV npx sequelize-cli db:seed:undo:all'"
   },

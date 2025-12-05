@@ -22,8 +22,9 @@ function isResponseHelper(error: unknown): error is ResponseHelper<any> {
 /**
  * 取得錯誤訊息的輔助函數
  */
-function getErrorMessage(errors: unknown): string {
+export function getErrorMessage(errors: unknown): string {
   // 1. 先檢查是不是自己的 ResponseHelper 格式
+  console.log('errors===================', isResponseHelper(errors));
   if (isResponseHelper(errors)) {
     // 因為使用 toast 這個元件，所以好像只能顯示字串，所以只能取第一個錯誤訊息
     if (errors.error && errors.error.length > 0) {
@@ -48,6 +49,7 @@ function getErrorMessage(errors: unknown): string {
   return '發生未知錯誤';
 }
 
+// 適合直接呼叫某個 UI 等待結果
 export async function simplifyTryCatch(
   cb: () => Promise<any>,
   setIsLoading: (isLoading: boolean) => void
@@ -72,16 +74,20 @@ export async function apiHandler(
 ): Promise<ResponseHelper<any>> {
   const domain = process.env.NEXT_PUBLIC_API_DOMAIN;
   const caseInsensitiveMethod = method.toUpperCase();
-  const isNeedCookie = isNeedValidation ? 'include' : 'omit'; // 如果不需要驗證，就不需要 cookie。登入或註冊都不需要驗證
   const res = await fetch(`${domain}${url}`, {
     method: caseInsensitiveMethod,
     headers: {
       'Content-Type': 'application/json',
       ...headers,
     },
-    body: JSON.stringify(data),
-    credentials: isNeedCookie,
+    body: data ? JSON.stringify(data) : undefined,
+    credentials: 'include', // 接收並儲存後端的 cookie 設定
   });
   const result = (await res.json()) as ResponseHelper<any>;
+
+  // 錯誤跳去 catch
+  if (!res.ok || !result.isSuccess) {
+    throw result;
+  }
   return result;
 }

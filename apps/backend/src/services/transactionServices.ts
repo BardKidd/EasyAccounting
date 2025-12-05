@@ -22,11 +22,20 @@ const calcAccountBalance = async (
   }
 };
 
-const createTransaction = async (data: CreateTransactionSchema) => {
+const createTransaction = async (
+  data: CreateTransactionSchema,
+  userId: string
+) => {
   return await simplifyTransaction(async (t) => {
-    const transaction = await Transaction.create(data, { transaction: t });
+    const transaction = await Transaction.create(
+      { ...data, userId },
+      { transaction: t }
+    );
 
-    const account = await Account.findByPk(data.accountId, { transaction: t });
+    const account = await Account.findOne({
+      where: { id: data.accountId, userId },
+      transaction: t,
+    });
     if (!account) throw new Error('Account not found');
 
     calcAccountBalance(account, data.type, data.amount);
@@ -39,12 +48,14 @@ const createTransaction = async (data: CreateTransactionSchema) => {
 
 const getTransactionsByDate = async (
   data: GetTransactionsByDateSchema,
-  date: string
+  date: string,
+  userId: string
 ) => {
   const instance = await Transaction.findAll({
     where: {
       ...data,
       date,
+      userId,
     },
   });
   let result: TransactionType[] = [];
@@ -60,8 +71,10 @@ const getTransactionsByDate = async (
   return result;
 };
 
-const getTransactionById = async (id: string) => {
-  const instance = await Transaction.findByPk(id);
+const getTransactionById = async (id: string, userId: string) => {
+  const instance = await Transaction.findOne({
+    where: { id, userId },
+  });
   let result: TransactionType | null = null;
 
   if (instance) {
@@ -75,14 +88,19 @@ const getTransactionById = async (id: string) => {
 
 const updateIncomeExpense = async (
   id: string,
-  data: UpdateTransactionSchema
+  data: UpdateTransactionSchema,
+  userId: string
 ) => {
   return simplifyTransaction(async (t) => {
-    const transaction = await Transaction.findByPk(id, { transaction: t });
+    const transaction = await Transaction.findOne({
+      where: { id, userId },
+      transaction: t,
+    });
     if (!transaction) throw new Error('Transaction not found');
 
     // 1. 在做改變前先恢復成該筆交易前的狀態再做處理，否則直接改的話會有正負差問題。
-    const oldAccount = await Account.findByPk(transaction.accountId, {
+    const oldAccount = await Account.findOne({
+      where: { id: transaction.accountId, userId },
       transaction: t,
     });
     if (!oldAccount) throw new Error('Old account not found');
@@ -101,7 +119,8 @@ const updateIncomeExpense = async (
     let newAccount = oldAccount;
     // 不過還是先看看有沒有換帳戶(e.g. 原本紀錄錢包支出，記錯了改成銀行帳戶)
     if (data.accountId !== transaction.accountId) {
-      const account = await Account.findByPk(data.accountId, {
+      const account = await Account.findOne({
+        where: { id: data.accountId, userId },
         transaction: t,
       });
       if (!account) throw new Error('New account not found');
@@ -118,13 +137,17 @@ const updateIncomeExpense = async (
   });
 };
 
-const deleteTransaction = async (id: string) => {
+const deleteTransaction = async (id: string, userId: string) => {
   return simplifyTransaction(async (t) => {
-    const transaction = await Transaction.findByPk(id, { transaction: t });
+    const transaction = await Transaction.findOne({
+      where: { id, userId },
+      transaction: t,
+    });
     if (!transaction) throw new Error('Transaction not found');
 
     // 跟編輯一樣需要先去還原該筆交易前的狀態再做處理，否則直接改的話會有正負差問題。
-    const account = await Account.findByPk(transaction.accountId, {
+    const account = await Account.findOne({
+      where: { id: transaction.accountId, userId },
       transaction: t,
     });
     if (!account) throw new Error('Account not found');

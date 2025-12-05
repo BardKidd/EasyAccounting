@@ -2,11 +2,10 @@ import { z } from 'zod';
 import { MainType, PaymentFrequency } from '../constants';
 
 export const createTransactionSchema = z.object({
-  userId: z.string().uuid(),
   accountId: z.string().uuid(),
   categoryId: z.string().uuid(),
   amount: z.number(),
-  type: z.enum([MainType.INCOME, MainType.EXPENSE]),
+  type: z.enum([MainType.INCOME, MainType.EXPENSE, MainType.OPERATE]),
   description: z.string().nullable(),
   date: z.string(),
   time: z.string(),
@@ -21,7 +20,6 @@ export const createTransactionSchema = z.object({
 export const updateTransactionSchema = createTransactionSchema;
 
 export const getTransactionsByDateSchema = z.object({
-  userId: z.string().uuid(),
   accountId: z.string().uuid(),
   categoryId: z.string().uuid(),
 });

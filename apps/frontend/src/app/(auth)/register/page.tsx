@@ -6,11 +6,7 @@ import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Wallet } from 'lucide-react';
-import {
-  registerSchema,
-  ResponseHelper,
-  type RegisterInput,
-} from '@repo/shared';
+import { registerSchema, type RegisterInput } from '@repo/shared';
 
 import { Button } from '@/components/ui/button';
 import {

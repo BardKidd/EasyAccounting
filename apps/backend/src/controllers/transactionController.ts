@@ -1,12 +1,15 @@
 import { Request, Response } from 'express';
 import { simplifyTryCatch, responseHelper } from '@/utils/common';
-import Transaction from '@/models/transaction';
 import { StatusCodes } from 'http-status-codes';
 import transactionServices from '@/services/transactionServices';
 
 const createTransaction = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
-    const result = await transactionServices.createTransaction(req.body);
+    const userId = req.user.userId;
+    const result = await transactionServices.createTransaction(
+      req.body,
+      userId
+    );
 
     return res
       .status(StatusCodes.CREATED)
@@ -19,6 +22,7 @@ const createTransaction = (req: Request, res: Response) => {
 const getTransactionsByDate = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const { date } = req.params;
+    const userId = req.user.userId;
     if (!date) {
       return res
         .status(StatusCodes.BAD_REQUEST)
@@ -27,7 +31,8 @@ const getTransactionsByDate = (req: Request, res: Response) => {
 
     const result = await transactionServices.getTransactionsByDate(
       req.body,
-      date
+      date,
+      userId
     );
 
     return res
@@ -41,13 +46,14 @@ const getTransactionsByDate = (req: Request, res: Response) => {
 const getTransactionById = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const { id } = req.params;
+    const userId = req.user.userId;
     if (!id) {
       return res
         .status(StatusCodes.BAD_REQUEST)
         .json(responseHelper(false, null, 'Id is required', null));
     }
 
-    const result = await transactionServices.getTransactionById(id);
+    const result = await transactionServices.getTransactionById(id, userId);
 
     return res
       .status(StatusCodes.OK)
@@ -58,13 +64,18 @@ const getTransactionById = (req: Request, res: Response) => {
 const updateIncomeExpense = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const { id } = req.params;
+    const userId = req.user.userId;
     if (!id) {
       return res
         .status(StatusCodes.BAD_REQUEST)
         .json(responseHelper(false, null, 'Id is required', null));
     }
 
-    const result = await transactionServices.updateIncomeExpense(id, req.body);
+    const result = await transactionServices.updateIncomeExpense(
+      id,
+      req.body,
+      userId
+    );
 
     return res
       .status(StatusCodes.OK)
@@ -77,13 +88,14 @@ const updateIncomeExpense = (req: Request, res: Response) => {
 const deleteTransaction = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const { id } = req.params;
+    const userId = req.user.userId;
     if (!id) {
       return res
         .status(StatusCodes.BAD_REQUEST)
         .json(responseHelper(false, null, 'Id is required', null));
     }
 
-    const result = await transactionServices.deleteTransaction(id);
+    const result = await transactionServices.deleteTransaction(id, userId);
 
     return res
       .status(StatusCodes.OK)

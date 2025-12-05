@@ -1,3 +1,5 @@
+export * as z from 'zod';
+
 // 匯出所有 ENUM
 export * from './constants';
 
