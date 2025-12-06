@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import { CalendarIcon, Plus } from 'lucide-react';
 import { format } from 'date-fns';
-
 import {
   MainType,
   Account,
@@ -48,9 +47,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { useCategoryStore } from '@/stores';
+import stores from '@/stores';
 import { useForm } from 'react-hook-form';
-
 import { zodResolver } from '@hookform/resolvers/zod';
 
 type TransactionFormType = {
@@ -87,7 +85,7 @@ export function NewTransactionSheet() {
     resolver: zodResolver(createTransactionSchema),
     defaultValues: transaction,
   });
-  const { subType, detailType } = useCategoryStore();
+  const { subType, detailType } = stores.useCategoryStore();
 
   const currentSubCategory = useMemo(() => {
     return subType

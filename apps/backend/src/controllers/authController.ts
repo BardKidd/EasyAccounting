@@ -8,6 +8,7 @@ import {
   generateRefreshToken,
   setAccessCookie,
   setRefreshCookie,
+  clearAuthCookie,
 } from '@/utils/auth';
 
 const comparePassword = async (password: string, dbPassword: string) => {
@@ -70,4 +71,13 @@ const login = (req: Request, res: Response) => {
   });
 };
 
-export default { login };
+const logout = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    await clearAuthCookie(req, res);
+    return res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, 'Logout successfully', null));
+  });
+};
+
+export default { login, logout };

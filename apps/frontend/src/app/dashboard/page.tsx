@@ -4,10 +4,10 @@ import { TrendChart } from '@/components/dashboard/trend-chart';
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
 import { NewTransactionSheet } from '@/components/transactions/new-transaction-sheet';
 import InitCategoryStore from '@/components/init-stores/init-category-store';
-import { getCategories } from '@/services';
+import service from '@/services';
 
 export default async function DashboardPage() {
-  const categories = await getCategories();
+  const categories = await service.getCategories();
 
   return (
     <Container className="py-8 space-y-8">

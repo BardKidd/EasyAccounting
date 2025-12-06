@@ -1,4 +1,5 @@
 import { useCategoryStore } from './category';
 import { usePersonnelAccountStore } from './personnelAccount';
+import { useUserStore } from './user';
 
-export { useCategoryStore, usePersonnelAccountStore };
+export default { useCategoryStore, usePersonnelAccountStore, useUserStore };

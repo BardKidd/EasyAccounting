@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
-import { useCategoryStore } from '@/stores';
+import stores from '@/stores';
 import { CategoryType } from '@repo/shared';
 
 const InitCategoryStore = ({ categories }: { categories: CategoryType[] }) => {
@@ -21,7 +21,7 @@ const InitCategoryStore = ({ categories }: { categories: CategoryType[] }) => {
       return subType.some((sub) => sub.id === category.parent?.id);
     });
 
-    useCategoryStore.setState({ mainType, subType, detailType });
+    stores.useCategoryStore.setState({ mainType, subType, detailType });
     isInitialized.current = true;
   }
 

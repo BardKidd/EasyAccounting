@@ -6,28 +6,19 @@ import bcrypt from 'bcrypt';
 import { UserType } from '@repo/shared';
 import userServices from '@/services/userServices';
 
-const isUserDeleted = (user: UserType & { deletedAt: Date }) => {
-  return !!user.deletedAt;
-};
-
 const getUsers = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const users = await User.findAll();
     let sortedUsers: UserType[] = [];
     if (users.length > 0) {
-      sortedUsers = users
-        .filter((user) => {
-          const userJson = user.toJSON();
-          return !isUserDeleted(userJson);
-        })
-        .map((userInstance) => {
-          const userJson = userInstance.toJSON();
-          return {
-            name: userJson.name,
-            email: userJson.email,
-            emailNotification: userJson.emailNotification,
-          };
-        });
+      sortedUsers = users.map((userInstance) => {
+        const userJson = userInstance.toJSON();
+        return {
+          name: userJson.name,
+          email: userJson.email,
+          emailNotification: userJson.emailNotification,
+        };
+      });
     }
     res
       .status(StatusCodes.OK)
@@ -38,14 +29,12 @@ const getUsers = (req: Request, res: Response) => {
 const getUser = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const userInstance = await userServices.getUserFromDB(req, res);
-    if (!userInstance) return;
-    const userJson = userInstance.toJSON();
-    if (isUserDeleted(userJson)) {
-      res
+    if (!userInstance) {
+      return res
         .status(StatusCodes.NOT_FOUND)
         .json(responseHelper(false, null, 'User not found', null));
-      return;
     }
+    const userJson = userInstance.toJSON();
     const sortedUser: UserType = {
       name: userJson.name,
       email: userJson.email,
@@ -61,42 +50,53 @@ const addUser = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const { password, ...otherData } = req.body;
     const hashedPassword = await bcrypt.hash(password, 12);
-    await User.create({
+    User.create({
       ...otherData,
       password: hashedPassword,
+    }).then(() => {
+      res
+        .status(StatusCodes.CREATED)
+        .json(responseHelper(true, null, 'User created successfully', null));
     });
-    res
-      .status(StatusCodes.CREATED)
-      .json(responseHelper(true, null, 'User created successfully', null));
   });
 };
 
 const editUser = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const userInstance = await userServices.getUserFromDB(req, res);
-    if (!userInstance) return;
+    if (!userInstance) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json(responseHelper(false, null, 'User not found', null));
+    }
     const { password, ...otherData } = req.body;
     const hashedPassword = await bcrypt.hash(password, 12);
-    await userInstance.update({
-      ...otherData,
-      password: hashedPassword,
-    });
-    res
-      .status(StatusCodes.OK)
-      .json(responseHelper(true, null, 'User updated successfully', null));
+    userInstance
+      .update({
+        ...otherData,
+        password: hashedPassword,
+      })
+      .then(() => {
+        res
+          .status(StatusCodes.OK)
+          .json(responseHelper(true, null, 'User updated successfully', null));
+      });
   });
 };
 
 const deleteUser = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const userInstance = await userServices.getUserFromDB(req, res);
-    if (!userInstance) return;
-    await userInstance.update({
-      deletedAt: new Date(),
+    if (!userInstance) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json(responseHelper(false, null, 'User not found', null));
+    }
+    userInstance.destroy().then(() => {
+      res
+        .status(StatusCodes.OK)
+        .json(responseHelper(true, null, 'User deleted successfully', null));
     });
-    res
-      .status(StatusCodes.OK)
-      .json(responseHelper(true, null, 'User deleted successfully', null));
   });
 };
 

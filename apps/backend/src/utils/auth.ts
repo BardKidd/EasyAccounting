@@ -1,13 +1,13 @@
 import { SignJWT, jwtVerify } from 'jose';
 import dotenv from 'dotenv';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 dotenv.config();
 
 const SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 const JWT_ACCESS_IN = '15m';
 const JWT_REFRESH_IN = '7d';
-const ACCESS_TOKEN_MAX_AGE = 15 * 60 * 1000;
+const ACCESS_TOKEN_MAX_AGE = 60 * 60 * 1000;
 const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 interface TokenPayload {
@@ -68,6 +68,7 @@ export const setRefreshCookie = (res: Response, token: string) => {
   });
 };
 
-export const clearAuthCookie = (res: Response) => {
-  res.clearCookie('token');
+export const clearAuthCookie = (req: Request, res: Response) => {
+  res.clearCookie('accessToken');
+  res.clearCookie('refreshToken');
 };

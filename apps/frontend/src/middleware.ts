@@ -12,7 +12,6 @@ export function middleware(req: NextRequest) {
 
   const token = req.cookies.get('accessToken')?.value;
 
-  console.log(token, isInPublicPath);
   if (!token && !isInPublicPath) {
     return NextResponse.redirect(new URL('/login', req.url)); // 伺服器端的寫法
   }

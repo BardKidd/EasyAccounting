@@ -1,3 +1,4 @@
 import { getCategories } from './category';
+import { getPersonnelAccounts } from './personnelAccount';
 
-export { getCategories };
+export default { getCategories, getPersonnelAccounts };

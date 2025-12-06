@@ -13,12 +13,12 @@ export const authMiddleware = async (
   next: NextFunction
 ) => {
   try {
-    const token = req.cookies.accessToken;
+    const accessToken = req.cookies.accessToken;
 
-    let payload = token ? await verifyToken(token) : null;
+    let payload = accessToken ? await verifyToken(accessToken) : null;
 
     // accessToken 過期的話去換 token
-    console.log('payload', payload);
+    console.log('payload===================', payload);
     if (!payload) {
       const refreshToken = req.cookies.refreshToken;
 
@@ -32,6 +32,7 @@ export const authMiddleware = async (
       }
 
       const refreshPayload = await verifyToken(refreshToken);
+      console.log('refreshPayload===================', refreshPayload);
       if (!refreshPayload) {
         res
           .status(StatusCodes.UNAUTHORIZED)
@@ -54,7 +55,7 @@ export const authMiddleware = async (
     req.user = payload;
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    console.log('[Auth middleware error] :', error);
     res
       .status(StatusCodes.INTERNAL_SERVER_ERROR)
       .json(
