@@ -1,21 +1,18 @@
-import { apiHandler, getErrorMessage } from '@/lib/utils';
-import { ResponseHelper } from '@repo/shared';
-import { toast } from 'sonner';
-import { Account } from '@repo/shared';
+import { apiHandler } from '@/lib/utils';
+import { ResponseHelper, AccountType } from '@repo/shared';
+
 export const getPersonnelAccounts = async () => {
   try {
     const result = (await apiHandler(
       `/personnel-accounts`,
       'get',
       null
-    )) as ResponseHelper<Account[]>;
+    )) as ResponseHelper<AccountType[]>;
     if (result.isSuccess) {
       return result.data;
     }
-    return [];
+    throw new Error(result.message);
   } catch (err) {
-    console.error(err);
-    toast.error(getErrorMessage(err));
-    return [];
+    throw err;
   }
 };

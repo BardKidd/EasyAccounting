@@ -3,11 +3,10 @@
 import { useState, useMemo } from 'react';
 import { CalendarIcon, Plus } from 'lucide-react';
 import { format } from 'date-fns';
+import { CategoryType } from '@repo/shared';
 import {
   MainType,
   Account,
-  TransactionType,
-  TransactionTypeWhenOperate,
   PaymentFrequency,
   createTransactionSchema,
 } from '@repo/shared';
@@ -47,7 +46,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import stores from '@/stores';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
@@ -57,15 +55,15 @@ type TransactionFormType = {
   type: MainType;
   date: Date;
   subCategory: string;
-  detailCategory: string | null;
-  description: string | null;
+  detailCategory: string | undefined;
+  description: string | undefined;
   time: number;
-  targetAccountId: string | null;
-  receipt: string | null;
+  targetAccountId: string | undefined;
+  receipt: string | undefined;
   paymentFrequency: PaymentFrequency; // 暫不實作
 };
 
-export function NewTransactionSheet() {
+function NewTransactionSheet({ categories }: { categories: CategoryType[] }) {
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState(new Date().getTime());
   const [transaction, setTransaction] = useState<TransactionFormType>({
@@ -77,15 +75,26 @@ export function NewTransactionSheet() {
     time: time,
     subCategory: '',
     detailCategory: '',
-    receipt: null,
+    receipt: '',
     targetAccountId: '',
     paymentFrequency: PaymentFrequency.ONE_TIME,
   });
-  const form = useForm({
-    resolver: zodResolver(createTransactionSchema),
-    defaultValues: transaction,
-  });
-  const { subType, detailType } = stores.useCategoryStore();
+  // const form = useForm({
+  //   resolver: zodResolver(createTransactionSchema),
+  //   defaultValues: transaction,
+  // });
+
+  const { subType, detailType } = useMemo(() => {
+    if (!categories) return { subType: [], detailType: [] };
+    const mainType = categories.filter((c) => c.parent === null);
+    const subType = categories.filter((c) =>
+      mainType.some((main) => main.id === c.parent?.id)
+    );
+    const detailType = categories.filter((c) =>
+      subType.some((sub) => sub.id === c.parent?.id)
+    );
+    return { subType, detailType };
+  }, [categories]);
 
   const currentSubCategory = useMemo(() => {
     return subType
@@ -117,8 +126,8 @@ export function NewTransactionSheet() {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4 cursor-pointer" /> 新增交易
+        <Button className="cursor-pointer">
+          <Plus className="mr-2 h-4 w-4" /> 新增交易
         </Button>
       </SheetTrigger>
       <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
@@ -402,3 +411,5 @@ export function NewTransactionSheet() {
     </Sheet>
   );
 }
+
+export default NewTransactionSheet;

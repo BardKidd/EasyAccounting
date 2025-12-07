@@ -82,15 +82,6 @@ const getChildrenCategories = async (req: Request, res: Response) => {
 
 const postCategory = async (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
-    const { userId } = req.body;
-    if (userId) {
-      const user = await User.findByPk(userId);
-      if (user && user.getDataValue('deletedAt')) {
-        return res
-          .status(StatusCodes.FORBIDDEN)
-          .json(responseHelper(false, null, 'User is deleted', null));
-      }
-    }
     await Category.create(req.body);
     res
       .status(StatusCodes.CREATED)

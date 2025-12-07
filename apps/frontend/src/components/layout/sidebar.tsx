@@ -7,10 +7,19 @@ import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
   Receipt,
-  PieChart,
-  Settings,
   Wallet,
+  Settings,
+  PieChart,
+  Menu,
+  Landmark,
 } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { useState } from 'react';
 
 const sidebarItems = [
   {
@@ -24,8 +33,13 @@ const sidebarItems = [
     icon: Receipt,
   },
   {
-    title: '報表分析',
-    href: '/reports',
+    title: '帳戶管理',
+    href: '/accounts',
+    icon: Wallet,
+  },
+  {
+    title: '統計報表',
+    href: '/statistics',
     icon: PieChart,
   },
   {
@@ -35,36 +49,95 @@ const sidebarItems = [
   },
 ];
 
-export function Sidebar({ className }: { className?: string }) {
-  const pathname = usePathname();
+interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 
+function SidebarContent({
+  pathname,
+  setOpen,
+}: {
+  pathname: string;
+  setOpen?: (open: boolean) => void;
+}) {
   return (
-    <div className={cn('pb-12 min-h-screen border-r bg-background', className)}>
-      <div className="space-y-4 py-4">
-        <div className="px-3 py-2">
-          <div className="mb-2 px-4 flex items-center gap-2">
-            <Wallet className="h-6 w-6 text-primary" />
-            <h2 className="text-lg font-semibold tracking-tight">
-              EasyAccounting
-            </h2>
-          </div>
-          <div className="space-y-1">
-            {sidebarItems.map((item) => (
-              <Button
-                key={item.href}
-                variant={pathname === item.href ? 'secondary' : 'ghost'}
-                className="w-full justify-start"
-                asChild
+    <div className="flex flex-col h-full py-4">
+      <div className="px-6 py-2">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+        >
+          <Landmark className="h-6 w-6 text-primary" />
+          <h2 className="text-xl font-bold tracking-tight text-primary">
+            EasyAccount
+          </h2>
+        </Link>
+      </div>
+      <div className="flex-1 py-4">
+        <nav className="grid gap-1 px-2">
+          {sidebarItems.map((item, index) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={index}
+                href={item.href}
+                onClick={() => setOpen?.(false)}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground',
+                  isActive
+                    ? 'bg-accent text-accent-foreground'
+                    : 'text-muted-foreground'
+                )}
               >
-                <Link href={item.href}>
-                  <item.icon className="mr-2 h-4 w-4" />
-                  {item.title}
-                </Link>
-              </Button>
-            ))}
-          </div>
-        </div>
+                <item.icon className="h-4 w-4" />
+                {item.title}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+      <div className="px-6 py-4 border-t">
+        {/* User profile or other bottom items could go here */}
+        <p className="text-xs text-muted-foreground">© 2025 EasyAccount</p>
       </div>
     </div>
   );
 }
+
+function Sidebar({ className }: SidebarProps) {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      {/* Mobile Sidebar */}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden fixed top-4 left-4 z-40"
+          >
+            <Menu className="h-5 w-5" />
+            <span className="sr-only">Toggle Menu</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-[240px] p-0">
+          <SheetTitle className="sr-only">Navigation Menu</SheetTitle>{' '}
+          {/* Accessibility */}
+          <SidebarContent pathname={pathname} setOpen={setOpen} />
+        </SheetContent>
+      </Sheet>
+
+      {/* Desktop Sidebar */}
+      <div
+        className={cn(
+          'hidden md:flex h-screen w-64 flex-col border-r bg-background',
+          className
+        )}
+      >
+        <SidebarContent pathname={pathname} />
+      </div>
+    </>
+  );
+}
+
+export default Sidebar;

@@ -16,20 +16,29 @@ import { apiHandler } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Progress } from '@/components/ui/progress';
-import { useMemo, useState } from 'react';
-import stores from '@/stores';
+import { useMemo, useState, useEffect } from 'react';
 
-export function Header() {
+function Header() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const user = stores.useUserStore();
+  const [user, setUser] = useState<{ name: string; email: string }>({
+    name: '',
+    email: '',
+  });
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      setUser(JSON.parse(userStr));
+    }
+  }, []);
 
   const handleLogout = () => {
     simplifyTryCatch(async () => {
       const url = '/logout';
       const result = await apiHandler(url, 'post', null);
       if (result.isSuccess) {
-        stores.useUserStore.getState().clearUser();
+        localStorage.removeItem('user');
         toast.success(result.message);
         router.push('/login');
       }
@@ -45,7 +54,11 @@ export function Header() {
       <div className="flex h-14 items-center px-4 md:px-6 gap-4">
         <div className="ml-auto flex items-center gap-4">
           <ModeToggle />
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 cursor-pointer"
+          >
             <Bell className="h-4 w-4" />
             <span className="sr-only">Toggle notifications</span>
           </Button>
@@ -91,3 +104,5 @@ export function Header() {
     </header>
   );
 }
+
+export default Header;

@@ -28,7 +28,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { apiHandler, simplifyTryCatch } from '@/lib/utils';
 import { toast } from 'sonner';
-import stores from '@/stores';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -48,7 +47,7 @@ export default function LoginPage() {
       const result = await apiHandler(url, 'post', data);
       if (result.isSuccess) {
         toast.success(result.message);
-        stores.useUserStore.getState().setUser(result.data);
+        localStorage.setItem('user', JSON.stringify(result.data));
         router.push('/dashboard');
       }
     }, setIsLoading);

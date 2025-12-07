@@ -1,6 +1,5 @@
-import { apiHandler, getErrorMessage } from '@/lib/utils';
+import { apiHandler } from '@/lib/utils';
 import { ResponseHelper, CategoryType } from '@repo/shared';
-import { toast } from 'sonner';
 
 export const getCategories = async () => {
   try {
@@ -12,10 +11,8 @@ export const getCategories = async () => {
     if (result.isSuccess) {
       return result.data;
     }
-    return [];
+    throw new Error(result.message);
   } catch (err) {
-    console.error(err);
-    toast.error(getErrorMessage(err));
-    return [];
+    throw err;
   }
 };

@@ -5,7 +5,7 @@ import { StatusCodes } from 'http-status-codes';
 
 const getAccountsByUser = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
-    const { userId } = req.cookies.user;
+    const { userId } = req.user;
     const accounts = await Account.findAll({
       where: {
         userId,
@@ -19,7 +19,7 @@ const getAccountsByUser = (req: Request, res: Response) => {
 
 const addAccount = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
-    const { userId } = req.cookies.user;
+    const { userId } = req.user;
     const data = {
       ...req.body,
       userId,
@@ -36,7 +36,7 @@ const addAccount = (req: Request, res: Response) => {
 
 const editAccount = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
-    const { userId } = req.cookies.user;
+    const { userId } = req.user;
     const data = {
       ...req.body,
       userId,
@@ -55,7 +55,7 @@ const editAccount = (req: Request, res: Response) => {
 
 const deleteAccount = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
-    const { userId } = req.cookies.user;
+    const { userId } = req.user;
     await Account.destroy({
       where: {
         id: req.params.accountId,

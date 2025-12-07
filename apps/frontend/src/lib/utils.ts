@@ -57,14 +57,12 @@ export async function simplifyTryCatch(
   try {
     await cb();
   } catch (error) {
-    console.error('Error:', error);
-    const errorMessage = getErrorMessage(error);
-    toast.error(errorMessage);
+    throw error;
   } finally {
     setIsLoading(false);
   }
 }
-
+// 有針對 Server Components 和 Client Components 兩種寫法差異去做調整
 export async function apiHandler(
   url: string,
   method: string,
@@ -73,19 +71,34 @@ export async function apiHandler(
 ): Promise<ResponseHelper<any>> {
   const domain = process.env.NEXT_PUBLIC_API_DOMAIN;
   const caseInsensitiveMethod = method.toUpperCase();
-  const res = await fetch(`${domain}${url}`, {
+
+  const config: RequestInit = {
     method: caseInsensitiveMethod,
     headers: {
       'Content-Type': 'application/json',
       ...headers,
     },
     body: data ? JSON.stringify(data) : undefined,
-    credentials: 'include', // 接收並儲存後端的 cookie 設定
-  });
+  };
+
+  if (typeof window === 'undefined') {
+    // Server Side: 需要手動抓取 Cookie 並加到 Header，因為他不會像瀏覽器一樣自動帶入 Cookie。
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    config.headers = {
+      ...config.headers,
+      Cookie: cookieStore.toString(),
+    };
+  } else {
+    // Client Side: 使用 credentials include 自動帶 Cookie
+    config.credentials = 'include';
+  }
+
+  const res = await fetch(`${domain}${url}`, config);
   const result = (await res.json()) as ResponseHelper<any>;
 
   // 錯誤跳去 catch
-  if (!res.ok || !result.isSuccess) {
+  if (!result.isSuccess) {
     throw result;
   }
   return result;
