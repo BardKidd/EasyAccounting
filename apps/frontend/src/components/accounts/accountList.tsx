@@ -24,6 +24,19 @@ import {
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import * as LucideIcons from 'lucide-react';
+
+const DynamicIcon = ({
+  name,
+  className,
+}: {
+  name: string;
+  className?: string;
+}) => {
+  const Icon = (LucideIcons as any)[name];
+  if (!Icon) return null;
+  return <Icon className={className} />;
+};
 
 interface AccountListProps {
   accounts: AccountType[];
@@ -104,6 +117,12 @@ function CollapsibleAccountGroup({
                     className="w-1.5 h-10 rounded-full"
                     style={{ backgroundColor: account.color || 'gray' }}
                   />
+                  <div className="p-2 bg-muted/50 rounded-full">
+                    <DynamicIcon
+                      name={account.icon}
+                      className="h-5 w-5 text-muted-foreground"
+                    />
+                  </div>
                   <div>
                     <div className="font-medium">{account.name}</div>
                     {/* Could add last updated or note here */}

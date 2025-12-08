@@ -38,7 +38,7 @@ const Account = sequelize.define<AccountInstance>(
       allowNull: false,
     },
     balance: {
-      type: Sequelize.DECIMAL(10, 5),
+      type: Sequelize.DECIMAL(20, 5),
       allowNull: false,
     },
     icon: {
@@ -57,11 +57,11 @@ const Account = sequelize.define<AccountInstance>(
     },
     // 信用卡專用
     creditLimit: {
-      type: Sequelize.DECIMAL(10, 5),
+      type: Sequelize.DECIMAL(20, 5),
       allowNull: true,
     },
     unpaidAmount: {
-      type: Sequelize.DECIMAL(10, 5),
+      type: Sequelize.DECIMAL(20, 5),
       allowNull: true,
     },
     billingDay: {

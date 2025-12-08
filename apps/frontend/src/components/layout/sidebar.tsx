@@ -95,7 +95,6 @@ function SidebarContent({
         </nav>
       </div>
       <div className="px-6 py-4 border-t">
-        {/* User profile or other bottom items could go here */}
         <p className="text-xs text-muted-foreground">© 2025 EasyAccount</p>
       </div>
     </div>

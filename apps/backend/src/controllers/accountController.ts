@@ -11,9 +11,17 @@ const getAccountsByUser = (req: Request, res: Response) => {
         userId,
       },
     });
+    const accountsData = accounts.map((account) => {
+      return {
+        ...account.toJSON(),
+        balance: Number(account.balance),
+      };
+    });
     return res
       .status(StatusCodes.OK)
-      .json(responseHelper(true, accounts, 'Get accounts successfully', null));
+      .json(
+        responseHelper(true, accountsData, 'Get accounts successfully', null)
+      );
   });
 };
 
