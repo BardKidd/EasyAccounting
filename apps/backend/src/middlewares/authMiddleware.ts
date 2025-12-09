@@ -47,9 +47,11 @@ export const authMiddleware = async (
 
       // 更新 accessToken
       const newAccessToken = await generateAccessToken(newPayload);
-      setAccessCookie(res, newAccessToken);
+      await setAccessCookie(res, newAccessToken);
 
-      payload = refreshPayload;
+      const newAccessTokenPayload = await verifyToken(newAccessToken);
+
+      payload = newAccessTokenPayload;
     }
 
     req.user = payload;
