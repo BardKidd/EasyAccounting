@@ -16,6 +16,7 @@ import {
 } from '@repo/shared';
 import { format } from 'date-fns';
 import { ArrowRightLeft } from 'lucide-react';
+import { ACCOUNT_ICONS, IconName } from '@/lib/icon-mapping';
 
 interface TransactionTableProps {
   transactions: TransactionType[];
@@ -45,8 +46,8 @@ function TransactionTable({
     return '未分類';
   };
 
-  const getAccountName = (id: string) => {
-    return accounts.find((a) => a.id === id)?.name || '未知帳戶';
+  const getAccount = (id: string) => {
+    return accounts.find((a) => a.id === id);
   };
 
   const formatAmount = (amount: number, type: MainType) => {
@@ -100,7 +101,24 @@ function TransactionTable({
                   <span>{getCategoryName(transaction.categoryId)}</span>
                 </div>
               </TableCell>
-              <TableCell>{getAccountName(transaction.accountId)}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const account = getAccount(transaction.accountId);
+                    if (!account) return '未知帳戶';
+
+                    const Icon = ACCOUNT_ICONS[account.icon as IconName];
+                    return (
+                      <>
+                        {Icon && (
+                          <Icon className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span>{account.name}</span>
+                      </>
+                    );
+                  })()}
+                </div>
+              </TableCell>
               <TableCell className="max-w-[200px] truncate">
                 {transaction.description || '-'}
               </TableCell>

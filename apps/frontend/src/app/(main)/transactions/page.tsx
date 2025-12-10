@@ -2,10 +2,17 @@ import { Container } from '@/components/ui/container';
 import {
   TransactionTable,
   TransactionFilters,
-  NewTransactionSheet,
+  //   NewTransactionSheet, // unused
 } from '@/components/transactions';
 import service from '@/services';
 import { Suspense } from 'react';
+import {
+  MainType,
+  TransactionType,
+  PaymentFrequency,
+  AccountType,
+  Account,
+} from '@repo/shared';
 
 // 看一下 Next.js 15 後的 query 都變成非同步了。
 // 因為使用了 Partial Prerendering(PPR) 渲染方式，是種靜態+動態的混合渲染方式。可優先渲染不變的 Header 或 Sidebar 等，而內容則等等再渲染。所以才會有時間差。
@@ -50,6 +57,88 @@ async function TransactionsPage(props: PageProps) {
     service.getPersonnelAccounts(),
   ]);
 
+  const mockAccounts: AccountType[] = [
+    {
+      id: 'mock-account-1',
+      userId: 'mock-user',
+      name: '現金',
+      type: Account.CASH,
+      balance: 5000,
+      icon: 'banknote',
+      color: '#10b981',
+      isActive: true,
+    },
+    {
+      id: 'mock-account-2',
+      userId: 'mock-user',
+      name: '玉山銀行',
+      type: Account.BANK,
+      balance: 150000,
+      icon: 'landmark',
+      color: '#3b82f6',
+      isActive: true,
+    },
+  ];
+
+  const mockTransactions: TransactionType[] = [
+    {
+      id: 'mock-1',
+      date: new Date().toISOString(),
+      time: '12:30',
+      type: MainType.EXPENSE,
+      categoryId: categories[0]?.id || 'unknown',
+      accountId: mockAccounts[0].id,
+      description: '午餐 - 雞腿便當',
+      amount: 120,
+      userId: 'mock-user',
+      receipt: null,
+      paymentFrequency: PaymentFrequency.ONE_TIME,
+    },
+    {
+      id: 'mock-2',
+      date: new Date().toISOString(),
+      time: '18:45',
+      type: MainType.EXPENSE,
+      categoryId: categories[0]?.id || 'unknown',
+      accountId: mockAccounts[0].id,
+      description: '晚餐 - 義大利麵',
+      amount: 250,
+      userId: 'mock-user',
+      receipt: null,
+      paymentFrequency: PaymentFrequency.ONE_TIME,
+    },
+    {
+      id: 'mock-3',
+      date: new Date(
+        new Date().setDate(new Date().getDate() - 1)
+      ).toISOString(),
+      time: '09:00',
+      type: MainType.INCOME,
+      categoryId: categories[0]?.id || 'unknown',
+      accountId: mockAccounts[1].id,
+      description: '薪資收入',
+      amount: 50000,
+      userId: 'mock-user',
+      receipt: null,
+      paymentFrequency: PaymentFrequency.ONE_TIME,
+    },
+    {
+      id: 'mock-4',
+      date: new Date(
+        new Date().setDate(new Date().getDate() - 2)
+      ).toISOString(),
+      time: '15:20',
+      type: MainType.EXPENSE,
+      categoryId: categories[0]?.id || 'unknown',
+      accountId: mockAccounts[0].id,
+      description: '全聯採購',
+      amount: 890,
+      userId: 'mock-user',
+      receipt: null,
+      paymentFrequency: PaymentFrequency.ONE_TIME,
+    },
+  ];
+
   return (
     <Container className="py-8 space-y-8">
       <div className="flex items-center justify-between space-y-2">
@@ -59,14 +148,14 @@ async function TransactionsPage(props: PageProps) {
       </div>
 
       <div className="space-y-4">
-        <TransactionFilters accounts={accounts} />
+        <TransactionFilters accounts={mockAccounts} />
 
         <Suspense fallback={<div>載入中...</div>}>
-          {/* <TransactionTable
-            transactions={transactions}
+          <TransactionTable
+            transactions={mockTransactions}
             categories={categories}
-            accounts={accounts}
-          /> */}
+            accounts={mockAccounts}
+          />
         </Suspense>
       </div>
     </Container>
