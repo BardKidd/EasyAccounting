@@ -16,7 +16,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -161,11 +163,24 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">所有帳戶</SelectItem>
-          {accounts.map((account) => (
-            <SelectItem key={account.id} value={account.id}>
-              {account.name}
-            </SelectItem>
-          ))}
+          <SelectContent>
+            {Object.values(Account).map((accountType) => {
+              const typeAccounts = accounts.filter(
+                (acc) => acc.type === accountType
+              );
+              if (typeAccounts.length === 0) return null;
+              return (
+                <SelectGroup key={accountType}>
+                  <SelectLabel>{accountType}</SelectLabel>
+                  {typeAccounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              );
+            })}
+          </SelectContent>
         </SelectContent>
       </Select>
     </div>
