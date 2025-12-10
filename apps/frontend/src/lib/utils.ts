@@ -67,7 +67,8 @@ export async function apiHandler(
   url: string,
   method: string,
   data: any,
-  headers?: any
+  headers?: any,
+  options?: RequestInit
 ): Promise<ResponseHelper<any>> {
   const domain = process.env.NEXT_PUBLIC_API_DOMAIN;
   const caseInsensitiveMethod = method.toUpperCase();
@@ -94,7 +95,7 @@ export async function apiHandler(
     config.credentials = 'include';
   }
 
-  const res = await fetch(`${domain}${url}`, config);
+  const res = await fetch(`${domain}${url}`, { ...config, ...options });
   const result = (await res.json()) as ResponseHelper<any>;
 
   // 錯誤跳去 catch

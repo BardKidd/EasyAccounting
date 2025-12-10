@@ -3,6 +3,7 @@ import {
   getPersonnelAccounts,
   createAccount,
   updateAccount,
+  deleteAccount,
 } from './personnelAccount';
 import { getTransactions } from './transaction';
 
@@ -12,4 +13,5 @@ export default {
   getTransactions,
   createAccount,
   updateAccount,
+  deleteAccount,
 };

@@ -37,3 +37,13 @@ export const updateAccount = async (account: UpdateAccountInput) => {
     throw new Error(getErrorMessage(err));
   }
 };
+
+export const deleteAccount = async (accountId: string) => {
+  try {
+    const res = await apiHandler(`/account/${accountId}`, 'DELETE', null);
+    return res;
+  } catch (err) {
+    console.error(err);
+    throw new Error(getErrorMessage(err));
+  }
+};

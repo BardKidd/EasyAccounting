@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { ACCOUNT_ICONS, IconName } from '@/lib/icon-mapping';
 import AccountDialog from '@/components/accounts/accountDialog';
+import AccountDeleteConfirmDialog from '@/components/accounts/accountDeleteConfirmDialog';
 
 // 順序
 const accountTypeOrder = [
@@ -64,10 +65,12 @@ function CollapsibleAccountGroup({
   type,
   accounts,
   onEdit,
+  onDelete,
 }: {
   type: Account;
   accounts: AccountType[];
   onEdit: (account: AccountType) => void;
+  onDelete: (account: AccountType) => void;
 }) {
   const [isOpen, setIsOpen] = useState(true);
 
@@ -168,7 +171,13 @@ function CollapsibleAccountGroup({
                         >
                           編輯
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive cursor-pointer">
+                        <DropdownMenuItem
+                          className="text-destructive cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(account);
+                          }}
+                        >
                           刪除
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -187,6 +196,8 @@ function CollapsibleAccountGroup({
 
 function AccountList({ accounts }: AccountListProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteConfirmDialogOpen, setIsDeleteConfirmDialogOpen] =
+    useState(false);
   const [selectedAccount, setSelectedAccount] = useState<AccountType | null>(
     null
   );
@@ -199,6 +210,11 @@ function AccountList({ accounts }: AccountListProps) {
   const handleEdit = (account: AccountType) => {
     setSelectedAccount(account);
     setIsDialogOpen(true);
+  };
+
+  const handleDelete = (account: AccountType) => {
+    setSelectedAccount(account);
+    setIsDeleteConfirmDialogOpen(true);
   };
 
   const groupedAccounts = accounts.reduce(
@@ -234,6 +250,7 @@ function AccountList({ accounts }: AccountListProps) {
               type={type as Account}
               accounts={typeAccounts}
               onEdit={handleEdit}
+              onDelete={handleDelete}
             />
           );
         })}
@@ -243,6 +260,11 @@ function AccountList({ accounts }: AccountListProps) {
         selectedAccount={selectedAccount}
         isOpen={isDialogOpen}
         setIsOpen={setIsDialogOpen}
+      />
+      <AccountDeleteConfirmDialog
+        isDeleteConfirmDialogOpen={isDeleteConfirmDialogOpen}
+        setIsDeleteConfirmDialogOpen={setIsDeleteConfirmDialogOpen}
+        account={selectedAccount}
       />
     </div>
   );

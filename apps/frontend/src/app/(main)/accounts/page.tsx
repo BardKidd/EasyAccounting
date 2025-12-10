@@ -3,6 +3,8 @@ import { AccountList } from '@/components/accounts';
 import service from '@/services';
 import { AccountType } from '@repo/shared';
 
+export const dynamic = 'force-dynamic'; // 取消 Next.js 的快取機制。
+
 export default async function AccountsPage() {
   const accounts: AccountType[] = await service.getPersonnelAccounts();
 
