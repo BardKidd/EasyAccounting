@@ -14,6 +14,7 @@ import {
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
 
 interface AccountSummaryCardProps {
   accounts: AccountType[];
@@ -58,15 +59,26 @@ function DashboardAccountGroup({
           <span className="text-sm font-bold">
             ${totalBalance.toLocaleString()}
           </span>
-          {isOpen ? (
-            <ChevronUp className="h-3 w-3" />
-          ) : (
-            <ChevronDown className="h-3 w-3" />
+          {accounts.length > 0 && (
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              {isOpen ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+          {accounts.length === 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 hover:bg-transparent"
+            ></Button>
           )}
         </div>
       </div>
 
-      {isOpen && (
+      {accounts.length > 0 && isOpen && (
         <div className="bg-card px-3 py-1">
           {accounts.map((account, index) => (
             <div key={account.id}>
@@ -133,8 +145,7 @@ function AccountSummaryCard({ accounts }: AccountSummaryCardProps) {
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
         {accountTypeOrder.map((type) => {
-          const typeAccounts = groupedAccounts[type];
-          if (!typeAccounts || typeAccounts.length === 0) return null;
+          const typeAccounts = groupedAccounts[type] || [];
 
           return (
             <DashboardAccountGroup

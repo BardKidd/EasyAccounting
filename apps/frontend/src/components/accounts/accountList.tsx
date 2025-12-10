@@ -106,17 +106,22 @@ function CollapsibleAccountGroup({
               </div>
               <div className="text-xs text-muted-foreground">總資產</div>
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              {isOpen ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
+            {accounts.length > 0 && (
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                {isOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+            {accounts.length === 0 && (
+              <Button variant="ghost" size="icon" className="h-8 w-8"></Button>
+            )}
           </div>
         </div>
 
-        {isOpen && (
+        {accounts.length > 0 && isOpen && (
           <div className="border-t bg-card">
             {accounts.map((account, index) => (
               <div key={account.id}>
@@ -241,8 +246,7 @@ function AccountList({ accounts }: AccountListProps) {
 
       <div className="space-y-6">
         {accountTypeOrder.map((type) => {
-          const typeAccounts = groupedAccounts[type];
-          if (!typeAccounts || typeAccounts.length === 0) return null;
+          const typeAccounts = groupedAccounts[type] || [];
 
           return (
             <CollapsibleAccountGroup

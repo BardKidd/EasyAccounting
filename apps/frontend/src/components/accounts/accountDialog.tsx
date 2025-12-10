@@ -20,6 +20,7 @@ function AccountDialog({
   setIsOpen: (isOpen: boolean) => void;
 }) {
   const isEditMode = !!selectedAccount;
+  console.log('selectedAccount', selectedAccount);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

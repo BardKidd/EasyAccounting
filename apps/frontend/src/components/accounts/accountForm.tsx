@@ -152,7 +152,11 @@ const AccountForm = ({
                     <Label htmlFor="type" className="text-right">
                       類型
                     </Label>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      key={field.value}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
                       <SelectTrigger className="col-span-3 cursor-pointer w-full">
                         <SelectValue placeholder="選擇帳戶類型" />
                       </SelectTrigger>
@@ -182,7 +186,7 @@ const AccountForm = ({
                 <FormControl>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="balance" className="text-right">
-                      初始餘額
+                      {isEditMode ? '目前餘額' : '初始餘額'}
                     </Label>
                     <Input
                       id="balance"
