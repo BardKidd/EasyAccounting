@@ -55,7 +55,8 @@ export const authMiddleware = async (
       // 更新 accessToken
       const newAccessToken = await generateAccessToken(newPayload);
       console.log('newAccessToken===================', newAccessToken);
-      await setAccessCookie(res, newAccessToken);
+      setAccessCookie(res, newAccessToken);
+      req.cookies.accessToken = newAccessToken;
 
       const newAccessTokenPayload = await verifyToken(newAccessToken);
       console.log(

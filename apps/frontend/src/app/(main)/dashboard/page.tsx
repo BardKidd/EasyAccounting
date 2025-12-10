@@ -16,7 +16,7 @@ export default async function DashboardPage() {
     <Container className="py-8 space-y-8">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">儀表板</h2>
-        <NewTransactionSheet categories={categories} />
+        <NewTransactionSheet categories={categories} accounts={accounts} />
       </div>
 
       <SummaryCards />

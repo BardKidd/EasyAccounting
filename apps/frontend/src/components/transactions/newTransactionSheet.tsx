@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { CalendarIcon, Plus } from 'lucide-react';
 import { format } from 'date-fns';
-import { CategoryType } from '@repo/shared';
+import { CategoryType, AccountType } from '@repo/shared';
 import {
   MainType,
   Account,
@@ -28,7 +28,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -63,7 +65,13 @@ type TransactionFormType = {
   paymentFrequency: PaymentFrequency; // 暫不實作
 };
 
-function NewTransactionSheet({ categories }: { categories: CategoryType[] }) {
+function NewTransactionSheet({
+  categories,
+  accounts,
+}: {
+  categories: CategoryType[];
+  accounts: AccountType[];
+}) {
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState(new Date().getTime());
   const [transaction, setTransaction] = useState<TransactionFormType>({
@@ -265,11 +273,22 @@ function NewTransactionSheet({ categories }: { categories: CategoryType[] }) {
                 <SelectValue placeholder="選擇帳戶" />
               </SelectTrigger>
               <SelectContent>
-                {Object.values(Account).map((acc) => (
-                  <SelectItem key={acc} value={acc}>
-                    {acc}
-                  </SelectItem>
-                ))}
+                {Object.values(Account).map((accountType) => {
+                  const typeAccounts = accounts.filter(
+                    (acc) => acc.type === accountType
+                  );
+                  if (typeAccounts.length === 0) return null;
+                  return (
+                    <SelectGroup key={accountType}>
+                      <SelectLabel>{accountType}</SelectLabel>
+                      {typeAccounts.map((acc) => (
+                        <SelectItem key={acc.id} value={acc.id}>
+                          {acc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
@@ -356,11 +375,24 @@ function NewTransactionSheet({ categories }: { categories: CategoryType[] }) {
                   <SelectValue placeholder="選擇目標帳戶" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.values(Account).map((acc) => (
-                    <SelectItem key={acc} value={acc}>
-                      {acc}
-                    </SelectItem>
-                  ))}
+                  {Object.values(Account).map((accountType) => {
+                    const typeAccounts = accounts.filter(
+                      (acc) =>
+                        acc.type === accountType &&
+                        acc.id !== transaction.accountId
+                    );
+                    if (typeAccounts.length === 0) return null;
+                    return (
+                      <SelectGroup key={accountType}>
+                        <SelectLabel>{accountType}</SelectLabel>
+                        {typeAccounts.map((acc) => (
+                          <SelectItem key={acc.id} value={acc.id}>
+                            {acc.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
