@@ -1,5 +1,9 @@
 import { getCategories } from './category';
-import { getPersonnelAccounts, createAccount } from './personnelAccount';
+import {
+  getPersonnelAccounts,
+  createAccount,
+  updateAccount,
+} from './personnelAccount';
 import { getTransactions } from './transaction';
 
 export default {
@@ -7,4 +11,5 @@ export default {
   getPersonnelAccounts,
   getTransactions,
   createAccount,
+  updateAccount,
 };

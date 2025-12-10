@@ -1,5 +1,5 @@
 import AccountList from './accountList';
-import NewAccountDialog from './newAccountDialog';
+import AccountDialog from './accountDialog';
 import AccountSummaryCard from './accountSummaryCard';
 
-export { AccountList, NewAccountDialog, AccountSummaryCard };
+export { AccountList, AccountDialog, AccountSummaryCard };

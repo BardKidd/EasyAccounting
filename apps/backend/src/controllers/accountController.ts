@@ -49,6 +49,7 @@ const editAccount = (req: Request, res: Response) => {
       ...req.body,
       userId,
     };
+    console.log('data', data);
 
     await Account.update(data, {
       where: {

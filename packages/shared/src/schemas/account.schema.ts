@@ -13,18 +13,29 @@ export const createAccountSchema = z.object({
   icon: z.string().min(1, '圖示為必填'),
   color: z.string().min(1, '顏色為必填'),
   isActive: z.boolean().default(true),
-  creditLimit: z.number().min(0, '信用額度必須大於或等於 0').optional(),
-  unpaidAmount: z.number().min(0, '未繳金額必須大於或等於 0').optional(),
-  billingDay: z.coerce.date().optional(),
-  nextBillingDate: z.coerce.date().optional(),
+  creditLimit: z
+    .number()
+    .min(0, '信用額度必須大於或等於 0')
+    .nullable()
+    .optional(),
+  unpaidAmount: z
+    .number()
+    .min(0, '未繳金額必須大於或等於 0')
+    .nullable()
+    .optional(),
+  billingDay: z.coerce.date().nullable().optional(),
+  nextBillingDate: z.coerce.date().nullable().optional(),
   paymentStatus: z
     .enum(allPaymentStatus as [string, ...string[]], {
       errorMap: () => ({ message: '無效的繳款狀態' }),
     })
+    .nullable()
     .optional(),
 });
 
-export const updateAccountSchema = createAccountSchema;
+export const updateAccountSchema = createAccountSchema.extend({
+  id: z.string(), // account id
+});
 
 //! z.input 指的是驗證原始資料的格式，而 z.infer 指的是驗證後的資料格式
 export type CreateAccountInput = z.input<typeof createAccountSchema>;

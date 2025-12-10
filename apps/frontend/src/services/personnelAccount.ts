@@ -1,5 +1,5 @@
 import { apiHandler, getErrorMessage } from '@/lib/utils';
-import { ResponseHelper, AccountType } from '@repo/shared';
+import { ResponseHelper, AccountType, UpdateAccountInput } from '@repo/shared';
 import { CreateAccountInput } from '@repo/shared';
 
 export const getPersonnelAccounts = async () => {
@@ -21,6 +21,16 @@ export const getPersonnelAccounts = async () => {
 export const createAccount = async (account: CreateAccountInput) => {
   try {
     const res = await apiHandler('/account', 'POST', account);
+    return res;
+  } catch (err) {
+    console.error(err);
+    throw new Error(getErrorMessage(err));
+  }
+};
+
+export const updateAccount = async (account: UpdateAccountInput) => {
+  try {
+    const res = await apiHandler(`/account/${account.id}`, 'PUT', account);
     return res;
   } catch (err) {
     console.error(err);

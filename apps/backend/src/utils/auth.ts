@@ -3,7 +3,13 @@ import dotenv from 'dotenv';
 import { Request, Response } from 'express';
 dotenv.config();
 
-const SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
+console.log(
+  'JWT_SECRET env check:',
+  process.env.JWT_SECRET ? 'Exists' : 'Missing'
+);
+const SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'default_secret_for_dev_only_do_not_use'
+);
 
 const JWT_ACCESS_IN = '15m';
 const JWT_REFRESH_IN = '7d';
@@ -50,6 +56,7 @@ export const verifyToken = async (token: string) => {
     const { payload } = await jwtVerify(token, SECRET);
     return payload;
   } catch (error) {
+    console.error('JWT Verification Failed:', error);
     return null;
   }
 };

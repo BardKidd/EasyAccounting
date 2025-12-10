@@ -14,11 +14,18 @@ export const authMiddleware = async (
 ) => {
   try {
     const accessToken = req.cookies.accessToken;
+    console.log(
+      `${new Date().getTimezoneOffset()}accessToken===================`,
+      accessToken
+    );
 
     let payload = accessToken ? await verifyToken(accessToken) : null;
 
     // accessToken 過期的話去換 token
-    console.log('payload===================', payload);
+    console.log(
+      `${new Date().getTimezoneOffset()}payload===================`,
+      payload
+    );
     if (!payload) {
       const refreshToken = req.cookies.refreshToken;
 
