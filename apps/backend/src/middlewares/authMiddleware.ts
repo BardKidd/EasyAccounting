@@ -54,10 +54,14 @@ export const authMiddleware = async (
 
       // 更新 accessToken
       const newAccessToken = await generateAccessToken(newPayload);
+      console.log('newAccessToken===================', newAccessToken);
       await setAccessCookie(res, newAccessToken);
 
       const newAccessTokenPayload = await verifyToken(newAccessToken);
-
+      console.log(
+        'newAccessTokenPayload===================',
+        newAccessTokenPayload
+      );
       payload = newAccessTokenPayload;
     }
 

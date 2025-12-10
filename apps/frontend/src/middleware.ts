@@ -7,7 +7,13 @@ export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
   // 不需要驗證的頁面
-  const publicPath = ['/login', '/register', '/api/login', '/api/register'];
+  const publicPath = [
+    '/login',
+    '/register',
+    '/api/login',
+    '/api/register',
+    '/',
+  ];
   const isInPublicPath = publicPath.includes(path);
 
   const token = req.cookies.get('accessToken')?.value;
