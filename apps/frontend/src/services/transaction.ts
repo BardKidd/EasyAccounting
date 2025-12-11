@@ -1,5 +1,9 @@
 import { apiHandler, getErrorMessage } from '@/lib/utils';
-import { ResponseHelper, TransactionType } from '@repo/shared';
+import {
+  ResponseHelper,
+  TransactionType,
+  CreateTransactionSchema,
+} from '@repo/shared';
 import { redirect } from 'next/navigation';
 
 interface GetTransactionsParams {
@@ -34,6 +38,23 @@ export const getTransactions = async (params: GetTransactionsParams) => {
       return result.data;
     }
     return [];
+  } catch (err) {
+    throw err;
+  }
+};
+
+export const addTransaction = async (transaction: CreateTransactionSchema) => {
+  try {
+    const result = (await apiHandler(
+      '/transaction',
+      'post',
+      transaction
+    )) as ResponseHelper<TransactionType>;
+
+    if (result.isSuccess) {
+      return result;
+    }
+    return null;
   } catch (err) {
     throw err;
   }

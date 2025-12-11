@@ -1,10 +1,20 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { CalendarIcon, Plus } from 'lucide-react';
 import { format } from 'date-fns';
-import { CategoryType, AccountType } from '@repo/shared';
-import { MainType, Account, PaymentFrequency, z } from '@repo/shared';
+import {
+  CategoryType,
+  AccountType,
+  CreateTransactionSchema,
+} from '@repo/shared';
+import {
+  MainType,
+  Account,
+  PaymentFrequency,
+  transactionFormSchema,
+  TransactionFormSchema,
+} from '@repo/shared';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,27 +53,9 @@ import {
 } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-
-// 前端專用的表單 schema，因為後端的 schema 欄位略有不同
-const transactionFormSchema = z.object({
-  accountId: z.string().min(1, '請選擇帳戶'),
-  amount: z.coerce.number().min(1, '金額必須大於 0'),
-  type: z.enum([MainType.INCOME, MainType.EXPENSE, MainType.OPERATE]),
-  date: z.date(),
-  time: z.string(),
-  subCategory: z.string().min(1, '請選擇主分類'),
-  detailCategory: z.string().optional(),
-  description: z.string().optional(),
-  targetAccountId: z.string().optional(),
-  receipt: z.string().optional(),
-  paymentFrequency: z.enum([
-    PaymentFrequency.ONE_TIME,
-    PaymentFrequency.RECURRING,
-    PaymentFrequency.INSTALLMENT,
-  ]),
-});
-
-type TransactionFormType = z.infer<typeof transactionFormSchema>;
+import services from '@/services';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 function NewTransactionSheet({
   categories,
@@ -72,16 +64,19 @@ function NewTransactionSheet({
   categories: CategoryType[];
   accounts: AccountType[];
 }) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const form = useForm<TransactionFormType>({
+  const [isLoading, setIsLoading] = useState(false);
+  const form = useForm<TransactionFormSchema>({
     resolver: zodResolver(transactionFormSchema),
     defaultValues: {
       accountId: '',
       amount: 0,
       type: MainType.EXPENSE,
       description: '',
-      date: new Date(),
-      time: format(new Date(), 'HH:mm'),
+      // 解決 Hydration Mismatch: 初始值給 undefined/空字串，在 useEffect 補上
+      date: undefined,
+      time: '',
       subCategory: '',
       detailCategory: '',
       receipt: '',
@@ -94,6 +89,17 @@ function NewTransactionSheet({
   const watchedType = form.watch('type');
   const watchedSubCategory = form.watch('subCategory');
   const watchedAccountId = form.watch('accountId');
+
+  // 解決 Hydration Mismatch: 在 Client 端才設定預設時間。
+  // 根本原因：SSR 的時候宣告 new Date() 會和 CSR 渲染時的結果不一樣，兩份 HTML 不一樣造成 React 警告。
+  useEffect(() => {
+    const now = new Date();
+    form.reset({
+      ...form.getValues(),
+      date: now,
+      time: format(now, 'HH:mm:ss'),
+    });
+  }, [form]);
 
   const { subType, detailType } = useMemo(() => {
     if (!categories) return { subType: [], detailType: [] };
@@ -124,7 +130,7 @@ function NewTransactionSheet({
       .filter(
         (detail) =>
           detail.type === (watchedType as MainType) &&
-          (!watchedSubCategory || detail.parent?.name === watchedSubCategory)
+          (!watchedSubCategory || detail.parent?.id === watchedSubCategory)
       )
       .map((detail) => ({
         id: detail.id,
@@ -133,10 +139,35 @@ function NewTransactionSheet({
       }));
   }, [watchedType, watchedSubCategory, detailType]);
 
-  const onSubmit = (data: TransactionFormType) => {
-    console.log('表單資料:', data);
-    // TODO: 串接 API
-    setIsOpen(false);
+  const onSubmit = async (data: TransactionFormSchema) => {
+    // 整理成 API 需要的格式
+    const payload: CreateTransactionSchema = {
+      accountId: data.accountId,
+      categoryId: data.detailCategory || data.subCategory,
+      amount: Number(data.amount),
+      type: data.type,
+      description: data.description,
+      // User 選什麼時間就存什麼。存當地時間，不需要轉為 +0
+      date: format(data.date, 'yyyy-MM-dd'),
+      time: data.time,
+      receipt: data.receipt,
+      paymentFrequency: data.paymentFrequency,
+    };
+
+    try {
+      setIsLoading(true);
+      const result = await services.addTransaction(payload);
+      if (result?.isSuccess) {
+        setIsOpen(false);
+        toast.success(result.message);
+        router.refresh();
+        form.reset();
+      }
+    } catch (err) {
+      console.error('新增交易失敗:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -252,7 +283,7 @@ function NewTransactionSheet({
                         </FormControl>
                         <SelectContent>
                           {currentSubCategory.map((category) => (
-                            <SelectItem key={category.id} value={category.name}>
+                            <SelectItem key={category.id} value={category.id}>
                               {category.name}
                             </SelectItem>
                           ))}
@@ -281,7 +312,7 @@ function NewTransactionSheet({
                         </FormControl>
                         <SelectContent>
                           {currentDetailCategory.map((category) => (
-                            <SelectItem key={category.id} value={category.name}>
+                            <SelectItem key={category.id} value={category.id}>
                               {category.name}
                             </SelectItem>
                           ))}
@@ -513,8 +544,12 @@ function NewTransactionSheet({
             </div>
 
             <SheetFooter>
-              <Button type="submit" className="cursor-pointer">
-                儲存交易
+              <Button
+                type="submit"
+                className="cursor-pointer"
+                disabled={isLoading}
+              >
+                {isLoading ? '儲存中...' : '儲存交易'}
               </Button>
             </SheetFooter>
           </form>

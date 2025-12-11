@@ -29,3 +29,23 @@ export type UpdateTransactionSchema = z.infer<typeof updateTransactionSchema>;
 export type GetTransactionsByDateSchema = z.infer<
   typeof getTransactionsByDateSchema
 >;
+
+// 前端專用的表單 schema，因為後端的 schema 欄位略有不同
+export const transactionFormSchema = z.object({
+  accountId: z.string().min(1, '請選擇帳戶'),
+  amount: z.coerce.number().min(1, '金額必須大於 0'),
+  type: z.enum([MainType.INCOME, MainType.EXPENSE, MainType.OPERATE]),
+  date: z.coerce.date(),
+  time: z.string(),
+  subCategory: z.string().min(1, '請選擇主分類'),
+  detailCategory: z.string().optional(),
+  description: z.string(),
+  targetAccountId: z.string().optional(),
+  receipt: z.string(),
+  paymentFrequency: z.enum([
+    PaymentFrequency.ONE_TIME,
+    PaymentFrequency.RECURRING,
+    PaymentFrequency.INSTALLMENT,
+  ]),
+});
+export type TransactionFormSchema = z.input<typeof transactionFormSchema>;

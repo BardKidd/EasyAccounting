@@ -51,12 +51,12 @@ const Transaction = sequelize.define<TransactionInstance>(
     },
     // 年月日
     date: {
-      type: Sequelize.DATEONLY,
+      type: Sequelize.DATEONLY, // 只存年月日，e.g. 2025-12-11
       allowNull: false,
     },
     // 時分秒
     time: {
-      type: Sequelize.TIME,
+      type: Sequelize.TIME, // 只存時分秒，e.g. 12:34:56
       allowNull: false,
     },
     receipt: {
