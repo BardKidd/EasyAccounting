@@ -2,6 +2,7 @@ import { Container } from '@/components/ui/container';
 import {
   TransactionTable,
   TransactionFilters,
+  NewTransactionSheet,
 } from '@/components/transactions';
 import service from '@/services';
 import { Suspense } from 'react';
@@ -55,7 +56,7 @@ async function TransactionsPage(props: PageProps) {
       <div className="flex items-center justify-between space-y-2">
         {/* tracking-tight 會讓字距更緊湊 */}
         <h2 className="text-3xl font-bold tracking-tight">交易紀錄</h2>
-        {/* <NewTransactionSheet categories={categories} /> */}
+        <NewTransactionSheet categories={categories} accounts={accounts} />
       </div>
 
       <div className="space-y-4">
