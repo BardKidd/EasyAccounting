@@ -3,6 +3,7 @@ import {
   ResponseHelper,
   TransactionType,
   CreateTransactionSchema,
+  TransactionResponse,
 } from '@repo/shared';
 import { redirect } from 'next/navigation';
 
@@ -28,16 +29,26 @@ export const getTransactions = async (params: GetTransactionsParams) => {
     if (params.limit) query.append('limit', params.limit.toString());
 
     const queryString = query.toString();
-    const url = `/transactions${queryString ? `?${queryString}` : ''}`;
+    const url = `/transaction/date${queryString ? `?${queryString}` : ''}`;
 
-    const result = (await apiHandler(url, 'get', null)) as ResponseHelper<
-      TransactionType[]
-    >;
+    const result = (await apiHandler(
+      url,
+      'get',
+      null
+    )) as ResponseHelper<TransactionResponse>;
 
     if (result.isSuccess) {
       return result.data;
     }
-    return [];
+    return {
+      items: [],
+      pagination: {
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      },
+    };
   } catch (err) {
     throw err;
   }

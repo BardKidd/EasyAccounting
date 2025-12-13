@@ -9,6 +9,66 @@ import {
 import { simplifyTransaction } from '@/utils/common';
 import Transaction from '@/models/transaction';
 import Account from '@/models/account';
+import { Op } from 'sequelize'; // 用來處理兩個值之間的 operator
+
+const getTransactionsByDate = async (
+  query: GetTransactionsByDateSchema,
+  userId: string
+) => {
+  const { startDate, endDate, page = 1, ...otherFilters } = query;
+  const limit = 10;
+  let dateFilter = {};
+
+  if (startDate && endDate) {
+    dateFilter = {
+      date: {
+        [Op.between]: [startDate, endDate],
+      },
+    };
+  }
+
+  const offset = (Number(page) - 1) * Number(limit);
+
+  const { rows, count } = await Transaction.findAndCountAll({
+    where: {
+      ...otherFilters,
+      ...dateFilter,
+      userId,
+    },
+    limit: Number(limit),
+    offset, // 定義從第幾筆開始取資料，e.g. page=2, limit=10,offset=10
+    order: [['date', 'DESC']],
+    attributes: {
+      exclude: ['createdAt', 'updatedAt', 'deletedAt'], // 排除不需要的欄位
+    },
+    raw: true,
+  });
+
+  return {
+    items: rows as unknown as TransactionType[],
+    pagination: {
+      total: count,
+      page,
+      limit,
+      totalPages: Math.ceil(count / Number(limit)), // 無條件進位
+    },
+  };
+};
+
+const getTransactionById = async (id: string, userId: string) => {
+  const instance = await Transaction.findOne({
+    where: { id, userId },
+  });
+  let result: TransactionType | null = null;
+
+  if (instance) {
+    result = instance.toJSON();
+    const { id, ...other } = result;
+    return other;
+  }
+
+  return result;
+};
 
 const calcAccountBalance = async (
   accountInstance: AccountType,
@@ -42,48 +102,8 @@ const createTransaction = async (
 
     await account.save({ transaction: t });
 
-    return transaction;
+    return transaction.toJSON();
   });
-};
-
-const getTransactionsByDate = async (
-  data: GetTransactionsByDateSchema,
-  date: string,
-  userId: string
-) => {
-  const instance = await Transaction.findAll({
-    where: {
-      ...data,
-      date,
-      userId,
-    },
-  });
-  let result: TransactionType[] = [];
-
-  if (instance.length > 0) {
-    result = instance.map((item) => {
-      item = item.toJSON();
-      const { id, createdAt, updatedAt, deletedAt, ...other } = item;
-      return other;
-    });
-  }
-
-  return result;
-};
-
-const getTransactionById = async (id: string, userId: string) => {
-  const instance = await Transaction.findOne({
-    where: { id, userId },
-  });
-  let result: TransactionType | null = null;
-
-  if (instance) {
-    result = instance.toJSON();
-    const { id, createdAt, updatedAt, deletedAt, ...other } = result;
-    return other;
-  }
-
-  return result;
 };
 
 const updateIncomeExpense = async (
@@ -133,7 +153,7 @@ const updateIncomeExpense = async (
     // 3. 更新資料
     await transaction.update(data, { transaction: t });
 
-    return transaction;
+    return transaction.toJSON();
   });
 };
 
@@ -159,7 +179,7 @@ const deleteTransaction = async (id: string, userId: string) => {
 
     await transaction.destroy({ transaction: t });
 
-    return transaction;
+    return transaction.toJSON();
   });
 };
 

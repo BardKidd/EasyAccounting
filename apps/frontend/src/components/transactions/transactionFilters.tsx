@@ -33,7 +33,6 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Initialize state from URL
   const [date, setDate] = useState<DateRange | undefined>(() => {
     const start = searchParams.get('startDate');
     const end = searchParams.get('endDate');
@@ -48,7 +47,6 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
     searchParams.get('accountId') || 'all'
   );
 
-  // Update URL helper
   const updateFilters = (
     newDate?: DateRange,
     newType?: string,
@@ -162,8 +160,10 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
           <SelectValue placeholder="選擇帳戶" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">所有帳戶</SelectItem>
           <SelectContent>
+            <SelectGroup key="all">
+              <SelectItem value="all">所有帳戶</SelectItem>
+            </SelectGroup>
             {Object.values(Account).map((accountType) => {
               const typeAccounts = accounts.filter(
                 (acc) => acc.type === accountType

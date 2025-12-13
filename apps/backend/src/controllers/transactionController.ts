@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { simplifyTryCatch, responseHelper } from '@/utils/common';
 import { StatusCodes } from 'http-status-codes';
 import transactionServices from '@/services/transactionServices';
+import { GetTransactionsByDateSchema } from '@repo/shared';
 
 const createTransaction = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -21,17 +22,11 @@ const createTransaction = (req: Request, res: Response) => {
 
 const getTransactionsByDate = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
-    const { date } = req.params;
+    const query = req.query as GetTransactionsByDateSchema;
     const userId = req.user.userId;
-    if (!date) {
-      return res
-        .status(StatusCodes.BAD_REQUEST)
-        .json(responseHelper(false, null, 'Date is required', null));
-    }
 
     const result = await transactionServices.getTransactionsByDate(
-      req.body,
-      date,
+      query,
       userId
     );
 

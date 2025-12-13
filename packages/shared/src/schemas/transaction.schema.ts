@@ -20,8 +20,12 @@ export const createTransactionSchema = z.object({
 export const updateTransactionSchema = createTransactionSchema;
 
 export const getTransactionsByDateSchema = z.object({
-  accountId: z.string().uuid(),
-  categoryId: z.string().uuid(),
+  accountId: z.string().uuid().optional(),
+  categoryId: z.string().uuid().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  date: z.string().optional(),
+  page: z.coerce.number().optional(),
 });
 
 export type CreateTransactionSchema = z.infer<typeof createTransactionSchema>;

@@ -13,11 +13,19 @@ export interface TransactionType {
   paymentFrequency: PaymentFrequency;
   // 系統自動產生
   id?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  deletedAt?: string | null;
 }
 
 export interface TransactionTypeWhenOperate extends TransactionType {
   targetAccountId: string;
+}
+
+export interface TransactionResponse {
+  items: TransactionType[];
+  pagination: TransactionPagination;
+}
+export interface TransactionPagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }

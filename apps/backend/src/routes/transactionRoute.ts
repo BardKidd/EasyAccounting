@@ -11,9 +11,9 @@ const router: Router = express.Router();
 
 // 拿到整該年/月/日的交易
 router.get(
-  '/transaction/date/:date',
+  '/transaction/date',
   authMiddleware,
-  validate(getTransactionsByDateSchema),
+  validate(getTransactionsByDateSchema, 'query'),
   transactionController.getTransactionsByDate
 );
 // 某筆詳細資料
