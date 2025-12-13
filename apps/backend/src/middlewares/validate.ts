@@ -3,10 +3,13 @@ import { responseHelper } from '@/utils/common';
 import { StatusCodes } from 'http-status-codes';
 import { z } from '@repo/shared';
 
-export const validate = (schema: z.ZodSchema) => {
+export const validate = (
+  schema: z.ZodSchema,
+  source: 'body' | 'query' | 'params' = 'body'
+) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
-      schema.parse(req.body);
+      schema.parse(req[source]);
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {

@@ -25,6 +25,7 @@ const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'prd',
   sameSite: 'strict' as const,
+  path: '/', //! 會鎖定 cookie 在這個路徑底下
 };
 
 export const generateAccessToken = async (payload: TokenPayload) => {

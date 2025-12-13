@@ -3,6 +3,7 @@ import path from 'path';
 import cors from 'cors';
 import sequelize from '@/utils/postgres';
 import mongoConnection from '@/utils/mongodb';
+import { loggerMiddleware } from '@/middlewares/loggerMiddleware';
 
 import User from '@/models/user';
 import Category from '@/models/category';
@@ -30,6 +31,7 @@ app.use(
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
+app.use(loggerMiddleware);
 
 app.use('/api', categoryRoute);
 app.use('/api', userRoute);
