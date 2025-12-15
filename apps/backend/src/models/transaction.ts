@@ -2,7 +2,13 @@ import Sequelize, { Model } from 'sequelize';
 import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
 import { TransactionType, MainType, PaymentFrequency } from '@repo/shared';
 
-interface TransactionInstance extends Model<TransactionType>, TransactionType {}
+interface TransactionAttributes extends TransactionType {
+  linkId?: string;
+  targetAccountId?: string;
+}
+interface TransactionInstance
+  extends Model<TransactionAttributes>,
+    TransactionAttributes {}
 
 const Transaction = sequelize.define<TransactionInstance>(
   'transaction',
@@ -38,11 +44,11 @@ const Transaction = sequelize.define<TransactionInstance>(
       },
     },
     amount: {
-      type: Sequelize.DECIMAL(10, 5),
+      type: Sequelize.DECIMAL(20, 5),
       allowNull: false,
     },
     type: {
-      type: Sequelize.ENUM(MainType.INCOME, MainType.EXPENSE),
+      type: Sequelize.ENUM(MainType.INCOME, MainType.EXPENSE, MainType.OPERATE),
       allowNull: false,
     },
     description: {
@@ -70,6 +76,24 @@ const Transaction = sequelize.define<TransactionInstance>(
         PaymentFrequency.INSTALLMENT
       ),
       allowNull: false,
+    },
+    // 互指對方 ID
+    linkId: {
+      type: Sequelize.UUID,
+      allowNull: true,
+      references: {
+        model: 'transaction',
+        key: 'id',
+      },
+    },
+    // 互指對方帳戶 ID
+    targetAccountId: {
+      type: Sequelize.UUID,
+      allowNull: true,
+      references: {
+        model: 'account',
+        key: 'id',
+      },
     },
   },
   TABLE_DEFAULT_SETTING

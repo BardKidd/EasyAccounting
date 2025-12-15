@@ -4,6 +4,7 @@ import {
   TransactionType,
   CreateTransactionSchema,
   TransactionResponse,
+  CreateTransferSchema,
 } from '@repo/shared';
 import { redirect } from 'next/navigation';
 
@@ -58,6 +59,23 @@ export const addTransaction = async (transaction: CreateTransactionSchema) => {
   try {
     const result = (await apiHandler(
       '/transaction',
+      'post',
+      transaction
+    )) as ResponseHelper<TransactionType>;
+
+    if (result.isSuccess) {
+      return result;
+    }
+    return null;
+  } catch (err) {
+    throw err;
+  }
+};
+
+export const addTransfer = async (transaction: CreateTransferSchema) => {
+  try {
+    const result = (await apiHandler(
+      '/transaction/transfer',
       'post',
       transaction
     )) as ResponseHelper<TransactionType>;

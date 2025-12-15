@@ -15,7 +15,7 @@ import {
   transactionFormSchema,
   TransactionFormSchema,
 } from '@repo/shared';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -139,13 +139,13 @@ function NewTransactionSheet({
       }));
   }, [watchedType, watchedSubCategory, detailType]);
 
-  const onSubmit = async (data: TransactionFormSchema) => {
+  const handleExpenseAndIncomeChange = async (data: TransactionFormSchema) => {
     // 整理成 API 需要的格式
     const payload: CreateTransactionSchema = {
       accountId: data.accountId,
       categoryId: data.detailCategory || data.subCategory,
       amount: Number(data.amount),
-      type: data.type,
+      type: data.type as MainType.EXPENSE | MainType.INCOME,
       description: data.description,
       // User 選什麼時間就存什麼。存當地時間，不需要轉為 +0
       date: format(data.date, 'yyyy-MM-dd'),
@@ -164,9 +164,49 @@ function NewTransactionSheet({
         form.reset();
       }
     } catch (err) {
-      console.error('新增交易失敗:', err);
+      toast.error(getErrorMessage(err));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleOperateChange = async (data: TransactionFormSchema) => {
+    const payload = {
+      accountId: data.accountId,
+      categoryId: data.detailCategory || data.subCategory,
+      amount: Number(data.amount),
+      type: MainType.OPERATE as MainType.OPERATE,
+      description: data.description,
+      // User 選什麼時間就存什麼。存當地時間，不需要轉為 +0
+      date: format(data.date, 'yyyy-MM-dd'),
+      time: data.time,
+      receipt: data.receipt,
+      paymentFrequency: data.paymentFrequency,
+      targetAccountId: data.targetAccountId as string,
+    };
+
+    try {
+      setIsLoading(true);
+      const result = await services.addTransfer(payload);
+      if (result?.isSuccess) {
+        setIsOpen(false);
+        toast.success(result.message);
+        router.refresh();
+        form.reset();
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onSubmit = async (data: TransactionFormSchema) => {
+    if (data.type === MainType.EXPENSE || data.type === MainType.INCOME) {
+      await handleExpenseAndIncomeChange(data);
+    } else {
+      // 轉帳類
+      await handleOperateChange(data);
     }
   };
 
@@ -262,7 +302,12 @@ function NewTransactionSheet({
               />
 
               {/* Category Selection */}
-              <div className="grid gap-4 grid-cols-2">
+              <div
+                className={cn(
+                  'grid gap-4',
+                  watchedType !== MainType.OPERATE && ' grid-cols-2'
+                )}
+              >
                 <FormField
                   control={form.control}
                   name="subCategory"
@@ -294,34 +339,36 @@ function NewTransactionSheet({
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="detailCategory"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>子分類</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={!watchedSubCategory}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="w-full cursor-pointer">
-                            <SelectValue placeholder="選擇子分類" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {currentDetailCategory.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {watchedType !== MainType.OPERATE && (
+                  <FormField
+                    control={form.control}
+                    name="detailCategory"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>子分類</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={!watchedSubCategory}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="w-full cursor-pointer">
+                              <SelectValue placeholder="選擇子分類" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {currentDetailCategory.map((category) => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </div>
 
               {/* Account Selection */}

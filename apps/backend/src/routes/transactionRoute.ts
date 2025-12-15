@@ -5,6 +5,7 @@ import {
   createTransactionSchema,
   updateTransactionSchema,
   getTransactionsByDateSchema,
+  createTransferSchema,
 } from '@repo/shared';
 import { authMiddleware } from '@/middlewares/authMiddleware';
 const router: Router = express.Router();
@@ -38,6 +39,13 @@ router.delete(
   '/transaction/:id',
   authMiddleware,
   transactionController.deleteTransaction
+);
+
+router.post(
+  '/transaction/transfer',
+  authMiddleware,
+  validate(createTransferSchema),
+  transactionController.createTransfer
 );
 
 export default router;

@@ -5,6 +5,8 @@ import {
   TransactionType,
   UpdateTransactionSchema,
   AccountType,
+  CreateTransferSchema,
+  TransactionTypeWhenOperate,
 } from '@repo/shared';
 import { simplifyTransaction } from '@/utils/common';
 import Transaction from '@/models/transaction';
@@ -34,12 +36,19 @@ const getTransactionsByDate = async (
       ...otherFilters,
       ...dateFilter,
       userId,
+      [Op.or]: [
+        { linkId: null as any }, // 一般收支
+        { type: { [Op.ne]: MainType.INCOME } }, // 操作的主動方
+      ],
     },
     limit: Number(limit),
     offset, // 定義從第幾筆開始取資料，e.g. page=2, limit=10,offset=10
-    order: [['date', 'DESC']],
+    order: [
+      ['date', 'DESC'],
+      ['time', 'DESC'],
+    ],
     attributes: {
-      exclude: ['createdAt', 'updatedAt', 'deletedAt'], // 排除不需要的欄位
+      exclude: ['createdAt', 'updatedAt', 'deletedAt', 'linkId'], // 排除不需要的欄位
     },
     raw: true,
   });
@@ -77,7 +86,7 @@ const calcAccountBalance = async (
 ) => {
   if (type === MainType.INCOME) {
     accountInstance.balance = Number(accountInstance.balance) + Number(amount);
-  } else {
+  } else if (type === MainType.EXPENSE) {
     accountInstance.balance = Number(accountInstance.balance) - Number(amount);
   }
 };
@@ -183,10 +192,76 @@ const deleteTransaction = async (id: string, userId: string) => {
   });
 };
 
+// 只要流程是 A -> B 帳戶，且流程是 A 為主動減少，B 為被動增加的流程就適合
+const createTransfer = async (
+  data: CreateTransferSchema,
+  userId: string
+): Promise<{
+  fromTransaction: TransactionTypeWhenOperate;
+  toTransaction: TransactionTypeWhenOperate;
+}> => {
+  return simplifyTransaction(async (t) => {
+    if (data.type !== MainType.OPERATE) throw new Error('Must be operate type');
+
+    const fromData = {
+      ...data,
+      type: MainType.EXPENSE,
+    };
+
+    const toData = {
+      ...data,
+      targetAccountId: data.accountId,
+      accountId: data.targetAccountId,
+      type: MainType.INCOME,
+    };
+
+    const fromAccount = await Account.findByPk(data.accountId, {
+      transaction: t,
+    });
+    if (!fromAccount) throw new Error('From account not found');
+
+    const toAccount = await Account.findByPk(data.targetAccountId, {
+      transaction: t,
+    });
+    if (!toAccount) throw new Error('To account not found');
+
+    const fromTransaction = await Transaction.create(
+      { ...fromData, userId },
+      { transaction: t }
+    );
+
+    const toTransaction = await Transaction.create(
+      { ...toData, userId },
+      { transaction: t }
+    );
+
+    await calcAccountBalance(fromAccount, fromData.type, fromData.amount);
+    await calcAccountBalance(toAccount, toData.type, toData.amount);
+
+    await fromAccount.save({ transaction: t });
+    await toAccount.save({ transaction: t });
+
+    await fromTransaction.update(
+      { linkId: toTransaction.id },
+      { transaction: t }
+    );
+    await toTransaction.update(
+      { linkId: fromTransaction.id },
+      { transaction: t }
+    );
+
+    return {
+      fromTransaction: fromTransaction.toJSON(),
+      toTransaction: toTransaction.toJSON(),
+    };
+  });
+};
+
 export default {
   createTransaction,
   getTransactionsByDate,
   getTransactionById,
   updateIncomeExpense,
   deleteTransaction,
+  createTransfer,
 };

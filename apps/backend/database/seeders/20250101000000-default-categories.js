@@ -104,7 +104,7 @@ const DetailType = {
   WITHDRAWAL: '提款',
   DEPOSIT: '存款',
   RETURN: '退款',
-  EXCHANGE: '兌換',
+  // EXCHANGE: '兌換',
 };
 
 const categories = [

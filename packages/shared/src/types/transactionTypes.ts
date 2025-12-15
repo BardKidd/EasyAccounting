@@ -13,9 +13,11 @@ export interface TransactionType {
   paymentFrequency: PaymentFrequency;
   // 系統自動產生
   id?: string;
+  targetAccountId?: string;
 }
 
 export interface TransactionTypeWhenOperate extends TransactionType {
+  linkId: string;
   targetAccountId: string;
 }
 

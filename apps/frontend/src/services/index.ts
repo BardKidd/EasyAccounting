@@ -5,7 +5,7 @@ import {
   updateAccount,
   deleteAccount,
 } from './personnelAccount';
-import { getTransactions, addTransaction } from './transaction';
+import { getTransactions, addTransaction, addTransfer } from './transaction';
 
 export default {
   getCategories,
@@ -15,4 +15,5 @@ export default {
   updateAccount,
   deleteAccount,
   addTransaction,
+  addTransfer,
 };

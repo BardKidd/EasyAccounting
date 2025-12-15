@@ -1,11 +1,10 @@
 import { z } from 'zod';
 import { MainType, PaymentFrequency } from '../constants';
 
-export const createTransactionSchema = z.object({
+const baseSchema = z.object({
   accountId: z.string().uuid(),
   categoryId: z.string().uuid(),
   amount: z.number(),
-  type: z.enum([MainType.INCOME, MainType.EXPENSE, MainType.OPERATE]),
   description: z.string().nullable(),
   date: z.string(),
   time: z.string(),
@@ -16,6 +15,19 @@ export const createTransactionSchema = z.object({
     PaymentFrequency.INSTALLMENT,
   ]),
 });
+
+export const createTransactionSchema = baseSchema.and(
+  z.object({
+    type: z.enum([MainType.INCOME, MainType.EXPENSE]),
+  })
+);
+
+export const createTransferSchema = baseSchema.and(
+  z.object({
+    targetAccountId: z.string().uuid(),
+    type: z.enum([MainType.OPERATE]), // 前端只能傳 OPERATE 進來，後端會判斷哪個是支出哪個是收入
+  })
+);
 
 export const updateTransactionSchema = createTransactionSchema;
 
@@ -29,6 +41,7 @@ export const getTransactionsByDateSchema = z.object({
 });
 
 export type CreateTransactionSchema = z.infer<typeof createTransactionSchema>;
+export type CreateTransferSchema = z.infer<typeof createTransferSchema>;
 export type UpdateTransactionSchema = z.infer<typeof updateTransactionSchema>;
 export type GetTransactionsByDateSchema = z.infer<
   typeof getTransactionsByDateSchema

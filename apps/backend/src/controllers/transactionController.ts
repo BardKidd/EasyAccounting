@@ -100,10 +100,22 @@ const deleteTransaction = (req: Request, res: Response) => {
   });
 };
 
+const createTransfer = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const result = await transactionServices.createTransfer(req.body, userId);
+
+    return res
+      .status(StatusCodes.CREATED)
+      .json(responseHelper(true, result, 'Create transfer successfully', null));
+  });
+};
+
 export default {
   createTransaction,
   getTransactionsByDate,
   getTransactionById,
   updateIncomeExpense,
   deleteTransaction,
+  createTransfer,
 };

@@ -58,6 +58,8 @@ Transaction.belongsTo(Category);
 Account.hasMany(Transaction);
 Transaction.belongsTo(Account);
 
+Transaction.belongsTo(Transaction, { as: 'target', foreignKey: 'linkId' });
+
 sequelize
   .sync()
   .then(() => {
