@@ -7,9 +7,10 @@ import AccountSummaryCard from '@/components/accounts/accountSummaryCard';
 import service from '@/services';
 
 export default async function DashboardPage() {
-  const [categories, accounts] = await Promise.all([
+  const [categories, accounts, transactions] = await Promise.all([
     service.getCategories(),
     service.getPersonnelAccounts(),
+    service.getTransactions({ page: 1 }),
   ]);
 
   return (
@@ -29,7 +30,11 @@ export default async function DashboardPage() {
             <AccountSummaryCard accounts={accounts} />
           </div>
           <div className="lg:col-span-4 h-[500px]">
-            <RecentTransactions />
+            <RecentTransactions
+              transactions={transactions.items}
+              categories={categories}
+              accounts={accounts}
+            />
           </div>
         </div>
       </div>

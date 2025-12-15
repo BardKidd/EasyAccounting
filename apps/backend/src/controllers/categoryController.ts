@@ -1,17 +1,21 @@
 import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import Category from '@/models/category';
-import User from '@/models/user';
 import { simplifyTryCatch, responseHelper } from '@/utils/common';
 import { CategoryType } from '@repo/shared';
+import { Op } from 'sequelize';
 
 const getAllCategories = async (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
+    const myId = req.user.userId;
     const categories = await Category.findAll({
       include: [
         { model: Category, as: 'children' },
         { model: Category, as: 'parent' },
       ],
+      where: {
+        [Op.or]: [{ userId: myId }, { userId: null }],
+      },
     });
     let sortedCategories: CategoryType[] = [];
     if (categories.length > 0) {
