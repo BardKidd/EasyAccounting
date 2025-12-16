@@ -52,6 +52,7 @@ export function RecentTransactions({
     );
   };
 
+  console.log(categories);
   return (
     <Card className="col-span-3">
       <CardHeader>

@@ -7,11 +7,7 @@ import { authMiddleware } from '@/middlewares/authMiddleware';
 const router: Router = express.Router();
 
 router.get('/category', authMiddleware, categoryController.getAllCategories);
-router.get(
-  '/category/:id',
-  authMiddleware,
-  categoryController.getChildrenCategories
-);
+
 router.post(
   '/category',
   authMiddleware,

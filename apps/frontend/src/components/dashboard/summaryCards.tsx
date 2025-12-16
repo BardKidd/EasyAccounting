@@ -26,8 +26,18 @@ const summaryData = [
     color: 'text-rose-600',
     bg: 'bg-rose-100 dark:bg-rose-900/20',
   },
+  /*
   {
     title: '預算剩餘',
+    value: '$0',
+    description: '尚無資料',
+    icon: PiggyBank,
+    color: 'text-indigo-600',
+    bg: 'bg-indigo-100 dark:bg-indigo-900/20',
+  },
+  */
+  {
+    title: '本月損益',
     value: '$0',
     description: '尚無資料',
     icon: PiggyBank,

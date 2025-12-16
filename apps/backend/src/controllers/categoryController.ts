@@ -8,78 +8,51 @@ import { Op } from 'sequelize';
 const getAllCategories = async (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const myId = req.user.userId;
+    // 取出預設和自己擁有的 Category
     const categories = await Category.findAll({
-      include: [
-        { model: Category, as: 'children' },
-        { model: Category, as: 'parent' },
-      ],
       where: {
         [Op.or]: [{ userId: myId }, { userId: null }],
       },
+      order: [['createdAt', 'DESC']],
     });
-    let sortedCategories: CategoryType[] = [];
-    if (categories.length > 0) {
-      sortedCategories = categories.map((category) => {
-        const categoryJson = category.toJSON(); // 從 Model 轉換成 JSON
-        return {
-          id: categoryJson.id,
-          name: categoryJson.name,
-          type: categoryJson.type,
-          icon: categoryJson.icon,
-          color: categoryJson.color,
-          children: categoryJson.children,
-          parent: categoryJson.parent,
-        };
-      });
-    }
+
+    // 適合用於找尋 key: value 的資料結構，尤其是每個物件包都有個 id 的情況下，透過 Map 底層的 O(1) 時間複雜度比起傳統物件來說會非常快。
+    const categoryMap = new Map<string, CategoryType>();
+    const rootNodes: CategoryType[] = [];
+
+    // 整理每個 Category 的 key: value 到 Map 中。
+    categories.forEach((catModel) => {
+      const cat = catModel.toJSON() as any;
+      const node: CategoryType = {
+        id: cat.id,
+        name: cat.name,
+        type: cat.type,
+        icon: cat.icon,
+        color: cat.color,
+        children: [],
+        parent: null,
+      };
+
+      (node as any).parentId = cat.parentId; // 下一步才會來找 parent，目前先儲存 parentId
+
+      categoryMap.set(node.id, node);
+    });
+
+    // 分層
+    categoryMap.forEach((node) => {
+      const parentId = (node as any).parentId;
+      if (parentId && categoryMap.has(parentId)) {
+        const parent = categoryMap.get(parentId)!; // !: 100% 確定有值
+        parent.children.push(node);
+      } else {
+        rootNodes.push(node);
+      }
+    });
+
     res
       .status(StatusCodes.OK)
       .json(
-        responseHelper(
-          true,
-          sortedCategories,
-          'Categories fetched successfully',
-          null
-        )
-      );
-  });
-};
-
-const getChildrenCategories = async (req: Request, res: Response) => {
-  simplifyTryCatch(req, res, async () => {
-    const categoryId = req.params.id;
-    const category = (await Category.findByPk(categoryId)) as any;
-    if (!category) {
-      return res
-        .status(StatusCodes.NOT_FOUND)
-        .json(responseHelper(false, null, 'Category not found', null));
-    }
-    // getChildren() 是 Sequelize 提供的 Magic Method，可以自動找到關聯的資料
-    // 可以去看 app.ts 裡面的 as 命名。假如 as 為 subCategories，這裡就會改為 getSubCategories。
-    const childrenCategories = await category.getChildren(); // as any 為了不要讓這個 Magic 出來的方法不被 TypeScript 給標記為錯誤
-
-    let sortedCategories: CategoryType[] = [];
-    if (childrenCategories.length > 0) {
-      sortedCategories = childrenCategories.map((category: any) => {
-        const categoryJson = category.toJSON(); // 從 Model 轉換成 JSON
-        return {
-          id: categoryJson.id,
-          name: categoryJson.name,
-          type: categoryJson.type,
-          icon: categoryJson.icon,
-          color: categoryJson.color,
-        };
-      });
-    }
-    res
-      .status(StatusCodes.OK)
-      .json(
-        responseHelper(
-          true,
-          sortedCategories,
-          'Children categories fetched successfully',
-          null
-        )
+        responseHelper(true, rootNodes, 'Categories fetched successfully', null)
       );
   });
 };
@@ -130,5 +103,4 @@ export default {
   getAllCategories,
   putCategory,
   deleteCategory,
-  getChildrenCategories,
 };

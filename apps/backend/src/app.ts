@@ -40,25 +40,25 @@ app.use('/api', accountRoute);
 app.use('/api', transactionRoute);
 app.use('/api', authRoute);
 
-User.hasMany(Category);
-User.hasMany(Account);
-User.hasMany(Transaction);
-Category.belongsTo(User);
-Account.belongsTo(User);
-Transaction.belongsTo(User);
+// User.hasMany(Category);
+// User.hasMany(Account);
+// User.hasMany(Transaction);
+// Category.belongsTo(User);
+// Account.belongsTo(User);
+// Transaction.belongsTo(User);
 
 // 可以使用 Magic 方法，加上 include 可以自動建立 children 和 parent 屬性
 // 這裡跟資料互相關聯並沒有直接關係喔！！！
 // 取得 parentId 的關聯資料作為 children 或 parent。
-Category.hasMany(Category, { as: 'children', foreignKey: 'parentId' });
-Category.belongsTo(Category, { as: 'parent', foreignKey: 'parentId' });
-Category.hasMany(Transaction);
-Transaction.belongsTo(Category);
+// Category.hasMany(Category, { as: 'children', foreignKey: 'parentId' });
+// Category.belongsTo(Category, { as: 'parent', foreignKey: 'parentId' });
+// Category.hasMany(Transaction);
+// Transaction.belongsTo(Category);
 
-Account.hasMany(Transaction);
-Transaction.belongsTo(Account);
+// Account.hasMany(Transaction);
+// Transaction.belongsTo(Account);
 
-Transaction.belongsTo(Transaction, { as: 'target', foreignKey: 'linkId' });
+// Transaction.belongsTo(Transaction, { as: 'target', foreignKey: 'linkId' });
 
 sequelize
   .sync()

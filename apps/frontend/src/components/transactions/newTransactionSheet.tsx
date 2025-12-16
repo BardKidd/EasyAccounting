@@ -101,43 +101,33 @@ function NewTransactionSheet({
     });
   }, [form]);
 
-  const { subType, detailType } = useMemo(() => {
-    if (!categories) return { subType: [], detailType: [] };
-    const mainType = categories.filter((c) => c.parent === null);
-    const subType = categories.filter((c) =>
-      mainType.some((main) => main.id === c.parent?.id)
-    );
-    const detailType = categories.filter((c) =>
-      subType.some((sub) => sub.id === c.parent?.id)
-    );
-    return { subType, detailType };
-  }, [categories]);
-
   const currentSubCategory = useMemo(() => {
-    return subType
-      .filter((sub) => sub.type === (watchedType as MainType))
-      .map((sub) => ({
-        id: sub.id,
-        name: sub.name,
-        type: sub.type as MainType,
-      }));
-  }, [watchedType, subType]);
+    if (!categories) return [];
+
+    const roots = categories.filter(
+      (root) => root.type === (watchedType as MainType)
+    );
+
+    // flatMap 比較少用記錄一下：先 map 後 flat，少一步驟。e.g. [{children: []}, {children: []}] -> map: [ [], [] ] -> flat: []
+    const mainCategories = roots.flatMap((root) => root.children || []);
+
+    return mainCategories;
+  }, [watchedType, categories]);
 
   const currentDetailCategory = useMemo(() => {
-    if (!watchedSubCategory) return [];
+    if (!watchedSubCategory || !currentSubCategory) return [];
 
-    return detailType
-      .filter(
-        (detail) =>
-          detail.type === (watchedType as MainType) &&
-          (!watchedSubCategory || detail.parent?.id === watchedSubCategory)
-      )
-      .map((detail) => ({
-        id: detail.id,
-        name: detail.name,
-        type: detail.type as MainType,
-      }));
-  }, [watchedType, watchedSubCategory, detailType]);
+    const detailCategoryMap = new Map<string, CategoryType>();
+    currentSubCategory.forEach((cat) => {
+      detailCategoryMap.set(cat.id, cat);
+    });
+
+    const selectedMain = detailCategoryMap.get(watchedSubCategory);
+
+    if (!selectedMain || !selectedMain.children) return [];
+
+    return selectedMain.children;
+  }, [watchedSubCategory, currentSubCategory]);
 
   const handleExpenseAndIncomeChange = async (data: TransactionFormSchema) => {
     // 整理成 API 需要的格式
@@ -323,7 +313,7 @@ function NewTransactionSheet({
                       >
                         <FormControl>
                           <SelectTrigger className="w-full cursor-pointer">
-                            <SelectValue placeholder="選擇分類" />
+                            <SelectValue placeholder="選擇主分類" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -349,11 +339,20 @@ function NewTransactionSheet({
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
-                          disabled={!watchedSubCategory}
+                          disabled={
+                            !watchedSubCategory ||
+                            currentDetailCategory.length === 0
+                          }
                         >
                           <FormControl>
                             <SelectTrigger className="w-full cursor-pointer">
-                              <SelectValue placeholder="選擇子分類" />
+                              <SelectValue
+                                placeholder={
+                                  currentDetailCategory.length === 0
+                                    ? '無子分類'
+                                    : '選擇子分類'
+                                }
+                              />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
