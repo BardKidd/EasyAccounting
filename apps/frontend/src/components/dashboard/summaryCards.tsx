@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AccountType, MainType, TransactionType } from '@repo/shared';
+import { AccountType } from '@repo/shared';
 import { Wallet, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
 
 const summaryCardsData = (values = [0, 0, 0, 0] as number[]) => {
@@ -49,36 +49,31 @@ export function SummaryCards({
   summaryData,
 }: {
   accounts: AccountType[];
-  summaryData: TransactionType[];
+  summaryData: {
+    type: string;
+    date: string;
+    income: number;
+    expense: number;
+  }[];
 }) {
-  const calcThisMonthFinances = (data: TransactionType[]) => {
+  const calcThisMonthFinances = (
+    data: { type: string; date: string; income: number; expense: number }[]
+  ) => {
     const now = new Date();
-    const thisMonth = now.getMonth() + 1;
-    const thisYear = now.getFullYear();
-    const incomeData: TransactionType[] = [];
-    const expenseData: TransactionType[] = [];
-    const thisMonthData = data
-      .filter((item) => item.date.startsWith(`${thisYear}-${thisMonth}`))
-      .forEach((item) => {
-        if (item.type === MainType.INCOME) {
-          incomeData.push(item);
-        } else {
-          expenseData.push(item);
-        }
-      });
-    const incomeTotal =
-      incomeData.reduce(
-        (total, item) => Number(total) + Number(item.amount),
-        0
-      ) || 0;
-    const expenseTotal =
-      expenseData.reduce(
-        (total, item) => Number(total) + Number(item.amount),
-        0
-      ) || 0;
-    const profit = incomeTotal - expenseTotal || 0;
-    return [incomeTotal, expenseTotal, profit];
+    // Format: YYYY-MM
+    const currentKey = `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, '0')}`;
+
+    const thisPeriodData = data.find((item) => item.date === currentKey);
+
+    if (thisPeriodData) {
+      const profit = thisPeriodData.income - thisPeriodData.expense;
+      return [thisPeriodData.income, thisPeriodData.expense, profit];
+    }
+    return [0, 0, 0];
   };
+
   const calcTotalAssets = (data: AccountType[]) => {
     const totalAssets = data.reduce(
       (total, item) => total + Number(item.balance),
@@ -86,12 +81,16 @@ export function SummaryCards({
     );
     return totalAssets;
   };
+
+  const finances = calcThisMonthFinances(summaryData);
+
   const summary = summaryCardsData([
     calcTotalAssets(accounts),
-    calcThisMonthFinances(summaryData)[0],
-    calcThisMonthFinances(summaryData)[1],
-    calcThisMonthFinances(summaryData)[2],
+    finances[0],
+    finances[1],
+    finances[2],
   ]);
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {summary.map((item) => (

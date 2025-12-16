@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MainType, PaymentFrequency } from '../constants';
+import { MainType, PaymentFrequency, PeriodType } from '../constants';
 
 const baseSchema = z.object({
   accountId: z.string().uuid(),
@@ -43,6 +43,7 @@ export const getTransactionsByDateSchema = z.object({
 export const getTransactionsDashboardSummarySchema = z.object({
   startDate: z.string(),
   endDate: z.string(),
+  groupBy: z.nativeEnum(PeriodType).optional(),
 });
 
 export type CreateTransactionSchema = z.infer<typeof createTransactionSchema>;

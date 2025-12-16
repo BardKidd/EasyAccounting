@@ -124,3 +124,10 @@ export enum PaymentFrequency {
   RECURRING = '週期',
   INSTALLMENT = '分期',
 }
+
+export enum PeriodType {
+  DAY = 'day',
+  WEEK = 'week',
+  MONTH = 'month',
+  YEAR = 'year',
+}

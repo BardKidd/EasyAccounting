@@ -2,6 +2,7 @@ import { apiHandler, getErrorMessage } from '@/lib/utils';
 import {
   ResponseHelper,
   TransactionType,
+  GetTransactionsDashboardSummarySchema,
   CreateTransactionSchema,
   TransactionResponse,
   CreateTransferSchema,
@@ -55,24 +56,37 @@ export const getTransactions = async (params: GetTransactionsParams) => {
   }
 };
 
-export const getTransactionsSummary = async (data: {
-  startDate: string;
-  endDate: string;
-}) => {
+export const getTransactionsSummary = async (
+  query: GetTransactionsDashboardSummarySchema
+) => {
   try {
     const result = (await apiHandler(
       '/transaction/summary',
-      'post',
-      data
-    )) as ResponseHelper<TransactionType[]>;
+      'POST',
+      query
+    )) as ResponseHelper<{
+      trends: {
+        type: string;
+        date: string;
+        income: number;
+        expense: number;
+      }[];
+      summary: { income: number; expense: number; balance: number };
+    }>;
 
     if (result.isSuccess) {
       return result.data;
     }
-    return [];
+    return {
+      trends: [],
+      summary: { income: 0, expense: 0, balance: 0 },
+    };
   } catch (err) {
     console.log(getErrorMessage(err));
-    return [];
+    return {
+      trends: [],
+      summary: { income: 0, expense: 0, balance: 0 },
+    };
   }
 };
 

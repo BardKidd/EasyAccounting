@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { toast } from 'sonner';
-import { ResponseHelper } from '@repo/shared';
+import { PeriodType, ResponseHelper } from '@repo/shared';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -104,3 +104,36 @@ export async function apiHandler(
   }
   return result;
 }
+
+export const formatChartLabel = (dateStr: string, type: string) => {
+  if (type === PeriodType.MONTH) {
+    const monthPart = dateStr.split('-')[1];
+    const monthIndex = parseInt(monthPart, 10);
+    const monthMapping: Record<number, string> = {
+      1: '一月',
+      2: '二月',
+      3: '三月',
+      4: '四月',
+      5: '五月',
+      6: '六月',
+      7: '七月',
+      8: '八月',
+      9: '九月',
+      10: '十月',
+      11: '十一月',
+      12: '十二月',
+    };
+    return monthMapping[monthIndex] || dateStr;
+  }
+  if (type === PeriodType.WEEK) {
+    // Format: YYYY-WXX
+    const weekPart = dateStr.split('-W')[1];
+    const weekIndex = parseInt(weekPart, 10);
+    return `第 ${weekIndex} 週`;
+  }
+  if (type === PeriodType.YEAR) {
+    // Format: YYYY -> just return YYYY
+    return dateStr;
+  }
+  return dateStr;
+};

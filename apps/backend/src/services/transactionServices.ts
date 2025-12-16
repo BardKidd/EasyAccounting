@@ -8,11 +8,21 @@ import {
   CreateTransferSchema,
   TransactionTypeWhenOperate,
   GetTransactionsDashboardSummarySchema,
+  PeriodType,
 } from '@repo/shared';
 import { simplifyTransaction } from '@/utils/common';
 import Transaction from '@/models/transaction';
 import Account from '@/models/account';
-import { Op } from 'sequelize'; // 用來處理兩個值之間的 operator
+import { Op } from 'sequelize';
+import {
+  format,
+  getISOWeek,
+  getYear,
+  eachDayOfInterval,
+  eachWeekOfInterval,
+  eachMonthOfInterval,
+  eachYearOfInterval,
+} from 'date-fns';
 
 const getTransactionsByDate = async (
   query: GetTransactionsByDateSchema,
@@ -69,7 +79,7 @@ const getTransactionsDashboardSummary = async (
   params: GetTransactionsDashboardSummarySchema,
   userId: string
 ) => {
-  const { startDate, endDate } = params;
+  const { startDate, endDate, groupBy = PeriodType.MONTH } = params;
   let dateFilter = {};
 
   if (startDate && endDate) {
@@ -80,26 +90,110 @@ const getTransactionsDashboardSummary = async (
     };
   }
 
-  const transactions = await Transaction.findAll({
+  const transactions = (await Transaction.findAll({
     where: {
       ...dateFilter,
       userId,
       linkId: null as any,
     },
-    order: [
-      ['date', 'DESC'],
-      ['time', 'DESC'],
-    ],
-    attributes: ['amount', 'date', 'time', 'type'],
+    attributes: ['amount', 'date', 'type'],
+    raw: true, // 直接回傳資料，可以不用再 .toJSON()
+    // Pick<TransactionType, ...>: TS 工具型別，表示從 TransactionType 中「只選取」這三個欄位，其他的屬性都會被排除
+  })) as unknown as Pick<TransactionType, 'amount' | 'date' | 'type'>[];
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  // Generate generic buckets
+  let buckets: {
+    type: string;
+    date: string;
+    income: number;
+    expense: number;
+  }[] = [];
+
+  if (groupBy === PeriodType.DAY) {
+    const days = eachDayOfInterval({ start, end });
+    buckets = days.map((d) => ({
+      type: PeriodType.DAY,
+      date: format(d, 'yyyy-MM-dd'),
+      income: 0,
+      expense: 0,
+    }));
+  } else if (groupBy === PeriodType.WEEK) {
+    // ISO Week
+    const weeks = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
+    buckets = weeks.map((d) => {
+      const year = getYear(d);
+      const week = getISOWeek(d);
+      return {
+        type: PeriodType.WEEK,
+        date: `${year}-W${String(week).padStart(2, '0')}`, // 沒有兩位數就自動補 0
+        income: 0,
+        expense: 0,
+      };
+    });
+  } else if (groupBy === PeriodType.MONTH) {
+    const months = eachMonthOfInterval({ start, end });
+    buckets = months.map((d) => ({
+      type: PeriodType.MONTH,
+      date: format(d, 'yyyy-MM'),
+      income: 0,
+      expense: 0,
+    }));
+  } else if (groupBy === PeriodType.YEAR) {
+    const years = eachYearOfInterval({ start, end });
+    buckets = years.map((d) => ({
+      type: PeriodType.YEAR,
+      date: format(d, 'yyyy'),
+      income: 0,
+      expense: 0,
+    }));
+  }
+
+  // Calculate summary
+  const summary = {
+    income: 0,
+    expense: 0,
+    balance: 0,
+  };
+
+  transactions.forEach((t) => {
+    const date = new Date(t.date);
+    let key = '';
+
+    if (groupBy === PeriodType.DAY) {
+      key = format(date, 'yyyy-MM-dd');
+    } else if (groupBy === PeriodType.WEEK) {
+      const year = getYear(date);
+      const week = getISOWeek(date);
+      key = `${year}-W${String(week).padStart(2, '0')}`;
+    } else if (groupBy === PeriodType.MONTH) {
+      key = format(date, 'yyyy-MM');
+    } else if (groupBy === PeriodType.YEAR) {
+      key = format(date, 'yyyy');
+    }
+
+    const bucket = buckets.find((b) => b.date === key);
+    if (bucket) {
+      if (t.type === MainType.INCOME) {
+        const val = Number(t.amount);
+        bucket.income += val;
+        summary.income += val;
+      } else if (t.type === MainType.EXPENSE) {
+        const val = Number(t.amount);
+        bucket.expense += val;
+        summary.expense += val;
+      }
+    }
   });
 
-  if (!transactions) return [];
+  summary.balance = summary.income - summary.expense;
 
-  const transactionJson = transactions.map((transaction) =>
-    transaction.toJSON()
-  );
-
-  return transactionJson;
+  return {
+    trends: buckets,
+    summary,
+  };
 };
 
 const getTransactionById = async (id: string, userId: string) => {

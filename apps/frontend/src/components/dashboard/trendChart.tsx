@@ -1,19 +1,72 @@
 'use client';
 
+import { useMemo, useState, useEffect } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTheme } from 'next-themes';
+import { formatChartLabel } from '@/lib/utils';
 
-export function TrendChart() {
-  // 空資料狀態
-  const hasData = false;
+export function TrendChart({
+  data,
+}: {
+  data: { type: string; date: string; income: number; expense: number }[];
+}) {
+  const { theme } = useTheme();
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('zh-TW', {
+      style: 'currency',
+      currency: 'TWD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const hasData = useMemo(() => {
+    return data.some((d) => Number(d.income) > 0 || Number(d.expense) > 0);
+  }, [data]);
+
+  const chartData = useMemo(() => {
+    const now = new Date();
+    const currentKey = `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, '0')}`;
+
+    return data.map((d) => {
+      let income = d.income;
+      let expense = d.expense;
+
+      if (d.type === 'month' && d.date > currentKey) {
+        income = null as any;
+        expense = null as any;
+      }
+
+      return { ...d, income, expense };
+    });
+  }, [data]);
 
   const option = {
     tooltip: {
       trigger: 'axis',
+      formatter: (params: any[]) => {
+        const dateStr = params[0].name;
+        const type = data[0]?.type || 'month';
+        const label = formatChartLabel(dateStr, type);
+
+        let result = `${label}<br/>`;
+        params.forEach((param) => {
+          const value = param.value !== null ? param.value : '-';
+          result += `${param.marker} ${param.seriesName}: ${formatCurrency(value)}<br/>`;
+        });
+        return result;
+      },
     },
     legend: {
       data: ['收入', '支出'],
       bottom: 0,
+      textStyle: {
+        color: theme === 'dark' ? '#ffffff' : '#374151',
+      },
     },
     grid: {
       left: '3%',
@@ -24,10 +77,17 @@ export function TrendChart() {
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: [],
+      data: chartData.map((d) => d.date),
       axisLine: {
         lineStyle: {
-          color: '#888',
+          color: theme === 'dark' ? '#e5e7eb' : '#888',
+        },
+      },
+      axisLabel: {
+        color: theme === 'dark' ? '#ffffff' : '#6b7280',
+        formatter: (value: string) => {
+          const type = data[0]?.type || 'month';
+          return formatChartLabel(value, type);
         },
       },
     },
@@ -38,8 +98,11 @@ export function TrendChart() {
       },
       splitLine: {
         lineStyle: {
-          color: '#eee',
+          color: theme === 'dark' ? '#374151' : '#eee',
         },
+      },
+      axisLabel: {
+        color: theme === 'dark' ? '#ffffff' : '#6b7280',
       },
     },
     series: [
@@ -47,7 +110,7 @@ export function TrendChart() {
         name: '收入',
         type: 'line',
         smooth: true,
-        data: [],
+        data: chartData.map((d) => d.income),
         itemStyle: {
           color: '#10b981', // emerald-500
         },
@@ -75,7 +138,7 @@ export function TrendChart() {
         name: '支出',
         type: 'line',
         smooth: true,
-        data: [],
+        data: chartData.map((d) => d.expense),
         itemStyle: {
           color: '#f43f5e', // rose-500
         },
@@ -107,24 +170,21 @@ export function TrendChart() {
       <CardHeader>
         <CardTitle>收支趨勢</CardTitle>
       </CardHeader>
-      <CardContent className="pl-2">
-        {!hasData ? (
-          <div
-            className="flex items-center justify-center"
-            style={{ height: '350px' }}
-          >
-            <div className="text-center">
-              <p className="text-muted-foreground">尚無足夠資料顯示趨勢圖</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                開始記帳後即可查看收支趨勢
-              </p>
-            </div>
-          </div>
-        ) : (
+      <CardContent className="pl-2 relative min-h-[350px]">
+        {hasData ? (
           <ReactECharts
             option={option}
             style={{ height: '350px', width: '100%' }}
           />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+            <h3 className="text-lg font-semibold text-muted-foreground">
+              尚無足夠資料顯示趨勢圖
+            </h3>
+            <p className="text-sm text-muted-foreground mt-2">
+              開始記帳後即可查看收支趨勢
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>

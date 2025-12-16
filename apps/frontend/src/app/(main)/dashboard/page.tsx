@@ -3,6 +3,7 @@ import { SummaryCards } from '@/components/dashboard/summaryCards';
 import { TrendChart } from '@/components/dashboard/trendChart';
 import { RecentTransactions } from '@/components/dashboard/recentTransactions';
 import NewTransactionSheet from '@/components/transactions/newTransactionSheet';
+import { PeriodType } from '@repo/shared';
 import AccountSummaryCard from '@/components/accounts/accountSummaryCard';
 import service from '@/services';
 
@@ -15,6 +16,7 @@ export default async function DashboardPage() {
     service.getTransactionsSummary({
       startDate: `${now.getFullYear()}-01-01`,
       endDate: `${now.getFullYear()}-12-31`,
+      groupBy: PeriodType.MONTH,
     }),
   ]);
 
@@ -25,10 +27,10 @@ export default async function DashboardPage() {
         <NewTransactionSheet categories={categories} accounts={accounts} />
       </div>
 
-      <SummaryCards accounts={accounts} summaryData={summary} />
+      <SummaryCards accounts={accounts} summaryData={summary.trends} />
 
       <div className="space-y-4">
-        <TrendChart />
+        <TrendChart data={summary.trends} />
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
           <div className="lg:col-span-3 h-[500px]">

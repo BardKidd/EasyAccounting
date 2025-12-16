@@ -25,6 +25,7 @@ router.post(
   validate(getTransactionsDashboardSummarySchema),
   transactionController.getTransactionsSummary
 );
+
 // 某筆詳細資料
 router.get(
   '/transaction/id/:id',
