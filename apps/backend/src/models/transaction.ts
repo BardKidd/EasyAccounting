@@ -2,11 +2,11 @@ import Sequelize, { Model } from 'sequelize';
 import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
 import { TransactionType, MainType, PaymentFrequency } from '@repo/shared';
 
-interface TransactionAttributes extends TransactionType {
+export interface TransactionAttributes extends TransactionType {
   linkId?: string;
   targetAccountId?: string;
 }
-interface TransactionInstance
+export interface TransactionInstance
   extends Model<TransactionAttributes>,
     TransactionAttributes {}
 

@@ -6,6 +6,7 @@ import {
   updateTransactionSchema,
   getTransactionsByDateSchema,
   createTransferSchema,
+  getTransactionsDashboardSummarySchema,
 } from '@repo/shared';
 import { authMiddleware } from '@/middlewares/authMiddleware';
 const router: Router = express.Router();
@@ -16,6 +17,13 @@ router.get(
   authMiddleware,
   validate(getTransactionsByDateSchema, 'query'),
   transactionController.getTransactionsByDate
+);
+
+router.post(
+  '/transaction/summary',
+  authMiddleware,
+  validate(getTransactionsDashboardSummarySchema),
+  transactionController.getTransactionsSummary
 );
 // 某筆詳細資料
 router.get(

@@ -7,6 +7,7 @@ import {
   AccountType,
   CreateTransferSchema,
   TransactionTypeWhenOperate,
+  GetTransactionsDashboardSummarySchema,
 } from '@repo/shared';
 import { simplifyTransaction } from '@/utils/common';
 import Transaction from '@/models/transaction';
@@ -62,6 +63,43 @@ const getTransactionsByDate = async (
       totalPages: Math.ceil(count / Number(limit)), // 無條件進位
     },
   };
+};
+
+const getTransactionsDashboardSummary = async (
+  params: GetTransactionsDashboardSummarySchema,
+  userId: string
+) => {
+  const { startDate, endDate } = params;
+  let dateFilter = {};
+
+  if (startDate && endDate) {
+    dateFilter = {
+      date: {
+        [Op.between]: [startDate, endDate],
+      },
+    };
+  }
+
+  const transactions = await Transaction.findAll({
+    where: {
+      ...dateFilter,
+      userId,
+      linkId: null as any,
+    },
+    order: [
+      ['date', 'DESC'],
+      ['time', 'DESC'],
+    ],
+    attributes: ['amount', 'date', 'time', 'type'],
+  });
+
+  if (!transactions) return [];
+
+  const transactionJson = transactions.map((transaction) =>
+    transaction.toJSON()
+  );
+
+  return transactionJson;
 };
 
 const getTransactionById = async (id: string, userId: string) => {
@@ -264,4 +302,5 @@ export default {
   updateIncomeExpense,
   deleteTransaction,
   createTransfer,
+  getTransactionsDashboardSummary,
 };

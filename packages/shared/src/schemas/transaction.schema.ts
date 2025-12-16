@@ -40,11 +40,19 @@ export const getTransactionsByDateSchema = z.object({
   page: z.coerce.number().optional(),
 });
 
+export const getTransactionsDashboardSummarySchema = z.object({
+  startDate: z.string(),
+  endDate: z.string(),
+});
+
 export type CreateTransactionSchema = z.infer<typeof createTransactionSchema>;
 export type CreateTransferSchema = z.infer<typeof createTransferSchema>;
 export type UpdateTransactionSchema = z.infer<typeof updateTransactionSchema>;
 export type GetTransactionsByDateSchema = z.infer<
   typeof getTransactionsByDateSchema
+>;
+export type GetTransactionsDashboardSummarySchema = z.infer<
+  typeof getTransactionsDashboardSummarySchema
 >;
 
 // 前端專用的表單 schema，因為後端的 schema 欄位略有不同

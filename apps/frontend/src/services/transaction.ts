@@ -1,4 +1,4 @@
-import { apiHandler } from '@/lib/utils';
+import { apiHandler, getErrorMessage } from '@/lib/utils';
 import {
   ResponseHelper,
   TransactionType,
@@ -6,6 +6,7 @@ import {
   TransactionResponse,
   CreateTransferSchema,
 } from '@repo/shared';
+import { toast } from 'sonner';
 
 interface GetTransactionsParams {
   startDate?: string;
@@ -51,6 +52,27 @@ export const getTransactions = async (params: GetTransactionsParams) => {
     };
   } catch (err) {
     throw err;
+  }
+};
+
+export const getTransactionsSummary = async (data: {
+  startDate: string;
+  endDate: string;
+}) => {
+  try {
+    const result = (await apiHandler(
+      '/transaction/summary',
+      'post',
+      data
+    )) as ResponseHelper<TransactionType[]>;
+
+    if (result.isSuccess) {
+      return result.data;
+    }
+    return [];
+  } catch (err) {
+    console.log(getErrorMessage(err));
+    return [];
   }
 };
 

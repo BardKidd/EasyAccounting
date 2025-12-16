@@ -7,10 +7,15 @@ import AccountSummaryCard from '@/components/accounts/accountSummaryCard';
 import service from '@/services';
 
 export default async function DashboardPage() {
-  const [categories, accounts, transactions] = await Promise.all([
+  const now = new Date();
+  const [categories, accounts, transactions, summary] = await Promise.all([
     service.getCategories(),
     service.getPersonnelAccounts(),
     service.getTransactions({ page: 1 }),
+    service.getTransactionsSummary({
+      startDate: `${now.getFullYear()}-01-01`,
+      endDate: `${now.getFullYear()}-12-31`,
+    }),
   ]);
 
   return (
@@ -20,7 +25,7 @@ export default async function DashboardPage() {
         <NewTransactionSheet categories={categories} accounts={accounts} />
       </div>
 
-      <SummaryCards />
+      <SummaryCards accounts={accounts} summaryData={summary} />
 
       <div className="space-y-4">
         <TrendChart />

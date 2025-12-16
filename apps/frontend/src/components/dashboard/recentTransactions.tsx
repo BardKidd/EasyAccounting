@@ -43,16 +43,14 @@ export function RecentTransactions({
   };
 
   const formatAmount = (amount: number) => {
-    return (
-      '$' +
-      new Intl.NumberFormat('zh-TW', {
-        style: 'decimal',
-        maximumFractionDigits: 0,
-      }).format(amount)
-    );
+    return new Intl.NumberFormat('zh-TW', {
+      style: 'currency',
+      currency: 'TWD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
-  console.log(categories);
   return (
     <Card className="col-span-3">
       <CardHeader>

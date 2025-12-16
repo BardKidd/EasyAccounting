@@ -2,7 +2,10 @@ import { Request, Response } from 'express';
 import { simplifyTryCatch, responseHelper } from '@/utils/common';
 import { StatusCodes } from 'http-status-codes';
 import transactionServices from '@/services/transactionServices';
-import { GetTransactionsByDateSchema } from '@repo/shared';
+import {
+  GetTransactionsByDateSchema,
+  GetTransactionsDashboardSummarySchema,
+} from '@repo/shared';
 
 const createTransaction = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -34,6 +37,30 @@ const getTransactionsByDate = (req: Request, res: Response) => {
       .status(StatusCodes.OK)
       .json(
         responseHelper(true, result, 'Get transactions successfully', null)
+      );
+  });
+};
+
+const getTransactionsSummary = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const { startDate, endDate } =
+      req.body as GetTransactionsDashboardSummarySchema;
+    const userId = req.user.userId;
+
+    const result = await transactionServices.getTransactionsDashboardSummary(
+      { startDate, endDate },
+      userId
+    );
+
+    return res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(
+          true,
+          result,
+          'Get transactions summary successfully',
+          null
+        )
       );
   });
 };
@@ -118,4 +145,5 @@ export default {
   updateIncomeExpense,
   deleteTransaction,
   createTransfer,
+  getTransactionsSummary,
 };

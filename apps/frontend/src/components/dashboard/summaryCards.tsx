@@ -1,55 +1,100 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AccountType, MainType, TransactionType } from '@repo/shared';
 import { Wallet, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
 
-const summaryData = [
-  {
-    title: '總資產',
-    value: '$0',
-    description: '尚無資料',
-    icon: Wallet,
-    color: 'text-slate-900 dark:text-slate-50',
-    bg: 'bg-slate-100 dark:bg-slate-800',
-  },
-  {
-    title: '本月收入',
-    value: '$0',
-    description: '尚無資料',
-    icon: TrendingUp,
-    color: 'text-emerald-600',
-    bg: 'bg-emerald-100 dark:bg-emerald-900/20',
-  },
-  {
-    title: '本月支出',
-    value: '$0',
-    description: '尚無資料',
-    icon: TrendingDown,
-    color: 'text-rose-600',
-    bg: 'bg-rose-100 dark:bg-rose-900/20',
-  },
-  /*
-  {
-    title: '預算剩餘',
-    value: '$0',
-    description: '尚無資料',
-    icon: PiggyBank,
-    color: 'text-indigo-600',
-    bg: 'bg-indigo-100 dark:bg-indigo-900/20',
-  },
-  */
-  {
-    title: '本月損益',
-    value: '$0',
-    description: '尚無資料',
-    icon: PiggyBank,
-    color: 'text-indigo-600',
-    bg: 'bg-indigo-100 dark:bg-indigo-900/20',
-  },
-];
+const summaryCardsData = (values = [0, 0, 0, 0] as number[]) => {
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('zh-TW', {
+      style: 'currency',
+      currency: 'TWD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
-export function SummaryCards() {
+  return [
+    {
+      title: '總資產',
+      value: formatCurrency(values[0]),
+      icon: Wallet,
+      color: 'text-slate-900 dark:text-slate-50',
+      bg: 'bg-slate-100 dark:bg-slate-800',
+    },
+    {
+      title: '本月收入',
+      value: formatCurrency(values[1]),
+      icon: TrendingUp,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-100 dark:bg-emerald-900/20',
+    },
+    {
+      title: '本月支出',
+      value: formatCurrency(values[2]),
+      icon: TrendingDown,
+      color: 'text-rose-600',
+      bg: 'bg-rose-100 dark:bg-rose-900/20',
+    },
+    {
+      title: '本月損益',
+      value: formatCurrency(values[3]),
+      icon: PiggyBank,
+      color: 'text-indigo-600',
+      bg: 'bg-indigo-100 dark:bg-indigo-900/20',
+    },
+  ];
+};
+
+export function SummaryCards({
+  accounts,
+  summaryData,
+}: {
+  accounts: AccountType[];
+  summaryData: TransactionType[];
+}) {
+  const calcThisMonthFinances = (data: TransactionType[]) => {
+    const now = new Date();
+    const thisMonth = now.getMonth() + 1;
+    const thisYear = now.getFullYear();
+    const incomeData: TransactionType[] = [];
+    const expenseData: TransactionType[] = [];
+    const thisMonthData = data
+      .filter((item) => item.date.startsWith(`${thisYear}-${thisMonth}`))
+      .forEach((item) => {
+        if (item.type === MainType.INCOME) {
+          incomeData.push(item);
+        } else {
+          expenseData.push(item);
+        }
+      });
+    const incomeTotal =
+      incomeData.reduce(
+        (total, item) => Number(total) + Number(item.amount),
+        0
+      ) || 0;
+    const expenseTotal =
+      expenseData.reduce(
+        (total, item) => Number(total) + Number(item.amount),
+        0
+      ) || 0;
+    const profit = incomeTotal - expenseTotal || 0;
+    return [incomeTotal, expenseTotal, profit];
+  };
+  const calcTotalAssets = (data: AccountType[]) => {
+    const totalAssets = data.reduce(
+      (total, item) => total + Number(item.balance),
+      0
+    );
+    return totalAssets;
+  };
+  const summary = summaryCardsData([
+    calcTotalAssets(accounts),
+    calcThisMonthFinances(summaryData)[0],
+    calcThisMonthFinances(summaryData)[1],
+    calcThisMonthFinances(summaryData)[2],
+  ]);
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {summaryData.map((item) => (
+      {summary.map((item) => (
         <Card key={item.title}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
@@ -59,7 +104,6 @@ export function SummaryCards() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{item.value}</div>
-            <p className="text-xs text-muted-foreground">{item.description}</p>
           </CardContent>
         </Card>
       ))}
