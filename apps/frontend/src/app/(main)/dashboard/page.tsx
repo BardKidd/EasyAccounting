@@ -1,7 +1,9 @@
 import { Container } from '@/components/ui/container';
-import { SummaryCards } from '@/components/dashboard/summaryCards';
-import { TrendChart } from '@/components/dashboard/trendChart';
-import { RecentTransactions } from '@/components/dashboard/recentTransactions';
+import {
+  TrendChart,
+  RecentTransactions,
+  SummaryCards,
+} from '@/components/dashboard';
 import NewTransactionSheet from '@/components/transactions/newTransactionSheet';
 import { PeriodType } from '@repo/shared';
 import AccountSummaryCard from '@/components/accounts/accountSummaryCard';

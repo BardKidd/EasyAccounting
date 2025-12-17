@@ -7,7 +7,7 @@ import {
 } from '@repo/shared';
 import { getIcon } from '@/lib/icon-mapping';
 
-export function RecentTransactions({
+function RecentTransactions({
   transactions,
   categories,
   accounts,
@@ -115,3 +115,5 @@ export function RecentTransactions({
     </Card>
   );
 }
+
+export default RecentTransactions;

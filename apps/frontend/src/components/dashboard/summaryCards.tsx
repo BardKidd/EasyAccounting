@@ -44,7 +44,7 @@ const summaryCardsData = (values = [0, 0, 0, 0] as number[]) => {
   ];
 };
 
-export function SummaryCards({
+function SummaryCards({
   accounts,
   summaryData,
 }: {
@@ -109,3 +109,5 @@ export function SummaryCards({
     </div>
   );
 }
+
+export default SummaryCards;

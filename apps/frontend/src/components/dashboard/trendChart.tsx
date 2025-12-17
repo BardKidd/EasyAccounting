@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTheme } from 'next-themes';
 import { formatChartLabel } from '@/lib/utils';
 
-export function TrendChart({
+function TrendChart({
   data,
 }: {
   data: { type: string; date: string; income: number; expense: number }[];
@@ -109,7 +109,7 @@ export function TrendChart({
       {
         name: '收入',
         type: 'line',
-        smooth: true,
+        smooth: true, // 平滑曲線
         data: chartData.map((d) => d.income),
         itemStyle: {
           color: '#10b981', // emerald-500
@@ -117,6 +117,7 @@ export function TrendChart({
         areaStyle: {
           color: {
             type: 'linear',
+            // 上到下漸層變化設定
             x: 0,
             y: 0,
             x2: 0,
@@ -137,7 +138,7 @@ export function TrendChart({
       {
         name: '支出',
         type: 'line',
-        smooth: true,
+        smooth: true, // 平滑曲線
         data: chartData.map((d) => d.expense),
         itemStyle: {
           color: '#f43f5e', // rose-500
@@ -145,6 +146,7 @@ export function TrendChart({
         areaStyle: {
           color: {
             type: 'linear',
+            // 上到下漸層變化設定
             x: 0,
             y: 0,
             x2: 0,
@@ -190,3 +192,5 @@ export function TrendChart({
     </Card>
   );
 }
+
+export default TrendChart;
