@@ -6,6 +6,7 @@ import {
   MainType,
 } from '@repo/shared';
 import { getIcon } from '@/lib/icon-mapping';
+import { formatCurrency } from '@/lib/utils';
 
 function RecentTransactions({
   transactions,
@@ -40,15 +41,6 @@ function RecentTransactions({
     return item.type === MainType.INCOME
       ? { color: 'text-green-600', prefix: '+' }
       : { color: 'text-red-600', prefix: '-' };
-  };
-
-  const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('zh-TW', {
-      style: 'currency',
-      currency: 'TWD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
   };
 
   return (
@@ -104,7 +96,7 @@ function RecentTransactions({
                   </div>
                   <div className={`ml-auto font-medium ${color}`}>
                     {prefix}
-                    {formatAmount(item.amount)}
+                    {formatCurrency(item.amount)}
                   </div>
                 </div>
               );

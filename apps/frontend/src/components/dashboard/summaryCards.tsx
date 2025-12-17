@@ -1,17 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AccountType } from '@repo/shared';
 import { Wallet, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 const summaryCardsData = (values = [0, 0, 0, 0] as number[]) => {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('zh-TW', {
-      style: 'currency',
-      currency: 'TWD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   return [
     {
       title: '總資產',

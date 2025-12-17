@@ -1,26 +1,19 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTheme } from 'next-themes';
-import { formatChartLabel } from '@/lib/utils';
+import { formatChartLabel, formatCurrency } from '@/lib/utils';
 
 function TrendChart({
   data,
 }: {
   data: { type: string; date: string; income: number; expense: number }[];
 }) {
-  const { theme } = useTheme();
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('zh-TW', {
-      style: 'currency',
-      currency: 'TWD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  // 如果有使用 enableSystem，而當前 theme 為 system 的話，resolvedTheme 則會協助解析實際上要使用 dark 還是 light。
+  const { theme, resolvedTheme } = useTheme();
+  const isDark = theme === 'dark' || resolvedTheme === 'dark';
 
   const hasData = useMemo(() => {
     return data.some((d) => Number(d.income) > 0 || Number(d.expense) > 0);
@@ -65,7 +58,7 @@ function TrendChart({
       data: ['收入', '支出'],
       bottom: 0,
       textStyle: {
-        color: theme === 'dark' ? '#ffffff' : '#374151',
+        color: isDark ? '#ffffff' : '#374151',
       },
     },
     grid: {
@@ -80,11 +73,11 @@ function TrendChart({
       data: chartData.map((d) => d.date),
       axisLine: {
         lineStyle: {
-          color: theme === 'dark' ? '#e5e7eb' : '#888',
+          color: isDark ? '#e5e7eb' : '#888',
         },
       },
       axisLabel: {
-        color: theme === 'dark' ? '#ffffff' : '#6b7280',
+        color: isDark ? '#ffffff' : '#6b7280',
         formatter: (value: string) => {
           const type = data[0]?.type || 'month';
           return formatChartLabel(value, type);
@@ -98,11 +91,11 @@ function TrendChart({
       },
       splitLine: {
         lineStyle: {
-          color: theme === 'dark' ? '#374151' : '#eee',
+          color: isDark ? '#374151' : '#eee',
         },
       },
       axisLabel: {
-        color: theme === 'dark' ? '#ffffff' : '#6b7280',
+        color: isDark ? '#ffffff' : '#6b7280',
       },
     },
     series: [
