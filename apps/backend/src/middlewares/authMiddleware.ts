@@ -14,18 +14,9 @@ export const authMiddleware = async (
 ) => {
   try {
     const accessToken = req.cookies.accessToken;
-    console.log(
-      `${new Date().getTimezoneOffset()}accessToken===================`,
-      accessToken
-    );
-
     let payload = accessToken ? await verifyToken(accessToken) : null;
 
     // accessToken 過期的話去換 token
-    console.log(
-      `${new Date().getTimezoneOffset()}payload===================`,
-      payload
-    );
     if (!payload) {
       const refreshToken = req.cookies.refreshToken;
 
@@ -39,7 +30,6 @@ export const authMiddleware = async (
       }
 
       const refreshPayload = await verifyToken(refreshToken);
-      console.log('refreshPayload===================', refreshPayload);
       if (!refreshPayload) {
         res
           .status(StatusCodes.UNAUTHORIZED)
@@ -54,15 +44,10 @@ export const authMiddleware = async (
 
       // 更新 accessToken
       const newAccessToken = await generateAccessToken(newPayload);
-      console.log('newAccessToken===================', newAccessToken);
       setAccessCookie(res, newAccessToken);
       req.cookies.accessToken = newAccessToken;
 
       const newAccessTokenPayload = await verifyToken(newAccessToken);
-      console.log(
-        'newAccessTokenPayload===================',
-        newAccessTokenPayload
-      );
       payload = newAccessTokenPayload;
     }
 
