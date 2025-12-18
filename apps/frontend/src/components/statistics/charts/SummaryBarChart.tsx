@@ -1,9 +1,9 @@
 'use client';
 
 import ReactECharts from 'echarts-for-react';
-import { useTheme } from 'next-themes';
 import { Card, CardContent, CardTitle, CardHeader } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
+import useDark from '@/hooks/useDark';
 
 interface SummaryData {
   income: number;
@@ -22,8 +22,7 @@ enum SummaryType {
 }
 
 export function SummaryBarChart({ data }: { data: SummaryData }) {
-  const { theme, resolvedTheme } = useTheme();
-  const isDark = theme === 'dark' || resolvedTheme === 'dark';
+  const isDark = useDark();
 
   const getColors = () => ({
     [SummaryType.INCOME]: '#10b981', // emerald-500

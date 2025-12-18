@@ -1,8 +1,8 @@
 'use client';
 
-import { SummaryBarChart } from './charts/SummaryBarChart';
-import { TopCategoriesPie } from './charts/TopCategoriesPie';
-import { TopExpensesList } from './charts/TopExpensesList';
+import { SummaryBarChart } from './charts/summaryBarChart';
+import { TopCategoriesPie } from './charts/topCategoriesPie';
+import { TopExpensesList } from './charts/topExpensesList';
 
 // MOCK DATA
 const MOCK_SUMMARY = {

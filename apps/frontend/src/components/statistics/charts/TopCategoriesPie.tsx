@@ -1,9 +1,9 @@
 'use client';
 
 import ReactECharts from 'echarts-for-react';
-import { useTheme } from 'next-themes';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
+import useDark from '@/hooks/useDark';
 
 interface CategoryData {
   name: string;
@@ -20,8 +20,7 @@ export function TopCategoriesPie({
   totalExpense,
   categories,
 }: TopCategoriesPieProps) {
-  const { theme, resolvedTheme } = useTheme();
-  const isDark = theme === 'dark' || resolvedTheme === 'dark';
+  const isDark = useDark();
 
   const getOption = (category: CategoryData) => {
     const percentage = ((category.amount / totalExpense) * 100).toFixed(1);

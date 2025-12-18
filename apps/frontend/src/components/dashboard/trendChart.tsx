@@ -3,8 +3,8 @@
 import { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useTheme } from 'next-themes';
 import { formatChartLabel, formatCurrency } from '@/lib/utils';
+import useDark from '@/hooks/useDark';
 
 function TrendChart({
   data,
@@ -12,8 +12,7 @@ function TrendChart({
   data: { type: string; date: string; income: number; expense: number }[];
 }) {
   // 如果有使用 enableSystem，而當前 theme 為 system 的話，resolvedTheme 則會協助解析實際上要使用 dark 還是 light。
-  const { theme, resolvedTheme } = useTheme();
-  const isDark = theme === 'dark' || resolvedTheme === 'dark';
+  const isDark = useDark();
 
   const hasData = useMemo(() => {
     return data.some((d) => Number(d.income) > 0 || Number(d.expense) > 0);
