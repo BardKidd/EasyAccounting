@@ -130,7 +130,7 @@ export function DonutChart({ data, totalAmount }: CategoryPieChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>類別佔比</CardTitle>
+        <CardTitle>統計佔比</CardTitle>
       </CardHeader>
       <CardContent>
         <ReactECharts option={option} style={{ height: '350px' }} />
