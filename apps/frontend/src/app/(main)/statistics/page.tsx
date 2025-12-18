@@ -2,12 +2,15 @@
 
 import { useState } from 'react';
 import { Container } from '@/components/ui/container';
-import { StatisticsHeader } from '@/components/statistics/StatisticsHeader';
-import { OverviewTab } from '@/components/statistics/OverviewTab';
+import { StatisticsHeader } from '@/components/statistics/statisticsHeader';
+
+import { OverviewTab } from '@/components/statistics/overviewTab';
+import { DetailsTab } from '@/components/statistics/detailsTab';
+import { CategoryTab } from '@/components/statistics/categoryTab';
+import { RankingTab } from '@/components/statistics/rankingTab';
+import { AccountTab } from '@/components/statistics/accountTab';
 import { PeriodType } from '@repo/shared';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
-import { Hammer } from 'lucide-react';
 
 export default function StatisticsPage() {
   const [periodType, setPeriodType] = useState<PeriodType>(PeriodType.MONTH);
@@ -46,56 +49,17 @@ export default function StatisticsPage() {
             <OverviewTab />
           </TabsContent>
           <TabsContent value="details">
-            <Card>
-              <CardContent className="pt-12 pb-12 flex flex-col items-center justify-center text-muted-foreground gap-4 min-h-[300px]">
-                <div className="p-4 rounded-full bg-muted/50">
-                  <Hammer className="w-8 h-8 opacity-60" />
-                </div>
-                <div className="text-center space-y-1">
-                  <h3 className="font-semibold text-lg">功能開發中</h3>
-                  <p className="text-sm">明細功能正在努力建設中，敬請期待...</p>
-                </div>
-              </CardContent>
-            </Card>
+            <DetailsTab />
           </TabsContent>
           <TabsContent value="category">
-            <Card>
-              <CardContent className="pt-12 pb-12 flex flex-col items-center justify-center text-muted-foreground gap-4 min-h-[300px]">
-                <div className="p-4 rounded-full bg-muted/50">
-                  <Hammer className="w-8 h-8 opacity-60" />
-                </div>
-                <div className="text-center space-y-1">
-                  <h3 className="font-semibold text-lg">功能開發中</h3>
-                  <p className="text-sm">明細功能正在努力建設中，敬請期待...</p>
-                </div>
-              </CardContent>
-            </Card>
+            <CategoryTab />
           </TabsContent>
+
           <TabsContent value="ranking">
-            <Card>
-              <CardContent className="pt-12 pb-12 flex flex-col items-center justify-center text-muted-foreground gap-4 min-h-[300px]">
-                <div className="p-4 rounded-full bg-muted/50">
-                  <Hammer className="w-8 h-8 opacity-60" />
-                </div>
-                <div className="text-center space-y-1">
-                  <h3 className="font-semibold text-lg">功能開發中</h3>
-                  <p className="text-sm">明細功能正在努力建設中，敬請期待...</p>
-                </div>
-              </CardContent>
-            </Card>
+            <RankingTab />
           </TabsContent>
           <TabsContent value="account">
-            <Card>
-              <CardContent className="pt-12 pb-12 flex flex-col items-center justify-center text-muted-foreground gap-4 min-h-[300px]">
-                <div className="p-4 rounded-full bg-muted/50">
-                  <Hammer className="w-8 h-8 opacity-60" />
-                </div>
-                <div className="text-center space-y-1">
-                  <h3 className="font-semibold text-lg">功能開發中</h3>
-                  <p className="text-sm">明細功能正在努力建設中，敬請期待...</p>
-                </div>
-              </CardContent>
-            </Card>
+            <AccountTab />
           </TabsContent>
         </Tabs>
       </div>

@@ -3,6 +3,7 @@
 import { SummaryBarChart } from './charts/summaryBarChart';
 import { TopCategoriesPie } from './charts/topCategoriesPie';
 import { TopExpensesList } from './charts/topExpensesList';
+import AnimateLayout from './common/animateLayout';
 
 // MOCK DATA
 const MOCK_SUMMARY = {
@@ -45,7 +46,7 @@ const MOCK_EXPENSES = [
 
 export function OverviewTab() {
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-5 duration-500">
+    <AnimateLayout>
       <section>
         <SummaryBarChart data={MOCK_SUMMARY} />
       </section>
@@ -61,6 +62,6 @@ export function OverviewTab() {
           <TopExpensesList items={MOCK_EXPENSES} />
         </div>
       </section>
-    </div>
+    </AnimateLayout>
   );
 }
