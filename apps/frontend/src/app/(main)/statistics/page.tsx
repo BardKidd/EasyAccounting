@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Container } from '@/components/ui/container';
 import { StatisticsHeader } from '@/components/statistics/statisticsHeader';
 
@@ -11,10 +11,38 @@ import { RankingTab } from '@/components/statistics/rankingTab';
 import { AccountTab } from '@/components/statistics/accountTab';
 import { PeriodType } from '@repo/shared';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  format,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+} from 'date-fns';
 
-export default function StatisticsPage() {
+function StatisticsPage() {
   const [periodType, setPeriodType] = useState<PeriodType>(PeriodType.MONTH);
   const [date, setDate] = useState<Date>(new Date());
+
+  const periodDate = useMemo(() => {
+    if (periodType === PeriodType.WEEK) {
+      return {
+        startDate: format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+        endDate: format(endOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd'),
+      };
+    } else if (periodType === PeriodType.MONTH) {
+      return {
+        startDate: format(startOfMonth(date), 'yyyy-MM-dd'),
+        endDate: format(endOfMonth(date), 'yyyy-MM-dd'),
+      };
+    } else {
+      return {
+        startDate: format(startOfYear(date), 'yyyy-MM-dd'),
+        endDate: format(endOfYear(date), 'yyyy-MM-dd'),
+      };
+    }
+  }, [periodType, date]);
 
   return (
     <Container title="統計報表">
@@ -46,7 +74,7 @@ export default function StatisticsPage() {
           </TabsList>
 
           <TabsContent value="overview">
-            <OverviewTab />
+            <OverviewTab periodDate={periodDate} periodType={periodType} />
           </TabsContent>
           <TabsContent value="details">
             <DetailsTab />
@@ -66,3 +94,5 @@ export default function StatisticsPage() {
     </Container>
   );
 }
+
+export default StatisticsPage;

@@ -1,18 +1,20 @@
 'use client';
 
+import { OverviewTrendType, PeriodType } from '@repo/shared';
 import { SummaryBarChart } from './charts/summaryBarChart';
 import { TopCategoriesPie } from './charts/topCategoriesPie';
 import { TopExpensesList } from './charts/topExpensesList';
 import AnimateLayout from './common/animateLayout';
+import services from '@/services';
+import { useEffect, useState } from 'react';
 
-// MOCK DATA
-const MOCK_SUMMARY = {
-  income: 85000,
-  expense: 42300,
-  transferIn: 15000,
-  transferOut: 5000,
-  balance: 52700,
-};
+interface OverviewTabProps {
+  periodDate: {
+    startDate: string;
+    endDate: string;
+  };
+  periodType: PeriodType;
+}
 
 const MOCK_CATEGORIES = [
   { name: '飲食', amount: 15600, color: '#f43f5e' }, // rose-500
@@ -44,17 +46,36 @@ const MOCK_EXPENSES = [
   },
 ];
 
-export function OverviewTab() {
+export function OverviewTab({ periodDate, periodType }: OverviewTabProps) {
+  const [overviewTrend, setOverviewTrend] = useState<OverviewTrendType>({
+    income: 0,
+    expense: 0,
+    transferIn: 0,
+    transferOut: 0,
+    balance: 0,
+  });
+  const getOverviewTrendData = async () => {
+    const overviewTrend = await services.getOverviewTrend(
+      periodDate.startDate,
+      periodDate.endDate
+    );
+
+    setOverviewTrend(overviewTrend);
+  };
+
+  useEffect(() => {
+    getOverviewTrendData();
+  }, [periodDate, periodType]);
   return (
     <AnimateLayout>
       <section>
-        <SummaryBarChart data={MOCK_SUMMARY} />
+        <SummaryBarChart data={overviewTrend} />
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <TopCategoriesPie
-            totalExpense={MOCK_SUMMARY.expense}
+            totalExpense={overviewTrend.expense}
             categories={MOCK_CATEGORIES}
           />
         </div>

@@ -17,6 +17,7 @@ import accountRoute from '@/routes/accountRoute';
 import transactionRoute from '@/routes/transactionRoute';
 import authRoute from '@/routes/authRoute';
 import cookieParser from 'cookie-parser';
+import statisticsRoute from '@/routes/statisticsRoute';
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use('/api', announcementRoute);
 app.use('/api', accountRoute);
 app.use('/api', transactionRoute);
 app.use('/api', authRoute);
+app.use('/api', statisticsRoute);
 
 // User.hasMany(Category);
 // User.hasMany(Account);

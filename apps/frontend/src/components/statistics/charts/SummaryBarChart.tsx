@@ -47,6 +47,7 @@ export function SummaryBarChart({ data }: { data: SummaryData }) {
     return keys.map((key) => {
       let rawValue = 0;
       let prefix = '';
+      let isBalanceNegative = false;
 
       switch (key) {
         case SummaryType.INCOME:
@@ -66,8 +67,9 @@ export function SummaryBarChart({ data }: { data: SummaryData }) {
           prefix = '-';
           break;
         case SummaryType.BALANCE:
-          rawValue = data.balance;
-          prefix = rawValue > 0 ? '+' : rawValue < 0 ? '-' : '';
+          isBalanceNegative = data.balance < 0;
+          rawValue = Math.abs(data.balance);
+          prefix = isBalanceNegative ? '-' : '+';
           break;
       }
 

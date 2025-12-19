@@ -23,7 +23,6 @@ import {
   startOfYear,
   endOfYear,
 } from 'date-fns';
-import { zhTW } from 'date-fns/locale';
 import {
   Popover,
   PopoverContent,
@@ -34,9 +33,13 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface StatisticsHeaderProps {
+  // 當前的統計週期類型 (週/月/年)
   periodType: PeriodType;
+  // 切換週期類型的回調函數
   onPeriodChange: (type: PeriodType) => void;
+  // 當前選中的日期 (基準日)
   date: Date;
+  // 切換日期的回調函數
   onDateChange: (date: Date) => void;
 }
 
@@ -48,9 +51,11 @@ export function StatisticsHeader({
 }: StatisticsHeaderProps) {
   const [open, setOpen] = useState(false);
 
-  // --- Navigation Handlers ---
+  // --- 導航處理函數 (上一頁) ---
   const handlePrev = () => {
     const newDate = new Date(date);
+    // 根據當前週期類型，將日期往前推
+    // SubXXX 很方便可以直接拿到需要的日期
     if (periodType === PeriodType.WEEK) {
       onDateChange(subWeeks(newDate, 1));
     } else if (periodType === PeriodType.MONTH) {
@@ -60,8 +65,10 @@ export function StatisticsHeader({
     }
   };
 
+  // --- 導航處理函數 (下一頁) ---
   const handleNext = () => {
     const newDate = new Date(date);
+    // 根據當前週期類型，將日期往後推
     if (periodType === PeriodType.WEEK) {
       onDateChange(addWeeks(newDate, 1));
     } else if (periodType === PeriodType.MONTH) {
@@ -71,7 +78,7 @@ export function StatisticsHeader({
     }
   };
 
-  // --- Label Formatters ---
+  // 獲取主要標題 (例如: "2023 第 5 週", "2023/12")
   const getMainLabel = (d: Date) => {
     if (periodType === PeriodType.WEEK) {
       return `${format(d, 'yyyy')} 第 ${format(d, 'w')} 週`;
@@ -82,6 +89,7 @@ export function StatisticsHeader({
     }
   };
 
+  // 獲取日期範圍副標題 (例如: "01/01 ~ 01/31")
   const getRangeLabel = (d: Date) => {
     if (periodType === PeriodType.WEEK) {
       const start = startOfWeek(d, { weekStartsOn: 1 });
@@ -99,36 +107,21 @@ export function StatisticsHeader({
     }
   };
 
-  // --- Dropdown List Generation ---
+  // --- 下拉選單列表生成 ---
   const generatePeriodList = () => {
     const list = [];
-    // Generate previous 12 periods + next 3 periods
-    const TOTAL_ITEMS = 24;
-    const PAST_ITEMS = 18;
+    // 預設生成過去 24 個週期和未來 5 個週期
 
-    let baseDate = new Date(); // Start from "Today" to make list relevant to current time
-    // If viewing far past, maybe re-center? For now, list relative to Today is standard history behavior.
-
-    for (let i = -3; i < PAST_ITEMS; i++) {
-      // i= -3 (Future), i= 0 (Current), i= 18 (Past)
-      // Note: standard lists often go [Current, Past 1, Past 2...]
-      // Let's generate a list from Recent (top) to Past (bottom)
-    }
-
-    // Revised strategy: List from Future -> Present -> Past
-    // Let's show [Next Month] ... [Current Month] ... [Last Year]
-
-    // We'll generate a sequence relative to TODAY
+    // 以「今天」為基準產生列表
     const now = new Date();
 
     for (let i = -5; i <= 24; i++) {
-      // i is "how many periods ago"
-      // i = -5 (5 periods in future)
-      // i = 0 (current period)
-      // i = 24 (24 periods ago)
+      // (i 代表「幾個週期前」)
+      // i = -5 (未來 5 個週期)
+      // i = 0  (當前週期)
+      // i = 24 (過去 24 個週期)
 
-      // We want the list to start from Future (top) going down to Past
-      // So we iterate i from -5 to 24
+      // 我們希列表從未來 (上) 排列到過去 (下)
 
       let itemDate: Date;
 
