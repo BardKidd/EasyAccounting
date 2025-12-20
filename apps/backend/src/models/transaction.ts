@@ -3,8 +3,8 @@ import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
 import { TransactionType, MainType, PaymentFrequency } from '@repo/shared';
 
 export interface TransactionAttributes extends TransactionType {
-  linkId?: string;
-  targetAccountId?: string;
+  linkId?: string | null;
+  targetAccountId?: string | null;
 }
 export interface TransactionInstance
   extends Model<TransactionAttributes>,

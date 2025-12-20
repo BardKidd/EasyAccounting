@@ -4,16 +4,11 @@ import ReactECharts from 'echarts-for-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import useDark from '@/hooks/useDark';
-
-interface CategoryData {
-  name: string;
-  amount: number;
-  color: string;
-}
+import { OverviewTop3CategoriesType } from '@repo/shared';
 
 interface TopCategoriesPieProps {
   totalExpense: number;
-  categories: CategoryData[];
+  categories: OverviewTop3CategoriesType[];
 }
 
 export function TopCategoriesPie({
@@ -22,7 +17,7 @@ export function TopCategoriesPie({
 }: TopCategoriesPieProps) {
   const isDark = useDark();
 
-  const getOption = (category: CategoryData) => {
+  const getOption = (category: OverviewTop3CategoriesType) => {
     const percentage = ((category.amount / totalExpense) * 100).toFixed(1);
     const rest = totalExpense - category.amount;
 
@@ -58,9 +53,9 @@ export function TopCategoriesPie({
           data: [
             {
               value: category.amount,
-              name: category.name,
+              name: category.category.name,
               itemStyle: {
-                color: category.color,
+                color: category.category.color,
               },
             },
             {
@@ -101,7 +96,7 @@ export function TopCategoriesPie({
                 />
               </div>
               <div className="text-center mt-2">
-                <div className="font-semibold text-sm">{cat.name}</div>
+                <div className="font-semibold text-sm">{cat.category.name}</div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {formatCurrency(cat.amount)}
                 </div>

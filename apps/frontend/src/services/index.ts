@@ -11,7 +11,11 @@ import {
   addTransfer,
   getTransactionsSummary,
 } from './transaction';
-import { getOverviewTrend } from './statistics';
+import {
+  getOverviewTrend,
+  getOverviewTop3Categories,
+  getOverviewTop3Expenses,
+} from './statistics';
 
 export default {
   getCategories,
@@ -24,4 +28,6 @@ export default {
   addTransfer,
   getTransactionsSummary,
   getOverviewTrend,
+  getOverviewTop3Categories,
+  getOverviewTop3Expenses,
 };

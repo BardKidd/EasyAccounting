@@ -13,4 +13,18 @@ router.post(
   statisticsController.getOverviewTrend
 );
 
+router.post(
+  '/statistics/overview/top3Categories',
+  authMiddleware,
+  validate(getOverviewSchema),
+  statisticsController.getOverviewTop3Categories
+);
+
+router.post(
+  '/statistics/overview/top3Expenses',
+  authMiddleware,
+  validate(getOverviewSchema),
+  statisticsController.getOverviewTop3Expenses
+);
+
 export default router;

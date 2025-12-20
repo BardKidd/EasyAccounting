@@ -18,6 +18,54 @@ const getOverviewTrend = (req: Request, res: Response) => {
   });
 };
 
+const getOverviewTop3Categories = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const body = req.body;
+
+    const result = await statisticsServices.getOverviewTop3Categories(
+      body,
+      userId
+    );
+
+    return res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(
+          true,
+          result,
+          'Get overview top 3 categories successfully',
+          null
+        )
+      );
+  });
+};
+
+const getOverviewTop3Expenses = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const body = req.body;
+
+    const result = await statisticsServices.getOverviewTop3Expenses(
+      body,
+      userId
+    );
+
+    return res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(
+          true,
+          result,
+          'Get overview top 3 expenses successfully',
+          null
+        )
+      );
+  });
+};
+
 export default {
   getOverviewTrend,
+  getOverviewTop3Categories,
+  getOverviewTop3Expenses,
 };

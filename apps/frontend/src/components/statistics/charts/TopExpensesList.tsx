@@ -4,23 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { ShoppingBag, Coffee, Utensils } from 'lucide-react'; // Example icons
 import { formatCurrency } from '@/lib/utils';
+import { OverviewTop3ExpensesType } from '@repo/shared';
+import { getIcon } from '@/lib/icon-mapping';
 
-// In a real app, we would dynamically map icons based on category
-const MOCK_ICONS: Record<string, any> = {
-  購物: ShoppingBag,
-  飲食: Utensils,
-  娛樂: Coffee,
-};
-
-interface ExpenseItem {
-  id: string;
-  category: string;
-  note: string;
-  date: string;
-  amount: number;
-}
-
-export function TopExpensesList({ items }: { items: ExpenseItem[] }) {
+export function TopExpensesList({
+  items,
+}: {
+  items: OverviewTop3ExpensesType[];
+}) {
   return (
     <Card className="h-full">
       <CardHeader>
@@ -29,7 +20,7 @@ export function TopExpensesList({ items }: { items: ExpenseItem[] }) {
       <CardContent>
         <div className="space-y-4">
           {items.map((item, index) => {
-            const Icon = MOCK_ICONS[item.category] || ShoppingBag;
+            const Icon = getIcon(item.category.icon);
             const rankColor =
               index === 0
                 ? 'bg-gradient-to-br from-yellow-400 to-orange-500' // Gold
@@ -55,10 +46,11 @@ export function TopExpensesList({ items }: { items: ExpenseItem[] }) {
 
                   <div className="flex flex-col">
                     <span className="font-medium text-sm group-hover:text-primary transition-colors">
-                      {item.note || item.category}
+                      {item.category.name}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {item.date} · {item.category}
+                      {item.date}
+                      {item.description && ` · ${item.description}`}
                     </span>
                   </div>
                 </div>

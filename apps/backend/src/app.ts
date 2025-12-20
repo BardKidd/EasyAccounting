@@ -42,25 +42,27 @@ app.use('/api', transactionRoute);
 app.use('/api', authRoute);
 app.use('/api', statisticsRoute);
 
-// User.hasMany(Category);
-// User.hasMany(Account);
-// User.hasMany(Transaction);
-// Category.belongsTo(User);
-// Account.belongsTo(User);
-// Transaction.belongsTo(User);
+User.hasMany(Category);
+User.hasMany(Account);
+User.hasMany(Transaction);
+Category.belongsTo(User);
+Account.belongsTo(User);
+Transaction.belongsTo(User);
 
 // 可以使用 Magic 方法，加上 include 可以自動建立 children 和 parent 屬性
 // 這裡跟資料互相關聯並沒有直接關係喔！！！
-// 取得 parentId 的關聯資料作為 children 或 parent。
-// Category.hasMany(Category, { as: 'children', foreignKey: 'parentId' });
-// Category.belongsTo(Category, { as: 'parent', foreignKey: 'parentId' });
-// Category.hasMany(Transaction);
-// Transaction.belongsTo(Category);
+// 白話文：Category A 有很多別名為 children 的 Category，而那些 Category 靠 parentId 來跟 A 連接。
+Category.hasMany(Category, { as: 'children', foreignKey: 'parentId' });
+// 白話文：Category A 有個別名為 parent 的 Category，而它靠 parentId 來跟 A 連接。
+Category.belongsTo(Category, { as: 'parent', foreignKey: 'parentId' });
+Category.hasMany(Transaction);
+Transaction.belongsTo(Category);
 
-// Account.hasMany(Transaction);
-// Transaction.belongsTo(Account);
+Account.hasMany(Transaction);
+Transaction.belongsTo(Account);
 
-// Transaction.belongsTo(Transaction, { as: 'target', foreignKey: 'linkId' });
+// 白話文：Transaction A 有個別名為 target 的 Transaction，而它靠 linkId 來跟 A 連接。
+Transaction.belongsTo(Transaction, { as: 'target', foreignKey: 'linkId' });
 
 sequelize
   .sync()
