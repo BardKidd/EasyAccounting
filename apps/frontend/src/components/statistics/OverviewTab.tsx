@@ -41,8 +41,7 @@ export function OverviewTab({ periodDate, periodType }: OverviewTabProps) {
       periodDate.startDate,
       periodDate.endDate
     );
-
-    setOverviewTrend(result);
+    return result;
   };
 
   const getOverviewTop3CategoriesData = async () => {
@@ -51,7 +50,7 @@ export function OverviewTab({ periodDate, periodType }: OverviewTabProps) {
       periodDate.endDate
     );
 
-    setOverviewTop3Categories(result);
+    return result;
   };
 
   const getOverviewTop3ExpensesData = async () => {
@@ -60,13 +59,27 @@ export function OverviewTab({ periodDate, periodType }: OverviewTabProps) {
       periodDate.endDate
     );
 
-    setOverviewTop3Expenses(result);
+    return result;
   };
 
   useEffect(() => {
-    getOverviewTrendData();
-    getOverviewTop3CategoriesData();
-    getOverviewTop3ExpensesData();
+    // 防止重複渲染
+    const fetchAllData = async () => {
+      const [
+        overviewTrendData,
+        overviewTop3CategoriesData,
+        overviewTop3ExpensesData,
+      ] = await Promise.all([
+        getOverviewTrendData(),
+        getOverviewTop3CategoriesData(),
+        getOverviewTop3ExpensesData(),
+      ]);
+
+      setOverviewTrend(overviewTrendData);
+      setOverviewTop3Categories(overviewTop3CategoriesData);
+      setOverviewTop3Expenses(overviewTop3ExpensesData);
+    };
+    fetchAllData();
   }, [periodDate, periodType]);
   return (
     <AnimateLayout>
