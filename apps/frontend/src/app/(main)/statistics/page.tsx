@@ -80,7 +80,7 @@ function StatisticsPage() {
             <DetailsTab periodDate={periodDate} periodType={periodType} />
           </TabsContent>
           <TabsContent value="category">
-            <CategoryTab />
+            <CategoryTab periodDate={periodDate} periodType={periodType} />
           </TabsContent>
 
           <TabsContent value="ranking">

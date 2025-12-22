@@ -1,137 +1,117 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DonutChart } from './charts/donutChart';
-import { CategoryList, CategoryListItem } from './lists/categoryList';
+import { CategoryList } from './lists/categoryList';
 import { StatisticsLegend } from './common/statisticsLegend';
 import { StatisticsType, STATISTICS_CONFIG } from './constants';
 import AnimateLayout from './common/animateLayout';
+import { CategoryTabDataType, MainType, PeriodType } from '@repo/shared';
+import services from '@/services';
 
-const LEGENDS = Object.values(StatisticsType).map((type) => ({
+interface CategoryTabProps {
+  periodDate: {
+    startDate: string;
+    endDate: string;
+  };
+  periodType: PeriodType;
+}
+
+type CategoryTabData = Record<
+  Exclude<StatisticsType, StatisticsType.BALANCE>,
+  CategoryTabDataType[]
+>;
+
+// 不用顯示餘額，所以跟其他 Tab 不太一樣
+const LEGENDS = [
+  StatisticsType.EXPENSE,
+  StatisticsType.INCOME,
+  StatisticsType.TRANSFER_IN,
+  StatisticsType.TRANSFER_OUT,
+].map((type) => ({
   key: type,
   label: STATISTICS_CONFIG[type].label,
   color: STATISTICS_CONFIG[type].legendColor,
 }));
 
-// --- Mock Data Generators ---
-const MOCK_CATEGORIES_EXPENSE: CategoryListItem[] = [
-  {
-    id: '1',
-    name: '飲食',
-    icon: 'Utensils',
-    color: '#f43f5e',
-    count: 12,
-    amount: 8500,
-  },
-  {
-    id: '2',
-    name: '購物',
-    icon: 'ShoppingBag',
-    color: '#3b82f6',
-    count: 5,
-    amount: 6200,
-  },
-  {
-    id: '3',
-    name: '交通',
-    icon: 'Car',
-    color: '#10b981',
-    count: 8,
-    amount: 1500,
-  },
-  {
-    id: '4',
-    name: '娛樂',
-    icon: 'Tv',
-    color: '#8b5cf6',
-    count: 3,
-    amount: 1200,
-  },
-  {
-    id: '5',
-    name: '居住',
-    icon: 'Home',
-    color: '#f59e0b',
-    count: 1,
-    amount: 15000,
-  },
-  {
-    id: '6',
-    name: '醫療',
-    icon: 'Stethoscope',
-    color: '#ef4444',
-    count: 2,
-    amount: 3000,
-  },
-  {
-    id: '7',
-    name: '教育',
-    icon: 'GraduationCap',
-    color: '#06b6d4',
-    count: 1,
-    amount: 2000,
-  },
-];
+export function CategoryTab({ periodDate, periodType }: CategoryTabProps) {
+  const [selectedType, setSelectedType] = useState<
+    Exclude<StatisticsType, StatisticsType.BALANCE>
+  >(StatisticsType.EXPENSE);
+  const [categoryTabData, setCategoryTabData] = useState<CategoryTabData>({
+    [StatisticsType.INCOME]: [],
+    [StatisticsType.EXPENSE]: [],
+    [StatisticsType.TRANSFER_IN]: [],
+    [StatisticsType.TRANSFER_OUT]: [],
+  });
 
-const MOCK_CATEGORIES_INCOME: CategoryListItem[] = [
-  {
-    id: '10',
-    name: '薪資',
-    icon: 'Banknote',
-    color: '#10b981',
-    count: 1,
-    amount: 60000,
-  },
-  {
-    id: '11',
-    name: '獎金',
-    icon: 'Trophy',
-    color: '#f59e0b',
-    count: 1,
-    amount: 5000,
-  },
-  {
-    id: '12',
-    name: '投資',
-    icon: 'TrendingUp',
-    color: '#3b82f6',
-    count: 2,
-    amount: 3000,
-  },
-];
+  const totalAmount = useMemo(() => {
+    return categoryTabData[selectedType].reduce(
+      (sum, item) => sum + item.amount,
+      0
+    );
+  }, [categoryTabData, selectedType]);
 
-export function CategoryTab() {
-  const [selectedType, setSelectedType] = useState<StatisticsType>(
-    StatisticsType.EXPENSE
-  );
+  const chartData = useMemo(() => {
+    return categoryTabData[selectedType].map((item) => ({
+      name: item.name,
+      value: item.amount,
+      color: item.color,
+    }));
+  }, [categoryTabData, selectedType]);
 
-  const currentItems =
-    selectedType === StatisticsType.INCOME
-      ? MOCK_CATEGORIES_INCOME
-      : selectedType === StatisticsType.EXPENSE
-        ? MOCK_CATEGORIES_EXPENSE
-        : [];
+  const listData = useMemo(() => {
+    return categoryTabData[selectedType];
+  }, [categoryTabData, selectedType]);
 
-  const totalAmount = currentItems.reduce((sum, item) => sum + item.amount, 0);
+  useEffect(() => {
+    const fetchAllData = async () => {
+      const [fetchedData] = await Promise.all([
+        services.getCategoryTabData(periodDate.startDate, periodDate.endDate),
+      ]);
+      const newData: CategoryTabData = {
+        [StatisticsType.INCOME]: [],
+        [StatisticsType.EXPENSE]: [],
+        [StatisticsType.TRANSFER_IN]: [],
+        [StatisticsType.TRANSFER_OUT]: [],
+      };
+      fetchedData.forEach((item: CategoryTabDataType) => {
+        if (item.isTransfer && item.type === MainType.EXPENSE) {
+          newData[StatisticsType.TRANSFER_OUT].push(item);
+        } else if (item.isTransfer && item.type === MainType.INCOME) {
+          newData[StatisticsType.TRANSFER_IN].push(item);
+        } else if (!item.isTransfer && item.type === MainType.EXPENSE) {
+          newData[StatisticsType.EXPENSE].push(item);
+        } else if (!item.isTransfer && item.type === MainType.INCOME) {
+          newData[StatisticsType.INCOME].push(item);
+        }
+      });
+      setCategoryTabData(newData);
+    };
 
-  const chartData = currentItems.map((item) => ({
-    name: item.name,
-    value: item.amount,
-    color: item.color,
-  }));
+    fetchAllData();
+  }, [periodDate, periodType]);
+
+  useEffect(() => {
+    console.log(categoryTabData);
+  }, [selectedType]);
 
   return (
     <AnimateLayout>
       <StatisticsLegend
         options={LEGENDS}
         isSelected={(key) => selectedType === key}
-        onToggle={(key) => setSelectedType(key as StatisticsType)}
+        onToggle={(key) =>
+          setSelectedType(
+            key as Exclude<StatisticsType, StatisticsType.BALANCE>
+          )
+        }
       />
 
       <DonutChart data={chartData} totalAmount={totalAmount} />
 
       <CategoryList
-        items={currentItems}
+        items={listData}
         totalAmount={totalAmount}
         type={selectedType}
       />

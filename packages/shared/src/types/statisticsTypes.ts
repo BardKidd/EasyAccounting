@@ -68,3 +68,15 @@ export interface DetailsTransaction {
   accountName: string;
   targetAccountName?: string;
 }
+
+// 類別 API 回覆欄位
+export interface CategoryTabDataType {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  count: number;
+  amount: number;
+  type: MainType;
+  isTransfer: boolean;
+}

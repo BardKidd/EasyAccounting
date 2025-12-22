@@ -94,7 +94,7 @@ export function DonutChart({ data, totalAmount }: CategoryPieChartProps) {
           type: 'pie',
           radius: ['45%', '70%'],
           avoidLabelOverlap: true,
-          minAngle: 15, // 最小角度，避免過小的扇形
+          minAngle: 5, // 最小角度，避免過小的扇形
           data: innerSeriesData,
           itemStyle: {
             borderColor: isDark ? '#1f2937' : '#fff',
@@ -106,7 +106,7 @@ export function DonutChart({ data, totalAmount }: CategoryPieChartProps) {
           type: 'pie',
           radius: ['45%', '70%'],
           avoidLabelOverlap: true,
-          minAngle: 15,
+          minAngle: 5,
           data: outerSeriesData,
           z: 0,
         },
@@ -133,7 +133,11 @@ export function DonutChart({ data, totalAmount }: CategoryPieChartProps) {
         <CardTitle>統計佔比</CardTitle>
       </CardHeader>
       <CardContent>
-        <ReactECharts option={option} style={{ height: '350px' }} />
+        <ReactECharts
+          key={Math.random()}
+          option={option}
+          style={{ height: '350px' }}
+        />
       </CardContent>
     </Card>
   );

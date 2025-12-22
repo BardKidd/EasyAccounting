@@ -1,7 +1,12 @@
 import Transaction from '@/models/transaction';
 import Category from '@/models/category';
 import Account from '@/models/account';
-import { MainType, OverviewTrendType, PeriodType } from '@repo/shared';
+import {
+  CategoryTabDataType,
+  MainType,
+  OverviewTrendType,
+  PeriodType,
+} from '@repo/shared';
 import { Op, QueryTypes } from 'sequelize';
 import sequelize from '@/utils/postgres';
 
@@ -298,9 +303,92 @@ const getDetailTabData = async (body: any, userId: string) => {
   }));
 };
 
+const getCategoryTabData = async (
+  body: any,
+  userId: string
+): Promise<CategoryTabDataType[]> => {
+  const { startDate, endDate } = body;
+
+  const result = await sequelize.query(
+    `
+    SELECT
+      CASE
+        WHEN "mc"."parentId" IS NOT NULL THEN "mc"."id"
+        ELSE "sc"."id"
+      END AS "id",
+      CASE
+        WHEN "mc"."parentId" IS NOT NULL THEN "mc"."name"
+        ELSE "sc"."name"
+      END AS "name",
+      CASE
+        WHEN "mc"."parentId" IS NOT NULL THEN "mc"."icon"
+        ELSE "sc"."icon"
+      END AS "icon",
+      CASE
+        WHEN "mc"."parentId" IS NOT NULL THEN "mc"."color"
+        ELSE "sc"."color"
+      END AS "color",
+      CASE 
+        WHEN "t"."targetAccountId" IS NOT NULL THEN true 
+        ELSE false 
+      END AS "isTransfer",
+      "t"."type",
+      SUM("t"."amount")::integer AS "amount",
+      COUNT("t"."id")::integer AS "count"
+    FROM "accounting"."transaction" AS "t"
+    LEFT JOIN "accounting"."category" AS "sc" ON "t"."categoryId" = "sc"."id"
+    LEFT JOIN "accounting"."category" AS "mc" ON "sc"."parentId" = "mc"."id"
+    WHERE "t"."userId" = :userId
+    AND "t"."date" BETWEEN :startDate AND :endDate
+    GROUP BY
+      CASE
+        WHEN "mc"."parentId" IS NOT NULL THEN "mc"."id"
+        ELSE "sc"."id"
+      END,
+      CASE
+        WHEN "mc"."parentId" IS NOT NULL THEN "mc"."name"
+        ELSE "sc"."name"
+      END,
+      CASE
+        WHEN "mc"."parentId" IS NOT NULL THEN "mc"."icon"
+        ELSE "sc"."icon"
+      END,
+      CASE
+        WHEN "mc"."parentId" IS NOT NULL THEN "mc"."color"
+        ELSE "sc"."color"
+      END,
+      CASE 
+        WHEN "t"."targetAccountId" IS NOT NULL THEN true 
+        ELSE false 
+      END,
+      "t"."type"
+  `,
+    {
+      replacements: {
+        userId,
+        startDate,
+        endDate,
+      },
+      type: QueryTypes.SELECT,
+    }
+  );
+
+  return result.map((item: any) => ({
+    id: item.id,
+    name: item.name,
+    icon: item.icon,
+    color: item.color,
+    amount: item.amount,
+    count: item.count,
+    isTransfer: item.isTransfer,
+    type: item.type,
+  }));
+};
+
 export default {
   getOverviewTrend,
   getOverviewTop3Expenses,
   getOverviewTop3Categories,
   getDetailTabData,
+  getCategoryTabData,
 };

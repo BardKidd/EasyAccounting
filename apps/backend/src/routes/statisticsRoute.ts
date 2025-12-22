@@ -34,4 +34,11 @@ router.post(
   statisticsController.getDetailTabData
 );
 
+router.post(
+  '/statistics/category',
+  authMiddleware,
+  validate(getOverviewSchema),
+  statisticsController.getCategoryTabData
+);
+
 export default router;

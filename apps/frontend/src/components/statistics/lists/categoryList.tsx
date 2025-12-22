@@ -4,18 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { getIcon } from '@/lib/icon-mapping';
 import { StatisticsType, STATISTICS_CONFIG } from '../constants';
-
-export interface CategoryListItem {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  count: number;
-  amount: number;
-}
+import { CategoryTabDataType } from '@repo/shared';
+import { useEffect } from 'react';
 
 interface CategoryListProps {
-  items: CategoryListItem[];
+  items: CategoryTabDataType[];
   totalAmount: number;
   type: string;
 }
@@ -29,6 +22,10 @@ export function CategoryList({ items, totalAmount, type }: CategoryListProps) {
   };
 
   const amountColor = getColor(type);
+
+  useEffect(() => {
+    console.log(items);
+  }, [items]);
 
   return (
     <Card>
@@ -44,7 +41,7 @@ export function CategoryList({ items, totalAmount, type }: CategoryListProps) {
 
               return (
                 <div
-                  key={item.id}
+                  key={`${item.id}-${item.name}-${Math.random()}`}
                   className="flex items-center py-4 px-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
                 >
                   {/* Icon */}

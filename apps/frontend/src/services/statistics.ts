@@ -6,6 +6,7 @@ import {
   PeriodType,
   ResponseHelper,
   DetailTabDataType,
+  CategoryTabDataType,
 } from '@repo/shared';
 import { toast } from 'sonner';
 
@@ -106,6 +107,25 @@ export const getDetailTabData = async (
         ...item,
         amount: Number(item.amount),
       }));
+    }
+    return [];
+  } catch (error) {
+    toast.error(getErrorMessage(error));
+    return [];
+  }
+};
+
+export const getCategoryTabData = async (
+  startDate: string,
+  endDate: string
+): Promise<CategoryTabDataType[]> => {
+  try {
+    const result = (await apiHandler(`/statistics/category`, 'post', {
+      startDate,
+      endDate,
+    })) as ResponseHelper<CategoryTabDataType[]>;
+    if (result.isSuccess) {
+      return result.data;
     }
     return [];
   } catch (error) {

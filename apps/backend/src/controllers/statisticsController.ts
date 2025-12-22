@@ -79,9 +79,25 @@ const getDetailTabData = (req: Request, res: Response) => {
   });
 };
 
+const getCategoryTabData = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const body = req.body;
+
+    const result = await statisticsServices.getCategoryTabData(body, userId);
+
+    return res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(true, result, 'Get category tab data successfully', null)
+      );
+  });
+};
+
 export default {
   getOverviewTrend,
   getOverviewTop3Categories,
   getOverviewTop3Expenses,
   getDetailTabData,
+  getCategoryTabData,
 };
