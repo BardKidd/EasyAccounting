@@ -15,6 +15,7 @@ import {
   getOverviewTrend,
   getOverviewTop3Categories,
   getOverviewTop3Expenses,
+  getDetailTabData,
 } from './statistics';
 
 export default {
@@ -30,4 +31,5 @@ export default {
   getOverviewTrend,
   getOverviewTop3Categories,
   getOverviewTop3Expenses,
+  getDetailTabData,
 };

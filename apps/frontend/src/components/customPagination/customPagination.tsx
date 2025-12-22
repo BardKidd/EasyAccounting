@@ -28,7 +28,6 @@ const CustomPagination = ({ pagination }: { pagination: PaginationType }) => {
     // 直接 console 會看到 size 之類奇怪的內容，需要使用 .toString() 來轉換
     const params = new URLSearchParams(searchParams); // 不是一般的物件，需要使用 .toString() 來轉換
 
-    console.log('params', params.toString());
     params.set('page', pageNumber.toString());
     return `?${params.toString()}`;
   };

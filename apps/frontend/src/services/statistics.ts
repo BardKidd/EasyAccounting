@@ -5,6 +5,7 @@ import {
   OverviewTop3ExpensesType,
   PeriodType,
   ResponseHelper,
+  DetailTabDataType,
 } from '@repo/shared';
 import { toast } from 'sonner';
 
@@ -80,6 +81,28 @@ export const getOverviewTop3Expenses = async (
     )) as ResponseHelper<OverviewTop3ExpensesType[]>;
     if (result.isSuccess) {
       return result.data.map((item) => ({
+        ...item,
+        amount: Number(item.amount),
+      }));
+    }
+    return [];
+  } catch (error) {
+    toast.error(getErrorMessage(error));
+    return [];
+  }
+};
+
+export const getDetailTabData = async (
+  startDate: string,
+  endDate: string
+): Promise<DetailTabDataType[]> => {
+  try {
+    const result = (await apiHandler(`/statistics/detail`, 'post', {
+      startDate,
+      endDate,
+    })) as ResponseHelper<DetailTabDataType[]>;
+    if (result.isSuccess) {
+      return result.data.map((item: DetailTabDataType) => ({
         ...item,
         amount: Number(item.amount),
       }));

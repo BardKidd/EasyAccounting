@@ -61,8 +61,13 @@ Transaction.belongsTo(Category);
 Account.hasMany(Transaction);
 Transaction.belongsTo(Account);
 
-// 白話文：Transaction A 有個別名為 target 的 Transaction，而它靠 linkId 來跟 A 連接。
+// 白話文：Transaction A 有個別名為 target 的 Transaction，而 A 靠 linkId 與 Transaction B 連接。
 Transaction.belongsTo(Transaction, { as: 'target', foreignKey: 'linkId' });
+// 白話文：Transaction A 有個別名為 targetAccount 的 Account，而 A 靠 targetAccountId 與 Account 連接。
+Transaction.belongsTo(Account, {
+  as: 'targetAccount',
+  foreignKey: 'targetAccountId',
+});
 
 sequelize
   .sync()

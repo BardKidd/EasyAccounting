@@ -1,6 +1,7 @@
 'use client';
 
 import ReactECharts from 'echarts-for-react';
+import { graphic } from 'echarts';
 import useDark from '@/hooks/useDark';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
@@ -41,6 +42,19 @@ export function TrendLineChart({
           },
           emphasis: {
             focus: 'series', // 使點擊某條線時，只高亮該條線
+          },
+          areaStyle: {
+            color: new graphic.LinearGradient(0, 0, 0, 1, [
+              {
+                offset: 0,
+                color: config?.color || '#999', // 0% 處的顏色
+              },
+              {
+                offset: 1,
+                color: 'rgba(255, 255, 255, 0)', // 100% 處的顏色
+              },
+            ]),
+            opacity: 0.4,
           },
         };
       });
@@ -85,6 +99,7 @@ export function TrendLineChart({
         },
         axisLabel: {
           color: isDark ? '#ffffff' : '#6b7280',
+          interval: 'auto', // 自動判斷 X 軸標籤的間隔
         },
       },
       yAxis: {

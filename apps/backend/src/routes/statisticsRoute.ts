@@ -27,4 +27,11 @@ router.post(
   statisticsController.getOverviewTop3Expenses
 );
 
+router.post(
+  '/statistics/detail',
+  authMiddleware,
+  validate(getOverviewSchema),
+  statisticsController.getDetailTabData
+);
+
 export default router;

@@ -77,7 +77,7 @@ function StatisticsPage() {
             <OverviewTab periodDate={periodDate} periodType={periodType} />
           </TabsContent>
           <TabsContent value="details">
-            <DetailsTab />
+            <DetailsTab periodDate={periodDate} periodType={periodType} />
           </TabsContent>
           <TabsContent value="category">
             <CategoryTab />

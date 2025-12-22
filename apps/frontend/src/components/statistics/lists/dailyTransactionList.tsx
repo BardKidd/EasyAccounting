@@ -3,21 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { getIcon } from '@/lib/icon-mapping';
-import { MainType } from '@repo/shared';
-
-export interface DetailsTransaction {
-  id: string;
-  date: string;
-  amount: number;
-  type: MainType;
-  categoryId: string;
-  categoryName: string;
-  categoryIcon: string;
-  categoryColor: string;
-  description: string;
-  accountName: string;
-  targetAccountName?: string;
-}
+import { DetailsTransaction, MainType } from '@repo/shared';
 
 interface DailyTransactionListProps {
   transactions: DetailsTransaction[];

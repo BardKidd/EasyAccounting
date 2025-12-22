@@ -1,5 +1,6 @@
 import Transaction from '@/models/transaction';
 import Category from '@/models/category';
+import Account from '@/models/account';
 import { MainType, OverviewTrendType, PeriodType } from '@repo/shared';
 import { Op, QueryTypes } from 'sequelize';
 import sequelize from '@/utils/postgres';
@@ -235,8 +236,71 @@ const getOverviewTop3Expenses = async (body: any, userId: string) => {
   return transactions;
 };
 
+const getDetailTabData = async (body: any, userId: string) => {
+  const { startDate, endDate } = body;
+
+  const detailData = await Transaction.findAll({
+    where: {
+      userId,
+      date: {
+        [Op.between]: [startDate, endDate],
+      },
+    },
+    raw: true,
+    nest: true,
+    attributes: [
+      'id',
+      'amount',
+      'date',
+      'time',
+      'description',
+      'type',
+      'targetAccountId',
+    ],
+    include: [
+      {
+        // 需要向上對比
+        model: Category,
+        attributes: ['name', 'icon', 'id', 'color'],
+        include: [
+          {
+            model: Category,
+            as: 'parent',
+            attributes: ['name', 'icon', 'id', 'color'],
+          },
+        ],
+      },
+      {
+        model: Account,
+        attributes: ['name'],
+      },
+      {
+        model: Account,
+        as: 'targetAccount',
+        attributes: ['name'],
+      },
+    ],
+    order: [
+      [sequelize.col('date'), 'DESC'],
+      [sequelize.col('time'), 'DESC'],
+    ],
+  });
+
+  return detailData.map((item: any) => ({
+    ...item,
+    category: {
+      id: item.category.id,
+      name: item.category.name,
+      color: item.category.color || item.category.parent.color,
+      icon: item.category.icon || item.category.parent.icon,
+    },
+    targetAccountName: item.targetAccount?.name,
+  }));
+};
+
 export default {
   getOverviewTrend,
   getOverviewTop3Expenses,
   getOverviewTop3Categories,
+  getDetailTabData,
 };

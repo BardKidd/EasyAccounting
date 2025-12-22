@@ -1,104 +1,102 @@
 'use client';
 
-import { useState } from 'react';
-import { MainType } from '@repo/shared';
-import { TrendLineChart } from './charts/trendLineChart';
+import { useEffect, useState } from 'react';
 import {
-  DailyTransactionList,
   DetailsTransaction,
-} from './lists/dailyTransactionList';
+  DetailTabDataType,
+  MainType,
+  PeriodType,
+} from '@repo/shared';
+import { TrendLineChart } from './charts/trendLineChart';
+import { DailyTransactionList } from './lists/dailyTransactionList';
 import { StatisticsLegend } from './common/statisticsLegend';
 import { StatisticsType, STATISTICS_CONFIG } from './constants';
 import AnimateLayout from './common/animateLayout';
+import services from '@/services';
+import { eachDayOfInterval, format } from 'date-fns';
 
-const LEGENDS = Object.values(StatisticsType).map((type) => ({
+interface DetailsTabProps {
+  periodDate: {
+    startDate: string;
+    endDate: string;
+  };
+  periodType: PeriodType;
+}
+
+type GroupedSeriesType = {
+  [StatisticsType.INCOME]: DetailTabDataType[];
+  [StatisticsType.EXPENSE]: DetailTabDataType[];
+  [StatisticsType.TRANSFER_IN]: DetailTabDataType[];
+  [StatisticsType.TRANSFER_OUT]: DetailTabDataType[];
+};
+
+type DetailTabSeriesDataType = {
+  [StatisticsType.INCOME]: number[];
+  [StatisticsType.EXPENSE]: number[];
+  [StatisticsType.TRANSFER_IN]: number[];
+  [StatisticsType.TRANSFER_OUT]: number[];
+};
+
+const initialGroupedSeriesData: GroupedSeriesType = {
+  [StatisticsType.INCOME]: [],
+  [StatisticsType.EXPENSE]: [],
+  [StatisticsType.TRANSFER_IN]: [],
+  [StatisticsType.TRANSFER_OUT]: [],
+};
+
+const initialDetailTabSeriesData: DetailTabSeriesDataType = {
+  [StatisticsType.INCOME]: [],
+  [StatisticsType.EXPENSE]: [],
+  [StatisticsType.TRANSFER_IN]: [],
+  [StatisticsType.TRANSFER_OUT]: [],
+};
+
+// 不用顯示餘額，所以跟其他 Tab 不太一樣
+const LEGENDS = [
+  StatisticsType.EXPENSE,
+  StatisticsType.INCOME,
+  StatisticsType.TRANSFER_IN,
+  StatisticsType.TRANSFER_OUT,
+].map((type) => ({
   key: type,
   label: STATISTICS_CONFIG[type].label,
   color: STATISTICS_CONFIG[type].legendColor,
 }));
 
-const DATES = Array.from(
-  { length: 15 },
-  (_, i) => `2025-12-${String(i + 1).padStart(2, '0')}`
-);
+const xAxisData = (
+  periodType: PeriodType,
+  startDate: string,
+  endDate: string
+) => {
+  const date = new Date(startDate);
+  const currentMonth = date.getMonth() + 1;
+  const currentYear = date.getFullYear();
+  switch (periodType) {
+    case PeriodType.MONTH:
+      // 取得這個月有幾天。currentMonth + 1 後在下面這個算法裡面是下個月，而 0 代表前一天的意思
+      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
 
-const generateRandomSeries = (min: number, max: number) => {
-  return DATES.map(() => Math.floor(Math.random() * (max - min) + min));
+      return Array.from(
+        { length: daysInMonth },
+        (_, i) =>
+          `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`
+      );
+    case PeriodType.YEAR:
+      return Array.from(
+        { length: 12 },
+        (_, i) => `${currentYear}-${String(i + 1).padStart(2, '0')}`
+      );
+    case PeriodType.WEEK:
+      return eachDayOfInterval({
+        start: new Date(startDate),
+        end: new Date(endDate),
+      }).map((date) => format(date, 'yyyy-MM-dd'));
+    default:
+      return [];
+  }
 };
 
-const MOCK_SERIES = {
-  [StatisticsType.INCOME]: generateRandomSeries(0, 5000),
-  [StatisticsType.EXPENSE]: generateRandomSeries(500, 3000),
-  [StatisticsType.TRANSFER_IN]: generateRandomSeries(0, 2000),
-  [StatisticsType.TRANSFER_OUT]: generateRandomSeries(0, 2000),
-  [StatisticsType.BALANCE]: generateRandomSeries(10000, 50000),
-};
-
-const MOCK_TRANSACTIONS: DetailsTransaction[] = [
-  {
-    id: '1',
-    date: '2025-12-15',
-    amount: 1290,
-    type: MainType.EXPENSE,
-    categoryId: 'cat1',
-    categoryName: '購物',
-    categoryIcon: 'ShoppingBag',
-    categoryColor: '#3b82f6',
-    description: 'iPhone 15 Case',
-    accountName: '玉山數存',
-  },
-  {
-    id: '2',
-    date: '2025-12-14',
-    amount: 3500,
-    type: MainType.EXPENSE,
-    categoryId: 'cat2',
-    categoryName: '飲食',
-    categoryIcon: 'Utensils',
-    categoryColor: '#f43f5e',
-    description: '王品牛排聚餐',
-    accountName: '現金',
-  },
-  {
-    id: '3',
-    date: '2025-12-12',
-    amount: 50000,
-    type: MainType.INCOME,
-    categoryId: 'cat3',
-    categoryName: '薪資',
-    categoryIcon: 'Banknote',
-    categoryColor: '#10b981',
-    description: '12月薪資',
-    accountName: '國泰薪轉',
-  },
-  {
-    id: '4',
-    date: '2025-12-10',
-    amount: 5000,
-    type: MainType.EXPENSE, // Transfer is distinguished by targetAccountName
-    categoryId: 'cat4',
-    categoryName: '轉帳',
-    categoryIcon: 'ArrowRightLeft',
-    categoryColor: '#f59e0b',
-    description: '生活費轉帳',
-    accountName: '國泰薪轉',
-    targetAccountName: '玉山數存',
-  },
-  {
-    id: '5',
-    date: '2025-12-08',
-    amount: 300,
-    type: MainType.EXPENSE,
-    categoryId: 'cat5',
-    categoryName: '交通',
-    categoryIcon: 'Car',
-    categoryColor: '#8b5cf6',
-    description: 'Uber',
-    accountName: '信用卡',
-  },
-];
-
-export function DetailsTab() {
+export function DetailsTab({ periodDate, periodType }: DetailsTabProps) {
   const [selectedLegends, setSelectedLegends] = useState<
     Record<string, boolean>
   >({
@@ -108,6 +106,15 @@ export function DetailsTab() {
     [StatisticsType.TRANSFER_OUT]: false,
     [StatisticsType.BALANCE]: false,
   });
+  const [detailTabSeriesData, setDetailTabSeriesData] =
+    useState<DetailTabSeriesDataType>(
+      JSON.parse(JSON.stringify(initialDetailTabSeriesData))
+    );
+
+  const [detailTabTransactionList, setDetailTabTransactionList] = useState<
+    DetailsTransaction[]
+  >([]);
+  const [xAxisData, setXAxisData] = useState<string[]>([]);
 
   const toggleLegend = (key: string) => {
     setSelectedLegends((prev) => {
@@ -118,6 +125,90 @@ export function DetailsTab() {
     });
   };
 
+  useEffect(() => {
+    const fetchDetailsTabData = async () => {
+      const [detailTabData] = await Promise.all([
+        services.getDetailTabData(periodDate.startDate, periodDate.endDate),
+      ]);
+      // 初始化，確保不會包含上一次的 State
+      const newSeriesGroup: GroupedSeriesType = JSON.parse(
+        JSON.stringify(initialGroupedSeriesData)
+      );
+      const newSeriesData: DetailTabSeriesDataType = JSON.parse(
+        JSON.stringify(initialDetailTabSeriesData)
+      );
+      const newTransactionList: DetailsTransaction[] = [];
+      const newXAxisData: Set<string> = new Set();
+      // =====
+
+      if (detailTabData.length > 0) {
+        // 後端給的是 DESC (最近的日期在前面)，我們需要 ASC (最近的日期在後面)
+        // 使用 reverse() 把它反轉過來，這樣順序就是對的了
+        // 且因為後端已經排序過，所以我們不需要再用 getTime() sort
+        const reversedData = [...detailTabData].reverse();
+
+        reversedData.forEach((item: DetailTabDataType) => {
+          newXAxisData.add(item.date);
+          // 先分組取好各種類別需要有的物件資料
+          if (item.targetAccountId && item.type === MainType.EXPENSE) {
+            newSeriesGroup[StatisticsType.TRANSFER_OUT].push(item);
+          } else if (item.targetAccountId && item.type === MainType.INCOME) {
+            newSeriesGroup[StatisticsType.TRANSFER_IN].push(item);
+          } else if (item.type === MainType.EXPENSE) {
+            newSeriesGroup[StatisticsType.EXPENSE].push(item);
+          } else if (item.type === MainType.INCOME) {
+            newSeriesGroup[StatisticsType.INCOME].push(item);
+          }
+        });
+
+        const finalXAxisData = [...newXAxisData];
+        // 分好組後需要取出所有資料的金額，並把同日期的金額加總
+        Object.keys(newSeriesGroup).forEach((key) => {
+          const typeKey = key as keyof GroupedSeriesType;
+          const items = newSeriesGroup[typeKey];
+          const dateAmountMap: Record<string, number> = {};
+
+          // 把相同天數的金額加總 {'2025-12-15': 5824, ...}
+          items.forEach((item) => {
+            dateAmountMap[item.date] =
+              (dateAmountMap[item.date] || 0) + item.amount;
+          });
+
+          // 找出對應的日期金額丟到 series 裡。newSeriesData.EXPENSE = [5824, ...]
+          newSeriesData[typeKey] = finalXAxisData.map(
+            (date) => dateAmountMap[date] || 0
+          );
+        });
+
+        setDetailTabSeriesData(newSeriesData);
+        setXAxisData(finalXAxisData);
+
+        detailTabData.forEach((item) => {
+          newTransactionList.push({
+            id: item.id,
+            date: item.date,
+            amount: item.amount,
+            type: item.type,
+            categoryId: item.category.id,
+            categoryName: item.category.name,
+            categoryIcon: item.category.icon,
+            categoryColor: item.category.color || '#999',
+            description: item.description,
+            accountName: item.account.name,
+            targetAccountName: item.targetAccount.name,
+          });
+        });
+        setDetailTabTransactionList(newTransactionList);
+      } else {
+        setDetailTabTransactionList([]);
+        setDetailTabSeriesData(
+          JSON.parse(JSON.stringify(initialDetailTabSeriesData))
+        );
+      }
+    };
+    fetchDetailsTabData();
+  }, [periodDate, periodType]);
+
   return (
     <AnimateLayout>
       <StatisticsLegend
@@ -127,12 +218,12 @@ export function DetailsTab() {
       />
 
       <TrendLineChart
-        dates={DATES}
-        seriesData={MOCK_SERIES}
+        dates={xAxisData}
+        seriesData={detailTabSeriesData}
         selectedSeries={selectedLegends}
       />
 
-      <DailyTransactionList transactions={MOCK_TRANSACTIONS} />
+      <DailyTransactionList transactions={detailTabTransactionList} />
     </AnimateLayout>
   );
 }
