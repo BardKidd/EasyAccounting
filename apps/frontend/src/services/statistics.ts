@@ -7,6 +7,7 @@ import {
   ResponseHelper,
   DetailTabDataType,
   CategoryTabDataType,
+  RankingTabDataType,
 } from '@repo/shared';
 import { toast } from 'sonner';
 
@@ -124,6 +125,25 @@ export const getCategoryTabData = async (
       startDate,
       endDate,
     })) as ResponseHelper<CategoryTabDataType[]>;
+    if (result.isSuccess) {
+      return result.data;
+    }
+    return [];
+  } catch (error) {
+    toast.error(getErrorMessage(error));
+    return [];
+  }
+};
+
+export const getRankingTabData = async (
+  startDate: string,
+  endDate: string
+): Promise<RankingTabDataType[]> => {
+  try {
+    const result = (await apiHandler(`/statistics/ranking`, 'post', {
+      startDate,
+      endDate,
+    })) as ResponseHelper<RankingTabDataType[]>;
     if (result.isSuccess) {
       return result.data;
     }

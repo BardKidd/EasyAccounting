@@ -385,10 +385,53 @@ const getCategoryTabData = async (
   }));
 };
 
+const getRankingTabData = async (body: any, userId: string) => {
+  const { startDate, endDate } = body;
+
+  const result = await Transaction.findAll({
+    where: {
+      date: {
+        [Op.between]: [startDate, endDate],
+      },
+      userId,
+    },
+    raw: true,
+    nest: true,
+    attributes: ['id', 'amount', 'description', 'type', 'targetAccountId'],
+    include: [
+      {
+        model: Category,
+        attributes: ['id', 'name', 'icon', 'color'],
+        include: [
+          {
+            model: Category,
+            as: 'parent',
+            attributes: ['name', 'icon', 'id', 'color'],
+          },
+        ],
+      },
+    ],
+    order: [[sequelize.col('amount'), 'DESC']],
+  });
+
+  return result.map((item: any) => ({
+    id: item.id,
+    amount: Number(item.amount),
+    description: item.description,
+    type: item.type,
+    isTransfer: !!item.targetAccountId,
+    categoryId: item.category.id,
+    categoryName: item.category.name,
+    categoryIcon: item.category.parent?.icon || item.category.icon,
+    categoryColor: item.category.parent?.color || item.category.color,
+  }));
+};
+
 export default {
   getOverviewTrend,
   getOverviewTop3Expenses,
   getOverviewTop3Categories,
   getDetailTabData,
   getCategoryTabData,
+  getRankingTabData,
 };

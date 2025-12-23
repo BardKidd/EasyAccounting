@@ -3,28 +3,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { getIcon } from '@/lib/icon-mapping';
-import { MainType } from '@repo/shared';
-
-export interface RankingTransaction {
-  id: string;
-  type: MainType;
-  categoryId: string;
-  categoryName: string;
-  categoryIcon: string;
-  categoryColor: string;
-  description: string;
-  accountName: string;
-  amount: number;
-  targetAccountId: string | null;
-}
+import { MainType, RankingTabDataType } from '@repo/shared';
 
 interface RankingListProps {
-  transactions: RankingTransaction[];
+  transactions: RankingTabDataType[];
 }
 
 export function RankingList({ transactions }: RankingListProps) {
-  const getAmountStyle = (item: RankingTransaction) => {
-    if (item.targetAccountId) {
+  const getAmountStyle = (item: RankingTabDataType) => {
+    if (item.isTransfer) {
       return { color: 'text-orange-500', prefix: '' };
     }
     if (item.type === MainType.INCOME)

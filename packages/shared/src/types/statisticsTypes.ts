@@ -80,3 +80,16 @@ export interface CategoryTabDataType {
   type: MainType;
   isTransfer: boolean;
 }
+
+export interface RankingTabDataType {
+  id: string;
+  type: MainType;
+  categoryId: string;
+  categoryName: string;
+  categoryIcon: string;
+  categoryColor: string;
+  description: string;
+  accountName: string;
+  amount: number;
+  isTransfer: boolean;
+}

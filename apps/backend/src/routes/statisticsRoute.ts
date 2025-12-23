@@ -41,4 +41,11 @@ router.post(
   statisticsController.getCategoryTabData
 );
 
+router.post(
+  '/statistics/ranking',
+  authMiddleware,
+  validate(getOverviewSchema),
+  statisticsController.getRankingTabData
+);
+
 export default router;

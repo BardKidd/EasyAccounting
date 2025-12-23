@@ -1,11 +1,21 @@
 'use client';
 
-import { useState } from 'react';
-import { RankingList, RankingTransaction } from './lists/rankingList';
-import { MainType } from '@repo/shared';
+import { useEffect, useMemo, useState } from 'react';
+import { RankingList } from './lists/rankingList';
+import { MainType, PeriodType } from '@repo/shared';
 import { StatisticsLegend } from './common/statisticsLegend';
 import { StatisticsType, STATISTICS_CONFIG } from './constants';
 import AnimateLayout from './common/animateLayout';
+import { RankingTabDataType } from '@repo/shared';
+import services from '@/services';
+
+interface RankingTabProps {
+  periodDate: {
+    startDate: string;
+    endDate: string;
+  };
+  periodType: PeriodType;
+}
 
 // 不用顯示餘額，所以跟其他 Tab 不太一樣
 const LEGENDS = [
@@ -19,124 +29,48 @@ const LEGENDS = [
   color: STATISTICS_CONFIG[type].legendColor,
 }));
 
-// --- Mock Data ---
-const MOCK_RANKING_EXPENSE: RankingTransaction[] = [
-  {
-    id: '1',
-    type: MainType.EXPENSE,
-    categoryId: 'cat1',
-    categoryName: '購物',
-    categoryIcon: 'ShoppingBag',
-    categoryColor: '#3b82f6',
-    description: 'iPhone 15 Pro Max',
-    accountName: '玉山數存',
-    amount: 44900,
-    targetAccountId: null,
-  },
-  {
-    id: '2',
-    type: MainType.EXPENSE,
-    categoryId: 'cat5',
-    categoryName: '居住',
-    categoryIcon: 'Home',
-    categoryColor: '#f59e0b',
-    description: '12月房租',
-    accountName: '國泰薪轉',
-    amount: 15000,
-    targetAccountId: null,
-  },
-  {
-    id: '3',
-    type: MainType.EXPENSE,
-    categoryId: 'cat2',
-    categoryName: '飲食',
-    categoryIcon: 'Utensils',
-    categoryColor: '#f43f5e',
-    description: '王品牛排聚餐',
-    accountName: '現金',
-    amount: 3500,
-    targetAccountId: null,
-  },
-  {
-    id: '4',
-    type: MainType.EXPENSE,
-    categoryId: 'cat6',
-    categoryName: '醫療',
-    categoryIcon: 'Stethoscope',
-    categoryColor: '#ef4444',
-    description: '牙醫診所',
-    accountName: '信用卡',
-    amount: 3000,
-    targetAccountId: null,
-  },
-  {
-    id: '5',
-    type: MainType.EXPENSE,
-    categoryId: 'cat1',
-    categoryName: '購物',
-    categoryIcon: 'ShoppingBag',
-    categoryColor: '#3b82f6',
-    description: 'Uniqlo 冬衣',
-    accountName: '信用卡',
-    amount: 2800,
-    targetAccountId: null,
-  },
-];
-
-const MOCK_RANKING_INCOME: RankingTransaction[] = [
-  {
-    id: '10',
-    type: MainType.INCOME,
-    categoryId: 'cat10',
-    categoryName: '薪資',
-    categoryIcon: 'Banknote',
-    categoryColor: '#10b981',
-    description: '12月薪資',
-    accountName: '國泰薪轉',
-    amount: 60000,
-    targetAccountId: null,
-  },
-  {
-    id: '11',
-    type: MainType.INCOME,
-    categoryId: 'cat11',
-    categoryName: '獎金',
-    categoryIcon: 'Trophy',
-    categoryColor: '#f59e0b',
-    description: '年終獎金',
-    accountName: '國泰薪轉',
-    amount: 5000,
-    targetAccountId: null,
-  },
-  {
-    id: '12',
-    type: MainType.INCOME,
-    categoryId: 'cat12',
-    categoryName: '投資',
-    categoryIcon: 'TrendingUp',
-    categoryColor: '#3b82f6',
-    description: '股票股利',
-    accountName: '證券戶',
-    amount: 2000,
-    targetAccountId: null,
-  },
-];
-
-export function RankingTab() {
+export function RankingTab({ periodDate, periodType }: RankingTabProps) {
   const [selectedType, setSelectedType] = useState<StatisticsType>(
     StatisticsType.EXPENSE
   );
+  const [rankingList, setRankingList] = useState<RankingTabDataType[]>([]);
 
-  const transactions =
-    selectedType === StatisticsType.EXPENSE
-      ? MOCK_RANKING_EXPENSE
-      : selectedType === StatisticsType.INCOME
-        ? MOCK_RANKING_INCOME
-        : [];
+  const currentSelectedTypeData = useMemo(() => {
+    if (rankingList.length > 0) {
+      if (selectedType === StatisticsType.TRANSFER_IN) {
+        return rankingList.filter(
+          (item) => item.type === MainType.INCOME && item.isTransfer
+        );
+      } else if (selectedType === StatisticsType.TRANSFER_OUT) {
+        return rankingList.filter(
+          (item) => item.type === MainType.EXPENSE && item.isTransfer
+        );
+      } else if (selectedType === StatisticsType.INCOME) {
+        return rankingList.filter(
+          (item) => item.type === MainType.INCOME && !item.isTransfer
+        );
+      } else if (selectedType === StatisticsType.EXPENSE) {
+        return rankingList.filter(
+          (item) => item.type === MainType.EXPENSE && !item.isTransfer
+        );
+      } else {
+        return [];
+      }
+    } else {
+      return [];
+    }
+  }, [selectedType, rankingList]);
 
-  const sortedTransactions = [...transactions].sort(
-    (a, b) => b.amount - a.amount
-  );
+  useEffect(() => {
+    const getRankingList = async () => {
+      const result = await services.getRankingTabData(
+        periodDate.startDate,
+        periodDate.endDate
+      );
+      setRankingList(result);
+    };
+    getRankingList();
+  }, [periodDate, periodType]);
 
   return (
     <AnimateLayout>
@@ -146,7 +80,7 @@ export function RankingTab() {
         onToggle={(key) => setSelectedType(key as StatisticsType)}
       />
 
-      <RankingList transactions={sortedTransactions} />
+      <RankingList transactions={currentSelectedTypeData} />
     </AnimateLayout>
   );
 }
