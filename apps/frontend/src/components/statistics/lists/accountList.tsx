@@ -4,18 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { getIcon } from '@/lib/icon-mapping';
 import { StatisticsType, STATISTICS_CONFIG } from '../constants';
-
-export interface AccountListItem {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  count: number;
-  amount: number;
-}
+import { AccountTabDataType, MainType } from '@repo/shared';
 
 interface AccountListProps {
-  items: AccountListItem[];
+  items: AccountTabDataType[];
   totalAmount: number;
   type: string;
 }
@@ -40,8 +32,6 @@ export function AccountList({ items, totalAmount, type }: AccountListProps) {
           {/* List Items */}
           <div className="max-h-[400px] overflow-y-auto px-6 py-2">
             {items.map((item) => {
-              // Default to 'Wallet' or specific icon if available.
-              // Assuming icon string is valid for getIcon.
               const IconComponent = getIcon(item.icon) || getIcon('Wallet');
 
               return (
@@ -73,7 +63,21 @@ export function AccountList({ items, totalAmount, type }: AccountListProps) {
                   </div>
 
                   {/* Amount */}
-                  <div className={`ml-auto font-medium text-sm ${amountColor}`}>
+                  <div
+                    className={`ml-auto font-medium text-sm ${
+                      item.isTransfer
+                        ? item.type === MainType.INCOME
+                          ? STATISTICS_CONFIG[StatisticsType.TRANSFER_IN]
+                              .tailwindColor
+                          : STATISTICS_CONFIG[StatisticsType.TRANSFER_OUT]
+                              .tailwindColor
+                        : item.type === MainType.INCOME
+                          ? STATISTICS_CONFIG[StatisticsType.INCOME]
+                              .tailwindColor
+                          : STATISTICS_CONFIG[StatisticsType.EXPENSE]
+                              .tailwindColor
+                    }`}
+                  >
                     {formatCurrency(item.amount)}
                   </div>
                 </div>

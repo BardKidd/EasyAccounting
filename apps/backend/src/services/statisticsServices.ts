@@ -427,6 +427,61 @@ const getRankingTabData = async (body: any, userId: string) => {
   }));
 };
 
+const getAccountTabData = async (body: any, userId: string) => {
+  const { startDate, endDate } = body;
+
+  const result = await sequelize.query(
+    `
+    SELECT
+      CASE
+        WHEN "t"."targetAccountId" IS NOT NULL THEN true
+        ELSE false
+      END AS "isTransfer",
+      "a"."name",
+      "a"."color",
+      "a"."type",
+      "a"."icon",
+      "t"."type",
+      SUM("t"."amount")::integer AS "amount",
+      COUNT("t"."id")::integer AS "count"
+    FROM "accounting"."transaction" AS "t"
+    LEFT JOIN "accounting"."account" AS "a" ON "t"."accountId" = "a"."id"
+    WHERE "t"."userId" = :userId
+    AND "t"."date" BETWEEN :startDate AND :endDate
+    GROUP BY
+      CASE
+        WHEN "t"."targetAccountId" IS NOT NULL THEN true
+        ELSE false
+      END,
+      "a"."name",
+      "a"."color",
+      "a"."type",
+      "a"."icon",
+      "t"."type"
+    ORDER BY "amount" DESC
+    `,
+    {
+      replacements: {
+        userId,
+        startDate,
+        endDate,
+      },
+      type: QueryTypes.SELECT,
+    }
+  );
+
+  return result.map((item: any) => ({
+    id: item.id,
+    name: item.name,
+    icon: item.icon,
+    color: item.color,
+    amount: item.amount,
+    count: item.count,
+    isTransfer: item.isTransfer,
+    type: item.type,
+  }));
+};
+
 export default {
   getOverviewTrend,
   getOverviewTop3Expenses,
@@ -434,4 +489,5 @@ export default {
   getDetailTabData,
   getCategoryTabData,
   getRankingTabData,
+  getAccountTabData,
 };

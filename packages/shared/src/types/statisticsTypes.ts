@@ -93,3 +93,14 @@ export interface RankingTabDataType {
   amount: number;
   isTransfer: boolean;
 }
+
+export interface AccountTabDataType {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  amount: number;
+  count: number;
+  isTransfer: boolean;
+  type: MainType;
+}

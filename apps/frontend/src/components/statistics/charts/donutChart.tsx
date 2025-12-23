@@ -5,11 +5,13 @@ import { Card, CardContent, CardTitle, CardHeader } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { useMemo } from 'react';
 import useDark from '@/hooks/useDark';
+import { MainType } from '@repo/shared';
 
 interface CategoryPieData {
   name: string;
   value: number;
   color: string;
+  type: MainType | '其他';
 }
 
 interface CategoryPieChartProps {
@@ -33,6 +35,7 @@ export function DonutChart({ data, totalAmount }: CategoryPieChartProps) {
         name: '其他',
         value: otherAmount,
         color: isDark ? '#374151' : '#cbd5e1',
+        type: '其他',
       });
     }
 
@@ -40,6 +43,7 @@ export function DonutChart({ data, totalAmount }: CategoryPieChartProps) {
       value: item.value, // <- 其實主要模板資訊就是看 value, name 後得出來的結果
       name: item.name,
       itemStyle: { color: item.color },
+      type: item.type,
       label: {
         show: true,
         position: 'inside',
@@ -77,7 +81,8 @@ export function DonutChart({ data, totalAmount }: CategoryPieChartProps) {
         trigger: 'item',
         formatter: (params: any) => {
           if (params.seriesIndex !== 0) return '';
-          return `${params.name}: ${formatCurrency(params.value)} (${params.percent}%)`;
+          const prefix = params.data.type === MainType.EXPENSE ? '-' : '';
+          return `${params.name}:  ${prefix}${formatCurrency(params.value)} (${params.percent}%)`;
         },
         backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)',
         borderColor: isDark ? '#333' : '#ccc',

@@ -18,6 +18,7 @@ import {
   getDetailTabData,
   getCategoryTabData,
   getRankingTabData,
+  getAccountTabData,
 } from './statistics';
 
 export default {
@@ -36,4 +37,5 @@ export default {
   getDetailTabData,
   getCategoryTabData,
   getRankingTabData,
+  getAccountTabData,
 };

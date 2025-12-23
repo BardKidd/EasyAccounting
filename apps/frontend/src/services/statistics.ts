@@ -8,6 +8,7 @@ import {
   DetailTabDataType,
   CategoryTabDataType,
   RankingTabDataType,
+  AccountTabDataType,
 } from '@repo/shared';
 import { toast } from 'sonner';
 
@@ -144,6 +145,25 @@ export const getRankingTabData = async (
       startDate,
       endDate,
     })) as ResponseHelper<RankingTabDataType[]>;
+    if (result.isSuccess) {
+      return result.data;
+    }
+    return [];
+  } catch (error) {
+    toast.error(getErrorMessage(error));
+    return [];
+  }
+};
+
+export const getAccountTabData = async (
+  startDate: string,
+  endDate: string
+): Promise<AccountTabDataType[]> => {
+  try {
+    const result = (await apiHandler(`/statistics/account`, 'post', {
+      startDate,
+      endDate,
+    })) as ResponseHelper<AccountTabDataType[]>;
     if (result.isSuccess) {
       return result.data;
     }

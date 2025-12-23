@@ -109,6 +109,21 @@ const getRankingTabData = (req: Request, res: Response) => {
   });
 };
 
+const getAccountTabData = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const body = req.body;
+
+    const result = await statisticsServices.getAccountTabData(body, userId);
+
+    return res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(true, result, 'Get account tab data successfully', null)
+      );
+  });
+};
+
 export default {
   getOverviewTrend,
   getOverviewTop3Categories,
@@ -116,4 +131,5 @@ export default {
   getDetailTabData,
   getCategoryTabData,
   getRankingTabData,
+  getAccountTabData,
 };
