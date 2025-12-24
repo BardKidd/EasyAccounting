@@ -29,7 +29,9 @@ const getAllCategories = async (req: Request, res: Response) => {
         type: cat.type,
         icon: cat.icon,
         color: cat.color,
+        userId: cat.userId,
         children: [],
+        parentId: null,
         parent: null,
       };
 
@@ -58,8 +60,9 @@ const getAllCategories = async (req: Request, res: Response) => {
 };
 
 const postCategory = async (req: Request, res: Response) => {
+  const userId = req.user.userId;
   simplifyTryCatch(req, res, async () => {
-    await Category.create(req.body);
+    await Category.create({ ...req.body, userId });
     res
       .status(StatusCodes.CREATED)
       .json(responseHelper(true, null, 'Category created successfully', null));
@@ -67,6 +70,7 @@ const postCategory = async (req: Request, res: Response) => {
 };
 
 const putCategory = async (req: Request, res: Response) => {
+  const userId = req.user.userId;
   simplifyTryCatch(req, res, async () => {
     const categoryId = req.params.id;
     const category = await Category.findByPk(categoryId);
@@ -75,7 +79,7 @@ const putCategory = async (req: Request, res: Response) => {
         .status(StatusCodes.NOT_FOUND)
         .json(responseHelper(false, null, 'Category not found', null));
     }
-    await category.update(req.body); // 不需要使用 where,因為已經有 category instance 了
+    await category.update({ ...req.body, userId }); // 不需要使用 where,因為已經有 category instance 了
     res
       .status(StatusCodes.OK)
       .json(responseHelper(true, null, 'Category updated successfully', null));
@@ -85,11 +89,24 @@ const putCategory = async (req: Request, res: Response) => {
 const deleteCategory = async (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const categoryId = req.params.id;
+    const userId = req.user.userId;
     const category = await Category.findByPk(categoryId);
     if (!category) {
       return res
         .status(StatusCodes.NOT_FOUND)
         .json(responseHelper(false, null, 'Category not found', null));
+    }
+    if (category.userId !== userId) {
+      return res
+        .status(StatusCodes.FORBIDDEN)
+        .json(
+          responseHelper(
+            false,
+            null,
+            'You are not authorized to delete this category',
+            null
+          )
+        );
     }
     await category.destroy();
     res

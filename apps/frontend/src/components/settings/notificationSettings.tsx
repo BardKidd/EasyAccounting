@@ -25,7 +25,10 @@ export function NotificationSettings() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between space-x-2">
-            <Label htmlFor="daily-reminder" className="flex flex-col space-y-1">
+            <Label
+              htmlFor="daily-reminder"
+              className="flex flex-col space-y-1 text-left items-start"
+            >
               <span>每日記帳提醒</span>
               <span className="font-normal text-xs text-muted-foreground">
                 每天晚上 9 點提醒您記錄今日開銷
@@ -38,7 +41,10 @@ export function NotificationSettings() {
             />
           </div>
           <div className="flex items-center justify-between space-x-2">
-            <Label htmlFor="weekly-report" className="flex flex-col space-y-1">
+            <Label
+              htmlFor="weekly-report"
+              className="flex flex-col space-y-1 text-left items-start"
+            >
               <span>每週摘要</span>
               <span className="font-normal text-xs text-muted-foreground">
                 每週日寄送本週收支摘要
@@ -53,7 +59,7 @@ export function NotificationSettings() {
           <div className="flex items-center justify-between space-x-2">
             <Label
               htmlFor="monthly-analysis"
-              className="flex flex-col space-y-1"
+              className="flex flex-col space-y-1 text-left items-start"
             >
               <span>月度分析報告</span>
               <span className="font-normal text-xs text-muted-foreground">

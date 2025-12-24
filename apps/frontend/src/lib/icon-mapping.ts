@@ -67,10 +67,11 @@ import {
   Undo2,
   RefreshCw,
   CircleHelp,
+  Tag,
 } from 'lucide-react';
 
 // DB 值: Icon 值
-// 帳戶專用 Icons (小寫 key)
+// 帳戶與分類共用的 Icons (小寫 key)
 export const ACCOUNT_ICONS = {
   wallet: Wallet,
   'credit-card': CreditCard,
@@ -82,6 +83,38 @@ export const ACCOUNT_ICONS = {
   coins: HandCoins,
   receipt: Receipt,
   trending: TrendingUp,
+  utensils: Utensils,
+  coffee: Coffee,
+  'utensils-crossed': UtensilsCrossed,
+  cookie: Cookie,
+  wine: Wine,
+  car: Car,
+  bus: Bus,
+  train: Train,
+  fuel: Fuel,
+  home: Home,
+  shopping: ShoppingBag,
+  shirt: Shirt,
+  phone: Smartphone,
+  basket: ShoppingBasket,
+  user: User,
+  pill: Pill,
+  heart: Heart,
+  gift: Gift,
+  music: Music,
+  film: Film,
+  gamepad: Gamepad2,
+  plane: Plane,
+  school: School,
+  book: Book,
+  baby: Baby,
+  paw: PawPrint,
+  wrench: Wrench,
+  zap: Zap,
+  wifi: Wifi,
+  file: FileText,
+  help: CircleHelp,
+  tag: Tag,
 } as const;
 
 export const CATEGORY_ICONS_MAP = {

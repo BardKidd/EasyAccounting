@@ -6,4 +6,6 @@ export interface CategoryType {
   color: string | null;
   children: CategoryType[];
   parent: CategoryType | null;
+  parentId: string | null;
+  userId: string | null;
 }

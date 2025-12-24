@@ -1,4 +1,9 @@
-import { getCategories } from './category';
+import {
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+} from './category';
 import {
   getPersonnelAccounts,
   createAccount,
@@ -23,6 +28,9 @@ import {
 
 export default {
   getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
   getPersonnelAccounts,
   getTransactions,
   createAccount,

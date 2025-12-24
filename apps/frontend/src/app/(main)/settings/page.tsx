@@ -1,7 +1,7 @@
 import { Container } from '@/components/ui/container';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CategorySettings } from '@/components/settings/category-settings';
-import { NotificationSettings } from '@/components/settings/notification-settings';
+import { CategorySettings } from '@/components/settings/categorySettings';
+import { NotificationSettings } from '@/components/settings/notificationSettings';
 import service from '@/services';
 
 export default async function SettingsPage() {

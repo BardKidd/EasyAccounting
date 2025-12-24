@@ -15,7 +15,6 @@ export const createCategorySchema = z.object({
   type: z.enum(allCategoryTypes as [string, ...string[]], {
     errorMap: () => ({ message: '無效的分類類型' }),
   }),
-  userId: z.string().uuid('使用者 ID 格式錯誤').nullable(),
   parentId: z.string().uuid('父分類 ID 格式錯誤').nullable(),
   icon: z.string().nullable(),
   color: z.string().nullable(),

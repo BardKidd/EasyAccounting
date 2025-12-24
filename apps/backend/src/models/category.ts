@@ -1,6 +1,6 @@
-import Sequelize from 'sequelize';
+import Sequelize, { Model } from 'sequelize';
 import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
-import { MainType, SubType, DetailType } from '@repo/shared';
+import { MainType, SubType, DetailType, CategoryType } from '@repo/shared';
 
 const allCategories = [
   ...Object.values(MainType),
@@ -8,7 +8,14 @@ const allCategories = [
   ...Object.values(DetailType),
 ];
 
-const Category = sequelize.define(
+export interface CategoryAttributes
+  extends Omit<CategoryType, 'parent' | 'children'> {}
+
+export interface CategoryInstance
+  extends Model<CategoryAttributes>,
+    CategoryAttributes {}
+
+const Category = sequelize.define<CategoryInstance>(
   'category',
   {
     id: {
@@ -25,7 +32,7 @@ const Category = sequelize.define(
         key: 'id',
       },
       allowNull: true, // 允許 null,但需要在 API 層驗證是否有傳遞
-      // onDelete: 'CASCADE', // 已經使用 paranoid 了，這裡沒意義。
+      onDelete: 'CASCADE',
     },
     name: {
       type: Sequelize.STRING,
@@ -43,7 +50,7 @@ const Category = sequelize.define(
         model: 'category',
         key: 'id',
       },
-      // onDelete: 'CASCADE', // 已經使用 paranoid 了，這裡沒意義。
+      onDelete: 'CASCADE',
     },
     icon: {
       type: Sequelize.STRING,
