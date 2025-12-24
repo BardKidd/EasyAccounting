@@ -108,7 +108,6 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
   };
 
   const handleEdit = (node: ExtendedCategoryType) => {
-    console.log('handleEdit', node);
     setDialogState({
       isOpen: true,
       mode: CategoryDialogMode.EDIT,
@@ -139,7 +138,6 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
   };
 
   const decidedParentId = useMemo(() => {
-    console.log('dialogState.node', dialogState);
     if (dialogState.mode === CategoryDialogMode.ADD_SUB) {
       if (!dialogState.node) {
         toast.error('發生錯誤，無法找尋 SubCategory 的父類別');

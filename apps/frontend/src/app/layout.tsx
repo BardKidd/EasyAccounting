@@ -28,6 +28,7 @@ export default function RootLayout({
     <html lang="zh-TW" suppressHydrationWarning>
       {/* antialiased 防止字體模糊 */}
       <body
+        suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider
