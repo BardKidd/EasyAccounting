@@ -5,7 +5,6 @@ import {
   NewTransactionSheet,
 } from '@/components/transactions';
 import service from '@/services';
-import { Suspense } from 'react';
 
 // 看一下 Next.js 15 後的 query 都變成非同步了。
 // 因為使用了 Partial Prerendering(PPR) 渲染方式，是種靜態+動態的混合渲染方式。可優先渲染不變的 Header 或 Sidebar 等，而內容則等等再渲染。所以才會有時間差。
@@ -62,13 +61,11 @@ async function TransactionsPage(props: PageProps) {
       <div className="space-y-4">
         <TransactionFilters accounts={accounts} />
 
-        <Suspense fallback={<div>載入中...</div>}>
-          <TransactionTable
-            transactions={transactions}
-            categories={categories}
-            accounts={accounts}
-          />
-        </Suspense>
+        <TransactionTable
+          transactions={transactions}
+          categories={categories}
+          accounts={accounts}
+        />
       </div>
     </Container>
   );
