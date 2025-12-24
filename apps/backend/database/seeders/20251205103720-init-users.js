@@ -15,7 +15,6 @@ module.exports = {
           name: 'admin',
           email: 'rinouo0922@icloud.com',
           password: hashedPassword,
-          emailNotification: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         },

@@ -6,7 +6,6 @@ type UserAttributes = {
   name: string;
   email: string;
   password: string;
-  emailNotification: boolean;
 };
 
 interface UserInstance extends Model<UserAttributes>, UserAttributes {}
@@ -32,11 +31,6 @@ const User = sequelize.define<UserInstance>(
     password: {
       type: Sequelize.STRING,
       allowNull: false,
-    },
-    emailNotification: {
-      type: Sequelize.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
     },
   },
   TABLE_DEFAULT_SETTING

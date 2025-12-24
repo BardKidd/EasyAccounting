@@ -4,7 +4,6 @@ export const createUserSchema = z.object({
   name: z.string().min(1, '使用者名稱為必填'),
   email: z.string().email('請輸入有效的電子郵件地址'),
   password: z.string().min(8, '密碼至少需要 8 個字元'),
-  emailNotification: z.boolean().default(false),
 });
 
 export const updateUserSchema = createUserSchema;

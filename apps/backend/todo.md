@@ -106,15 +106,14 @@
 
 ### 1. User (使用者)
 
-| 欄位              | 類型            | 說明                       |
-| ----------------- | --------------- | -------------------------- |
-| id                | UUID (PK)       | 主鍵                       |
-| name              | STRING          | 使用者名稱                 |
-| email             | STRING (UNIQUE) | Email (用於登入和發送提醒) |
-| password          | STRING          | 密碼 (加密後)              |
-| emailNotification | BOOLEAN         | 是否啟用 Email 提醒        |
-| createdAt         | DATE            | 建立時間                   |
-| updatedAt         | DATE            | 更新時間                   |
+| 欄位      | 類型            | 說明                       |
+| --------- | --------------- | -------------------------- |
+| id        | UUID (PK)       | 主鍵                       |
+| name      | STRING          | 使用者名稱                 |
+| email     | STRING (UNIQUE) | Email (用於登入和發送提醒) |
+| password  | STRING          | 密碼 (加密後)              |
+| createdAt | DATE            | 建立時間                   |
+| updatedAt | DATE            | 更新時間                   |
 
 ---
 
@@ -524,10 +523,10 @@ Account (1) → (N) Transaction
 
 ### 階段 6: 統計查詢
 
-- [ ] `GET /statistics/summary` - 總覽 (總收入、總支出、淨值)
-- [ ] `GET /statistics/monthly` - 本月收支統計
-- [ ] `GET /statistics/category` - 分類支出統計 (圓餅圖資料)
-- [ ] `GET /statistics/trend` - 收支趨勢 (最近 6 個月,用於折線圖)
+- [x] `GET /statistics/summary` - 總覽 (總收入、總支出、淨值)
+- [x] `GET /statistics/monthly` - 本月收支統計
+- [x] `GET /statistics/category` - 分類支出統計 (圓餅圖資料)
+- [x] `GET /statistics/trend` - 收支趨勢 (最近 6 個月,用於折線圖)
 
 **學習重點:**
 
@@ -538,6 +537,7 @@ Account (1) → (N) Transaction
 
 ### 階段 7: Email 提醒功能 ⭐⭐⭐ (亮點 1)
 
+- [ ] 建立 NotificationSetting Table與 Model (支援每日/每週/每月通知)
 - [ ] 設定 Email Service (推薦使用 **Resend** 或 Gmail SMTP)
 - [ ] 建立 Email HTML 模板
 - [ ] 實作檢查信用卡繳費日期的函數
@@ -719,7 +719,7 @@ erDiagram
         string username
         string email
         string password
-        boolean emailNotification
+
     }
 
     Category {
@@ -775,7 +775,7 @@ erDiagram
   - 選擇帳戶 (自動顯示餘額/未出帳)
   - 選擇分類 (連動子分類)
   - 金額、日期、時間、備註、收據上傳
-- [ ] **刪除交易**: 刪除前確認
+- [x] **刪除交易**: 刪除前確認
 
 ### 2. 帳戶管理 (Accounts)
 
@@ -799,9 +799,9 @@ erDiagram
 
 > **Path**: `/dashboard/reports`
 
-- [ ] **總覽卡片**: 本月總收支、淨值
-- [ ] **趨勢圖**: 近 6 個月趨勢
-- [ ] **圓餅圖**: 分類占比 (支援 Drill-down)
+- [x] **總覽卡片**: 本月總收支、淨值
+- [x] **趨勢圖**: 近 6 個月趨勢
+- [x] **圓餅圖**: 分類占比 (支援 Drill-down)
 - [ ] **匯出**: Excel 報表匯出功能
 
 ### 5. 設定 (Settings)
@@ -811,7 +811,7 @@ erDiagram
 - [ ] **個人檔案**: 名稱、Email
 - [ ] **通知設定**: 信用卡繳費 Email 提醒開關
 - [ ] **系統公告**: 檢視系統公告
-- [ ] **分類設定**: 檢視分類 (目前僅檢視)
+- [x] **分類設定**: 完整 CRUD 功能 (新增/編輯/刪除/階層顯示)
 
 ---
 
@@ -821,3 +821,5 @@ erDiagram
   - 目前專案僅支援新台幣 (TWD)
   - 未來需在 Account 和 Transaction 增加 currency 欄位
   - 需考慮匯率換算問題
+
+- **信用卡帳戶設定 (Credit Card Settings)**

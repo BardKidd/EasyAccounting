@@ -16,7 +16,6 @@ const getUsers = (req: Request, res: Response) => {
         return {
           name: userJson.name,
           email: userJson.email,
-          emailNotification: userJson.emailNotification,
         };
       });
     }
@@ -38,7 +37,6 @@ const getUser = (req: Request, res: Response) => {
     const sortedUser: UserType = {
       name: userJson.name,
       email: userJson.email,
-      emailNotification: userJson.emailNotification,
     };
     res
       .status(StatusCodes.OK)

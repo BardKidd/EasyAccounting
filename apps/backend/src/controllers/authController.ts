@@ -62,7 +62,6 @@ const login = (req: Request, res: Response) => {
     const userInfo = {
       name: user.name,
       email: user.email,
-      emailNotification: user.emailNotification,
     };
 
     return res
