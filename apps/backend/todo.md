@@ -537,7 +537,7 @@ Account (1) → (N) Transaction
 
 ### 階段 7: Email 提醒功能 ⭐⭐⭐ (亮點 1)
 
-- [ ] 建立 NotificationSetting Table與 Model (支援每日/每週/每月通知)
+- [ ] 建立 PersonnelNotification Table與 Model (支援每日/每週/每月通知)
 - [ ] 設定 Email Service (推薦使用 **Resend** 或 Gmail SMTP)
 - [ ] 建立 Email HTML 模板
 - [ ] 實作檢查信用卡繳費日期的函數

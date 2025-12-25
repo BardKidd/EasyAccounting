@@ -6,12 +6,7 @@ import { authMiddleware } from '@/middlewares/authMiddleware';
 
 const router: Router = express.Router();
 
-router.post(
-  '/user',
-  authMiddleware,
-  validate(createUserSchema),
-  userController.addUser
-);
+router.post('/user', validate(createUserSchema), userController.addUser);
 router.get('/user', authMiddleware, userController.getUsers);
 router.get('/user/:id', authMiddleware, userController.getUser);
 router.put(

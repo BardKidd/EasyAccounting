@@ -9,6 +9,7 @@ import User from '@/models/user';
 import Category from '@/models/category';
 import Account from '@/models/account';
 import Transaction from '@/models/transaction';
+import PersonnelNotification from './models/personnel_notification';
 
 import userRoute from '@/routes/userRoute';
 import categoryRoute from '@/routes/categoryRoute';
@@ -18,6 +19,7 @@ import transactionRoute from '@/routes/transactionRoute';
 import authRoute from '@/routes/authRoute';
 import cookieParser from 'cookie-parser';
 import statisticsRoute from '@/routes/statisticsRoute';
+import personnelNotificationRoute from '@/routes/personnelNotificationRoute';
 
 const app = express();
 
@@ -41,6 +43,7 @@ app.use('/api', accountRoute);
 app.use('/api', transactionRoute);
 app.use('/api', authRoute);
 app.use('/api', statisticsRoute);
+app.use('/api', personnelNotificationRoute);
 
 User.hasMany(Category);
 User.hasMany(Account);
@@ -48,6 +51,9 @@ User.hasMany(Transaction);
 Category.belongsTo(User);
 Account.belongsTo(User);
 Transaction.belongsTo(User);
+
+User.hasOne(PersonnelNotification);
+PersonnelNotification.belongsTo(User);
 
 // 可以使用 Magic 方法，加上 include 可以自動建立 children 和 parent 屬性
 // 這裡跟資料互相關聯並沒有直接關係喔！！！

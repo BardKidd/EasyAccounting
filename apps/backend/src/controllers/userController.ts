@@ -5,6 +5,7 @@ import { StatusCodes } from 'http-status-codes';
 import bcrypt from 'bcrypt';
 import { UserType } from '@repo/shared';
 import userServices from '@/services/userServices';
+import personnelNotificationServices from '@/services/personnelNotificationServices';
 
 const getUsers = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -48,14 +49,26 @@ const addUser = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const { password, ...otherData } = req.body;
     const hashedPassword = await bcrypt.hash(password, 12);
-    User.create({
+    const user = await User.create({
       ...otherData,
       password: hashedPassword,
-    }).then(() => {
-      res
-        .status(StatusCodes.CREATED)
-        .json(responseHelper(true, null, 'User created successfully', null));
     });
+
+    // 預設只打開月報
+    const payload = {
+      isDailyNotification: false,
+      isWeeklySummaryNotification: false,
+      isMonthlyAnalysisNotification: true,
+    };
+
+    await personnelNotificationServices.postPersonnelNotification(
+      user.id,
+      payload
+    );
+
+    res
+      .status(StatusCodes.CREATED)
+      .json(responseHelper(true, null, 'User created successfully', null));
   });
 };
 

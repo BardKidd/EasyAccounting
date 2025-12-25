@@ -11,6 +11,7 @@ export * from './schemas/announcement.schema';
 export * from './schemas/account.schema';
 export * from './schemas/transaction.schema';
 export * from './schemas/statistics.schema';
+export * from './schemas/personnelNotification.schema';
 
 // 匯出所有 types
 export * from './types/categoryTypes';
