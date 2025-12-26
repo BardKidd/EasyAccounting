@@ -20,3 +20,4 @@ export * from './types/accountTypes';
 export * from './types/responseHelperTypes';
 export * from './types/transactionTypes';
 export * from './types/statisticsTypes';
+export * from './types/personnelNotificationTypes';

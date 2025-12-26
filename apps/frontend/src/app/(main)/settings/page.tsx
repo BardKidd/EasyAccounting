@@ -6,6 +6,7 @@ import service from '@/services';
 
 export default async function SettingsPage() {
   const categories = await service.getCategories();
+  const notifications = await service.getPersonnelNotification();
 
   return (
     <Container className="py-8 space-y-8">
@@ -26,7 +27,7 @@ export default async function SettingsPage() {
           <CategorySettings categories={categories} />
         </TabsContent>
         <TabsContent value="notifications" className="space-y-4">
-          <NotificationSettings />
+          <NotificationSettings notifications={notifications} />
         </TabsContent>
       </Tabs>
     </Container>

@@ -30,6 +30,49 @@ const postPersonnelNotification = async (req: Request, res: Response) => {
   });
 };
 
+const getPersonnelNotification = async (req: Request, res: Response) => {
+  await simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const result =
+      await personnelNotificationServices.getPersonnelNotification(userId);
+    if (result) {
+      res
+        .status(StatusCodes.OK)
+        .json(
+          responseHelper(
+            true,
+            result,
+            'Get personnel notification successfully',
+            null
+          )
+        );
+    }
+  });
+};
+
+const putPersonnelNotification = async (req: Request, res: Response) => {
+  await simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const payload = req.body;
+    const result = await personnelNotificationServices.putPersonnelNotification(
+      userId,
+      payload
+    );
+    res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(
+          true,
+          result,
+          'Put personnel notification successfully',
+          null
+        )
+      );
+  });
+};
+
 export default {
   postPersonnelNotification,
+  getPersonnelNotification,
+  putPersonnelNotification,
 };

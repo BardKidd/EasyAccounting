@@ -1,4 +1,4 @@
-import Sequelize, { Model } from 'sequelize';
+import Sequelize, { Model, Optional } from 'sequelize';
 import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
 import { MainType, SubType, DetailType, CategoryType } from '@repo/shared';
 
@@ -11,8 +11,11 @@ const allCategories = [
 export interface CategoryAttributes
   extends Omit<CategoryType, 'parent' | 'children'> {}
 
+export interface CategoryCreationAttributes
+  extends Optional<CategoryAttributes, 'id'> {}
+
 export interface CategoryInstance
-  extends Model<CategoryAttributes>,
+  extends Model<CategoryAttributes, CategoryCreationAttributes>,
     CategoryAttributes {}
 
 const Category = sequelize.define<CategoryInstance>(

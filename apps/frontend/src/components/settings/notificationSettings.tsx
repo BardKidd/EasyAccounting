@@ -6,18 +6,157 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { PersonnelNotificationSchema } from '@repo/shared';
+import { toast } from 'sonner';
+import service from '@/services';
+import { cn, getErrorMessage } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { UnsavedChangesDialog } from './unsavedChangesDialog';
 
-export function NotificationSettings() {
-  const [dailyReminder, setDailyReminder] = useState(true);
-  const [weeklyReport, setWeeklyReport] = useState(false);
-  const [monthlyAnalysis, setMonthlyAnalysis] = useState(true);
+export function NotificationSettings({
+  notifications,
+}: {
+  notifications: PersonnelNotificationSchema;
+}) {
+  const router = useRouter();
+  const [isDailyNotification, setIsDailyNotification] = useState(
+    notifications.isDailyNotification
+  );
+  const [isWeeklySummaryNotification, setIsWeeklySummaryNotification] =
+    useState(notifications.isWeeklySummaryNotification);
+  const [isMonthlyAnalysisNotification, setIsMonthlyAnalysisNotification] =
+    useState(notifications.isMonthlyAnalysisNotification);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false); // 只有呼叫 API 成功才需要顯示
+  const [navConfirmOpen, setNavConfirmOpen] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+
+  // 判斷是否有變更但尚未儲存
+  const isDirty = useMemo(() => {
+    return (
+      isDailyNotification !== notifications.isDailyNotification ||
+      isWeeklySummaryNotification !==
+        notifications.isWeeklySummaryNotification ||
+      isMonthlyAnalysisNotification !==
+        notifications.isMonthlyAnalysisNotification
+    );
+  }, [
+    isDailyNotification,
+    isWeeklySummaryNotification,
+    isMonthlyAnalysisNotification,
+    notifications,
+  ]);
+
+  useEffect(() => {
+    if (showSuccess) {
+      setShowSuccess(false);
+    }
+  }, [
+    isDailyNotification,
+    isWeeklySummaryNotification,
+    isMonthlyAnalysisNotification,
+  ]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const payload: PersonnelNotificationSchema = {
+        isDailyNotification,
+        isWeeklySummaryNotification,
+        isMonthlyAnalysisNotification,
+      };
+      await service.updatePersonnelNotification(payload);
+      toast.success('通知設定已更新');
+      router.refresh();
+      setShowSuccess(true);
+    } catch (error) {
+      console.error(error);
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleConfirmLeave = () => {
+    if (pendingUrl) {
+      setNavConfirmOpen(false);
+      router.push(pendingUrl);
+    }
+  };
+
+  const handleCancelLeave = () => {
+    setNavConfirmOpen(false);
+    setPendingUrl(null);
+  };
+
+  const handleReset = () => {
+    setIsDailyNotification(notifications.isDailyNotification);
+    setIsWeeklySummaryNotification(notifications.isWeeklySummaryNotification);
+    setIsMonthlyAnalysisNotification(
+      notifications.isMonthlyAnalysisNotification
+    );
+    toast.info('已還原變更');
+  };
+
+  useEffect(() => {
+    if (!isDirty) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = ''; // 目前已經棄用，不過舊版本的瀏覽器還是有用。
+    };
+
+    // 在手動關掉分頁或重整時會跳出來。
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isDirty]);
+
+  // 攔截應用程式內的連結點擊
+  useEffect(() => {
+    if (!isDirty) return;
+
+    const handleAnchorClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest('a');
+
+      if (anchor) {
+        // 只攔截內部連結，排除 target="_blank" 或外部連結
+        // 雖然現在根本沒有使用到 target="_blank"，未來也不確定，不過留下 !anchor.target 來好了...
+        const href = anchor.getAttribute('href');
+        if (href && href.startsWith('/') && !anchor.target) {
+          e.preventDefault();
+          e.stopPropagation();
+          setPendingUrl(href);
+          setNavConfirmOpen(true);
+        }
+      }
+    };
+
+    // 使用捕獲階段 (capture=true) 確保我們先攔截到
+    document.addEventListener('click', handleAnchorClick, true);
+
+    return () => {
+      document.removeEventListener('click', handleAnchorClick, true);
+    };
+  }, [isDirty]);
 
   return (
     <div className="grid gap-6">
+      <UnsavedChangesDialog
+        isOpen={navConfirmOpen}
+        onConfirm={handleConfirmLeave}
+        onCancel={handleCancelLeave}
+      />
       <Card>
         <CardHeader>
           <CardTitle>通知設定</CardTitle>
@@ -36,8 +175,8 @@ export function NotificationSettings() {
             </Label>
             <Switch
               id="daily-reminder"
-              checked={dailyReminder}
-              onCheckedChange={setDailyReminder}
+              checked={isDailyNotification}
+              onCheckedChange={setIsDailyNotification}
             />
           </div>
           <div className="flex items-center justify-between space-x-2">
@@ -52,8 +191,8 @@ export function NotificationSettings() {
             </Label>
             <Switch
               id="weekly-report"
-              checked={weeklyReport}
-              onCheckedChange={setWeeklyReport}
+              checked={isWeeklySummaryNotification}
+              onCheckedChange={setIsWeeklySummaryNotification}
             />
           </div>
           <div className="flex items-center justify-between space-x-2">
@@ -68,11 +207,40 @@ export function NotificationSettings() {
             </Label>
             <Switch
               id="monthly-analysis"
-              checked={monthlyAnalysis}
-              onCheckedChange={setMonthlyAnalysis}
+              checked={isMonthlyAnalysisNotification}
+              onCheckedChange={setIsMonthlyAnalysisNotification}
             />
           </div>
         </CardContent>
+        <CardFooter className="flex justify-between border-t px-6 py-4">
+          <div className="flex items-center text-sm text-muted-foreground">
+            {showSuccess ? (
+              <span className="text-green-600 font-bold">所有變更已儲存</span>
+            ) : isDirty ? (
+              '您有未儲存的變更'
+            ) : null}
+          </div>
+          <div className="flex items-center gap-2">
+            {isDirty && (
+              <Button
+                variant="ghost"
+                onClick={handleReset}
+                disabled={isSaving}
+                className="text-muted-foreground cursor-pointer"
+              >
+                還原
+              </Button>
+            )}
+            <Button
+              onClick={handleSave}
+              className={cn('cursor-pointer', isSaving && 'cursor-not-allowed')}
+              disabled={!isDirty || isSaving}
+            >
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              儲存變更
+            </Button>
+          </div>
+        </CardFooter>
       </Card>
     </div>
   );

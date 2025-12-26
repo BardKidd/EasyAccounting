@@ -25,6 +25,10 @@ import {
   getRankingTabData,
   getAccountTabData,
 } from './statistics';
+import {
+  getPersonnelNotification,
+  updatePersonnelNotification,
+} from './personnelNotification';
 
 export default {
   getCategories,
@@ -46,4 +50,6 @@ export default {
   getCategoryTabData,
   getRankingTabData,
   getAccountTabData,
+  getPersonnelNotification,
+  updatePersonnelNotification,
 };
