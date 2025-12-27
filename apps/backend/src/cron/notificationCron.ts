@@ -8,11 +8,11 @@ import User from '@/models/user';
  * 可參考這個網站知道內容
  */
 
-export const startCronJobs = () => {
+export const startDailyReminderCronJobs = () => {
   console.log('[Cron] Start cron jobs');
 
-  // 每天早上 9:00 執行
-  cron.schedule('05 15 * * *', async () => {
+  // 每天晚上 9:00 執行
+  cron.schedule('00 21 * * *', async () => {
     console.log('[Cron] Starting daily reminder check...');
 
     try {
