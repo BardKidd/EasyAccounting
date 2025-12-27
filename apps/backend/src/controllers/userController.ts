@@ -6,6 +6,7 @@ import bcrypt from 'bcrypt';
 import { UserType } from '@repo/shared';
 import userServices from '@/services/userServices';
 import personnelNotificationServices from '@/services/personnelNotificationServices';
+import emailService from '@/services/emailService';
 
 const getUsers = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -65,6 +66,11 @@ const addUser = (req: Request, res: Response) => {
       user.id,
       payload
     );
+
+    await emailService.sendWelcomeEmail({
+      userName: user.name,
+      to: user.email,
+    });
 
     res
       .status(StatusCodes.CREATED)

@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 import { render } from '@react-email/render';
 import DailyReminder from '@/emails/dailyReminder';
-import { simplifyTryCatch } from '@/utils/common';
+import Welcome from '@/emails/welcome';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -31,6 +31,28 @@ export const sendDailyReminderEmail = async ({
   }
 };
 
+export const sendWelcomeEmail = async ({
+  userName,
+  to,
+}: SendDailyReminderProps) => {
+  try {
+    const html = await render(Welcome({ userName }));
+    const data = await resend.emails.send({
+      from:
+        process.env.EMAIL_FROM || 'EasyAccounting <easyaccounting@resend.dev>',
+      to,
+      subject: '歡迎加入 EasyAccounting！🎉',
+      html,
+    });
+    console.log('[Email] Send welcome email success');
+    return data;
+  } catch (error) {
+    console.error('[Email] Send welcome email error', error);
+    throw error;
+  }
+};
+
 export default {
   sendDailyReminderEmail,
+  sendWelcomeEmail,
 };
