@@ -20,6 +20,7 @@ import authRoute from '@/routes/authRoute';
 import cookieParser from 'cookie-parser';
 import statisticsRoute from '@/routes/statisticsRoute';
 import personnelNotificationRoute from '@/routes/personnelNotificationRoute';
+import { startCronJobs } from './cron/notificationCron';
 
 const app = express();
 
@@ -74,6 +75,8 @@ Transaction.belongsTo(Account, {
   as: 'targetAccount',
   foreignKey: 'targetAccountId',
 });
+
+startCronJobs();
 
 sequelize
   .sync()

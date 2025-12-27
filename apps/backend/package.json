@@ -11,24 +11,32 @@
     "db:migrate:down": "sh -c 'read -p \"Enter Environment (dev/prd): \" ENV && NODE_ENV=$ENV npx sequelize-cli db:migrate:undo'",
     "db:seed:generate": "sh -c 'read -p \"Seed Name: \" NAME && npx sequelize-cli seed:generate --name \"$NAME\"'",
     "db:seed": "sh -c 'read -p \"Enter Environment (dev/prd): \" ENV && NODE_ENV=$ENV npx sequelize-cli db:seed:all'",
-    "db:seed:undo": "sh -c 'read -p \"Enter Environment (dev/prd): \" ENV && NODE_ENV=$ENV npx sequelize-cli db:seed:undo:all'"
+    "db:seed:undo": "sh -c 'read -p \"Enter Environment (dev/prd): \" ENV && NODE_ENV=$ENV npx sequelize-cli db:seed:undo:all'",
+    "email": "email dev --dir src/emails --port 3001"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@react-email/preview-server": "5.1.0",
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
     "@types/morgan": "^1.9.10",
+    "@types/node-cron": "^3.0.11",
     "@types/pg": "^8.15.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "chalk": "^5.6.2",
     "morgan": "^1.10.1",
+    "react-email": "^5.1.0",
     "sequelize-cli": "^6.6.3",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0"
   },
   "dependencies": {
+    "@react-email/components": "^1.0.2",
+    "@react-email/render": "^2.0.0",
     "@repo/shared": "workspace:*",
     "@types/cookie-parser": "^1.4.10",
     "bcrypt": "^6.0.0",
@@ -41,8 +49,12 @@
     "jose": "^6.1.2",
     "mongodb": "^7.0.0",
     "mongoose": "^9.0.0",
+    "node-cron": "^4.2.1",
     "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "resend": "^6.6.0",
     "sequelize": "^6.37.7",
     "uuid": "^13.0.0"
   }
