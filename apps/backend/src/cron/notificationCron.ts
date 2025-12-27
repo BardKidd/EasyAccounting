@@ -2,6 +2,10 @@ import emailService from '@/services/emailService';
 import cron from 'node-cron';
 import PersonnelNotification from '@/models/personnel_notification';
 import User from '@/models/user';
+import statisticsServices from '@/services/statisticsServices';
+import { endOfWeek, format, startOfWeek, subWeeks } from 'date-fns';
+import { MainType } from '@repo/shared';
+import { quickChartDoughnutProps } from '@/types/email';
 
 /**
  * https://crontab.guru/
@@ -49,3 +53,152 @@ export const startDailyReminderCronJobs = () => {
     }
   });
 };
+
+export const startWeeklySummaryNoticeCronJobs = () => {
+  console.log('[Cron] Start cron jobs');
+
+  // 每週一早上 9:00 執行
+  cron.schedule('00 09 * * 1', async () => {
+    console.log('[Cron] Starting weekly summary notice check...');
+    const now = new Date();
+    const weekRange = subWeeks(now, 1);
+    const startDate = startOfWeek(weekRange, { weekStartsOn: 1 });
+    const endDate = endOfWeek(weekRange, { weekStartsOn: 1 });
+
+    try {
+      // 1. 找出所有訂閱了「每週摘要」的使用者
+      const subscriptions = await PersonnelNotification.findAll({
+        where: { weeklySummaryNotice: true },
+        include: [
+          {
+            model: User,
+            required: true,
+            attributes: ['id', 'name', 'email'],
+          },
+        ],
+      });
+
+      console.log(`[Cron] Found ${subscriptions.length} users to notify.`);
+
+      // 2. 跑迴圈去寄信
+      for (const sub of subscriptions) {
+        // @ts-ignore: Sequelize include type inference can be tricky
+        const user = sub.user;
+
+        const categoryTabData = await statisticsServices.getCategoryTabData(
+          {
+            startDate,
+            endDate,
+          },
+          sub.userId
+        );
+        let expenseSummaryData: quickChartDoughnutProps;
+        let incomeSummaryData: quickChartDoughnutProps;
+
+        if (categoryTabData.length === 0) {
+          console.log(`[Cron] No data found for user ${user.name}.`);
+          continue;
+        }
+        const expenseData = categoryTabData.filter(
+          (item) => item.type === MainType.EXPENSE && item.isTransfer === false
+        );
+        const incomeData = categoryTabData.filter(
+          (item) => item.type === MainType.INCOME && item.isTransfer === false
+        );
+
+        if (expenseData.length > 0) {
+          expenseSummaryData = {
+            labels: expenseData.map((item) => item.name),
+            datasets: expenseData.map((item) => item.amount),
+            doughnutlabel: expenseData.reduce(
+              (acc, item) => acc + item.amount,
+              0
+            ),
+          };
+        } else {
+          expenseSummaryData = {
+            labels: [],
+            datasets: [],
+            doughnutlabel: 0,
+          };
+        }
+
+        if (incomeData.length > 0) {
+          incomeSummaryData = {
+            labels: incomeData.map((item) => item.name),
+            datasets: incomeData.map((item) => item.amount),
+            doughnutlabel: incomeData.reduce(
+              (acc, item) => acc + item.amount,
+              0
+            ),
+          };
+        } else {
+          incomeSummaryData = {
+            labels: [],
+            datasets: [],
+            doughnutlabel: 0,
+          };
+        }
+
+        if (user && user.email) {
+          await emailService.sendWeeklySummaryNoticeEmail({
+            userName: user.name,
+            to: user.email,
+            startDate: format(startDate, 'yyyy/MM/dd'),
+            endDate: format(endDate, 'yyyy/MM/dd'),
+            expenseSummaryData,
+            incomeSummaryData,
+          });
+        }
+      }
+
+      console.log('[Cron] Weekly summary notice check completed.');
+    } catch (error) {
+      console.error('[Cron] Failed to execute weekly summary notice:', error);
+    }
+  });
+};
+
+// export const startMonthlyAnalysisNoticeCronJobs = () => {
+//   console.log('[Cron] Start cron jobs');
+
+//   // 每月 1 号早上 9:00 執行
+//   cron.schedule('00 09 1 * *', async () => {
+//     console.log('[Cron] Starting monthly analysis notice check...');
+
+//     try {
+//       // 1. 找出所有訂閱了「每月分析」的使用者
+//       const subscriptions = await PersonnelNotification.findAll({
+//         where: { monthlyAnalysisNotice: true },
+//         include: [
+//           {
+//             model: User,
+//             required: true,
+//             attributes: ['id', 'name', 'email'],
+//           },
+//         ],
+//       });
+
+//       console.log(`[Cron] Found ${subscriptions.length} users to notify.`);
+
+//       // 2. 跑迴圈去寄信
+//       for (const sub of subscriptions) {
+//         // @ts-ignore: Sequelize include type inference can be tricky
+//         const user = sub.user;
+
+//         if (user && user.email) {
+//           await emailService.sendMonthlyAnalysisNoticeEmail({
+//             userName: user.name,
+//             to: user.email,
+//             expenseSummaryData,
+//             incomeSummaryData,
+//           });
+//         }
+//       }
+
+//       console.log('[Cron] Monthly analysis notice check completed.');
+//     } catch (error) {
+//       console.error('[Cron] Failed to execute monthly analysis notice:', error);
+//     }
+//   });
+// };

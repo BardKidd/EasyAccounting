@@ -57,6 +57,7 @@ export function CategoryTab({ periodDate, periodType }: CategoryTabProps) {
       name: item.name,
       value: item.amount,
       color: item.color,
+      type: item.type,
     }));
   }, [categoryTabData, selectedType]);
 

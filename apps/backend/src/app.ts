@@ -20,7 +20,10 @@ import authRoute from '@/routes/authRoute';
 import cookieParser from 'cookie-parser';
 import statisticsRoute from '@/routes/statisticsRoute';
 import personnelNotificationRoute from '@/routes/personnelNotificationRoute';
-import { startDailyReminderCronJobs } from './cron/notificationCron';
+import {
+  startDailyReminderCronJobs,
+  startWeeklySummaryNoticeCronJobs,
+} from './cron/notificationCron';
 
 const app = express();
 
@@ -77,6 +80,7 @@ Transaction.belongsTo(Account, {
 });
 
 startDailyReminderCronJobs();
+startWeeklySummaryNoticeCronJobs();
 
 sequelize
   .sync()

@@ -186,7 +186,7 @@ export function NotificationSettings({
             >
               <span>每週摘要</span>
               <span className="font-normal text-xs text-muted-foreground">
-                每週日寄送本週收支摘要
+                每週一寄送上週收支摘要
               </span>
             </Label>
             <Switch
