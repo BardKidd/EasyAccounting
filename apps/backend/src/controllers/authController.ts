@@ -23,13 +23,13 @@ const login = (req: Request, res: Response) => {
     if (!user) {
       return res
         .status(StatusCodes.NOT_FOUND)
-        .json(responseHelper(false, null, 'User not found', null));
+        .json(responseHelper(false, null, '該用戶尚未註冊', null));
     }
     const compareResult = await comparePassword(password, user.password);
     if (!compareResult) {
       return res
         .status(StatusCodes.BAD_REQUEST)
-        .json(responseHelper(false, null, 'Invalid password', null));
+        .json(responseHelper(false, null, '帳號或密碼錯誤', null));
     }
 
     const accessToken = await generateAccessToken({
@@ -66,7 +66,7 @@ const login = (req: Request, res: Response) => {
 
     return res
       .status(StatusCodes.OK)
-      .json(responseHelper(true, userInfo, 'Login successfully', null));
+      .json(responseHelper(true, userInfo, '登入成功', null));
   });
 };
 
@@ -75,7 +75,7 @@ const logout = (req: Request, res: Response) => {
     await clearAuthCookie(req, res);
     return res
       .status(StatusCodes.OK)
-      .json(responseHelper(true, null, 'Logout successfully', null));
+      .json(responseHelper(true, null, '登出成功', null));
   });
 };
 

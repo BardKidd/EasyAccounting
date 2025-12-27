@@ -57,7 +57,7 @@ export async function simplifyTryCatch(
   try {
     await cb();
   } catch (error) {
-    throw error;
+    toast.error(getErrorMessage(error));
   } finally {
     setIsLoading(false);
   }
