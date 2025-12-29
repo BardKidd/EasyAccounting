@@ -3,9 +3,18 @@ import cron from 'node-cron';
 import PersonnelNotification from '@/models/personnel_notification';
 import User from '@/models/user';
 import statisticsServices from '@/services/statisticsServices';
-import { endOfWeek, format, startOfWeek, subWeeks } from 'date-fns';
+import {
+  endOfMonth,
+  endOfWeek,
+  format,
+  startOfMonth,
+  startOfWeek,
+  subMonths,
+  subWeeks,
+} from 'date-fns';
 import { MainType } from '@repo/shared';
 import { quickChartDoughnutProps } from '@/types/email';
+import reportService from '@/services/reportService';
 
 /**
  * https://crontab.guru/
@@ -58,7 +67,8 @@ export const startWeeklySummaryNoticeCronJobs = () => {
   console.log('[Cron] Start cron jobs');
 
   // 每週一早上 9:00 執行
-  cron.schedule('00 09 * * 1', async () => {
+  // 00 09 * * 1
+  cron.schedule('55 18 * * *', async () => {
     console.log('[Cron] Starting weekly summary notice check...');
     const now = new Date();
     const weekRange = subWeeks(now, 1);
@@ -159,46 +169,52 @@ export const startWeeklySummaryNoticeCronJobs = () => {
   });
 };
 
-// export const startMonthlyAnalysisNoticeCronJobs = () => {
-//   console.log('[Cron] Start cron jobs');
+export const startMonthlyAnalysisNoticeCronJobs = () => {
+  console.log('[Cron] Start cron jobs');
 
-//   // 每月 1 号早上 9:00 執行
-//   cron.schedule('00 09 1 * *', async () => {
-//     console.log('[Cron] Starting monthly analysis notice check...');
+  // 每月 5 號早上 9:00 執行
+  cron.schedule('00 09 5 * *', async () => {
+    console.log('[Cron] Starting monthly analysis notice check...');
 
-//     try {
-//       // 1. 找出所有訂閱了「每月分析」的使用者
-//       const subscriptions = await PersonnelNotification.findAll({
-//         where: { monthlyAnalysisNotice: true },
-//         include: [
-//           {
-//             model: User,
-//             required: true,
-//             attributes: ['id', 'name', 'email'],
-//           },
-//         ],
-//       });
+    try {
+      // 1. 找出所有訂閱了「每月分析」的使用者
+      const subscriptions = await PersonnelNotification.findAll({
+        where: { monthlyAnalysisNotice: true },
+        include: [
+          {
+            model: User,
+            required: true,
+            attributes: ['id', 'name', 'email'],
+          },
+        ],
+      });
 
-//       console.log(`[Cron] Found ${subscriptions.length} users to notify.`);
+      // 2. 取出上月及上上月的交易資料
 
-//       // 2. 跑迴圈去寄信
-//       for (const sub of subscriptions) {
-//         // @ts-ignore: Sequelize include type inference can be tricky
-//         const user = sub.user;
+      console.log(`[Cron] Found ${subscriptions.length} users to notify.`);
 
-//         if (user && user.email) {
-//           await emailService.sendMonthlyAnalysisNoticeEmail({
-//             userName: user.name,
-//             to: user.email,
-//             expenseSummaryData,
-//             incomeSummaryData,
-//           });
-//         }
-//       }
+      // 2. 跑迴圈去寄信
+      for (const sub of subscriptions) {
+        // @ts-ignore: Sequelize include type inference can be tricky
+        const user = sub.user;
 
-//       console.log('[Cron] Monthly analysis notice check completed.');
-//     } catch (error) {
-//       console.error('[Cron] Failed to execute monthly analysis notice:', error);
-//     }
-//   });
-// };
+        const payload = await reportService.monthlyReportService({
+          userName: user.name,
+          userEmail: user.email,
+          userId: sub.userId,
+        });
+
+        if (user && user.email) {
+          await emailService.sendMonthlyAnalysisNoticeEmail({
+            to: user.email,
+            payload,
+          });
+        }
+      }
+
+      console.log('[Cron] Monthly analysis notice check completed.');
+    } catch (error) {
+      console.error('[Cron] Failed to execute monthly analysis notice:', error);
+    }
+  });
+};

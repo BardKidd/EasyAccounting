@@ -22,6 +22,7 @@ import statisticsRoute from '@/routes/statisticsRoute';
 import personnelNotificationRoute from '@/routes/personnelNotificationRoute';
 import {
   startDailyReminderCronJobs,
+  startMonthlyAnalysisNoticeCronJobs,
   startWeeklySummaryNoticeCronJobs,
 } from './cron/notificationCron';
 
@@ -81,6 +82,7 @@ Transaction.belongsTo(Account, {
 
 startDailyReminderCronJobs();
 startWeeklySummaryNoticeCronJobs();
+startMonthlyAnalysisNoticeCronJobs();
 
 sequelize
   .sync()

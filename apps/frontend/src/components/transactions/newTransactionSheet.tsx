@@ -54,6 +54,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import services from '@/services';
+import { z } from '@repo/shared';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
@@ -67,8 +68,35 @@ function NewTransactionSheet({
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // 因為 detailCategory 還沒選擇，所以只能在這裡判斷
+  const formSchema = useMemo(() => {
+    return transactionFormSchema.superRefine((data, ctx) => {
+      if (data.type === MainType.OPERATE) return;
+
+      // 找出對應的 Root Category
+      const root = categories.find((c) => c.type === data.type);
+      if (!root?.children) return;
+
+      // 找出選中的 Main Category
+      const mainCategory = root.children.find((c) => c.id === data.subCategory);
+      if (!mainCategory) return;
+
+      // 如果該 Main Category 下有子分類，則 detailCategory 必填
+      if (mainCategory.children && mainCategory.children.length > 0) {
+        if (!data.detailCategory) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '請選擇子分類',
+            path: ['detailCategory'],
+          });
+        }
+      }
+    });
+  }, [categories]);
+
   const form = useForm<TransactionFormSchema>({
-    resolver: zodResolver(transactionFormSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       accountId: '',
       amount: 0,
@@ -241,6 +269,7 @@ function NewTransactionSheet({
                           field.onChange(MainType.EXPENSE);
                           form.setValue('subCategory', '');
                           form.setValue('detailCategory', '');
+                          form.clearErrors();
                         }}
                       >
                         {MainType.EXPENSE}
@@ -261,6 +290,7 @@ function NewTransactionSheet({
                           field.onChange(MainType.INCOME);
                           form.setValue('subCategory', '');
                           form.setValue('detailCategory', '');
+                          form.clearErrors();
                         }}
                       >
                         {MainType.INCOME}
@@ -281,6 +311,7 @@ function NewTransactionSheet({
                           field.onChange(MainType.OPERATE);
                           form.setValue('subCategory', '');
                           form.setValue('detailCategory', '');
+                          form.clearErrors();
                         }}
                       >
                         {MainType.OPERATE}
