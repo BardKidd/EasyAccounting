@@ -15,6 +15,7 @@ import {
 import { MainType } from '@repo/shared';
 import { quickChartDoughnutProps } from '@/types/email';
 import reportService from '@/services/reportService';
+import { sleep } from '@/utils/common';
 
 /**
  * https://crontab.guru/
@@ -53,6 +54,7 @@ export const startDailyReminderCronJobs = () => {
             userName: user.name,
             to: user.email,
           });
+          await sleep(600);
         }
       }
 
@@ -159,6 +161,7 @@ export const startWeeklySummaryNoticeCronJobs = () => {
             expenseSummaryData,
             incomeSummaryData,
           });
+          await sleep(600);
         }
       }
 
@@ -209,6 +212,7 @@ export const startMonthlyAnalysisNoticeCronJobs = () => {
             to: user.email,
             payload,
           });
+          await sleep(600);
         }
       }
 

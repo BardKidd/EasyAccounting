@@ -40,3 +40,8 @@ export const responseHelper = <T>(
     error,
   };
 };
+
+// 以後多人再來用 MQ 解決，目前先用短暫休息的方式避免寄信過快
+export const sleep = (ms: number) => {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
