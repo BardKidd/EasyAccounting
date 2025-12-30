@@ -21,7 +21,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createCategorySchema, CreateCategoryInput } from '@repo/shared';
+import {
+  createCategorySchema,
+  CreateCategoryInput,
+  CategoryType,
+} from '@repo/shared';
 import IconPicker from '@/components/ui/icon-picker';
 import { HexColorPicker } from 'react-colorful';
 import { toast } from 'sonner';
@@ -37,6 +41,8 @@ interface CategoryDialogProps {
   parentId: string | null;
   type: string;
   parentName?: string;
+  rootIncomeCategory: CategoryType;
+  rootExpenseCategory: CategoryType;
 }
 
 export function CategoryDialog({
@@ -46,10 +52,15 @@ export function CategoryDialog({
   parentId,
   type,
   parentName,
+  rootIncomeCategory,
+  rootExpenseCategory,
 }: CategoryDialogProps) {
   const router = useRouter();
   const isEditMode = !!initialData;
-  const isSubCategoryMode = !!parentId && !isEditMode;
+  const isSubCategoryMode =
+    parentId !== rootIncomeCategory.id &&
+    parentId !== rootExpenseCategory.id &&
+    !isEditMode;
 
   const defaultValues: Partial<CreateCategoryInput> = {
     name: '',

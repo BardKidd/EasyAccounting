@@ -251,6 +251,8 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
             ? dialogState.node?.name
             : undefined
         }
+        rootIncomeCategory={rootIncomeCategory}
+        rootExpenseCategory={rootExpenseCategory}
       />
 
       <DeleteConfirmDialog
