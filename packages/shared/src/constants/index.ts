@@ -131,3 +131,12 @@ export enum PeriodType {
   MONTH = 'month',
   YEAR = 'year',
 }
+
+// 這裡放當前頁面是什麼，參考 url 怎麼寫就怎麼寫。
+export enum PageType {
+  DASHBOARD = 'dashboard',
+  TRANSACTIONS = 'transactions',
+  ACCOUNTS = 'accounts',
+  STATISTICS = 'statistics',
+  SETTINGS = 'settings',
+}

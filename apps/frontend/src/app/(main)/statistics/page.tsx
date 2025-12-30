@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { Container } from '@/components/ui/container';
+import { ExcelExportButton } from '@/components/common/ExcelExportButton';
+import { ExcelImportButton } from '@/components/common/ExcelImportButton';
 import { StatisticsHeader } from '@/components/statistics/statisticsHeader';
 
 import { OverviewTab } from '@/components/statistics/overviewTab';
@@ -9,7 +11,7 @@ import { DetailsTab } from '@/components/statistics/detailsTab';
 import { CategoryTab } from '@/components/statistics/categoryTab';
 import { RankingTab } from '@/components/statistics/rankingTab';
 import { AccountTab } from '@/components/statistics/accountTab';
-import { PeriodType } from '@repo/shared';
+import { PageType, PeriodType } from '@repo/shared';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   format,
@@ -45,7 +47,15 @@ function StatisticsPage() {
   }, [periodType, date]);
 
   return (
-    <Container title="統計報表">
+    <Container className="py-8 space-y-8">
+      <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">統計報表</h2>
+        <div className="flex items-center gap-2">
+          <ExcelImportButton type={PageType.STATISTICS} />
+          <ExcelExportButton type={PageType.STATISTICS} />
+        </div>
+      </div>
+
       <div className="space-y-6">
         <StatisticsHeader
           periodType={periodType}

@@ -1,6 +1,6 @@
 'use client';
 
-import { AccountType, Account } from '@repo/shared';
+import { AccountType, Account, PageType } from '@repo/shared';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,6 +27,8 @@ import { Separator } from '@/components/ui/separator';
 import { ACCOUNT_ICONS, IconName } from '@/lib/icon-mapping';
 import AccountDialog from '@/components/accounts/accountDialog';
 import AccountDeleteConfirmDialog from '@/components/accounts/accountDeleteConfirmDialog';
+import { ExcelExportButton } from '@/components/common/ExcelExportButton';
+import { ExcelImportButton } from '@/components/common/ExcelImportButton';
 
 // 順序
 const accountTypeOrder = [
@@ -238,10 +240,15 @@ function AccountList({ accounts }: AccountListProps) {
     <div className="space-y-8">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">帳戶管理</h2>
-        <Button className="cursor-pointer" onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          新增帳戶
-        </Button>
+
+        <div className="flex items-center gap-2">
+          <ExcelImportButton type={PageType.ACCOUNTS} />
+          <ExcelExportButton type={PageType.ACCOUNTS} />
+          <Button className="cursor-pointer" onClick={handleCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            新增帳戶
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-6">

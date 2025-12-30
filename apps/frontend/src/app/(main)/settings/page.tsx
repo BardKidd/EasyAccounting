@@ -3,6 +3,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CategorySettings } from '@/components/settings/categorySettings';
 import { NotificationSettings } from '@/components/settings/notificationSettings';
 import service from '@/services';
+import { ExcelExportButton } from '@/components/common/ExcelExportButton';
+import { ExcelImportButton } from '@/components/common/ExcelImportButton';
+import { PageType } from '@repo/shared';
 
 export default async function SettingsPage() {
   const categories = await service.getCategories();
@@ -12,8 +15,11 @@ export default async function SettingsPage() {
     <Container className="py-8 space-y-8">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">設定</h2>
+        <div className="flex items-center gap-2">
+          <ExcelImportButton type={PageType.SETTINGS} />
+          <ExcelExportButton type={PageType.SETTINGS} />
+        </div>
       </div>
-
       <Tabs defaultValue="categories" className="space-y-4">
         <TabsList>
           <TabsTrigger value="categories" className="cursor-pointer">

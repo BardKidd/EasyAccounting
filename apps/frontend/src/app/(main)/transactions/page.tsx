@@ -5,6 +5,9 @@ import {
   NewTransactionSheet,
 } from '@/components/transactions';
 import service from '@/services';
+import { ExcelExportButton } from '@/components/common/ExcelExportButton';
+import { ExcelImportButton } from '@/components/common/ExcelImportButton';
+import { PageType } from '@repo/shared';
 
 // 看一下 Next.js 15 後的 query 都變成非同步了。
 // 因為使用了 Partial Prerendering(PPR) 渲染方式，是種靜態+動態的混合渲染方式。可優先渲染不變的 Header 或 Sidebar 等，而內容則等等再渲染。所以才會有時間差。
@@ -55,9 +58,12 @@ async function TransactionsPage(props: PageProps) {
       <div className="flex items-center justify-between space-y-2">
         {/* tracking-tight 會讓字距更緊湊 */}
         <h2 className="text-3xl font-bold tracking-tight">交易紀錄</h2>
-        <NewTransactionSheet categories={categories} accounts={accounts} />
+        <div className="flex items-center gap-2">
+          <ExcelImportButton type={PageType.TRANSACTIONS} />
+          <ExcelExportButton type={PageType.TRANSACTIONS} />
+          <NewTransactionSheet categories={categories} accounts={accounts} />
+        </div>
       </div>
-
       <div className="space-y-4">
         <TransactionFilters accounts={accounts} />
 

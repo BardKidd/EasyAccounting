@@ -9,7 +9,7 @@ export default async function AccountsPage() {
   const accounts: AccountType[] = await service.getPersonnelAccounts();
 
   return (
-    <Container className="py-8">
+    <Container className="py-8 space-y-8">
       <AccountList accounts={accounts} />
     </Container>
   );
