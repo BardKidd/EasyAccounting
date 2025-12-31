@@ -20,6 +20,7 @@ import authRoute from '@/routes/authRoute';
 import cookieParser from 'cookie-parser';
 import statisticsRoute from '@/routes/statisticsRoute';
 import personnelNotificationRoute from '@/routes/personnelNotificationRoute';
+import excelRoute from '@/routes/excelRoute';
 import {
   startDailyReminderCronJobs,
   startMonthlyAnalysisNoticeCronJobs,
@@ -49,6 +50,7 @@ app.use('/api', transactionRoute);
 app.use('/api', authRoute);
 app.use('/api', statisticsRoute);
 app.use('/api', personnelNotificationRoute);
+app.use('/api', excelRoute);
 
 User.hasMany(Category);
 User.hasMany(Account);
