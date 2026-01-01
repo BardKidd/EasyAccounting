@@ -10,4 +10,16 @@ router.get(
   excelControllers.getAllCategoriesHyphenString
 );
 
+router.get(
+  '/excel/transaction-template',
+  authMiddleware,
+  excelControllers.exportTransactionsTemplateExcel
+);
+
+router.get(
+  '/excel/user-transactions',
+  authMiddleware,
+  excelControllers.exportUserTransactionsExcel
+);
+
 export default router;

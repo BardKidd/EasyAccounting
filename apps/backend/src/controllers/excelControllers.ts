@@ -13,6 +13,24 @@ const getAllCategoriesHyphenString = async (req: Request, res: Response) => {
   });
 };
 
+const exportTransactionsTemplateExcel = async (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const url = await excelServices.exportTransactionsTemplateExcel(userId);
+    res.status(StatusCodes.OK).json(responseHelper(true, url, 'success', null));
+  });
+};
+
+const exportUserTransactionsExcel = async (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const url = await excelServices.exportUserTransactionsExcel(userId);
+    res.status(StatusCodes.OK).json(responseHelper(true, url, 'success', null));
+  });
+};
+
 export default {
   getAllCategoriesHyphenString,
+  exportTransactionsTemplateExcel,
+  exportUserTransactionsExcel,
 };
