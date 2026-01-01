@@ -242,8 +242,8 @@ function AccountList({ accounts }: AccountListProps) {
         <h2 className="text-3xl font-bold tracking-tight">帳戶管理</h2>
 
         <div className="flex items-center gap-2">
-          <ExcelImportButton type={PageType.ACCOUNTS} />
-          <ExcelExportButton type={PageType.ACCOUNTS} />
+          {/* <ExcelImportButton type={PageType.ACCOUNTS} />
+          <ExcelExportButton type={PageType.ACCOUNTS} /> */}
           <Button className="cursor-pointer" onClick={handleCreate}>
             <Plus className="mr-2 h-4 w-4" />
             新增帳戶

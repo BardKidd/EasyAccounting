@@ -21,16 +21,18 @@ export function ExcelExportButton({ type, className }: ExcelExportButtonProps) {
       setLoading(true);
       toast.info('正在準備匯出...');
 
-      // const blob = await service.exportData(type);
-
-      // const url = window.URL.createObjectURL(blob);
-      // const a = document.createElement('a');
-      // a.href = url;
-      // a.download = `export_${type}_${new Date().toISOString().split('T')[0]}.xlsx`;
-      // document.body.appendChild(a);
-      // a.click();
-      // window.URL.revokeObjectURL(url);
-      // document.body.removeChild(a);
+      if (type === PageType.TRANSACTIONS) {
+        const url = await service.getTransactionsExcelUrl();
+        // 建立隱藏的 a 標籤來觸發下載
+        const a = document.createElement('a');
+        a.href = url;
+        // 檔名會由瀏覽器根據網址或 Header 決定，這裡其實 Azure Blob 的 SAS URL 點擊就會下載
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast.success('匯出成功！');
+        return;
+      }
 
       toast.success('匯出成功！');
     } catch (error) {

@@ -7,6 +7,7 @@ import {
 import service from '@/services';
 import { ExcelExportButton } from '@/components/common/ExcelExportButton';
 import { ExcelImportButton } from '@/components/common/ExcelImportButton';
+import { TemplateDownloadButton } from '@/components/common/TemplateDownloadButton';
 import { PageType } from '@repo/shared';
 
 // 看一下 Next.js 15 後的 query 都變成非同步了。
@@ -59,6 +60,7 @@ async function TransactionsPage(props: PageProps) {
         {/* tracking-tight 會讓字距更緊湊 */}
         <h2 className="text-3xl font-bold tracking-tight">交易紀錄</h2>
         <div className="flex items-center gap-2">
+          <TemplateDownloadButton />
           <ExcelImportButton type={PageType.TRANSACTIONS} />
           <ExcelExportButton type={PageType.TRANSACTIONS} />
           <NewTransactionSheet categories={categories} accounts={accounts} />

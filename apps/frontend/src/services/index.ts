@@ -29,6 +29,10 @@ import {
   getPersonnelNotification,
   updatePersonnelNotification,
 } from './personnelNotification';
+import {
+  getTransactionTemplateUrl,
+  getTransactionsExcelUrl,
+} from './importExport';
 
 export default {
   getCategories,
@@ -52,4 +56,6 @@ export default {
   getAccountTabData,
   getPersonnelNotification,
   updatePersonnelNotification,
+  getTransactionTemplateUrl,
+  getTransactionsExcelUrl,
 };
