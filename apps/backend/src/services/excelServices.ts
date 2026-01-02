@@ -56,7 +56,7 @@ const getAllCategoriesHyphenString = async (userId: string) => {
 
   mainCategories.forEach((cat) => {
     cat.children.forEach((subCat) => {
-      stringCollection.push(`${cat.name} - ${subCat.name}`);
+      stringCollection.push(`${cat.name}-${subCat.name}`);
     });
 
     // 沒有子分類但 parentId 為 root 分類的話就代表是 mainCategory，要加進來。
@@ -152,7 +152,7 @@ const generateTransactionsTemplateBuffer = async ({
       amount: 10000,
       account: '錢包',
       targetAccount: '',
-      category: '飲食 - 早餐',
+      category: '飲食-早餐',
       receipt: '',
       description: '這是範例行，時間日期需要按照範例格式填寫',
     });
@@ -250,7 +250,7 @@ const exportUserTransactionsExcel = async (userId: string) => {
     categories.map((c) => {
       const parentName = categories.find((cat) => cat.id === c.parentId)?.name;
       const combinedParentAndChild = c.parentId
-        ? `${parentName} - ${c.name}`
+        ? `${parentName}-${c.name}`
         : c.name;
       return [c.id, combinedParentAndChild];
     })
@@ -288,7 +288,7 @@ const exportUserTransactionsExcel = async (userId: string) => {
       category: categoryMap.get(t.categoryId) || '',
     }));
 
-  // 格式有空格為："飲食 - 早餐"
+  // 格式為："飲食-早餐"
   const categoryNames = await getAllCategoriesHyphenString(userId);
 
   // 產生檔案
