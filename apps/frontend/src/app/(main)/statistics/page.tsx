@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { Container } from '@/components/ui/container';
-import { ExcelExportButton } from '@/components/common/ExcelExportButton';
-import { ExcelImportButton } from '@/components/common/ExcelImportButton';
+// import { ExcelExportButton } from '@/components/common/ExcelExportButton';
+// import { ExcelImportButton } from '@/components/common/ExcelImportButton';
 import { StatisticsHeader } from '@/components/statistics/statisticsHeader';
 
 import { OverviewTab } from '@/components/statistics/overviewTab';
@@ -51,8 +51,8 @@ function StatisticsPage() {
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">統計報表</h2>
         <div className="flex items-center gap-2">
-          <ExcelImportButton type={PageType.STATISTICS} />
-          <ExcelExportButton type={PageType.STATISTICS} />
+          {/* <ExcelImportButton type={PageType.STATISTICS} />
+          <ExcelExportButton type={PageType.STATISTICS} /> */}
         </div>
       </div>
 

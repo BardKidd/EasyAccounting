@@ -192,7 +192,16 @@ export default function ExcelImportButton({
                 ) : (
                   <CheckCircle2 className="h-8 w-8 text-green-600" />
                 )}
-                <div className="font-medium text-lg">匯入完成</div>
+                <div
+                  className={cn(
+                    'font-medium text-lg',
+                    result.failureCount > 0
+                      ? 'text-yellow-600'
+                      : 'text-green-600'
+                  )}
+                >
+                  匯入完成
+                </div>
                 <div className="text-sm text-gray-600">
                   成功：
                   <span className="font-bold text-green-600">
@@ -209,7 +218,7 @@ export default function ExcelImportButton({
 
               {result.failureCount > 0 && (
                 <div className="bg-slate-50 p-4 rounded-lg border text-sm space-y-3">
-                  <p className="font-medium flex items-center gap-2">
+                  <p className="font-medium flex items-center gap-2 text-slate-700">
                     <Download className="h-4 w-4" />
                     下載錯誤報告
                   </p>
