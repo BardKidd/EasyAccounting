@@ -8,7 +8,6 @@ import {
   CreateTransferSchema,
   MainType,
   PaymentFrequency,
-  TransactionType,
 } from '@repo/shared';
 import Transaction from '@/models/transaction';
 import User from '@/models/user';
@@ -37,10 +36,11 @@ interface ImportTransactionRow {
   description?: string;
   // 只有 User 輸入錯誤時才會有這個值
   error?: string;
+  errFields?: string[];
 }
 
 /**
- * 取得所有類別的 name，並以 - 分隔。e.g. 飲食-早餐
+ * 取得所有類型的 name，並以 - 分隔。e.g. 飲食-早餐
  * @param userId
  * @returns ["飲食-早餐", "飲食-午餐", ...]
  */
@@ -183,12 +183,15 @@ const generateTransactionsBuffer = async ({
     // 錯誤的欄位需要增加亮黃色背景
     transactions.forEach((t) => {
       const row = worksheet.addRow(t);
-      if (t.error) {
-        row.getCell('A').fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFFFFF00' },
-        };
+      if (t.errFields && t.errFields.length > 0) {
+        t.errFields.forEach((field) => {
+          const colIndex = transactionColumns.findIndex((c) => c.key === field);
+          row.getCell(colIndex + 1 + colOffset).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFFFFF00' },
+          };
+        });
       }
     });
   } else {
@@ -373,8 +376,20 @@ const validateAndParseRows = async (
 
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
-    const date = format(row.getCell(1 + colOffset).text, 'yyyy-MM-dd');
-    const time = format(row.getCell(2 + colOffset).text, 'HH:mm:ss');
+    // 防止用戶輸入奇怪的值導致 format 出錯
+    let date = '';
+    try {
+      date = format(row.getCell(1 + colOffset).text, 'yyyy-MM-dd');
+    } catch {
+      date = '';
+    }
+    // 防止用戶輸入奇怪的值導致 format 出錯
+    let time = '';
+    try {
+      time = format(row.getCell(2 + colOffset).text, 'HH:mm:ss');
+    } catch {
+      time = '';
+    }
     const type = row.getCell(3 + colOffset).text as MainType;
     const amount = Number(row.getCell(4 + colOffset).value);
     const accountName = row.getCell(5 + colOffset).text;
@@ -383,22 +398,42 @@ const validateAndParseRows = async (
     const receipt = row.getCell(8 + colOffset).text;
     const description = row.getCell(9 + colOffset).text;
 
+    if (
+      !date &&
+      !time &&
+      !type &&
+      !amount &&
+      !accountName &&
+      !targetAccountName &&
+      !category &&
+      !receipt &&
+      !description
+    ) {
+      return; // 空行直接跳過
+    }
+
     let errMsg = '';
+    const errFields: string[] = [];
 
     if (!date) {
       errMsg += '日期為必填欄位,';
+      errFields.push('date');
     }
     if (!time) {
       errMsg += '時間為必填欄位,';
+      errFields.push('time');
     }
     if (!type) {
-      errMsg += '類別為必填欄位,';
+      errMsg += '類型為必填欄位,';
+      errFields.push('type');
     }
     if (!accountName) {
       errMsg += '帳戶為必填欄位,';
+      errFields.push('account');
     }
     if (!category) {
       errMsg += '分類為必填欄位,';
+      errFields.push('category');
     }
 
     if (
@@ -406,32 +441,43 @@ const validateAndParseRows = async (
       type !== MainType.EXPENSE &&
       type !== MainType.OPERATE
     ) {
-      errMsg += '類別錯誤,';
+      errMsg += '類型錯誤,';
+      errFields.push('type');
     }
 
     if (amount < 0) {
       errMsg += '金額必須大於 0,';
+      errFields.push('amount');
     }
     if (typeof amount !== 'number') {
       errMsg += '金額必須為數字,';
+      errFields.push('amount');
     }
 
     const accountId = accountMap.get(accountName);
-    if (!accountId) errMsg += `帳戶[${accountName}]不存在; `;
+    if (accountName && !accountId) {
+      errMsg += `帳戶[${accountName}]不存在; `;
+      errFields.push('account');
+    }
 
     let targetAccountId: string | null = null;
     if (targetAccountName) {
       targetAccountId = accountMap.get(targetAccountName) || null;
-      if (!targetAccountId) errMsg += `目標帳戶[${targetAccountName}]不存在; `;
+      if (targetAccountName && !targetAccountId) {
+        errMsg += `目標帳戶[${targetAccountName}]不存在; `;
+        errFields.push('targetAccount');
+      }
     }
 
-    if (!categoryMap.has(category)) {
+    if (category && !categoryMap.has(category)) {
       errMsg += `分類[${category}]不存在; `;
+      errFields.push('category');
     }
 
     if (errMsg) {
       errorRows.push({
         error: errMsg,
+        errFields,
         date,
         time,
         type,
@@ -504,8 +550,8 @@ const importNewTransactionsExcel = async (
     attributes: ['id', 'name', 'parentId'],
     raw: true,
   });
-  if (categoriesName.length === 0) throw new Error('取得類別有誤');
-  if (categories.length === 0) throw new Error('取得類別有誤');
+  if (categoriesName.length === 0) throw new Error('取得分類有誤');
+  if (categories.length === 0) throw new Error('取得分類有誤');
 
   // User 都是填文字，所以製作 Map <name -> id>
   const accountMap = new Map<string, string>(

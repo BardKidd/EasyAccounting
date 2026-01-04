@@ -124,13 +124,13 @@ export default function ExcelImportButton({
       setResult({
         successCount,
         failureCount,
-        errorUrl: res.url,
+        errorUrl: res.errorUrl,
         message: res.message,
       });
 
-      if (res.isSuccess && !res.url) {
+      if (res.isSuccess && !res.errorUrl) {
         toast.success('匯入成功');
-      } else if (res.url) {
+      } else if (res.errorUrl) {
         toast.warning('部分資料匯入失敗');
       }
     } catch (error: any) {
@@ -151,9 +151,9 @@ export default function ExcelImportButton({
     setIsOpen(false);
     if (shouldRefresh && result?.successCount && result.successCount > 0) {
       router.refresh();
-      setResult(null);
-      setSelectedFile(null);
     }
+    setResult(null);
+    setSelectedFile(null);
   };
 
   return (
@@ -223,8 +223,7 @@ export default function ExcelImportButton({
                     補登失敗的資料。
                   </p>
                   <Button
-                    variant="secondary"
-                    className="w-full gap-2 border shadow-sm bg-white hover:bg-slate-50"
+                    className="w-full gap-2 border shadow-sm bg-white hover:bg-slate-50 cursor-pointer"
                     onClick={handleDownloadErrorNetwork}
                   >
                     <Download className="h-4 w-4" />
@@ -311,7 +310,7 @@ export default function ExcelImportButton({
             <>
               <Button
                 variant="ghost"
-                onClick={() => setIsOpen(false)}
+                onClick={() => handleCloseAndRefresh}
                 disabled={isLoading}
                 className="cursor-pointer"
               >

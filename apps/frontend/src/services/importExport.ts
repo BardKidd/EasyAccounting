@@ -24,7 +24,7 @@ export const importTransactions = async (file: File) => {
   );
   const resJson = await res.json();
   const result = resJson.data;
-  return result as { isSuccess: true; message: string; url?: string };
+  return result as { isSuccess: true; message: string; errorUrl?: string };
 };
 
 export default {
