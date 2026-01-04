@@ -159,7 +159,7 @@ export default function ExcelImportButton({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2 cursor-pointer">
+        <Button className="gap-2 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white">
           <CloudUpload className="h-4 w-4" />
           匯入 EXCEL
         </Button>
