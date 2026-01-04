@@ -6,7 +6,7 @@ import {
 } from '@/components/transactions';
 import service from '@/services';
 import { ExcelExportButton } from '@/components/common/ExcelExportButton';
-import { ExcelImportButton } from '@/components/common/ExcelImportButton';
+import ExcelImportButton from '@/components/common/ExcelImportButton';
 import { TemplateDownloadButton } from '@/components/common/TemplateDownloadButton';
 import { PageType } from '@repo/shared';
 
@@ -61,7 +61,7 @@ async function TransactionsPage(props: PageProps) {
         <h2 className="text-3xl font-bold tracking-tight">交易紀錄</h2>
         <div className="flex items-center gap-2">
           <TemplateDownloadButton />
-          <ExcelImportButton type={PageType.TRANSACTIONS} />
+          <ExcelImportButton shouldRefresh={true} />
           <ExcelExportButton type={PageType.TRANSACTIONS} />
           <NewTransactionSheet categories={categories} accounts={accounts} />
         </div>

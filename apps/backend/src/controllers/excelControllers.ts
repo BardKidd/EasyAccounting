@@ -29,8 +29,29 @@ const exportUserTransactionsExcel = async (req: Request, res: Response) => {
   });
 };
 
+const importNewTransactionsExcel = async (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const file = req.file;
+
+    if (!file) {
+      throw new Error('未有檔案上傳');
+    }
+
+    const result = await excelServices.importNewTransactionsExcel(
+      userId,
+      file.buffer
+    );
+
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, result, 'success', null));
+  });
+};
+
 export default {
   getAllCategoriesHyphenString,
   exportTransactionsTemplateExcel,
   exportUserTransactionsExcel,
+  importNewTransactionsExcel,
 };

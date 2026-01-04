@@ -3,9 +3,18 @@ import { Op } from 'sequelize';
 import ExcelJS from 'exceljs';
 import Account from '@/models/account';
 import { generateSasUrl, uploadFileToBlob } from '@/utils/azureBlob';
-import { MainType, TransactionType } from '@repo/shared';
+import {
+  CreateTransactionSchema,
+  CreateTransferSchema,
+  MainType,
+  PaymentFrequency,
+  TransactionType,
+} from '@repo/shared';
 import Transaction from '@/models/transaction';
 import User from '@/models/user';
+import { format } from 'date-fns';
+import transactionServices from './transactionServices';
+import { transactionColumns } from '@/excelColumns/transactionColumns';
 
 interface SimplifyCategory {
   id: string;
@@ -15,6 +24,26 @@ interface SimplifyCategory {
   parentId: string | null;
   parent: SimplifyCategory | null;
 }
+
+interface ImportTransactionRow {
+  date: string;
+  time: string;
+  type: string;
+  amount: number;
+  account: string;
+  targetAccount?: string | null;
+  category: string;
+  receipt?: string;
+  description?: string;
+  // 只有 User 輸入錯誤時才會有這個值
+  error?: string;
+}
+
+/**
+ * 取得所有類別的 name，並以 - 分隔。e.g. 飲食-早餐
+ * @param userId
+ * @returns ["飲食-早餐", "飲食-午餐", ...]
+ */
 const getAllCategoriesHyphenString = async (userId: string) => {
   const categories = await Category.findAll({
     where: {
@@ -69,85 +98,105 @@ const getAllCategoriesHyphenString = async (userId: string) => {
     }
   });
 
-  return stringCollection;
+  return { stringCollection, categories };
+};
+
+/**
+ * 取得該 Excel 模板常用的下拉選單資料
+ * @param userId
+ * @returns accounts: 該 User 的所有帳戶名原生資料
+ * @returns accountNames: 該 User 的所有帳戶名。string[]
+ * @returns categories: 該 User 以及預設的所有分類原生資料
+ * @returns categoryNames: 該 User 以及預設的分類，以結合的方式命名 e.g. ["飲食-早餐", "飲食-午餐", ...]
+ */
+const getPersonnelAccountsAndCategoriesForExcelDropdown = async (
+  userId: string
+) => {
+  const accounts = await Account.findAll({
+    where: { userId },
+    attributes: ['id', 'name'],
+    raw: true,
+  });
+  const accountNames = accounts.map((a) => a.name);
+
+  const { stringCollection: categoryNames, categories } =
+    await getAllCategoriesHyphenString(userId);
+
+  return {
+    accounts,
+    accountNames,
+    categoryNames,
+    categories,
+  };
 };
 
 // 專注於繪製 Excel 模板
-const generateTransactionsTemplateBuffer = async ({
-  accounts,
-  categories,
+const generateTransactionsBuffer = async ({
+  userId,
+  hasErrorColumn = false,
   transactions,
 }: {
-  accounts: string[];
-  categories: string[];
-  transactions?: TransactionType[];
+  userId: string;
+  hasErrorColumn: boolean;
+  transactions?: ImportTransactionRow[];
 }) => {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('交易紀錄');
+  const colOffset = hasErrorColumn ? 1 : 0;
 
-  worksheet.columns = [
-    {
-      header: '日期',
-      key: 'date',
-      width: 15,
-    },
-    {
-      header: '時間',
-      key: 'time',
-      width: 15,
-    },
-    {
-      header: '類型',
-      key: 'type',
-      width: 15,
-    },
-    {
-      header: '金額',
-      key: 'amount',
-      width: 15,
-    },
-    {
-      header: '帳戶',
-      key: 'account',
-      width: 15,
-    },
-    {
-      header: '目標帳戶',
-      key: 'targetAccount',
-      width: 15,
-    },
-    {
-      header: '分類',
-      key: 'category',
-      width: 15,
-    },
-    {
-      header: '發票',
-      key: 'receipt',
-      width: 15,
-    },
-    {
-      header: '描述',
-      key: 'description',
-      width: 30,
-    },
-  ];
+  worksheet.columns = hasErrorColumn
+    ? [{ header: '錯誤說明', key: 'error', width: 100 }, ...transactionColumns]
+    : transactionColumns;
+
+  const headerRow = worksheet.getRow(1);
+  headerRow.eachCell((cell) => {
+    cell.border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' },
+    };
+
+    // 必填欄位設為淡粉紅色
+    if (cell.text.includes('*')) {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFE0E0' },
+      };
+    }
+  });
 
   // 隱形的選項清單
+  const { accountNames, categoryNames, accounts, categories } =
+    await getPersonnelAccountsAndCategoriesForExcelDropdown(userId);
+
   const optionSheet = workbook.addWorksheet('_Options');
   optionSheet.state = 'hidden';
 
-  // 把帳號和分類寫入
-  accounts.forEach((a, i) => (optionSheet.getCell(`A${i + 1}`).value = a));
-  categories.forEach((c, i) => (optionSheet.getCell(`B${i + 1}`).value = c));
+  accountNames.forEach((a, i) => (optionSheet.getCell(`A${i + 1}`).value = a));
+  categoryNames.forEach((c, i) => (optionSheet.getCell(`B${i + 1}`).value = c));
 
-  if (transactions && transactions.length > 0) {
+  if (!hasErrorColumn && transactions && transactions.length > 0) {
     transactions.forEach((t) => worksheet.addRow(t));
+  } else if (hasErrorColumn && transactions && transactions.length > 0) {
+    // 錯誤的欄位需要增加亮黃色背景
+    transactions.forEach((t) => {
+      const row = worksheet.addRow(t);
+      if (t.error) {
+        row.getCell('A').fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFF00' },
+        };
+      }
+    });
   } else {
     // 否則就插入範例資料
     worksheet.insertRow(2, {
-      date: '2025-01-01',
-      time: '12:30:30',
+      date: new Date('2025-01-01'),
+      // 記錄一下過程，在 Excel 裡，一天代表 1，所以 1 小時代表 1/24(天)，1 分鐘代表 1/(24*60)(天)，1 秒鐘代表 1/(24*60*60)(天)。
+      time: 12 / 24 + 30 / (24 * 60) + 30 / (24 * 60 * 60), // 12:30:30。
       type: '收入',
       amount: 10000,
       account: '錢包',
@@ -162,37 +211,61 @@ const generateTransactionsTemplateBuffer = async ({
   for (let row = startRow; row <= 1001; row++) {
     const r = worksheet.getRow(row);
 
-    r.getCell('A').numFmt = 'yyyy-mm-dd';
+    const dateCell = r.getCell(1 + colOffset);
+    dateCell.numFmt = 'yyyy-mm-dd';
+    dateCell.dataValidation = {
+      type: 'date',
+      operator: 'between',
+      formulae: [new Date('1900-01-01'), new Date('2100-12-31')],
+      showErrorMessage: true,
+      errorStyle: 'stop',
+      errorTitle: '日期格式錯誤',
+      error: '請輸入有效的日期格式 (YYYY-MM-DD)',
+    };
 
-    r.getCell('B').numFmt = 'hh:mm:ss';
+    const timeCell = r.getCell(2 + colOffset);
+    timeCell.numFmt = 'hh:mm:ss';
+    timeCell.dataValidation = {
+      type: 'time' as any, // 這裡查一下是 ts 的問題，沒有定義到 time。
+      operator: 'between',
+      formulae: [0, 1], // covers 00:00:00 to 23:59:59
+      showErrorMessage: true,
+      errorStyle: 'stop',
+      errorTitle: '時間格式錯誤',
+      error: '請輸入有效的時間格式 (24 小時制，HH:MM:SS)',
+    };
 
+    // 類型
     // 只有三筆所以直接手動寫死
-    r.getCell('C').dataValidation = {
+    r.getCell(3 + colOffset).dataValidation = {
       type: 'list',
       allowBlank: false,
       formulae: ['"收入,支出,操作"'],
     };
 
-    r.getCell('E').dataValidation = {
+    // 帳戶
+    r.getCell(5 + colOffset).dataValidation = {
       type: 'list',
       allowBlank: false,
       formulae: [`_Options!$A$1:$A${accounts.length || 1}`],
     };
 
-    r.getCell('F').dataValidation = {
+    // 目標帳戶
+    r.getCell(6 + colOffset).dataValidation = {
       type: 'list',
-      allowBlank: false,
+      allowBlank: true,
       formulae: [`_Options!$A$1:$A${accounts.length || 1}`],
     };
 
-    r.getCell('G').dataValidation = {
+    // 分類
+    r.getCell(7 + colOffset).dataValidation = {
       type: 'list',
       allowBlank: false,
       formulae: [`_Options!$B$1:$B${categories.length || 1}`],
     };
   }
 
-  return (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
+  return (await workbook.xlsx.writeBuffer()) as ExcelJS.Buffer;
 };
 
 const exportTransactionsTemplateExcel = async (userId: string) => {
@@ -202,19 +275,10 @@ const exportTransactionsTemplateExcel = async (userId: string) => {
   }
   const userEmail = user.email;
 
-  const accounts = await Account.findAll({
-    where: { userId },
-    attributes: ['name'],
-    raw: true,
-  });
-  const accountNames = accounts.map((a) => a.name);
-
-  const categoryNames = await getAllCategoriesHyphenString(userId);
-
   // 產生檔案
-  const buffer = await generateTransactionsTemplateBuffer({
-    accounts: accountNames,
-    categories: categoryNames,
+  const buffer = await generateTransactionsBuffer({
+    userId,
+    hasErrorColumn: false,
   });
 
   // 上傳到 Azure Blob
@@ -231,21 +295,9 @@ const exportUserTransactionsExcel = async (userId: string) => {
   }
   const userEmail = user.email;
 
-  const accounts = await Account.findAll({
-    where: { userId },
-    attributes: ['id', 'name'],
-    raw: true,
-  });
+  const { accounts, categories } =
+    await getPersonnelAccountsAndCategoriesForExcelDropdown(userId);
   const accountMap = new Map(accounts.map((a) => [a.id, a.name]));
-  const accountNames = accounts.map((a) => a.name);
-
-  const categories = await Category.findAll({
-    where: {
-      [Op.or]: [{ userId }, { userId: null }],
-    },
-    attributes: ['id', 'name', 'parentId'],
-    raw: true,
-  });
   const categoryMap = new Map(
     categories.map((c) => {
       const parentName = categories.find((cat) => cat.id === c.parentId)?.name;
@@ -288,14 +340,11 @@ const exportUserTransactionsExcel = async (userId: string) => {
       category: categoryMap.get(t.categoryId) || '',
     }));
 
-  // 格式為："飲食-早餐"
-  const categoryNames = await getAllCategoriesHyphenString(userId);
-
   // 產生檔案
-  const buffer = await generateTransactionsTemplateBuffer({
-    accounts: accountNames,
-    categories: categoryNames,
-    transactions: excelTransactions as unknown as TransactionType[], // 這裡強制轉型，因為我們的 generate function 還是用 TransactionType，但其實我們要傳的是處理過後的物件
+  const buffer = await generateTransactionsBuffer({
+    userId,
+    hasErrorColumn: false,
+    transactions: excelTransactions as ImportTransactionRow[],
   });
 
   // 上傳到 Azure Blob
@@ -305,9 +354,215 @@ const exportUserTransactionsExcel = async (userId: string) => {
   return generateSasUrl(blobName, 15);
 };
 
+//============== Import Excel ==============
+// Step1: 驗證欄位是否填寫正確
+const validateAndParseRows = async (
+  worksheet: ExcelJS.Worksheet,
+  accountMap: Map<string, string>,
+  categoryMap: Map<string, string>
+): Promise<{
+  successRows: (CreateTransactionSchema | CreateTransferSchema)[];
+  errorRows: ImportTransactionRow[];
+}> => {
+  // 正確的 Row 要轉為 DB 格式，錯誤的繼續維持 Excel 的格式
+  const successRows: (CreateTransactionSchema | CreateTransferSchema)[] = [];
+  const errorRows: ImportTransactionRow[] = [];
+
+  const isErrorsExcelFile = worksheet.getRow(1).getCell(1).text === '錯誤說明';
+  const colOffset = isErrorsExcelFile ? 1 : 0;
+
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const date = format(row.getCell(1 + colOffset).text, 'yyyy-MM-dd');
+    const time = format(row.getCell(2 + colOffset).text, 'HH:mm:ss');
+    const type = row.getCell(3 + colOffset).text as MainType;
+    const amount = Number(row.getCell(4 + colOffset).value);
+    const accountName = row.getCell(5 + colOffset).text;
+    const targetAccountName = row.getCell(6 + colOffset).text;
+    const category = row.getCell(7 + colOffset).text;
+    const receipt = row.getCell(8 + colOffset).text;
+    const description = row.getCell(9 + colOffset).text;
+
+    let errMsg = '';
+
+    if (!date) {
+      errMsg += '日期為必填欄位,';
+    }
+    if (!time) {
+      errMsg += '時間為必填欄位,';
+    }
+    if (!type) {
+      errMsg += '類別為必填欄位,';
+    }
+    if (!accountName) {
+      errMsg += '帳戶為必填欄位,';
+    }
+    if (!category) {
+      errMsg += '分類為必填欄位,';
+    }
+
+    if (
+      type !== MainType.INCOME &&
+      type !== MainType.EXPENSE &&
+      type !== MainType.OPERATE
+    ) {
+      errMsg += '類別錯誤,';
+    }
+
+    if (amount < 0) {
+      errMsg += '金額必須大於 0,';
+    }
+    if (typeof amount !== 'number') {
+      errMsg += '金額必須為數字,';
+    }
+
+    const accountId = accountMap.get(accountName);
+    if (!accountId) errMsg += `帳戶[${accountName}]不存在; `;
+
+    let targetAccountId: string | null = null;
+    if (targetAccountName) {
+      targetAccountId = accountMap.get(targetAccountName) || null;
+      if (!targetAccountId) errMsg += `目標帳戶[${targetAccountName}]不存在; `;
+    }
+
+    if (!categoryMap.has(category)) {
+      errMsg += `分類[${category}]不存在; `;
+    }
+
+    if (errMsg) {
+      errorRows.push({
+        error: errMsg,
+        date,
+        time,
+        type,
+        amount,
+        account: accountName,
+        targetAccount: targetAccountName,
+        category,
+        receipt,
+        description,
+      });
+    } else {
+      successRows.push({
+        date,
+        time,
+        type,
+        amount,
+        accountId: accountId!,
+        targetAccountId: targetAccountId!, // 沒有就給 null
+        categoryId: categoryMap.get(category)!,
+        receipt,
+        description,
+        paymentFrequency: PaymentFrequency.ONE_TIME,
+      });
+    }
+  });
+
+  return { successRows, errorRows };
+};
+
+const insertTransactions = async (
+  userId: string,
+  successRows: (CreateTransactionSchema | CreateTransferSchema)[]
+) => {
+  for (const row of successRows) {
+    if (row.type === MainType.OPERATE) {
+      await transactionServices.createTransfer(row, userId);
+    } else {
+      await transactionServices.createTransaction(row, userId);
+    }
+  }
+};
+
+const importNewTransactionsExcel = async (
+  userId: string,
+  fileBuffer: Buffer
+) => {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(fileBuffer as any);
+  const worksheet = workbook.getWorksheet(1);
+  if (!worksheet) throw new Error('工作表不存在');
+
+  const accounts = await Account.findAll({
+    where: {
+      userId,
+    },
+    attributes: ['id', 'name'],
+    raw: true,
+  });
+  if (accounts.length === 0) throw new Error('User 沒有帳號');
+
+  const { stringCollection: categoriesName } =
+    await getAllCategoriesHyphenString(userId);
+  const categories = await Category.findAll({
+    where: {
+      [Op.or]: [{ userId }, { userId: null }],
+      parentId: {
+        [Op.ne]: null,
+      },
+    },
+    attributes: ['id', 'name', 'parentId'],
+    raw: true,
+  });
+  if (categoriesName.length === 0) throw new Error('取得類別有誤');
+  if (categories.length === 0) throw new Error('取得類別有誤');
+
+  // User 都是填文字，所以製作 Map <name -> id>
+  const accountMap = new Map<string, string>(
+    accounts.map((a) => [a.name, a.id])
+  );
+  const categoryMap = new Map<string, string>();
+  categoriesName.forEach((cstr) => {
+    const splitCat = cstr.split('-');
+    const mainName = splitCat[0];
+    const mainId = categories.find((c) => c.name === mainName)?.id;
+    const subName = splitCat[1];
+    if (splitCat.length === 2) {
+      categoryMap.set(
+        cstr,
+        categories.find((c) => c.name === subName && c.parentId === mainId)
+          ?.id || ''
+      );
+    } else if (splitCat.length === 1) {
+      categoryMap.set(
+        cstr,
+        categories.find((c) => c.name === mainName && c.id === mainId)?.id || ''
+      );
+    }
+  });
+  const { successRows, errorRows } = await validateAndParseRows(
+    worksheet,
+    accountMap,
+    categoryMap
+  );
+
+  let errorUrl = '';
+  if (errorRows.length > 0) {
+    const buffer = await generateTransactionsBuffer({
+      userId,
+      hasErrorColumn: true,
+      transactions: errorRows,
+    });
+    const blobName = `errors/create_new_transaction_error_${userId}_${Date.now()}.xlsx`;
+    await uploadFileToBlob(blobName, buffer);
+    errorUrl = generateSasUrl(blobName, 15);
+  }
+
+  if (successRows.length > 0) {
+    await insertTransactions(userId, successRows);
+  }
+
+  return {
+    isSuccess: true,
+    errorUrl,
+    message: `成功匯入 ${successRows.length} 筆交易紀錄，失敗 ${errorRows.length} 筆`,
+  };
+};
+
 export default {
   getAllCategoriesHyphenString,
-  generateTransactionsTemplateBuffer,
+  generateTransactionsBuffer,
   exportTransactionsTemplateExcel,
   exportUserTransactionsExcel,
+  importNewTransactionsExcel,
 };

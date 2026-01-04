@@ -11,7 +11,23 @@ export const getTransactionsExcelUrl = async () => {
   return res.data as string;
 };
 
+export const importTransactions = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_DOMAIN}/excel/import-transactions`,
+    {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    }
+  );
+  const result = await res.json();
+  return result as { isSuccess: true; message: string; url?: string };
+};
+
 export default {
   getTransactionTemplateUrl,
   getTransactionsExcelUrl,
+  importTransactions,
 };

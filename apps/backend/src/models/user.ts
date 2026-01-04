@@ -8,7 +8,7 @@ type UserAttributes = {
   password: string;
 };
 
-interface UserInstance extends Model<UserAttributes>, UserAttributes {}
+export interface UserInstance extends Model<UserAttributes>, UserAttributes {}
 
 const User = sequelize.define<UserInstance>(
   'user',

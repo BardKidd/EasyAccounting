@@ -4,6 +4,7 @@ import {
   generateBlobSASQueryParameters,
   StorageSharedKeyCredential,
 } from '@azure/storage-blob';
+import ExcelJS from 'exceljs';
 
 const CONNECTION_STRING = process.env.AZURE_BLOB_CONNECTION_STRING || '';
 const CONTAINER_NAME =
@@ -22,7 +23,7 @@ const containerClient = blobServiceClient.getContainerClient(CONTAINER_NAME);
 
 export const uploadFileToBlob = async (
   blobName: string,
-  buffer: Buffer,
+  buffer: ExcelJS.Buffer,
   contentType: string = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 ) => {
   const blockBlobClient = containerClient.getBlockBlobClient(blobName);
