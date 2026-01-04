@@ -31,14 +31,25 @@ function TransactionTable({
   accounts,
 }: TransactionTableProps) {
   const getCategoryName = (id: string) => {
-    for (const cat of categories) {
-      if (cat.id === id) return cat.name;
-      if (cat.children) {
-        const sub = cat.children.find((s: CategoryType) => s.id === id);
-        if (sub) return sub.name;
+    // id -> name
+    const categoryMap = new Map<string, string>();
+    categories.forEach((rootCat) => {
+      categoryMap.set(rootCat.id, rootCat.name);
+      if (rootCat.children && rootCat.children.length > 0) {
+        const mainCat = rootCat.children;
+        mainCat.forEach((main) => {
+          categoryMap.set(main.id, main.name);
+          if (main.children && main.children.length > 0) {
+            const subCat = main.children;
+            subCat.forEach((sub) => {
+              categoryMap.set(sub.id, sub.name);
+            });
+          }
+        });
       }
-    }
-    return '未分類';
+    });
+
+    return categoryMap.get(id) || '未分類';
   };
 
   const getAccount = (id: string) => {
