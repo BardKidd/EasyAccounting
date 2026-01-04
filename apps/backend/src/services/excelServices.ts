@@ -391,7 +391,7 @@ const validateAndParseRows = async (
       time = '';
     }
     const type = row.getCell(3 + colOffset).text as MainType;
-    const amount = Number(row.getCell(4 + colOffset).value);
+    let amount = row.getCell(4 + colOffset).value;
     const accountName = row.getCell(5 + colOffset).text;
     const targetAccountName = row.getCell(6 + colOffset).text;
     const category = row.getCell(7 + colOffset).text;
@@ -445,13 +445,11 @@ const validateAndParseRows = async (
       errFields.push('type');
     }
 
-    if (amount < 0) {
-      errMsg += '金額必須大於 0, ';
+    if (typeof amount !== 'number' || amount <= 0) {
+      errMsg += '金額必須為數字且大於 0, ';
       errFields.push('amount');
-    }
-    if (typeof amount !== 'number') {
-      errMsg += '金額必須為數字, ';
-      errFields.push('amount');
+    } else {
+      amount = Number(amount);
     }
 
     const accountId = accountMap.get(accountName);
@@ -475,13 +473,14 @@ const validateAndParseRows = async (
     }
 
     if (errMsg) {
+      const regex = /, $/;
       errorRows.push({
-        error: errMsg,
+        error: errMsg.replace(regex, ''), // 移除最後面的逗號
         errFields,
         date,
         time,
         type,
-        amount,
+        amount: amount as any,
         account: accountName,
         targetAccount: targetAccountName,
         category,
@@ -493,7 +492,7 @@ const validateAndParseRows = async (
         date,
         time,
         type,
-        amount,
+        amount: amount as number,
         accountId: accountId!,
         targetAccountId: targetAccountId!, // 沒有就給 null
         categoryId: categoryMap.get(category)!,
