@@ -151,6 +151,8 @@ export default function ExcelImportButton({
     setIsOpen(false);
     if (shouldRefresh && result?.successCount && result.successCount > 0) {
       router.refresh();
+      setResult(null);
+      setSelectedFile(null);
     }
   };
 

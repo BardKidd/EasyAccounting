@@ -22,7 +22,8 @@ export const importTransactions = async (file: File) => {
       credentials: 'include',
     }
   );
-  const result = await res.json();
+  const resJson = await res.json();
+  const result = resJson.data;
   return result as { isSuccess: true; message: string; url?: string };
 };
 
