@@ -1,135 +1,121 @@
-# Turborepo starter
+# EasyAccounting
 
-This Turborepo starter is maintained by the Turborepo core team.
+EasyAccounting 是一個現代化的個人記帳與資產管理應用程式，旨在提供直觀且強大的財務管理體驗。本專案採用 Monorepo 架構開發，結合了高效的現代網頁技術與穩健的後端服務。
 
-## Using this example
+## ✨ 特色功能
 
-Run the following command:
+- **全方位記帳功能**：
+  - 支援收入、支出、轉帳等多種交易類型
+  - 支援多帳戶管理與資產追蹤
+  - 階層式的自訂分類系統
+- **強大的報表分析**：
+  - 互動式圖表 (基於 ECharts) 展示資產趨勢與消費分佈
+  - 支援 Excel 匯入與匯出功能，方便資料備份與遷移
+- **自動化通知**：
+  - 每日記帳提醒
+  - 每週／每月財務報表自動寄送 (整合 Resend 與 React Email)
+- **現代化介面**：
+  - 簡潔美觀的 UI 設計 (基於 Tailwind CSS 與 Radix UI)
+  - 支援淺色/深色模式
+  - 響應式設計，適配各種裝置
 
-```sh
-npx create-turbo@latest
+## 🛠️ 技術棧 (Tech Stack)
+
+本專案使用 **Turborepo** 進行 Monorepo 管理。
+
+### Frontend (`apps/frontend`)
+
+- **Framework**: [Next.js](https://nextjs.org/) (App Router)
+- **Language**: TypeScript
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/), `tw-animate-css`
+- **UI Components**: [Radix UI](https://www.radix-ui.com/), [Lucide React](https://lucide.dev/) (Icons), [Sonner](https://sonner.emilkowal.ski/) (Toasts)
+- **Forms & Validation**: React Hook Form, Zod (via `@repo/shared`)
+- **Visualization**: [ECharts for React](https://git.hust.cc/echarts-for-react/)
+
+### Backend (`apps/backend`)
+
+- **Framework**: [Express](https://expressjs.com/)
+- **Database ORM**: [Sequelize](https://sequelize.org/) (PostgreSQL)
+- **Email**: [Resend](https://resend.com/), [React Email](https://react.email/)
+- **Authentication**: JWT (JSON Web Tokens)
+- **Job Scheduling**: Node-cron
+- **File Handling**: ExcelJS (Excel 處理), Multer (檔案上傳)
+
+### Shared Packages
+
+- `@repo/shared`: 共用的 TypeScript 型別定義、Zod Schema 與驗證邏輯
+- `@repo/eslint-config`: 統一的 ESLint 設定
+- `@repo/typescript-config`: 統一的 TypeScript 設定
+
+## 🚀 快速開始 (Getting Started)
+
+### 前置需求
+
+- [Node.js](https://nodejs.org/) (>= 18)
+- [pnpm](https://pnpm.io/) (建議使用)
+- [PostgreSQL](https://www.postgresql.org/) 資料庫
+
+### 安裝依賴
+
+```bash
+pnpm install
 ```
 
-## What's inside?
+### 環境變數設定
 
-This Turborepo includes the following packages/apps:
+請確保在 `apps/backend` 與 `apps/frontend` 目錄下建立對應的 `.env` 檔案，並填入必要的環境變數（如資料庫連線字串、JWT Secret、Resend API Key 等）。
 
-### Apps and Packages
+### 資料庫遷移 (Backend)
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+在 `apps/backend` 目錄下執行：
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+```bash
+pnpm db:migrate:up
 ```
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+### 啟動開發伺服器
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
+在專案根目錄執行以下指令，將同時啟動 Frontend 與 Backend：
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+```bash
+pnpm dev
+# 或
+turbo deviation
 ```
 
-### Develop
+- Frontend: http://localhost:3000
+- Backend: http://localhost:8080 (預設)
 
-To develop all apps and packages, run the following command:
+## 📜 常用指令
 
-```
-cd my-turborepo
+| 指令               | 說明                       |
+| ------------------ | -------------------------- |
+| `pnpm dev`         | 啟動開發模式 (包含前後端)  |
+| `pnpm build`       | 建置所有應用與套件         |
+| `pnpm lint`        | 執行程式碼檢查             |
+| `pnpm format`      | 使用 Prettier 格式化程式碼 |
+| `pnpm check-types` | 執行 TypeScript 型別檢查   |
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
+### Backend 特定指令 (需進入 `apps/backend`)
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
+| 指令                   | 說明                    |
+| ---------------------- | ----------------------- |
+| `pnpm db:migrate`      | 建立新的 Migration 檔案 |
+| `pnpm db:migrate:up`   | 執行資料庫遷移          |
+| `pnpm db:migrate:down` | 還原上一次的遷移        |
+| `pnpm email`           | 預覽電子郵件樣板        |
 
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+## 📂 專案結構
 
 ```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
+.
+├── apps
+│   ├── backend    # Express API Server
+│   └── frontend   # Next.js Application
+├── packages
+│   ├── eslint-config
+│   ├── shared     # Shared types & schemas
+│   ├── typescript-config
+│   └── ui         # Shared UI components (optional)
+└── ...
 ```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
