@@ -161,7 +161,7 @@ export default function ExcelImportButton({
       <DialogTrigger asChild>
         <Button className="gap-2 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white">
           <CloudUpload className="h-4 w-4" />
-          匯入 EXCEL
+          匯入 Excel
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
