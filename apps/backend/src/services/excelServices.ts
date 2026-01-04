@@ -588,7 +588,7 @@ const importNewTransactionsExcel = async (
       hasErrorColumn: true,
       transactions: errorRows,
     });
-    const blobName = `errors/create_new_transaction_error_${userId}_${Date.now()}.xlsx`;
+    const blobName = `errors/transaction_error_${userId}_${Date.now()}.xlsx`;
     await uploadFileToBlob(blobName, buffer);
     errorUrl = generateSasUrl(blobName, 15);
   }
