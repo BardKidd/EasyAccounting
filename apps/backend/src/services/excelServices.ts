@@ -416,23 +416,23 @@ const validateAndParseRows = async (
     const errFields: string[] = [];
 
     if (!date) {
-      errMsg += '日期為必填欄位,';
+      errMsg += '日期為必填欄位, ';
       errFields.push('date');
     }
     if (!time) {
-      errMsg += '時間為必填欄位,';
+      errMsg += '時間為必填欄位, ';
       errFields.push('time');
     }
     if (!type) {
-      errMsg += '類型為必填欄位,';
+      errMsg += '類型為必填欄位, ';
       errFields.push('type');
     }
     if (!accountName) {
-      errMsg += '帳戶為必填欄位,';
+      errMsg += '帳戶為必填欄位, ';
       errFields.push('account');
     }
     if (!category) {
-      errMsg += '分類為必填欄位,';
+      errMsg += '分類為必填欄位, ';
       errFields.push('category');
     }
 
@@ -441,22 +441,22 @@ const validateAndParseRows = async (
       type !== MainType.EXPENSE &&
       type !== MainType.OPERATE
     ) {
-      errMsg += '類型錯誤,';
+      errMsg += '類型錯誤, ';
       errFields.push('type');
     }
 
     if (amount < 0) {
-      errMsg += '金額必須大於 0,';
+      errMsg += '金額必須大於 0, ';
       errFields.push('amount');
     }
     if (typeof amount !== 'number') {
-      errMsg += '金額必須為數字,';
+      errMsg += '金額必須為數字, ';
       errFields.push('amount');
     }
 
     const accountId = accountMap.get(accountName);
     if (accountName && !accountId) {
-      errMsg += `帳戶[${accountName}]不存在; `;
+      errMsg += `帳戶[${accountName}]不存在, `;
       errFields.push('account');
     }
 
@@ -464,13 +464,13 @@ const validateAndParseRows = async (
     if (targetAccountName) {
       targetAccountId = accountMap.get(targetAccountName) || null;
       if (targetAccountName && !targetAccountId) {
-        errMsg += `目標帳戶[${targetAccountName}]不存在; `;
+        errMsg += `目標帳戶[${targetAccountName}]不存在, `;
         errFields.push('targetAccount');
       }
     }
 
     if (category && !categoryMap.has(category)) {
-      errMsg += `分類[${category}]不存在; `;
+      errMsg += `分類[${category}]不存在, `;
       errFields.push('category');
     }
 
