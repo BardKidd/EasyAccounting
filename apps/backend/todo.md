@@ -51,14 +51,14 @@
 
 > 使用 `exceljs` 處理檔案，並儲存於 `Azure Blob Storage`。
 
-- [ ] **匯出功能**:
-  - [ ] 匯出交易記錄 (支援日期範圍篩選)。
+- [x] **匯出功能**:
+  - [x] 匯出交易記錄 (支援日期範圍篩選)。
   - [ ] 匯出月度報表。
-  - [ ] 上傳生成的 Excel 至 Azure Blob，並回傳下載連結 (SAS Token 或 Public URL)。
-- [ ] **匯入功能**:
-  - [ ] 下載範本格式。
-  - [ ] 上傳 Excel 檔案至 Azure Blob (存檔備份)。
-  - [ ] 解析 Excel 並批次寫入交易記錄 (Batch Insert)。
+  - [x] 上傳生成的 Excel 至 Azure Blob，並回傳下載連結 (SAS Token 或 Public URL)。
+- [x] **匯入功能**:
+  - [x] 下載範本格式。
+  - [x] 上傳 Excel 檔案至 Azure Blob (存檔備份)。
+  - [x] 解析 Excel 並批次寫入交易記錄 (Batch Insert)。
 
 ### 2. 總資產計算優化
 
