@@ -54,14 +54,15 @@ function Header() {
       <div className="flex h-14 items-center px-4 md:px-6 gap-4">
         <div className="ml-auto flex items-center gap-4">
           <ModeToggle />
-          <Button
+          {/* 暫時想不到要放什麼內容 */}
+          {/* <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8 cursor-pointer"
           >
             <Bell className="h-4 w-4" />
             <span className="sr-only">Toggle notifications</span>
-          </Button>
+          </Button> */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
