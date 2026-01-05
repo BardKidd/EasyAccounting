@@ -1,8 +1,8 @@
 import { Container } from '@/components/ui/container';
 import {
-  TrendChart,
   RecentTransactions,
   SummaryCards,
+  AssetTrendChart,
 } from '@/components/dashboard';
 import NewTransactionSheet from '@/components/transactions/newTransactionSheet';
 import { PeriodType } from '@repo/shared';
@@ -11,16 +11,18 @@ import service from '@/services';
 
 export default async function DashboardPage() {
   const now = new Date();
-  const [categories, accounts, transactions, summary] = await Promise.all([
-    service.getCategories(),
-    service.getPersonnelAccounts(),
-    service.getTransactions({ page: 1 }),
-    service.getTransactionsSummary({
-      startDate: `${now.getFullYear()}-01-01`,
-      endDate: `${now.getFullYear()}-12-31`,
-      groupBy: PeriodType.MONTH,
-    }),
-  ]);
+  const [categories, accounts, transactions, summary, assetTrend] =
+    await Promise.all([
+      service.getCategories(),
+      service.getPersonnelAccounts(),
+      service.getTransactions({ page: 1 }),
+      service.getTransactionsSummary({
+        startDate: `${now.getFullYear()}-01-01`,
+        endDate: `${now.getFullYear()}-12-31`,
+        groupBy: PeriodType.MONTH,
+      }),
+      service.getAssetTrend(),
+    ]);
 
   return (
     <Container className="py-8 space-y-8">
@@ -32,7 +34,7 @@ export default async function DashboardPage() {
       <SummaryCards accounts={accounts} summaryData={summary.trends} />
 
       <div className="space-y-4">
-        <TrendChart data={summary.trends} />
+        <AssetTrendChart data={assetTrend} />
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
           <div className="lg:col-span-3 h-[500px]">

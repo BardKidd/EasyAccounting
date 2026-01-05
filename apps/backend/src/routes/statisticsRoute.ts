@@ -58,7 +58,6 @@ router.post(
 router.post(
   '/statistics/asset-trend',
   authMiddleware,
-  validate(getOverviewSchema),
   statisticsController.getAssetTrend
 );
 

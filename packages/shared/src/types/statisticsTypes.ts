@@ -104,3 +104,14 @@ export interface AccountTabDataType {
   isTransfer: boolean;
   type: MainType;
 }
+
+export interface EachMonthNetFlow {
+  year: string;
+  month: string;
+  income: number;
+  expense: number;
+  netFlow: number;
+}
+export interface FinalResult extends EachMonthNetFlow {
+  balance: number;
+}

@@ -9,6 +9,7 @@ import {
   CategoryTabDataType,
   RankingTabDataType,
   AccountTabDataType,
+  FinalResult,
 } from '@repo/shared';
 import { toast } from 'sonner';
 
@@ -164,6 +165,19 @@ export const getAccountTabData = async (
       startDate,
       endDate,
     })) as ResponseHelper<AccountTabDataType[]>;
+    if (result.isSuccess) {
+      return result.data;
+    }
+    return [];
+  } catch (error) {
+    toast.error(getErrorMessage(error));
+    return [];
+  }
+};
+
+export const getAssetTrend = async (): Promise<FinalResult[]> => {
+  try {
+    const result = await apiHandler('/statistics/asset-trend', 'POST', {});
     if (result.isSuccess) {
       return result.data;
     }

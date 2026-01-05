@@ -24,6 +24,7 @@ import {
   getCategoryTabData,
   getRankingTabData,
   getAccountTabData,
+  getAssetTrend,
 } from './statistics';
 import {
   getPersonnelNotification,
@@ -58,4 +59,5 @@ export default {
   updatePersonnelNotification,
   getTransactionTemplateUrl,
   getTransactionsExcelUrl,
+  getAssetTrend,
 };
