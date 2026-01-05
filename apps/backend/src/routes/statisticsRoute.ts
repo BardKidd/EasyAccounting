@@ -55,4 +55,11 @@ router.post(
   statisticsController.getAccountTabData
 );
 
+router.post(
+  '/statistics/asset-trend',
+  authMiddleware,
+  validate(getOverviewSchema),
+  statisticsController.getAssetTrend
+);
+
 export default router;

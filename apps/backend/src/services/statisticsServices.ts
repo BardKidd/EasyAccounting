@@ -1,20 +1,21 @@
 import Transaction from '@/models/transaction';
 import Category from '@/models/category';
 import Account from '@/models/account';
-import {
-  CategoryTabDataType,
-  MainType,
-  OverviewTrendType,
-  PeriodType,
-} from '@repo/shared';
+import { CategoryTabDataType, MainType } from '@repo/shared';
 import { Op, QueryTypes } from 'sequelize';
 import sequelize from '@/utils/postgres';
+import { eachMonthOfInterval, format } from 'date-fns';
 
-type TrendType = {
-  amount: number;
-  type: string;
-  targetAccountId?: string;
-};
+interface EachMonthNetFlow {
+  year: string;
+  month: string;
+  income: number;
+  expense: number;
+  netFlow: number;
+}
+interface FinalResult extends EachMonthNetFlow {
+  balance: number;
+}
 
 const getOverviewTrend = async (body: any, userId: string) => {
   const { startDate, endDate } = body;
@@ -482,6 +483,102 @@ const getAccountTabData = async (body: any, userId: string) => {
   }));
 };
 
+const getAssetTrend = async (
+  body: { startDate: string; endDate: string },
+  userId: string
+) => {
+  const { startDate, endDate } = body;
+
+  const result: any[] = await sequelize.query(
+    `
+    SELECT 
+      to_char("t"."date", 'YYYY') AS "year",
+      to_char("t"."date", 'MM') AS "month",
+      SUM(
+        CASE
+          WHEN "t"."type" = '支出' THEN "t"."amount" 
+          ELSE 0
+        END
+      )::integer as "expense",
+      SUM(
+        CASE
+          WHEN "t"."type" = '收入' THEN "t"."amount" 
+          ELSE 0
+        END
+      )::integer as "income",
+      SUM(
+        CASE
+          WHEN "t"."type" = '收入' THEN "t"."amount"
+          WHEN "t"."type" = '支出' THEN - "t"."amount"
+          ELSE 0
+        END
+      )::integer as net_flow
+    FROM accounting."transaction" t 
+    WHERE "t"."userId" = :userId
+    AND "t"."date" BETWEEN :startDate AND :endDate
+    GROUP BY
+      year,
+      month
+    ORDER BY
+      year ASC,
+      month ASC;
+    `,
+    {
+      type: QueryTypes.SELECT,
+      replacements: {
+        userId,
+        startDate,
+        endDate,
+      },
+    }
+  );
+  const sortedResult: EachMonthNetFlow[] = result.map((item) => ({
+    ...item,
+    netFlow: item?.net_flow,
+  }));
+
+  const balance = await Account.sum('balance', {
+    where: { userId },
+  });
+  let currentBalance = Number(balance) || 0;
+
+  const monthMap = new Map(
+    sortedResult.map((item) => [`${item.year}-${item.month}`, item])
+  );
+  const timeRange = eachMonthOfInterval({
+    start: new Date(startDate),
+    end: new Date(endDate),
+  }).reverse(); // 顛倒過來，因為我們要從最遠的逐漸倒推到最遠的日期，這樣才會知道現在逐漸往前到過去的所有資產變化
+
+  const finalResult: FinalResult[] = [];
+  for (const row of timeRange) {
+    const formattedMonth = format(row, 'yyyy-MM');
+    const record = monthMap.get(formattedMonth);
+    let netFlow = 0;
+    let income = 0;
+    let expense = 0;
+    if (record) {
+      netFlow = record.netFlow;
+      income = record.income;
+      expense = record.expense;
+    }
+
+    finalResult.push({
+      year: `${row.getFullYear()}`,
+      month: `${row.getMonth() + 1}`,
+      netFlow,
+      income,
+      expense,
+      balance: currentBalance,
+    });
+
+    // currentBalance 必須在最後面才減
+    currentBalance = Number(currentBalance) - Number(netFlow);
+  }
+
+  return finalResult.reverse(); // 在顛倒一次
+};
+
 export default {
   getOverviewTrend,
   getOverviewTop3Expenses,
@@ -490,4 +587,5 @@ export default {
   getCategoryTabData,
   getRankingTabData,
   getAccountTabData,
+  getAssetTrend,
 };

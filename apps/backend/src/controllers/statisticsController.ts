@@ -124,6 +124,19 @@ const getAccountTabData = (req: Request, res: Response) => {
   });
 };
 
+const getAssetTrend = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const body = req.body;
+
+    const result = await statisticsServices.getAssetTrend(body, userId);
+
+    return res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, result, 'Get asset trend successfully', null));
+  });
+};
+
 export default {
   getOverviewTrend,
   getOverviewTop3Categories,
@@ -132,4 +145,5 @@ export default {
   getCategoryTabData,
   getRankingTabData,
   getAccountTabData,
+  getAssetTrend,
 };
