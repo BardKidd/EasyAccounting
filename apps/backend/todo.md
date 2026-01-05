@@ -29,6 +29,7 @@
   - 收支趨勢折線圖 (Trend Chart)。
   - 分類支出圓餅圖 (Pie Chart)。
   - 月度收支統計。
+  - [x] **總資產趨勢圖 (Asset Trend Chart)**: 雙 Y軸圖表 (ECharts)，結合收支柱狀圖與總資產折線圖 (含 Zoom 功能)。
 
 ### 自動化通知 (Automation)
 
@@ -62,8 +63,8 @@
 
 ### 2. 總資產計算優化
 
-- [ ] 建立 `UserAssetHistory` 表，每日記錄 User 總資產。
-- [ ] 避免每次都重新計算，改為讀取歷史紀錄。
+- [x] 製作 `AssetTrendChart` 資料與圖表，使用倒推法 (Backward Calculation) 即時計算每月資產，無需額外 Table。
+- [x] 前端實作 ECharts dataZoom 與雙軸顯示。
 
 ### 2.5 新增 UT (Unit Tests)
 
