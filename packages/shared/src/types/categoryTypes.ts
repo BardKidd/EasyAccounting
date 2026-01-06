@@ -1,7 +1,9 @@
+import { RootType } from '../constants';
+
 export interface CategoryType {
   id: string;
   name: string;
-  type: string;
+  type: RootType;
   icon: string | null;
   color: string | null;
   children: CategoryType[];

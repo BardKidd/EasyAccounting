@@ -3,7 +3,7 @@ import {
   TransactionType,
   CategoryType,
   AccountType,
-  MainType,
+  RootType,
 } from '@repo/shared';
 import { getIcon } from '@/lib/icon-mapping';
 import { formatCurrency } from '@/lib/utils';
@@ -38,7 +38,7 @@ function RecentTransactions({
     if (item.targetAccountId) {
       return { color: 'text-orange-500', prefix: '' };
     }
-    return item.type === MainType.INCOME
+    return item.type === RootType.INCOME
       ? { color: 'text-green-600', prefix: '+' }
       : { color: 'text-red-600', prefix: '-' };
   };

@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Account, AccountType, MainType } from '@repo/shared';
+import { Account, AccountType, RootType } from '@repo/shared';
 
 interface TransactionFiltersProps {
   accounts: AccountType[];
@@ -149,9 +149,9 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">所有類型</SelectItem>
-          <SelectItem value={MainType.INCOME}>{MainType.INCOME}</SelectItem>
-          <SelectItem value={MainType.EXPENSE}>{MainType.EXPENSE}</SelectItem>
-          <SelectItem value={MainType.OPERATE}>{MainType.OPERATE}</SelectItem>
+          <SelectItem value={RootType.INCOME}>{RootType.INCOME}</SelectItem>
+          <SelectItem value={RootType.EXPENSE}>{RootType.EXPENSE}</SelectItem>
+          <SelectItem value={RootType.OPERATE}>{RootType.OPERATE}</SelectItem>
         </SelectContent>
       </Select>
 

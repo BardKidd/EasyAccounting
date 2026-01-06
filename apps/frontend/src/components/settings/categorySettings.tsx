@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { CategoryType, MainType } from '@repo/shared';
+import { CategoryType, RootType } from '@repo/shared';
 import {
   Card,
   CardContent,
@@ -34,7 +34,7 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
   }>({
     isOpen: false,
     mode: CategoryDialogMode.ADD_MAIN,
-    type: MainType.EXPENSE,
+    type: RootType.EXPENSE,
     node: null,
   });
 
@@ -71,22 +71,22 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
 
   // 因為 UI 殼已經有寫收支類別，因此先排除 rootCategory 後再接著顯示
   const incomeTree = mapCategories(
-    categories.filter((c) => c.type === MainType.INCOME)[0]?.children || [],
+    categories.filter((c) => c.type === RootType.INCOME)[0]?.children || [],
     true,
     true
   );
   const expenseTree = mapCategories(
-    categories.filter((c) => c.type === MainType.EXPENSE)[0]?.children || [],
+    categories.filter((c) => c.type === RootType.EXPENSE)[0]?.children || [],
     true,
     false
   );
 
   // rootCategory，在新增 mainCategory 時需要
   const rootIncomeCategory = categories.filter(
-    (c) => c.type === MainType.INCOME
+    (c) => c.type === RootType.INCOME
   )[0];
   const rootExpenseCategory = categories.filter(
-    (c) => c.type === MainType.EXPENSE
+    (c) => c.type === RootType.EXPENSE
   )[0];
 
   const handleAddMain = (type: string) => {
@@ -154,9 +154,9 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
       // subCategory 編輯狀態
       return dialogState.node?.parentId as string;
     } else if (dialogState.mode === CategoryDialogMode.ADD_MAIN) {
-      if (dialogState.type === MainType.INCOME) {
+      if (dialogState.type === RootType.INCOME) {
         return rootIncomeCategory.id;
-      } else if (dialogState.type === MainType.EXPENSE) {
+      } else if (dialogState.type === RootType.EXPENSE) {
         return rootExpenseCategory.id;
       }
     }
@@ -175,7 +175,7 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
           <Button
             size="sm"
             className="cursor-pointer"
-            onClick={() => handleAddMain(MainType.EXPENSE)}
+            onClick={() => handleAddMain(RootType.EXPENSE)}
           >
             <Plus className="mr-2 h-4 w-4" />
             新增分類
@@ -211,7 +211,7 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
           <Button
             size="sm"
             className="cursor-pointer"
-            onClick={() => handleAddMain(MainType.INCOME)}
+            onClick={() => handleAddMain(RootType.INCOME)}
           >
             <Plus className="mr-2 h-4 w-4" />
             新增分類

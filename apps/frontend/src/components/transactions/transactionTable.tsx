@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/table';
 import {
   TransactionResponse,
-  MainType,
+  RootType,
   CategoryType,
   AccountType,
 } from '@repo/shared';
@@ -67,10 +67,10 @@ function TransactionTable({
       return <span className="text-orange-500 font-medium">{formatted}</span>;
     }
 
-    if (item.type === MainType.EXPENSE) {
+    if (item.type === RootType.EXPENSE) {
       return <span className="text-rose-600 font-medium">-{formatted}</span>;
     }
-    if (item.type === MainType.INCOME) {
+    if (item.type === RootType.INCOME) {
       return <span className="text-emerald-600 font-medium">+{formatted}</span>;
     }
     return <span className="text-slate-600 font-medium">{formatted}</span>;
@@ -111,7 +111,7 @@ function TransactionTable({
                 </div>
               </TableCell>
               <TableCell>
-                {isTransfer(transaction) ? MainType.OPERATE : transaction.type}
+                {isTransfer(transaction) ? RootType.OPERATE : transaction.type}
               </TableCell>
               <TableCell>
                 <div className="flex flex-col">

@@ -1,11 +1,11 @@
-import { MainType, PaymentFrequency } from '../constants';
+import { RootType, PaymentFrequency } from '../constants';
 
 export interface TransactionType {
   userId: string;
   accountId: string;
   categoryId: string;
   amount: number;
-  type: MainType;
+  type: RootType;
   description: string | null;
   date: string;
   time: string;

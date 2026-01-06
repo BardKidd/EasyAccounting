@@ -6,7 +6,7 @@ import { generateSasUrl, uploadFileToBlob } from '@/utils/azureBlob';
 import {
   CreateTransactionSchema,
   CreateTransferSchema,
-  MainType,
+  RootType,
   PaymentFrequency,
 } from '@repo/shared';
 import Transaction from '@/models/transaction';
@@ -332,10 +332,10 @@ const exportUserTransactionsExcel = async (userId: string) => {
   });
   // 排除被動轉帳收入 (INCOME + 有 targetAccountId)
   const excelTransactions = transactions
-    .filter((t) => !(t.type === MainType.INCOME && t.targetAccountId))
+    .filter((t) => !(t.type === RootType.INCOME && t.targetAccountId))
     .map((t) => ({
       ...t,
-      type: t.targetAccountId ? MainType.OPERATE : t.type,
+      type: t.targetAccountId ? RootType.OPERATE : t.type,
       account: accountMap.get(t.accountId) || '',
       targetAccount: t.targetAccountId
         ? accountMap.get(t.targetAccountId) || ''
@@ -390,7 +390,7 @@ const validateAndParseRows = async (
     } catch {
       time = '';
     }
-    const type = row.getCell(3 + colOffset).text as MainType;
+    const type = row.getCell(3 + colOffset).text as RootType;
     let amount = row.getCell(4 + colOffset).value;
     const accountName = row.getCell(5 + colOffset).text;
     const targetAccountName = row.getCell(6 + colOffset).text;
@@ -437,9 +437,9 @@ const validateAndParseRows = async (
     }
 
     if (
-      type !== MainType.INCOME &&
-      type !== MainType.EXPENSE &&
-      type !== MainType.OPERATE
+      type !== RootType.INCOME &&
+      type !== RootType.EXPENSE &&
+      type !== RootType.OPERATE
     ) {
       errMsg += '類型錯誤, ';
       errFields.push('type');
@@ -511,7 +511,7 @@ const insertTransactions = async (
   successRows: (CreateTransactionSchema | CreateTransferSchema)[]
 ) => {
   for (const row of successRows) {
-    if (row.type === MainType.OPERATE) {
+    if (row.type === RootType.OPERATE) {
       await transactionServices.createTransfer(row, userId);
     } else {
       await transactionServices.createTransaction(row, userId);

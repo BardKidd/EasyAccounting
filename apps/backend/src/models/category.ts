@@ -1,11 +1,11 @@
 import Sequelize, { Model, Optional } from 'sequelize';
 import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
-import { MainType, SubType, DetailType, CategoryType } from '@repo/shared';
+import { RootType, MainType, SubType, CategoryType } from '@repo/shared';
 
 const allCategories = [
+  ...Object.values(RootType),
   ...Object.values(MainType),
   ...Object.values(SubType),
-  ...Object.values(DetailType),
 ];
 
 export interface CategoryAttributes

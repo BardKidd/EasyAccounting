@@ -1,7 +1,7 @@
 import {
   CreateTransactionSchema,
   GetTransactionsByDateSchema,
-  MainType,
+  RootType,
   TransactionType,
   UpdateTransactionSchema,
   AccountType,
@@ -43,7 +43,7 @@ const getTransactionsByDate = async (
   const offset = (Number(page) - 1) * Number(limit);
 
   let typeFilter: any = {};
-  if (type === MainType.OPERATE) {
+  if (type === RootType.OPERATE) {
     // 若為「操作」(轉帳):
     // 1. linkId 不為 null
     // 2. 轉帳的主動方
@@ -51,7 +51,7 @@ const getTransactionsByDate = async (
       linkId: {
         [Op.ne]: null,
       },
-      type: MainType.EXPENSE,
+      type: RootType.EXPENSE,
     };
   } else if (type) {
     // 若為指定類型 (收入/支出): 找出該類型且 linkId 為 null (排除轉帳)
@@ -66,39 +66,43 @@ const getTransactionsByDate = async (
       { linkId: null },
       {
         linkId: { [Op.ne]: null },
-        type: { [Op.ne]: MainType.INCOME },
+        type: { [Op.ne]: RootType.INCOME },
       },
     ];
   }
 
-  const { rows, count } = await Transaction.findAndCountAll({
-    where: {
-      ...otherFilters,
-      ...dateFilter,
-      ...typeFilter,
-      userId,
-    },
-    limit: Number(limit),
-    offset, // 定義從第幾筆開始取資料，e.g. page=2, limit=10,offset=10
-    order: [
-      ['date', 'DESC'],
-      ['time', 'DESC'],
-    ],
-    attributes: {
-      exclude: ['createdAt', 'updatedAt', 'deletedAt', 'linkId'], // 排除不需要的欄位
-    },
-    raw: true,
-  });
-
-  return {
-    items: rows as unknown as TransactionType[],
-    pagination: {
-      total: count,
-      page,
-      limit,
-      totalPages: Math.ceil(count / Number(limit)), // 無條件進位
-    },
-  };
+  try {
+    const { rows, count } = await Transaction.findAndCountAll({
+      where: {
+        ...otherFilters,
+        ...dateFilter,
+        ...typeFilter,
+        userId,
+      },
+      limit: Number(limit),
+      offset, // 定義從第幾筆開始取資料，e.g. page=2, limit=10,offset=10
+      order: [
+        ['date', 'DESC'],
+        ['time', 'DESC'],
+      ],
+      attributes: {
+        exclude: ['createdAt', 'updatedAt', 'deletedAt', 'linkId'], // 排除不需要的欄位
+      },
+      raw: true,
+    });
+    return {
+      items: rows as unknown as TransactionType[],
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages: Math.ceil(count / Number(limit)), // 無條件進位
+      },
+    };
+  } catch (error) {
+    console.error('DEBUG: getTransactionsByDate Failed:', error);
+    throw error;
+  }
 };
 
 const getTransactionsDashboardSummary = async (
@@ -202,11 +206,11 @@ const getTransactionsDashboardSummary = async (
 
     const bucket = buckets.find((b) => b.date === key);
     if (bucket) {
-      if (t.type === MainType.INCOME) {
+      if (t.type === RootType.INCOME) {
         const val = Number(t.amount);
         bucket.income += val;
         summary.income += val;
-      } else if (t.type === MainType.EXPENSE) {
+      } else if (t.type === RootType.EXPENSE) {
         const val = Number(t.amount);
         bucket.expense += val;
         summary.expense += val;
@@ -242,9 +246,9 @@ const calcAccountBalance = async (
   type: string,
   amount: number
 ) => {
-  if (type === MainType.INCOME) {
+  if (type === RootType.INCOME) {
     accountInstance.balance = Number(accountInstance.balance) + Number(amount);
-  } else if (type === MainType.EXPENSE) {
+  } else if (type === RootType.EXPENSE) {
     accountInstance.balance = Number(accountInstance.balance) - Number(amount);
   }
 };
@@ -294,7 +298,7 @@ const updateIncomeExpense = async (
 
     // 所以這裡才要反過來
     const revertType =
-      transaction.type === MainType.INCOME ? MainType.EXPENSE : MainType.INCOME;
+      transaction.type === RootType.INCOME ? RootType.EXPENSE : RootType.INCOME;
     await calcAccountBalance(
       oldAccount,
       revertType,
@@ -340,7 +344,7 @@ const deleteTransaction = async (id: string, userId: string) => {
     if (!account) throw new Error('Account not found');
 
     const revertType =
-      transaction.type === MainType.INCOME ? MainType.EXPENSE : MainType.INCOME;
+      transaction.type === RootType.INCOME ? RootType.EXPENSE : RootType.INCOME;
     await calcAccountBalance(account, revertType, Number(transaction.amount));
     await account.save({ transaction: t });
 
@@ -359,9 +363,9 @@ const deleteTransaction = async (id: string, userId: string) => {
 
         if (linkedAccount) {
           const linkedRevertType =
-            linkedTransaction.type === MainType.INCOME
-              ? MainType.EXPENSE
-              : MainType.INCOME;
+            linkedTransaction.type === RootType.INCOME
+              ? RootType.EXPENSE
+              : RootType.INCOME;
           await calcAccountBalance(
             linkedAccount,
             linkedRevertType,
@@ -389,18 +393,18 @@ const createTransfer = async (
   toTransaction: TransactionTypeWhenOperate;
 }> => {
   return simplifyTransaction(async (t) => {
-    if (data.type !== MainType.OPERATE) throw new Error('Must be operate type');
+    if (data.type !== RootType.OPERATE) throw new Error('Must be operate type');
 
     const fromData = {
       ...data,
-      type: MainType.EXPENSE,
+      type: RootType.EXPENSE,
     };
 
     const toData = {
       ...data,
       targetAccountId: data.accountId,
       accountId: data.targetAccountId,
-      type: MainType.INCOME,
+      type: RootType.INCOME,
     };
 
     const fromAccount = await Account.findByPk(data.accountId, {

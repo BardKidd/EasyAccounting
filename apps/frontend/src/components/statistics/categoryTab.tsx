@@ -6,7 +6,7 @@ import { CategoryList } from './lists/categoryList';
 import { StatisticsLegend } from './common/statisticsLegend';
 import { StatisticsType, STATISTICS_CONFIG } from './constants';
 import AnimateLayout from './common/animateLayout';
-import { CategoryTabDataType, MainType, PeriodType } from '@repo/shared';
+import { CategoryTabDataType, RootType, PeriodType } from '@repo/shared';
 import services from '@/services';
 
 interface CategoryTabProps {
@@ -77,13 +77,13 @@ export function CategoryTab({ periodDate, periodType }: CategoryTabProps) {
         [StatisticsType.TRANSFER_OUT]: [],
       };
       fetchedData.forEach((item: CategoryTabDataType) => {
-        if (item.isTransfer && item.type === MainType.EXPENSE) {
+        if (item.isTransfer && item.type === RootType.EXPENSE) {
           newData[StatisticsType.TRANSFER_OUT].push(item);
-        } else if (item.isTransfer && item.type === MainType.INCOME) {
+        } else if (item.isTransfer && item.type === RootType.INCOME) {
           newData[StatisticsType.TRANSFER_IN].push(item);
-        } else if (!item.isTransfer && item.type === MainType.EXPENSE) {
+        } else if (!item.isTransfer && item.type === RootType.EXPENSE) {
           newData[StatisticsType.EXPENSE].push(item);
-        } else if (!item.isTransfer && item.type === MainType.INCOME) {
+        } else if (!item.isTransfer && item.type === RootType.INCOME) {
           newData[StatisticsType.INCOME].push(item);
         }
       });

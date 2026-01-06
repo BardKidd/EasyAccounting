@@ -12,7 +12,7 @@ import {
   subMonths,
   subWeeks,
 } from 'date-fns';
-import { MainType } from '@repo/shared';
+import { RootType } from '@repo/shared';
 import { quickChartDoughnutProps } from '@/types/email';
 import reportService from '@/services/reportService';
 import { sleep } from '@/utils/common';
@@ -112,10 +112,10 @@ export const startWeeklySummaryNoticeCronJobs = () => {
           continue;
         }
         const expenseData = categoryTabData.filter(
-          (item) => item.type === MainType.EXPENSE && item.isTransfer === false
+          (item) => item.type === RootType.EXPENSE && item.isTransfer === false
         );
         const incomeData = categoryTabData.filter(
-          (item) => item.type === MainType.INCOME && item.isTransfer === false
+          (item) => item.type === RootType.INCOME && item.isTransfer === false
         );
 
         if (expenseData.length > 0) {

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { getIcon } from '@/lib/icon-mapping';
 import { StatisticsType, STATISTICS_CONFIG } from '../constants';
-import { AccountTabDataType, MainType } from '@repo/shared';
+import { AccountTabDataType, RootType } from '@repo/shared';
 
 interface AccountListProps {
   items: AccountTabDataType[];
@@ -66,12 +66,12 @@ export function AccountList({ items, totalAmount, type }: AccountListProps) {
                   <div
                     className={`ml-auto font-medium text-sm ${
                       item.isTransfer
-                        ? item.type === MainType.INCOME
+                        ? item.type === RootType.INCOME
                           ? STATISTICS_CONFIG[StatisticsType.TRANSFER_IN]
                               .tailwindColor
                           : STATISTICS_CONFIG[StatisticsType.TRANSFER_OUT]
                               .tailwindColor
-                        : item.type === MainType.INCOME
+                        : item.type === RootType.INCOME
                           ? STATISTICS_CONFIG[StatisticsType.INCOME]
                               .tailwindColor
                           : STATISTICS_CONFIG[StatisticsType.EXPENSE]

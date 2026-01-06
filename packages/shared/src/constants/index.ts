@@ -1,12 +1,12 @@
-// 主類型:收入、支出、轉帳
-export enum MainType {
+// 主類型 (根分類): 收入、支出、操作
+export enum RootType {
   INCOME = '收入',
   EXPENSE = '支出',
   OPERATE = '操作',
 }
 
-// 次類型(中間層分類)
-export enum SubType {
+// 主分類 (中間層分類 - User Main Category)
+export enum MainType {
   // 支出類別
   FOOD = '飲食',
   TRANSPORTATION = '交通',
@@ -29,8 +29,8 @@ export enum SubType {
   OTHER = '其他',
 }
 
-// 細項類型(最底層分類)
-export enum DetailType {
+// 子分類 (最底層分類 - User Sub Category)
+export enum SubType {
   // 飲食細項
   BREAKFAST = '早餐',
   LUNCH = '午餐',

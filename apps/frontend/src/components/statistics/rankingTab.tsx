@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { RankingList } from './lists/rankingList';
-import { MainType, PeriodType } from '@repo/shared';
+import { RootType, PeriodType } from '@repo/shared';
 import { StatisticsLegend } from './common/statisticsLegend';
 import { StatisticsType, STATISTICS_CONFIG } from './constants';
 import AnimateLayout from './common/animateLayout';
@@ -39,19 +39,19 @@ export function RankingTab({ periodDate, periodType }: RankingTabProps) {
     if (rankingList.length > 0) {
       if (selectedType === StatisticsType.TRANSFER_IN) {
         return rankingList.filter(
-          (item) => item.type === MainType.INCOME && item.isTransfer
+          (item) => item.type === RootType.INCOME && item.isTransfer
         );
       } else if (selectedType === StatisticsType.TRANSFER_OUT) {
         return rankingList.filter(
-          (item) => item.type === MainType.EXPENSE && item.isTransfer
+          (item) => item.type === RootType.EXPENSE && item.isTransfer
         );
       } else if (selectedType === StatisticsType.INCOME) {
         return rankingList.filter(
-          (item) => item.type === MainType.INCOME && !item.isTransfer
+          (item) => item.type === RootType.INCOME && !item.isTransfer
         );
       } else if (selectedType === StatisticsType.EXPENSE) {
         return rankingList.filter(
-          (item) => item.type === MainType.EXPENSE && !item.isTransfer
+          (item) => item.type === RootType.EXPENSE && !item.isTransfer
         );
       } else {
         return [];

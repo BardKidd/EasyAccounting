@@ -7,7 +7,7 @@ import { StatisticsLegend } from './common/statisticsLegend';
 import { StatisticsType, STATISTICS_CONFIG } from './constants';
 import AnimateLayout from './common/animateLayout';
 import services from '@/services';
-import { AccountTabDataType, MainType, PeriodType } from '@repo/shared';
+import { AccountTabDataType, RootType, PeriodType } from '@repo/shared';
 
 interface AccountTabProps {
   periodDate: {
@@ -43,19 +43,19 @@ export function AccountTab({ periodDate, periodType }: AccountTabProps) {
     if (accountTabData.length > 0) {
       if (selectedType === StatisticsType.TRANSFER_IN) {
         return accountTabData.filter(
-          (item) => item.isTransfer && item.type === MainType.INCOME
+          (item) => item.isTransfer && item.type === RootType.INCOME
         );
       } else if (selectedType === StatisticsType.TRANSFER_OUT) {
         return accountTabData.filter(
-          (item) => item.isTransfer && item.type === MainType.EXPENSE
+          (item) => item.isTransfer && item.type === RootType.EXPENSE
         );
       } else if (selectedType === StatisticsType.EXPENSE) {
         return accountTabData.filter(
-          (item) => !item.isTransfer && item.type === MainType.EXPENSE
+          (item) => !item.isTransfer && item.type === RootType.EXPENSE
         );
       } else if (selectedType === StatisticsType.INCOME) {
         return accountTabData.filter(
-          (item) => !item.isTransfer && item.type === MainType.INCOME
+          (item) => !item.isTransfer && item.type === RootType.INCOME
         );
       } else {
         //! 總計
@@ -73,7 +73,7 @@ export function AccountTab({ periodDate, periodType }: AccountTabProps) {
 
       if (selectedType === StatisticsType.BALANCE) {
         // Balance 模式維持原有的 紅/綠 區分
-        if (item.type === MainType.INCOME) {
+        if (item.type === RootType.INCOME) {
           // 收入(淺綠) & 轉入(深綠)
           color = item.isTransfer ? '#059669' : '#10b981';
         } else {
@@ -104,11 +104,11 @@ export function AccountTab({ periodDate, periodType }: AccountTabProps) {
     if (selectedType === StatisticsType.BALANCE) {
       // 收入＋轉入
       const income = coloredItems.filter(
-        (item) => item.type === MainType.INCOME
+        (item) => item.type === RootType.INCOME
       );
       // 支出＋轉出
       const expense = coloredItems.filter(
-        (item) => item.type === MainType.EXPENSE
+        (item) => item.type === RootType.EXPENSE
       );
       return (
         income.reduce((sum, item) => sum + item.amount, 0) -

@@ -1,4 +1,4 @@
-import { MainType } from '../constants';
+import { RootType } from '../constants';
 
 export interface OverviewTrendType {
   income: number;
@@ -38,7 +38,7 @@ export interface DetailTabDataType {
   date: string;
   time: string;
   description: string;
-  type: MainType.EXPENSE | MainType.INCOME;
+  type: RootType.EXPENSE | RootType.INCOME;
   targetAccountId: string | null;
   category: {
     id: string;
@@ -59,7 +59,7 @@ export interface DetailsTransaction {
   id: string;
   date: string;
   amount: number;
-  type: MainType;
+  type: RootType;
   categoryId: string;
   categoryName: string;
   categoryIcon: string;
@@ -77,13 +77,13 @@ export interface CategoryTabDataType {
   color: string;
   count: number;
   amount: number;
-  type: MainType;
+  type: RootType;
   isTransfer: boolean;
 }
 
 export interface RankingTabDataType {
   id: string;
-  type: MainType;
+  type: RootType;
   categoryId: string;
   categoryName: string;
   categoryIcon: string;
@@ -102,7 +102,7 @@ export interface AccountTabDataType {
   amount: number;
   count: number;
   isTransfer: boolean;
-  type: MainType;
+  type: RootType;
 }
 
 export interface EachMonthNetFlow {

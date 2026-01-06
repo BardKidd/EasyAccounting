@@ -1,7 +1,7 @@
 import Transaction from '@/models/transaction';
 import Category from '@/models/category';
 import Account from '@/models/account';
-import { CategoryTabDataType, MainType } from '@repo/shared';
+import { CategoryTabDataType, RootType } from '@repo/shared';
 import { Op, QueryTypes } from 'sequelize';
 import sequelize from '@/utils/postgres';
 import { eachMonthOfInterval, format } from 'date-fns';
@@ -23,14 +23,14 @@ const getOverviewTrend = async (body: any, userId: string) => {
   const result = transactions.reduce(
     (total, t) => {
       if (t.targetAccountId) {
-        if (t.type === MainType.INCOME) {
+        if (t.type === RootType.INCOME) {
           total.transferIn += Number(t.amount);
-        } else if (t.type === MainType.EXPENSE) {
+        } else if (t.type === RootType.EXPENSE) {
           total.transferOut += Number(t.amount);
         }
-      } else if (t.type === MainType.INCOME) {
+      } else if (t.type === RootType.INCOME) {
         total.income += Number(t.amount);
-      } else if (t.type === MainType.EXPENSE) {
+      } else if (t.type === RootType.EXPENSE) {
         total.expense += Number(t.amount);
       }
       return total;
@@ -63,7 +63,7 @@ const getOverviewTop3Categories = async (body: any, userId: string) => {
   //     targetAccountId: {
   //       [Op.is]: null,
   //     },
-  //     type: MainType.EXPENSE,
+  //     type: RootType.EXPENSE,
   //   },
   //   raw: true,
   //   nest: true, // 直接將 'category.xxx' 攤開成 category 物件包屬性。
@@ -184,7 +184,7 @@ const getOverviewTop3Categories = async (body: any, userId: string) => {
         userId,
         startDate,
         endDate,
-        type: MainType.EXPENSE,
+        type: RootType.EXPENSE,
       },
       type: QueryTypes.SELECT, // 沒寫這個的話會需要改成 const [result]，因為除了 result 外還會有其他資料。
     }
@@ -214,7 +214,7 @@ const getOverviewTop3Expenses = async (body: any, userId: string) => {
       targetAccountId: {
         [Op.is]: null,
       },
-      type: MainType.EXPENSE,
+      type: RootType.EXPENSE,
     },
     limit: 3,
     raw: true,

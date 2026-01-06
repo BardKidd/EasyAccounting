@@ -9,7 +9,7 @@ import Account from '../src/models/account';
 import Transaction from '../src/models/transaction';
 import Category from '../src/models/category';
 import {
-  MainType,
+  RootType,
   PaymentFrequency,
   Account as AccountEnum,
 } from '@repo/shared';
@@ -133,7 +133,7 @@ describe('User API Integration Test', () => {
       accountId: account.id,
       categoryId: (await Category.findOne())?.id || 'some-id',
       amount: 100,
-      type: MainType.EXPENSE,
+      type: RootType.EXPENSE,
       date: '2026-01-01',
       time: '12:00:00',
       paymentFrequency: PaymentFrequency.ONE_TIME,

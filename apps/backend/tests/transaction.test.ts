@@ -5,7 +5,7 @@ import User from '@/models/user';
 import Account from '@/models/account';
 import Category from '@/models/category';
 import Transaction from '@/models/transaction';
-import { MainType, PaymentFrequency } from '@repo/shared';
+import { RootType, PaymentFrequency } from '@repo/shared';
 import { StatusCodes } from 'http-status-codes';
 
 describe('Transaction API Integration Test', () => {
@@ -45,7 +45,7 @@ describe('Transaction API Integration Test', () => {
     const account = await Account.findOne({ where: { userId: user.id } });
     // 找一個支出類別 (因為我們要測支出)
     const category = await Category.findOne({
-      where: { userId: user.id, type: MainType.EXPENSE },
+      where: { userId: user.id, type: RootType.EXPENSE },
     });
 
     if (!account)
@@ -87,11 +87,11 @@ describe('Transaction API Integration Test', () => {
       amount: 100,
       date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
       time: '12:00',
-      type: MainType.EXPENSE,
+      type: RootType.EXPENSE,
       paymentFrequency: PaymentFrequency.ONE_TIME,
       description: '自動跑測試！！！',
       receipt: null,
-      subCategory: categoryId,
+      mainCategory: categoryId,
     };
 
     // 發送請求 (帶有 agent Cookie)
@@ -198,11 +198,11 @@ describe('Transaction API Integration Test', () => {
       amount: 888,
       date: '2026-01-01',
       time: '10:00',
-      type: MainType.EXPENSE,
+      type: RootType.EXPENSE,
       paymentFrequency: PaymentFrequency.ONE_TIME,
       description: 'CRUD Test Transaction',
       receipt: null,
-      subCategory: categoryId,
+      mainCategory: categoryId,
     };
 
     const res = await agent.post('/api/transaction').send(payload);
@@ -232,11 +232,11 @@ describe('Transaction API Integration Test', () => {
       amount: 999, // 修改金額
       date: '2026-01-02', // 修改日期
       time: '11:00', // 修改時間
-      type: MainType.EXPENSE,
+      type: RootType.EXPENSE,
       paymentFrequency: PaymentFrequency.ONE_TIME,
       receipt: null,
       description: 'Updated Description', // 修改備註
-      subCategory: categoryId,
+      mainCategory: categoryId,
     };
 
     const res = await agent
@@ -296,7 +296,7 @@ describe('Transaction API Integration Test', () => {
       amount: 500,
       date: '2026-01-10',
       time: '12:00',
-      type: MainType.OPERATE, // 轉帳
+      type: RootType.OPERATE, // 轉帳
       description: 'Test Transfer',
       categoryId: categoryId,
       receipt: null,
@@ -307,8 +307,8 @@ describe('Transaction API Integration Test', () => {
 
     expect(res.status).toBe(StatusCodes.CREATED);
     expect(res.body.isSuccess).toBe(true);
-    expect(res.body.data.fromTransaction.type).toBe(MainType.EXPENSE);
-    expect(res.body.data.toTransaction.type).toBe(MainType.INCOME);
+    expect(res.body.data.fromTransaction.type).toBe(RootType.EXPENSE);
+    expect(res.body.data.toTransaction.type).toBe(RootType.INCOME);
 
     // 驗證 Link ID 互連
     expect(res.body.data.fromTransaction.linkId).toBe(
@@ -331,7 +331,7 @@ describe('Transaction API Integration Test', () => {
     const res = await agent.get('/api/transaction/date').query({
       startDate: '2026-01-01',
       endDate: '2026-12-31',
-      type: MainType.OPERATE,
+      type: RootType.OPERATE,
     });
 
     expect(res.status).toBe(StatusCodes.OK);

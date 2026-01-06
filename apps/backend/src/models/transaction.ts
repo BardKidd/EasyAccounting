@@ -1,6 +1,6 @@
 import Sequelize, { Model } from 'sequelize';
 import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
-import { TransactionType, MainType, PaymentFrequency } from '@repo/shared';
+import { TransactionType, RootType, PaymentFrequency } from '@repo/shared';
 
 export interface TransactionAttributes extends TransactionType {
   linkId?: string | null;
@@ -48,7 +48,7 @@ const Transaction = sequelize.define<TransactionInstance>(
       allowNull: false,
     },
     type: {
-      type: Sequelize.ENUM(MainType.INCOME, MainType.EXPENSE, MainType.OPERATE),
+      type: Sequelize.ENUM(RootType.INCOME, RootType.EXPENSE, RootType.OPERATE),
       allowNull: false,
     },
     description: {

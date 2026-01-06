@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MainType, PaymentFrequency, PeriodType } from '../constants';
+import { RootType, PaymentFrequency, PeriodType } from '../constants';
 
 const baseSchema = z.object({
   accountId: z.string().uuid(),
@@ -18,14 +18,14 @@ const baseSchema = z.object({
 
 export const createTransactionSchema = baseSchema.and(
   z.object({
-    type: z.enum([MainType.INCOME, MainType.EXPENSE]),
+    type: z.enum([RootType.INCOME, RootType.EXPENSE]),
   })
 );
 
 export const createTransferSchema = baseSchema.and(
   z.object({
     targetAccountId: z.string().uuid(),
-    type: z.enum([MainType.OPERATE]), // 前端只能傳 OPERATE 進來，後端會判斷哪個是支出哪個是收入
+    type: z.enum([RootType.OPERATE]), // 前端只能傳 OPERATE 進來，後端會判斷哪個是支出哪個是收入
   })
 );
 
@@ -61,11 +61,11 @@ export type GetTransactionsDashboardSummarySchema = z.infer<
 export const transactionFormSchema = z.object({
   accountId: z.string().min(1, '請選擇帳戶'),
   amount: z.coerce.number().min(1, '金額必須大於 0'),
-  type: z.enum([MainType.INCOME, MainType.EXPENSE, MainType.OPERATE]),
+  type: z.enum([RootType.INCOME, RootType.EXPENSE, RootType.OPERATE]),
   date: z.coerce.date(),
   time: z.string(),
-  subCategory: z.string().min(1, '請選擇主分類'),
-  detailCategory: z.string().optional(),
+  mainCategory: z.string().min(1, '請選擇主分類'),
+  subCategory: z.string().optional(),
   description: z.string(),
   targetAccountId: z.string().optional(),
   receipt: z.string(),

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   DetailsTransaction,
   DetailTabDataType,
-  MainType,
+  RootType,
   PeriodType,
 } from '@repo/shared';
 import { TrendLineChart } from './charts/trendLineChart';
@@ -150,13 +150,13 @@ export function DetailsTab({ periodDate, periodType }: DetailsTabProps) {
         reversedData.forEach((item: DetailTabDataType) => {
           newXAxisData.add(item.date);
           // 先分組取好各種類別需要有的物件資料
-          if (item.targetAccountId && item.type === MainType.EXPENSE) {
+          if (item.targetAccountId && item.type === RootType.EXPENSE) {
             newSeriesGroup[StatisticsType.TRANSFER_OUT].push(item);
-          } else if (item.targetAccountId && item.type === MainType.INCOME) {
+          } else if (item.targetAccountId && item.type === RootType.INCOME) {
             newSeriesGroup[StatisticsType.TRANSFER_IN].push(item);
-          } else if (item.type === MainType.EXPENSE) {
+          } else if (item.type === RootType.EXPENSE) {
             newSeriesGroup[StatisticsType.EXPENSE].push(item);
-          } else if (item.type === MainType.INCOME) {
+          } else if (item.type === RootType.INCOME) {
             newSeriesGroup[StatisticsType.INCOME].push(item);
           }
         });

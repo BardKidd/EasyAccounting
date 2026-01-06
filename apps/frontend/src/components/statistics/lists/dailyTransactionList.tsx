@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { getIcon } from '@/lib/icon-mapping';
-import { DetailsTransaction, MainType } from '@repo/shared';
+import { DetailsTransaction, RootType } from '@repo/shared';
 
 interface DailyTransactionListProps {
   transactions: DetailsTransaction[];
@@ -17,9 +17,9 @@ export function DailyTransactionList({
       return { color: 'text-orange-500', prefix: '' };
     }
 
-    if (item.type === MainType.INCOME)
+    if (item.type === RootType.INCOME)
       return { color: 'text-green-600', prefix: '+' };
-    if (item.type === MainType.EXPENSE)
+    if (item.type === RootType.EXPENSE)
       return { color: 'text-red-600', prefix: '-' };
 
     return { color: 'text-gray-600', prefix: '' };

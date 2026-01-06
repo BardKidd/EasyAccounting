@@ -9,7 +9,7 @@ import {
   CreateTransactionSchema,
 } from '@repo/shared';
 import {
-  MainType,
+  RootType,
   Account,
   PaymentFrequency,
   transactionFormSchema,
@@ -69,26 +69,28 @@ function NewTransactionSheet({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // 因為 detailCategory 還沒選擇，所以只能在這裡判斷
+  // 因為 subCategory 還沒選擇，所以只能在這裡判斷
   const formSchema = useMemo(() => {
     return transactionFormSchema.superRefine((data, ctx) => {
-      if (data.type === MainType.OPERATE) return;
+      if (data.type === RootType.OPERATE) return;
 
       // 找出對應的 Root Category
       const root = categories.find((c) => c.type === data.type);
       if (!root?.children) return;
 
       // 找出選中的 Main Category
-      const mainCategory = root.children.find((c) => c.id === data.subCategory);
+      const mainCategory = root.children.find(
+        (c) => c.id === data.mainCategory
+      );
       if (!mainCategory) return;
 
-      // 如果該 Main Category 下有子分類，則 detailCategory 必填
+      // 如果該 Main Category 下有子分類，則 subCategory 必填
       if (mainCategory.children && mainCategory.children.length > 0) {
-        if (!data.detailCategory) {
+        if (!data.subCategory) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: '請選擇子分類',
-            path: ['detailCategory'],
+            path: ['subCategory'],
           });
         }
       }
@@ -100,13 +102,13 @@ function NewTransactionSheet({
     defaultValues: {
       accountId: '',
       amount: 0,
-      type: MainType.EXPENSE,
+      type: RootType.EXPENSE,
       description: '',
       // 解決 Hydration Mismatch: 初始值給 undefined/空字串，在 useEffect 補上
       date: undefined,
       time: '',
+      mainCategory: '',
       subCategory: '',
-      detailCategory: '',
       receipt: '',
       targetAccountId: '',
       paymentFrequency: PaymentFrequency.ONE_TIME,
@@ -115,7 +117,7 @@ function NewTransactionSheet({
 
   // 使用 watch 來監聽表單值的變化
   const watchedType = form.watch('type');
-  const watchedSubCategory = form.watch('subCategory');
+  const watchedMainCategory = form.watch('mainCategory');
   const watchedAccountId = form.watch('accountId');
 
   // 解決 Hydration Mismatch: 在 Client 端才設定預設時間。
@@ -129,11 +131,11 @@ function NewTransactionSheet({
     });
   }, [form]);
 
-  const currentSubCategory = useMemo(() => {
+  const currentMainCategory = useMemo(() => {
     if (!categories) return [];
 
     const roots = categories.filter(
-      (root) => root.type === (watchedType as MainType)
+      (root) => root.type === (watchedType as RootType)
     );
 
     // flatMap 比較少用記錄一下：先 map 後 flat，少一步驟。e.g. [{children: []}, {children: []}] -> map: [ [], [] ] -> flat: []
@@ -142,28 +144,28 @@ function NewTransactionSheet({
     return mainCategories;
   }, [watchedType, categories]);
 
-  const currentDetailCategory = useMemo(() => {
-    if (!watchedSubCategory || !currentSubCategory) return [];
+  const currentSubCategory = useMemo(() => {
+    if (!watchedMainCategory || !currentMainCategory) return [];
 
-    const detailCategoryMap = new Map<string, CategoryType>();
-    currentSubCategory.forEach((cat) => {
-      detailCategoryMap.set(cat.id, cat);
+    const subCategoryMap = new Map<string, CategoryType>();
+    currentMainCategory.forEach((cat) => {
+      subCategoryMap.set(cat.id, cat);
     });
 
-    const selectedMain = detailCategoryMap.get(watchedSubCategory);
+    const selectedMain = subCategoryMap.get(watchedMainCategory);
 
     if (!selectedMain || !selectedMain.children) return [];
 
     return selectedMain.children;
-  }, [watchedSubCategory, currentSubCategory]);
+  }, [watchedMainCategory, currentMainCategory]);
 
   const handleExpenseAndIncomeChange = async (data: TransactionFormSchema) => {
     // 整理成 API 需要的格式
     const payload: CreateTransactionSchema = {
       accountId: data.accountId,
-      categoryId: data.detailCategory || data.subCategory,
+      categoryId: data.subCategory || data.mainCategory,
       amount: Number(data.amount),
-      type: data.type as MainType.EXPENSE | MainType.INCOME,
+      type: data.type as RootType.EXPENSE | RootType.INCOME,
       description: data.description,
       // User 選什麼時間就存什麼。存當地時間，不需要轉為 +0
       date: format(data.date, 'yyyy-MM-dd'),
@@ -191,9 +193,9 @@ function NewTransactionSheet({
   const handleOperateChange = async (data: TransactionFormSchema) => {
     const payload = {
       accountId: data.accountId,
-      categoryId: data.detailCategory || data.subCategory,
+      categoryId: data.subCategory || data.mainCategory,
       amount: Number(data.amount),
-      type: MainType.OPERATE as MainType.OPERATE,
+      type: RootType.OPERATE as RootType.OPERATE,
       description: data.description,
       // User 選什麼時間就存什麼。存當地時間，不需要轉為 +0
       date: format(data.date, 'yyyy-MM-dd'),
@@ -220,7 +222,7 @@ function NewTransactionSheet({
   };
 
   const onSubmit = async (data: TransactionFormSchema) => {
-    if (data.type === MainType.EXPENSE || data.type === MainType.INCOME) {
+    if (data.type === RootType.EXPENSE || data.type === RootType.INCOME) {
       await handleExpenseAndIncomeChange(data);
     } else {
       // 轉帳類
@@ -256,65 +258,65 @@ function NewTransactionSheet({
                       <Button
                         type="button"
                         variant={
-                          field.value === MainType.EXPENSE
+                          field.value === RootType.EXPENSE
                             ? 'default'
                             : 'outline'
                         }
                         className={cn(
-                          field.value === MainType.EXPENSE &&
+                          field.value === RootType.EXPENSE &&
                             'bg-rose-600 hover:bg-rose-700',
                           'cursor-pointer'
                         )}
                         onClick={() => {
-                          field.onChange(MainType.EXPENSE);
+                          field.onChange(RootType.EXPENSE);
+                          form.setValue('mainCategory', '');
                           form.setValue('subCategory', '');
-                          form.setValue('detailCategory', '');
                           form.clearErrors();
                         }}
                       >
-                        {MainType.EXPENSE}
+                        {RootType.EXPENSE}
                       </Button>
                       <Button
                         type="button"
                         variant={
-                          field.value === MainType.INCOME
+                          field.value === RootType.INCOME
                             ? 'default'
                             : 'outline'
                         }
                         className={cn(
-                          field.value === MainType.INCOME &&
+                          field.value === RootType.INCOME &&
                             'bg-emerald-600 hover:bg-emerald-700',
                           'cursor-pointer'
                         )}
                         onClick={() => {
-                          field.onChange(MainType.INCOME);
+                          field.onChange(RootType.INCOME);
+                          form.setValue('mainCategory', '');
                           form.setValue('subCategory', '');
-                          form.setValue('detailCategory', '');
                           form.clearErrors();
                         }}
                       >
-                        {MainType.INCOME}
+                        {RootType.INCOME}
                       </Button>
                       <Button
                         type="button"
                         variant={
-                          field.value === MainType.OPERATE
+                          field.value === RootType.OPERATE
                             ? 'default'
                             : 'outline'
                         }
                         className={cn(
-                          field.value === MainType.OPERATE &&
+                          field.value === RootType.OPERATE &&
                             'bg-amber-500 hover:bg-amber-600',
                           'cursor-pointer'
                         )}
                         onClick={() => {
-                          field.onChange(MainType.OPERATE);
+                          field.onChange(RootType.OPERATE);
+                          form.setValue('mainCategory', '');
                           form.setValue('subCategory', '');
-                          form.setValue('detailCategory', '');
                           form.clearErrors();
                         }}
                       >
-                        {MainType.OPERATE}
+                        {RootType.OPERATE}
                       </Button>
                     </div>
                     <FormMessage />
@@ -326,19 +328,19 @@ function NewTransactionSheet({
               <div
                 className={cn(
                   'grid gap-4',
-                  watchedType !== MainType.OPERATE && ' grid-cols-2'
+                  watchedType !== RootType.OPERATE && ' grid-cols-2'
                 )}
               >
                 <FormField
                   control={form.control}
-                  name="subCategory"
+                  name="mainCategory"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>主分類</FormLabel>
                       <Select
                         onValueChange={(value) => {
                           field.onChange(value);
-                          form.setValue('detailCategory', '');
+                          form.setValue('subCategory', '');
                         }}
                         value={field.value}
                       >
@@ -348,7 +350,7 @@ function NewTransactionSheet({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {currentSubCategory.map((category) => (
+                          {currentMainCategory.map((category) => (
                             <SelectItem key={category.id} value={category.id}>
                               {category.name}
                             </SelectItem>
@@ -360,10 +362,10 @@ function NewTransactionSheet({
                   )}
                 />
 
-                {watchedType !== MainType.OPERATE && (
+                {watchedType !== RootType.OPERATE && (
                   <FormField
                     control={form.control}
-                    name="detailCategory"
+                    name="subCategory"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>子分類</FormLabel>
@@ -371,15 +373,15 @@ function NewTransactionSheet({
                           onValueChange={field.onChange}
                           value={field.value}
                           disabled={
-                            !watchedSubCategory ||
-                            currentDetailCategory.length === 0
+                            !watchedMainCategory ||
+                            currentSubCategory.length === 0
                           }
                         >
                           <FormControl>
                             <SelectTrigger className="w-full cursor-pointer">
                               <SelectValue
                                 placeholder={
-                                  currentDetailCategory.length === 0
+                                  currentSubCategory.length === 0
                                     ? '無子分類'
                                     : '選擇子分類'
                                 }
@@ -387,7 +389,7 @@ function NewTransactionSheet({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {currentDetailCategory.map((category) => (
+                            {currentSubCategory.map((category) => (
                               <SelectItem key={category.id} value={category.id}>
                                 {category.name}
                               </SelectItem>
@@ -541,7 +543,7 @@ function NewTransactionSheet({
               </div>
 
               {/* Target Account (Only for OPERATE) */}
-              {watchedType === MainType.OPERATE && (
+              {watchedType === RootType.OPERATE && (
                 <FormField
                   control={form.control}
                   name="targetAccountId"

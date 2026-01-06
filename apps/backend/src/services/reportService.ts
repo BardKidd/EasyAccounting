@@ -1,7 +1,7 @@
 import statisticsServices from '@/services/statisticsServices';
 import { endOfMonth, format, startOfMonth, subMonths } from 'date-fns';
 import { ComparisonCategory } from '@/emails/monthlyAnalysis';
-import { CategoryTabDataType, MainType } from '@repo/shared';
+import { CategoryTabDataType, RootType } from '@repo/shared';
 import { formatMonthLabel } from '@/utils/format';
 
 interface MonthlyReportServiceProps {
@@ -48,7 +48,7 @@ const monthlyReportService = async ({
   );
   const m1DetailExpenseData =
     m1DetailData.filter(
-      (item) => item.type === MainType.EXPENSE && !item.isTransfer
+      (item) => item.type === RootType.EXPENSE && !item.isTransfer
     ) || [];
 
   const m1Top3Expenses = await statisticsServices.getOverviewTop3Categories(
@@ -76,19 +76,19 @@ const monthlyReportService = async ({
 
   const m1IncomeCategoriesData =
     m1CategoriesData.filter(
-      (item) => item.type === MainType.INCOME && !item.isTransfer
+      (item) => item.type === RootType.INCOME && !item.isTransfer
     ) || [];
   const m2IncomeCategoriesData =
     m2CategoriesData.filter(
-      (item) => item.type === MainType.INCOME && !item.isTransfer
+      (item) => item.type === RootType.INCOME && !item.isTransfer
     ) || [];
   const m1ExpenseCategoriesData =
     m1CategoriesData.filter(
-      (item) => item.type === MainType.EXPENSE && !item.isTransfer
+      (item) => item.type === RootType.EXPENSE && !item.isTransfer
     ) || [];
   const m2ExpenseCategoriesData =
     m2CategoriesData.filter(
-      (item) => item.type === MainType.EXPENSE && !item.isTransfer
+      (item) => item.type === RootType.EXPENSE && !item.isTransfer
     ) || [];
 
   const setM2IncomeCategoryId = new Set(
