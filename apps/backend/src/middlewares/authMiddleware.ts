@@ -14,44 +14,66 @@ export const authMiddleware = async (
 ) => {
   try {
     const accessToken = req.cookies.accessToken;
-    let payload = accessToken ? await verifyToken(accessToken) : null;
+    let accessPayload = null;
+    let accessError = null;
 
-    // accessToken 過期的話去換 token
-    if (!payload) {
-      const refreshToken = req.cookies.refreshToken;
-
-      // refreshToken 也過期了就重新登入
-      if (!refreshToken) {
-        console.log('refreshToken also expired');
-        res
-          .status(StatusCodes.UNAUTHORIZED)
-          .json(responseHelper(false, null, 'Unauthorized', null));
-        return;
-      }
-
-      const refreshPayload = await verifyToken(refreshToken);
-      if (!refreshPayload) {
-        res
-          .status(StatusCodes.UNAUTHORIZED)
-          .json(responseHelper(false, null, 'Unauthorized', null));
-        return;
-      }
-
-      const newPayload = {
-        userId: refreshPayload.userId as string,
-        email: refreshPayload.email as string,
-      };
-
-      // 更新 accessToken
-      const newAccessToken = await generateAccessToken(newPayload);
-      setAccessCookie(res, newAccessToken);
-      req.cookies.accessToken = newAccessToken;
-
-      const newAccessTokenPayload = await verifyToken(newAccessToken);
-      payload = newAccessTokenPayload;
+    if (accessToken) {
+      const result = await verifyToken(accessToken);
+      accessPayload = result.payload;
+      accessError = result.error;
     }
 
-    req.user = payload;
+    // 1. Access Token 有效 -> 直接放行
+    if (accessPayload) {
+      req.user = accessPayload;
+      return next();
+    }
+
+    // 2. Access Token 無效 (被竄改或格式錯誤) -> 強制登出
+    if (accessToken && accessError === 'invalid') {
+      res.clearCookie('accessToken');
+      res.clearCookie('refreshToken');
+      return res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json(responseHelper(false, null, 'Invalid token', null));
+    }
+
+    // 3. Access Token 過期 (expired) 或 遺失 (null) -> 嘗試換證
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+      // 這裡也要清空，因為可能是 Access Token 過期但沒有 Refresh Token 的情況
+      res.clearCookie('accessToken');
+      res.clearCookie('refreshToken');
+      return res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json(responseHelper(false, null, 'Unauthorized', null));
+    }
+
+    const { payload: refreshPayload } = await verifyToken(refreshToken);
+    if (!refreshPayload) {
+      // Refresh Token 也掛了 -> 清除 Cookie 並回傳 401
+      res.clearCookie('accessToken');
+      res.clearCookie('refreshToken');
+      return res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json(responseHelper(false, null, 'Session expired', null));
+    }
+
+    // 4. 換證成功
+    const newPayload = {
+      userId: refreshPayload.userId as string,
+      email: refreshPayload.email as string,
+    };
+
+    const newAccessToken = await generateAccessToken(newPayload);
+
+    // 設定新 Cookie (注意：Max-Age 要跟 Refresh Token 一樣長，或依需求設定)
+    setAccessCookie(res, newAccessToken);
+
+    // 更新 Request 狀態讓後續 Controller 拿到最新的
+    req.cookies.accessToken = newAccessToken;
+    req.user = newPayload;
+
     next();
   } catch (error) {
     console.log('[Auth middleware error] :', error);

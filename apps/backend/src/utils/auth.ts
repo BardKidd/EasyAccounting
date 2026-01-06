@@ -13,8 +13,7 @@ const SECRET = new TextEncoder().encode(
 
 const JWT_ACCESS_IN = '15m';
 const JWT_REFRESH_IN = '7d';
-const ACCESS_TOKEN_MAX_AGE = 60 * 60 * 1000;
-const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 interface TokenPayload {
   userId: string;
@@ -26,6 +25,7 @@ const COOKIE_OPTIONS = {
   secure: process.env.NODE_ENV === 'prd',
   sameSite: 'strict' as const,
   path: '/', //! 會鎖定 cookie 在這個路徑底下
+  maxAge: COOKIE_MAX_AGE,
 };
 
 export const generateAccessToken = async (payload: TokenPayload) => {
@@ -55,25 +55,22 @@ export const generateRefreshToken = async (payload: TokenPayload) => {
 export const verifyToken = async (token: string) => {
   try {
     const { payload } = await jwtVerify(token, SECRET);
-    return payload;
-  } catch (error) {
+    return { payload, error: null };
+  } catch (error: any) {
+    if (error.code === 'ERR_JWT_EXPIRED') {
+      return { payload: null, error: 'expired' };
+    }
     console.error('JWT Verification Failed:', error);
-    return null;
+    return { payload: null, error: 'invalid' };
   }
 };
 
 export const setAccessCookie = (res: Response, token: string) => {
-  res.cookie('accessToken', token, {
-    ...COOKIE_OPTIONS,
-    maxAge: ACCESS_TOKEN_MAX_AGE,
-  });
+  res.cookie('accessToken', token, COOKIE_OPTIONS);
 };
 
 export const setRefreshCookie = (res: Response, token: string) => {
-  res.cookie('refreshToken', token, {
-    ...COOKIE_OPTIONS,
-    maxAge: REFRESH_TOKEN_MAX_AGE,
-  });
+  res.cookie('refreshToken', token, COOKIE_OPTIONS);
 };
 
 export const clearAuthCookie = (req: Request, res: Response) => {
