@@ -14,6 +14,7 @@ describe('Transaction API Integration Test', () => {
   const agent = request.agent(app);
 
   let accountId = '';
+  let account2Id = '';
   let categoryId = '';
   const userEmail = process.env.TEST_USER_EMAIL;
   const userPassword = process.env.TEST_USER_PASSWORD;
@@ -56,6 +57,27 @@ describe('Transaction API Integration Test', () => {
 
     accountId = account.id;
     categoryId = category.id;
+
+    // 2.5 找第二個帳戶 (for Transfer test)，如果沒有就建一個
+    let account2 = await Account.findOne({
+      where: {
+        userId: user.id,
+        id: { [require('sequelize').Op.ne]: accountId }, // 排除第一個帳戶
+      },
+    });
+
+    if (!account2) {
+      account2 = await Account.create({
+        userId: user.id,
+        name: 'Test Bank 2',
+        type: '銀行',
+        balance: 10000,
+        icon: 'bank',
+        color: '#000000',
+        isActive: true,
+      } as any);
+    }
+    account2Id = account2.id;
   });
 
   it('should create a new expense transaction', async () => {
@@ -164,6 +186,7 @@ describe('Transaction API Integration Test', () => {
   // ==========================================
 
   let createdTransactionId: string;
+  let transferFromId: string;
 
   // 1. 為了能測 update/delete，我們需要先有一筆成功的交易 ID
   // 我們可以重構上面的 create 測試來把 ID 存起來，或者在這裡新建立一筆專門給 Update 用
@@ -261,5 +284,104 @@ describe('Transaction API Integration Test', () => {
 
     // 視你的實作而定，通常是 404 Not Found
     expect(res.status).toBe(StatusCodes.NOT_FOUND);
+  });
+
+  // ==========================================
+  // 轉帳功能測試 (Transfer)
+  // ==========================================
+  it('should create a transfer transaction', async () => {
+    const payload = {
+      accountId: accountId, // From
+      targetAccountId: account2Id, // To
+      amount: 500,
+      date: '2026-01-10',
+      time: '12:00',
+      type: MainType.OPERATE, // 轉帳
+      description: 'Test Transfer',
+      categoryId: categoryId,
+      receipt: null,
+      paymentFrequency: PaymentFrequency.ONE_TIME,
+    };
+
+    const res = await agent.post('/api/transaction/transfer').send(payload);
+
+    expect(res.status).toBe(StatusCodes.CREATED);
+    expect(res.body.isSuccess).toBe(true);
+    expect(res.body.data.fromTransaction.type).toBe(MainType.EXPENSE);
+    expect(res.body.data.toTransaction.type).toBe(MainType.INCOME);
+
+    // 驗證 Link ID 互連
+    expect(res.body.data.fromTransaction.linkId).toBe(
+      res.body.data.toTransaction.id
+    );
+    expect(res.body.data.toTransaction.linkId).toBe(
+      res.body.data.fromTransaction.id
+    );
+
+    // 驗證 Target Account ID 互指
+    expect(res.body.data.fromTransaction.targetAccountId).toBe(account2Id);
+    expect(res.body.data.toTransaction.targetAccountId).toBe(accountId); // toTransaction 的 Account 是 account2Id，所以 target 是 accountId
+
+    transferFromId = res.body.data.fromTransaction.id;
+  });
+
+  it('should filter transactions by OPERATE type', async () => {
+    if (!transferFromId) throw new Error('No transfer created');
+
+    const res = await agent.get('/api/transaction/date').query({
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      type: MainType.OPERATE,
+    });
+
+    expect(res.status).toBe(StatusCodes.OK);
+    expect(res.body.isSuccess).toBe(true);
+    // 應該要找到剛剛建立的那筆轉帳
+    const found = res.body.data.items.find(
+      (item: any) => item.id === transferFromId
+    );
+    expect(found).toBeDefined();
+  });
+
+  it('should cascade delete transfer transactions', async () => {
+    if (!transferFromId) throw new Error('No transfer created');
+
+    const res = await agent.delete(`/api/transaction/${transferFromId}`);
+
+    expect(res.status).toBe(StatusCodes.OK);
+    expect(res.body.isSuccess).toBe(true);
+
+    // 驗證兩筆都刪除了
+    const fromTx = await Transaction.findByPk(transferFromId);
+    expect(fromTx).toBeNull();
+
+    // 找出跟他連動的那一筆，應該也要被刪除
+    // 因為我們只知道 linkId，所以要用 paranoid: false 找出來看 linkId，或者直接用 DB query
+    // 這裡我們假設 linkId 正確，去 query DB 找 linkId 為 transferFromId 的那筆 (也就是 To Transaction)
+    const toTx = await Transaction.findOne({
+      where: { linkId: transferFromId },
+    });
+    expect(toTx).toBeNull();
+  });
+
+  // ==========================================
+  // 統計報表測試 (Summary)
+  // ==========================================
+  it('should get transaction summary for dashboard', async () => {
+    const payload = {
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      groupBy: 'month',
+    };
+
+    const res = await agent.post('/api/transaction/summary').send(payload);
+
+    expect(res.status).toBe(StatusCodes.OK);
+    expect(res.body.isSuccess).toBe(true);
+    // 檢查回傳結構
+    expect(Array.isArray(res.body.data.trends)).toBe(true);
+    expect(res.body.data.summary).toHaveProperty('income');
+    expect(res.body.data.summary).toHaveProperty('expense');
+    expect(res.body.data.summary).toHaveProperty('balance');
   });
 });

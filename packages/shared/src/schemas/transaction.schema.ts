@@ -34,6 +34,7 @@ export const updateTransactionSchema = createTransactionSchema;
 export const getTransactionsByDateSchema = z.object({
   accountId: z.string().uuid().optional(),
   categoryId: z.string().uuid().optional(),
+  type: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   date: z.string().optional(),

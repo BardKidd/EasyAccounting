@@ -28,10 +28,10 @@ const getTransactionsByDate = async (
   query: GetTransactionsByDateSchema,
   userId: string
 ) => {
-  const { startDate, endDate, page = 1, ...otherFilters } = query;
+  const { startDate, endDate, type, page = 1, ...otherFilters } = query;
   const limit = 10;
-  let dateFilter = {};
 
+  let dateFilter = {};
   if (startDate && endDate) {
     dateFilter = {
       date: {
@@ -42,15 +42,41 @@ const getTransactionsByDate = async (
 
   const offset = (Number(page) - 1) * Number(limit);
 
+  let typeFilter: any = {};
+  if (type === MainType.OPERATE) {
+    // 若為「操作」(轉帳):
+    // 1. linkId 不為 null
+    // 2. 轉帳的主動方
+    typeFilter = {
+      linkId: {
+        [Op.ne]: null,
+      },
+      type: MainType.EXPENSE,
+    };
+  } else if (type) {
+    // 若為指定類型 (收入/支出): 找出該類型且 linkId 為 null (排除轉帳)
+    typeFilter.type = type;
+    typeFilter.linkId = null;
+  } else {
+    // 預設 (沒有傳 type 時):
+    // 顯示:
+    // 1. 一般收支 (linkId is null)
+    // 2. 轉帳的主動方 (linkId is not null AND type != INCOME) -> 這邏輯是用來避免列表重複顯示轉帳的兩筆
+    typeFilter[Op.or] = [
+      { linkId: null },
+      {
+        linkId: { [Op.ne]: null },
+        type: { [Op.ne]: MainType.INCOME },
+      },
+    ];
+  }
+
   const { rows, count } = await Transaction.findAndCountAll({
     where: {
       ...otherFilters,
       ...dateFilter,
+      ...typeFilter,
       userId,
-      [Op.or]: [
-        { linkId: null as any }, // 一般收支
-        { type: { [Op.ne]: MainType.INCOME } }, // 操作的主動方
-      ],
     },
     limit: Number(limit),
     offset, // 定義從第幾筆開始取資料，e.g. page=2, limit=10,offset=10
@@ -317,6 +343,37 @@ const deleteTransaction = async (id: string, userId: string) => {
       transaction.type === MainType.INCOME ? MainType.EXPENSE : MainType.INCOME;
     await calcAccountBalance(account, revertType, Number(transaction.amount));
     await account.save({ transaction: t });
+
+    // 當被刪除的是轉帳交易時要去順便把另一筆也刪掉
+    // 當初忘記加 CASCADE 了
+    if (transaction.linkId) {
+      const linkedTransaction = await Transaction.findOne({
+        where: { id: transaction.linkId, userId },
+        transaction: t,
+      });
+
+      if (linkedTransaction) {
+        const linkedAccount = await Account.findOne({
+          where: { id: linkedTransaction.accountId, userId },
+          transaction: t,
+        });
+
+        if (linkedAccount) {
+          const linkedRevertType =
+            linkedTransaction.type === MainType.INCOME
+              ? MainType.EXPENSE
+              : MainType.INCOME;
+          await calcAccountBalance(
+            linkedAccount,
+            linkedRevertType,
+            Number(linkedTransaction.amount)
+          );
+          await linkedAccount.save({ transaction: t });
+        }
+
+        await linkedTransaction.destroy({ transaction: t });
+      }
+    }
 
     await transaction.destroy({ transaction: t });
 
