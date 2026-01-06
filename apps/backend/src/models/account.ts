@@ -9,8 +9,12 @@ import {
 
 type AccountAttributes = AccountType & Partial<CreditAccountType>;
 
+type AccountCreationAttributes = Omit<AccountAttributes, 'id'>;
+
 // 這個型別說明建立出來的 Model instance 要包含 AccountAttributes 的所有屬性，當使用 toJson() 後會剩下 AccountAttributes 的所有屬性
-interface AccountInstance extends Model<AccountAttributes>, AccountAttributes {}
+interface AccountInstance
+  extends Model<AccountAttributes, AccountCreationAttributes>,
+    AccountAttributes {}
 
 const Account = sequelize.define<AccountInstance>(
   'account',

@@ -8,25 +8,6 @@ import userServices from '@/services/userServices';
 import personnelNotificationServices from '@/services/personnelNotificationServices';
 import emailService from '@/services/emailService';
 
-const getUsers = (req: Request, res: Response) => {
-  simplifyTryCatch(req, res, async () => {
-    const users = await User.findAll();
-    let sortedUsers: UserType[] = [];
-    if (users.length > 0) {
-      sortedUsers = users.map((userInstance) => {
-        const userJson = userInstance.toJSON();
-        return {
-          name: userJson.name,
-          email: userJson.email,
-        };
-      });
-    }
-    res
-      .status(StatusCodes.OK)
-      .json(responseHelper(true, sortedUsers, 'Get users successfully', null));
-  });
-};
-
 const getUser = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const userInstance = await userServices.getUserFromDB(req, res);
@@ -109,6 +90,7 @@ const deleteUser = (req: Request, res: Response) => {
         .status(StatusCodes.NOT_FOUND)
         .json(responseHelper(false, null, 'User not found', null));
     }
+
     userInstance.destroy().then(() => {
       res
         .status(StatusCodes.OK)
@@ -119,7 +101,6 @@ const deleteUser = (req: Request, res: Response) => {
 
 export default {
   addUser,
-  getUsers,
   getUser,
   editUser,
   deleteUser,

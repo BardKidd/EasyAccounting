@@ -345,7 +345,6 @@ const deleteTransaction = async (id: string, userId: string) => {
     await account.save({ transaction: t });
 
     // 當被刪除的是轉帳交易時要去順便把另一筆也刪掉
-    // 當初忘記加 CASCADE 了
     if (transaction.linkId) {
       const linkedTransaction = await Transaction.findOne({
         where: { id: transaction.linkId, userId },

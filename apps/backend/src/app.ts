@@ -9,7 +9,7 @@ import User from '@/models/user';
 import Category from '@/models/category';
 import Account from '@/models/account';
 import Transaction from '@/models/transaction';
-import PersonnelNotification from './models/personnel_notification';
+import PersonnelNotification from '@/models/personnel_notification';
 
 import userRoute from '@/routes/userRoute';
 import categoryRoute from '@/routes/categoryRoute';
@@ -51,6 +51,18 @@ app.use('/api', authRoute);
 app.use('/api', statisticsRoute);
 app.use('/api', personnelNotificationRoute);
 app.use('/api', excelRoute);
+// 透過 Hook 實作軟刪除的 Cascade (Sequelize 的 hooks: true 只有再某些版本有效，手寫最穩)
+User.addHook('afterDestroy', async (user: any, options: any) => {
+  const transaction = options.transaction;
+  const userId = user.id;
+
+  // 1. 刪除相關 Account
+  await Account.destroy({ where: { userId }, transaction });
+  // 2. 刪除相關 Transaction
+  await Transaction.destroy({ where: { userId }, transaction });
+  // 3. 刪除相關 Notification
+  await PersonnelNotification.destroy({ where: { userId }, transaction });
+});
 
 User.hasMany(Category);
 User.hasMany(Account);
