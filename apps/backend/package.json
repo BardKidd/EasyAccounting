@@ -12,7 +12,9 @@
     "db:seed:generate": "sh -c 'read -p \"Seed Name: \" NAME && npx sequelize-cli seed:generate --name \"$NAME\"'",
     "db:seed": "sh -c 'read -p \"Enter Environment (dev/prd): \" ENV && NODE_ENV=$ENV npx sequelize-cli db:seed:all'",
     "db:seed:undo": "sh -c 'read -p \"Enter Environment (dev/prd): \" ENV && NODE_ENV=$ENV npx sequelize-cli db:seed:undo:all'",
-    "email": "email dev --dir src/emails --port 3001"
+    "email": "email dev --dir src/emails --port 3001",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "keywords": [],
   "author": "",
@@ -28,12 +30,16 @@
     "@types/pg": "^8.15.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/supertest": "^6.0.3",
+    "@vitest/coverage-v8": "^4.0.16",
     "chalk": "^5.6.2",
     "morgan": "^1.10.1",
     "react-email": "^5.1.0",
     "sequelize-cli": "^6.6.3",
+    "supertest": "^7.1.4",
     "ts-node": "^10.9.2",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "vitest": "^4.0.16"
   },
   "dependencies": {
     "@azure/storage-blob": "^12.29.1",

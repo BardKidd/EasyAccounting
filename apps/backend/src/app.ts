@@ -27,7 +27,7 @@ import {
   startWeeklySummaryNoticeCronJobs,
 } from './cron/notificationCron';
 
-const app = express();
+const app: express.Application = express();
 
 // CORS 設定
 app.use(
@@ -86,16 +86,23 @@ startDailyReminderCronJobs();
 startWeeklySummaryNoticeCronJobs();
 startMonthlyAnalysisNoticeCronJobs();
 
-sequelize
-  .sync()
-  .then(() => {
-    return mongoConnection();
-  })
-  .then(() => {
-    app.listen(3000, () => {
-      console.log('Server running on port 3000');
-    });
-  })
-  .catch((error) => {
+export { app };
+
+const startServer = async () => {
+  try {
+    await sequelize.sync();
+    await mongoConnection();
+
+    // 只有非測試環境才啟動 Server
+    // Supertest 會自動找空的 port 啟動 Server，所以測試環境不需要啟動
+    if (process.env.NODE_ENV !== 'test') {
+      app.listen(3000, () => {
+        console.log('Server running on port 3000');
+      });
+    }
+  } catch (error) {
     console.error('Failed to sync database:', error);
-  });
+  }
+};
+
+startServer();
