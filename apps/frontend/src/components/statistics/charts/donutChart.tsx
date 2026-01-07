@@ -138,11 +138,7 @@ export function DonutChart({ data, totalAmount }: CategoryPieChartProps) {
         <CardTitle>統計佔比</CardTitle>
       </CardHeader>
       <CardContent>
-        <ReactECharts
-          key={Math.random()}
-          option={option}
-          style={{ height: '350px' }}
-        />
+        <ReactECharts option={option} style={{ height: '350px' }} />
       </CardContent>
     </Card>
   );

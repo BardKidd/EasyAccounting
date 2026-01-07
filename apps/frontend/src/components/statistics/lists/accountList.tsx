@@ -33,10 +33,9 @@ export function AccountList({ items, totalAmount, type }: AccountListProps) {
           <div className="max-h-[400px] overflow-y-auto px-6 py-2">
             {items.map((item) => {
               const IconComponent = getIcon(item.icon) || getIcon('Wallet');
-
               return (
                 <div
-                  key={item.id}
+                  key={`${item.id}${item.type}${item.isTransfer}`}
                   className="flex items-center py-4 px-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
                 >
                   {/* Icon */}

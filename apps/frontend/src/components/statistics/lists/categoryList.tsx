@@ -41,7 +41,7 @@ export function CategoryList({ items, totalAmount, type }: CategoryListProps) {
 
               return (
                 <div
-                  key={`${item.id}-${item.name}-${Math.random()}`}
+                  key={`${item.id}-${item.name}`}
                   className="flex items-center py-4 px-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
                 >
                   {/* Icon */}

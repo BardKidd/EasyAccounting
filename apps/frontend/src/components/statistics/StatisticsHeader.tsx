@@ -41,6 +41,8 @@ interface StatisticsHeaderProps {
   date: Date;
   // 切換日期的回調函數
   onDateChange: (date: Date) => void;
+  // 基準當前日期 (解決 hydration issue)
+  today?: Date;
 }
 
 export function StatisticsHeader({
@@ -48,6 +50,7 @@ export function StatisticsHeader({
   onPeriodChange,
   date,
   onDateChange,
+  today,
 }: StatisticsHeaderProps) {
   const [open, setOpen] = useState(false);
 
@@ -113,7 +116,7 @@ export function StatisticsHeader({
     // 預設生成過去 24 個週期和未來 5 個週期
 
     // 以「今天」為基準產生列表
-    const now = new Date();
+    const now = today || new Date();
 
     for (let i = -5; i <= 24; i++) {
       // (i 代表「幾個週期前」)

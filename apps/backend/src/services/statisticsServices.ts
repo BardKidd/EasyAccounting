@@ -434,6 +434,7 @@ const getAccountTabData = async (body: any, userId: string) => {
       "a"."color",
       "a"."type",
       "a"."icon",
+      "a"."id",
       "t"."type",
       SUM("t"."amount")::integer AS "amount",
       COUNT("t"."id")::integer AS "count"
@@ -451,6 +452,7 @@ const getAccountTabData = async (body: any, userId: string) => {
       "a"."color",
       "a"."type",
       "a"."icon",
+      "a"."id",
       "t"."type"
     ORDER BY "amount" DESC
     `,

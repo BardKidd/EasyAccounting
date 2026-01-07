@@ -120,6 +120,7 @@ export function AccountTab({ periodDate, periodType }: AccountTabProps) {
 
   const chartData = useMemo(() => {
     return coloredItems.map((item) => ({
+      id: item.id,
       name: item.name,
       value: item.amount,
       color: item.color,
