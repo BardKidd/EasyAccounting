@@ -28,6 +28,7 @@ const CustomPagination = ({ pagination }: { pagination: PaginationType }) => {
     // 直接 console 會看到 size 之類奇怪的內容，需要使用 .toString() 來轉換
     const params = new URLSearchParams(searchParams); // 不是一般的物件，需要使用 .toString() 來轉換
 
+    //! 因為要作為參數所以要轉字串，下面使用的 page 要使用前需要手動轉回數值才行，否則會無法判斷
     params.set('page', pageNumber.toString());
     return `?${params.toString()}`;
   };
@@ -37,7 +38,9 @@ const CustomPagination = ({ pagination }: { pagination: PaginationType }) => {
       <PaginationContent>
         <PaginationItem>
           <PaginationPrevious
-            href={createPageURL(pagination.page > 1 ? pagination.page - 1 : 1)}
+            href={createPageURL(
+              Number(pagination.page) > 1 ? Number(pagination.page) - 1 : 1
+            )}
           />
         </PaginationItem>
         {(() => {
@@ -57,8 +60,8 @@ const CustomPagination = ({ pagination }: { pagination: PaginationType }) => {
           visiblePages.push(1);
 
           // 計算中間頁碼範圍
-          const rangeStart = Math.max(2, page - delta);
-          const rangeEnd = Math.min(totalPages - 1, page + delta);
+          const rangeStart = Math.max(2, Number(page) - delta);
+          const rangeEnd = Math.min(totalPages - 1, Number(page) + delta);
 
           // 如果第一頁跟範圍起點中間有空缺，加入 ...
           if (rangeStart > 2) {
@@ -91,7 +94,10 @@ const CustomPagination = ({ pagination }: { pagination: PaginationType }) => {
 
             return (
               <PaginationItem key={p}>
-                <PaginationLink href={createPageURL(p)} isActive={page === p}>
+                <PaginationLink
+                  href={createPageURL(p)}
+                  isActive={Number(page) === Number(p)}
+                >
                   {p}
                 </PaginationLink>
               </PaginationItem>
