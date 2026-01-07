@@ -177,13 +177,13 @@ export const getAccountTabData = async (
 
 export const getAssetTrend = async (): Promise<FinalResult[]> => {
   try {
-    const result = await apiHandler('/statistics/asset-trend', 'POST', {});
+    const result = await apiHandler('/statistics/asset-trend', 'GET', null);
     if (result.isSuccess) {
       return result.data;
     }
     return [];
   } catch (error) {
-    toast.error(getErrorMessage(error));
+    console.error(error);
     return [];
   }
 };

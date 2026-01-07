@@ -55,7 +55,7 @@ router.post(
   statisticsController.getAccountTabData
 );
 
-router.post(
+router.get(
   '/statistics/asset-trend',
   authMiddleware,
   statisticsController.getAssetTrend

@@ -158,6 +158,7 @@ const getOverviewTop3Categories = async (body: any, userId: string) => {
     AND "t"."date" BETWEEN :startDate AND :endDate
     AND "t"."targetAccountId" IS NULL
     AND "t"."type" = :type
+    AND "t"."deletedAt" IS NULL
     -- 這裡會比 SELECT 還早做，所以可以當成這裡先抓內容，SELECT 則是命名
     GROUP BY 
       CASE
@@ -331,6 +332,7 @@ const getCategoryTabData = async (
     LEFT JOIN "accounting"."category" AS "mc" ON "sc"."parentId" = "mc"."id"
     WHERE "t"."userId" = :userId
     AND "t"."date" BETWEEN :startDate AND :endDate
+    AND "t"."deletedAt" IS NULL
     GROUP BY
       CASE
         WHEN "mc"."parentId" IS NOT NULL THEN "mc"."id"
@@ -439,6 +441,7 @@ const getAccountTabData = async (body: any, userId: string) => {
     LEFT JOIN "accounting"."account" AS "a" ON "t"."accountId" = "a"."id"
     WHERE "t"."userId" = :userId
     AND "t"."date" BETWEEN :startDate AND :endDate
+    AND "t"."deletedAt" IS NULL
     GROUP BY
       CASE
         WHEN "t"."targetAccountId" IS NOT NULL THEN true
@@ -478,8 +481,7 @@ const getAssetTrend = async (userId: string) => {
     await sequelize.query(
       `
     SELECT 
-      MIN("t"."date") AS "startDate",
-      MAX("t"."date") AS "endDate"
+      MIN("t"."date") AS "startDate"
     FROM "accounting"."transaction" AS "t"
     WHERE "t"."userId" = :userId
     `,
@@ -490,9 +492,10 @@ const getAssetTrend = async (userId: string) => {
         type: QueryTypes.SELECT,
       }
     );
-  if (userDateRange.length > 0) {
-    const startDate = userDateRange[0]?.startDate!;
-    const endDate = userDateRange[0]?.endDate!;
+
+  if (userDateRange.length > 0 && userDateRange[0]?.startDate) {
+    const startDate = userDateRange[0].startDate;
+    const endDate = new Date(); // End date is always today
 
     const result: any[] = await sequelize.query(
       `
@@ -521,6 +524,7 @@ const getAssetTrend = async (userId: string) => {
       FROM accounting."transaction" t 
       WHERE "t"."userId" = :userId
       AND "t"."date" BETWEEN :startDate AND :endDate
+      AND "t"."deletedAt" IS NULL
       GROUP BY
         year,
         month
@@ -552,7 +556,7 @@ const getAssetTrend = async (userId: string) => {
     );
     const timeRange = eachMonthOfInterval({
       start: new Date(startDate),
-      end: new Date(endDate),
+      end: endDate,
     }).reverse(); // 顛倒過來，因為我們要從最遠的逐漸倒推到最遠的日期，這樣才會知道現在逐漸往前到過去的所有資產變化
 
     const finalResult: FinalResult[] = [];
@@ -562,10 +566,11 @@ const getAssetTrend = async (userId: string) => {
       let netFlow = 0;
       let income = 0;
       let expense = 0;
+
       if (record) {
-        netFlow = record.netFlow;
-        income = record.income;
-        expense = record.expense;
+        netFlow = Number(record.netFlow);
+        income = Number(record.income);
+        expense = Number(record.expense);
       }
 
       finalResult.push({
@@ -578,7 +583,7 @@ const getAssetTrend = async (userId: string) => {
       });
 
       // currentBalance 必須在最後面才減
-      currentBalance = Number(currentBalance) - Number(netFlow);
+      currentBalance = currentBalance - netFlow;
     }
 
     return finalResult.reverse(); // 在顛倒一次
