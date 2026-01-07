@@ -11,11 +11,17 @@ import service from '@/services';
 
 export default async function DashboardPage() {
   const now = new Date();
+  const firstDayOfMonth = `${now.getFullYear()}-${now.getMonth() + 1}-01`;
+  const today = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
   const [categories, accounts, transactions, summary, assetTrend] =
     await Promise.all([
       service.getCategories(),
       service.getPersonnelAccounts(),
-      service.getTransactions({ page: 1 }),
+      service.getTransactions({
+        page: 1,
+        startDate: firstDayOfMonth,
+        endDate: today,
+      }),
       service.getTransactionsSummary({
         startDate: `${now.getFullYear()}-01-01`,
         endDate: `${now.getFullYear()}-12-31`,
