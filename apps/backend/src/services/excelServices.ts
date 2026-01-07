@@ -379,14 +379,45 @@ const validateAndParseRows = async (
     // 防止用戶輸入奇怪的值導致 format 出錯
     let date = '';
     try {
-      date = format(row.getCell(1 + colOffset).text, 'yyyy-MM-dd');
+      const cellVal = row.getCell(1 + colOffset).value;
+      const d =
+        cellVal instanceof Date
+          ? cellVal
+          : new Date(row.getCell(1 + colOffset).text);
+      // 檢查是否為有效日期
+      if (!isNaN(d.getTime())) {
+        // 確保 d 必須是 new Date
+        date = format(d, 'yyyy-MM-dd');
+      }
     } catch {
       date = '';
     }
     // 防止用戶輸入奇怪的值導致 format 出錯
     let time = '';
     try {
-      time = format(row.getCell(2 + colOffset).text, 'HH:mm:ss');
+      // 取得 value，假如 ExcelJS 有幫你轉成 new Date 的話那就可以直接丟進 format 裡面。
+      const cellVal = row.getCell(2 + colOffset).value;
+      let d: Date | null = null;
+
+      if (cellVal instanceof Date) {
+        d = cellVal;
+      } else {
+        // 假如手動輸入然後 ExcelJS 看不懂會走這裡，直接取字串。
+        const text = row.getCell(2 + colOffset).text;
+        // 嘗試直接 new Date (可能是 ISO)
+        const tryD = new Date(text);
+        if (!isNaN(tryD.getTime())) {
+          d = tryD;
+        } else {
+          // 可能是 HH:mm:ss，補個假日期，反正重點是時間不是日期。
+          const withDate = new Date(`2000-01-01 ${text}`);
+          if (!isNaN(withDate.getTime())) d = withDate;
+        }
+      }
+
+      if (d && !isNaN(d.getTime())) {
+        time = format(d, 'HH:mm:ss');
+      }
     } catch {
       time = '';
     }
@@ -542,9 +573,6 @@ const importNewTransactionsExcel = async (
   const categories = await Category.findAll({
     where: {
       [Op.or]: [{ userId }, { userId: null }],
-      parentId: {
-        [Op.ne]: null,
-      },
     },
     attributes: ['id', 'name', 'parentId'],
     raw: true,

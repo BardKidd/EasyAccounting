@@ -5,33 +5,37 @@ import User from '@/models/user';
 import Category from '@/models/category';
 import { RootType } from '@repo/shared';
 import { StatusCodes } from 'http-status-codes';
+import bcrypt from 'bcrypt';
 
 describe('Category API Integration Test', () => {
   const agent = request.agent(app);
-  const userEmail = process.env.TEST_USER_EMAIL;
-  const userPassword = process.env.TEST_USER_PASSWORD;
+
+  const TEST_USER_EMAIL = 'test_category@example.com';
+  const TEST_USER_PASSWORD = 'password';
   let userId = '';
 
-  if (!userEmail || !userPassword) {
-    throw new Error(
-      '請在 apps/backend/.env (或 frontend/.env) 設定 TEST_USER_EMAIL 與 TEST_USER_PASSWORD'
-    );
-  }
-
   beforeAll(async () => {
+    // 1. Ensure User Exists & Login
+    let user = await User.findOne({ where: { email: TEST_USER_EMAIL } });
+    if (!user) {
+      const hashedPassword = await bcrypt.hash(TEST_USER_PASSWORD, 10);
+      user = await User.create({
+        email: TEST_USER_EMAIL,
+        password: hashedPassword,
+        name: 'CategoryTestUser',
+      } as any);
+    }
+    userId = user.id;
+
     // Login
     const loginRes = await agent.post('/api/login').send({
-      email: userEmail,
-      password: userPassword,
+      email: TEST_USER_EMAIL,
+      password: TEST_USER_PASSWORD,
     });
 
     if (loginRes.status !== StatusCodes.OK) {
       throw new Error('Login failed: ' + JSON.stringify(loginRes.body));
     }
-
-    const user = await User.findOne({ where: { email: userEmail } });
-    if (!user) throw new Error('User not found');
-    userId = user.id;
   });
 
   // Cleanup test data created during tests

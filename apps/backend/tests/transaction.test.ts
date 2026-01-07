@@ -7,6 +7,7 @@ import Category from '@/models/category';
 import Transaction from '@/models/transaction';
 import { RootType, PaymentFrequency } from '@repo/shared';
 import { StatusCodes } from 'http-status-codes';
+import bcrypt from 'bcrypt';
 
 describe('Transaction API Integration Test', () => {
   // supertest 的 agent 會模擬真實瀏覽器的行為
@@ -16,20 +17,25 @@ describe('Transaction API Integration Test', () => {
   let accountId = '';
   let account2Id = '';
   let categoryId = '';
-  const userEmail = process.env.TEST_USER_EMAIL;
-  const userPassword = process.env.TEST_USER_PASSWORD;
 
-  if (!userEmail || !userPassword) {
-    throw new Error(
-      '請在 apps/backend/.env (或 frontend/.env) 設定 TEST_USER_EMAIL 與 TEST_USER_PASSWORD'
-    );
-  }
+  const TEST_USER_EMAIL = 'test_transaction@example.com';
+  const TEST_USER_PASSWORD = 'password';
 
   beforeAll(async () => {
-    // 1. 登入 (Login)
+    // 1. Ensure User Exists & Login
+    let user = await User.findOne({ where: { email: TEST_USER_EMAIL } });
+    if (!user) {
+      const hashedPassword = await bcrypt.hash(TEST_USER_PASSWORD, 10);
+      user = await User.create({
+        email: TEST_USER_EMAIL,
+        password: hashedPassword,
+        name: 'TransactionTestUser',
+      } as any);
+    }
+
     const loginRes = await agent.post('/api/login').send({
-      email: userEmail,
-      password: userPassword,
+      email: TEST_USER_EMAIL,
+      password: TEST_USER_PASSWORD,
     });
 
     if (loginRes.status !== StatusCodes.OK) {
@@ -38,24 +44,39 @@ describe('Transaction API Integration Test', () => {
     }
 
     // 2. 為了測試新增交易，我們需要知道該 User 下面的一個 AccountId 與 CategoryId
-    const user = await User.findOne({ where: { email: userEmail } });
-    if (!user) throw new Error('User not found in DB');
+    // user is already found/created above
 
-    // 找一個帳戶
-    const account = await Account.findOne({ where: { userId: user.id } });
-    // 找一個支出類別 (因為我們要測支出)
-    const category = await Category.findOne({
+    // 2. Setup Data (Account & Category)
+    // Find or Create Account
+    let account = await Account.findOne({ where: { userId: user.id } });
+    if (!account) {
+      account = await Account.create({
+        userId: user.id,
+        name: 'TransactionTestAccount',
+        type: '銀行',
+        balance: 10000,
+        icon: 'bank',
+        color: '#000000',
+      } as any);
+    }
+    accountId = account.id;
+
+    // Find or Create Category (Expense)
+    let category = await Category.findOne({
       where: { userId: user.id, type: RootType.EXPENSE },
     });
-
-    if (!account)
-      throw new Error('User has no account, cannot test transaction creation');
-    if (!category)
-      throw new Error(
-        'User has no expense category, cannot test transaction creation'
-      );
-
-    accountId = account.id;
+    if (!category) {
+      // Create Root if needed (optional if backend handles parentId null, but better strictly)
+      // Simplifying: just create a root expense
+      category = await Category.create({
+        userId: user.id,
+        name: 'TransactionTestFood',
+        type: RootType.EXPENSE,
+        icon: 'food',
+        color: '#000',
+        parentId: null,
+      } as any);
+    }
     categoryId = category.id;
 
     // 2.5 找第二個帳戶 (for Transfer test)，如果沒有就建一個
