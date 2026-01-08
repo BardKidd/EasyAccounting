@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeAll, vi, afterEach } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  vi,
+  afterEach,
+  afterAll,
+} from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
 import User from '@/models/user';
@@ -102,14 +110,12 @@ describe('Excel Import/Export API Test', () => {
 
     // Categories
     // System expects 3 levels: Root -> Main -> Sub to generate "Main-Sub" string
-    const root = await Category.create({
-      userId,
-      name: `ExcelRoot_${timestamp}`,
-      type: RootType.EXPENSE,
-      icon: 'food',
-      color: '#000',
-      parentId: null,
-    } as any);
+    // Use existing System Root instead of creating invalid one
+    const root = await Category.findOne({
+      where: { parentId: null, type: RootType.EXPENSE },
+    });
+    if (!root)
+      throw new Error('System Root Category not found. Seeding required?');
 
     const main = await Category.create({
       userId,
@@ -134,6 +140,13 @@ describe('Excel Import/Export API Test', () => {
 
   afterEach(async () => {
     lastUploadedBuffer = null;
+  });
+
+  afterAll(async () => {
+    await User.destroy({
+      where: { email: [TEST_USER_EMAIL, 'no_tx_user@example.com'] },
+      force: true,
+    } as any);
   });
 
   // ==========================================

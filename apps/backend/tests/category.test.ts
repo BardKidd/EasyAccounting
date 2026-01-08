@@ -15,16 +15,15 @@ describe('Category API Integration Test', () => {
   let userId = '';
 
   beforeAll(async () => {
-    // 1. Ensure User Exists & Login
-    let user = await User.findOne({ where: { email: TEST_USER_EMAIL } });
-    if (!user) {
-      const hashedPassword = await bcrypt.hash(TEST_USER_PASSWORD, 10);
-      user = await User.create({
-        email: TEST_USER_EMAIL,
-        password: hashedPassword,
-        name: 'CategoryTestUser',
-      } as any);
-    }
+    // 1. Ensure User Fresh Start
+    await User.destroy({ where: { email: TEST_USER_EMAIL }, force: true });
+
+    const hashedPassword = await bcrypt.hash(TEST_USER_PASSWORD, 10);
+    const user = await User.create({
+      email: TEST_USER_EMAIL,
+      password: hashedPassword,
+      name: 'CategoryTestUser',
+    } as any);
     userId = user.id;
 
     // Login
@@ -48,6 +47,8 @@ describe('Category API Integration Test', () => {
     if (createdCategoryIds.length > 0) {
       await Category.destroy({ where: { id: createdCategoryIds } });
     }
+    // Cleanup User
+    await User.destroy({ where: { email: TEST_USER_EMAIL }, force: true });
   });
 
   it('GET /api/category should return category tree', async () => {
@@ -69,10 +70,16 @@ describe('Category API Integration Test', () => {
   });
 
   it('POST /api/category should create a Main Category (User Defined)', async () => {
+    // Correct approach: Find valid system Root Category first
+    const systemRoot = await Category.findOne({
+      where: { parentId: null, type: RootType.EXPENSE },
+    });
+    expect(systemRoot).toBeDefined();
+
     const newMainCategory = {
       name: 'Test Main Category',
       type: RootType.EXPENSE,
-      parentId: null,
+      parentId: systemRoot!.id, // Must be attached to a Root
       icon: 'test-icon',
       color: '#000000',
     };
@@ -86,7 +93,7 @@ describe('Category API Integration Test', () => {
     });
     expect(created).toBeDefined();
     expect(created?.type).toBe(RootType.EXPENSE);
-    expect(created?.parentId).toBeNull();
+    expect(created?.parentId).toBe(systemRoot!.id); // Should match System Root
 
     if (created) createdCategoryIds.push(created.id);
   });

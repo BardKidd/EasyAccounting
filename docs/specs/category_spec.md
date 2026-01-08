@@ -8,7 +8,7 @@
     - `parentId`: NULL (或系統預定義的頂層)
     - 代表大方向 (如：收入、支出、操作)。
     - 對應代碼中的 `MainType` (INCOME, EXPENSE, OPERATE)。
-    - User **不能** 建立 Root Category。
+    - User **不能** 建立 Root Category，且 User 建立的任何分類 **parentId 不可為 NULL**。
 
 2.  **Main Category (主分類)**
     - `parentId`: 指向 Root Category 的 ID。
