@@ -49,5 +49,5 @@ jobs:
           JWT_SECRET: test_secret_key
           RESEND_API_KEY: re_123
           AZURE_STORAGE_CONTAINER_NAME: test_container
-          AZURE_STORAGE_CONNECTION_STRING: test_connection_string
+          AZURE_STORAGE_CONNECTION_STRING: 'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net'
         run: pnpm test --filter backend
