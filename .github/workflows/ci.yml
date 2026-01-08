@@ -44,6 +44,11 @@ jobs:
 
       - name: Run Backend Tests
         env:
+          PG_USER: test_user
+          PG_HOST: localhost
+          PG_DATABASE: test_db
+          PG_PASSWORD: test_password
+          PG_PORT: 5432
           DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
           NODE_ENV: test
           JWT_SECRET: test_secret_key
