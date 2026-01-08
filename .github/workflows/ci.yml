@@ -30,7 +30,7 @@ jobs:
     steps:
       # 將程式碼抓入 CI 的虛擬機裡
       - uses: actions/checkout@v4
-
+      # 安裝 pnpm
       - uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
@@ -48,4 +48,6 @@ jobs:
           NODE_ENV: test
           JWT_SECRET: test_secret_key
           RESEND_API_KEY: re_123
+          AZURE_STORAGE_CONTAINER_NAME: test_container
+          AZURE_STORAGE_CONNECTION_STRING: test_connection_string
         run: pnpm test --filter backend
