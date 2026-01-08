@@ -47,4 +47,5 @@ jobs:
           DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
           NODE_ENV: test
           JWT_SECRET: test_secret_key
+          RESEND_API_KEY: re_123
         run: pnpm test --filter backend
