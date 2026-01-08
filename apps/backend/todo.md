@@ -68,7 +68,8 @@
 
 ### 2.5 新增 UT (Unit Tests)
 
-- [ ] 增加後端業務邏輯單元測試。
+- [x] 增加後端業務邏輯單元測試。
+  - 已完成: Notification, Excel, Category, Transaction 模組測試。
 
 ### 2.6 新增 Github Action (CI)
 
