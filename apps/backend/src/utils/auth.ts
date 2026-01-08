@@ -22,7 +22,7 @@ interface TokenPayload {
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'prd',
+  secure: process.env.NODE_ENV === 'production',
   sameSite: 'strict' as const,
   path: '/', //! 會鎖定 cookie 在這個路徑底下
   maxAge: COOKIE_MAX_AGE,

@@ -59,6 +59,9 @@ importers:
       express:
         specifier: ^5.1.0
         version: 5.1.0
+      express-basic-auth:
+        specifier: ^1.2.1
+        version: 1.2.1
       http-status-codes:
         specifier: ^2.3.0
         version: 2.3.0
@@ -2926,6 +2929,9 @@ packages:
   expect-type@1.3.0:
     resolution: {integrity: sha512-knvyeauYhqjOYvQ66MznSMs83wmHrCycNEN6Ao+2AeYEfxUIkuiVxdEa1qlGEPK+We3n0THiDciYSsCcgW/DoA==}
     engines: {node: '>=12.0.0'}
+
+  express-basic-auth@1.2.1:
+    resolution: {integrity: sha512-L6YQ1wQ/mNjVLAmK3AG1RK6VkokA1BIY6wmiH304Xtt/cLTps40EusZsU1Uop+v9lTDPxdtzbFmdXfFO3KEnwA==}
 
   express@5.1.0:
     resolution: {integrity: sha512-DT9ck5YIRU+8GYzzU5kT3eHGA5iL+1Zd0EutOmTE9Dtk+Tvuzd23VBU+ec7HPNSTxXYO55gPV/hq4pSBJDjFpA==}
@@ -7650,6 +7656,10 @@ snapshots:
       uuid: 8.3.2
 
   expect-type@1.3.0: {}
+
+  express-basic-auth@1.2.1:
+    dependencies:
+      basic-auth: 2.0.1
 
   express@5.1.0:
     dependencies:

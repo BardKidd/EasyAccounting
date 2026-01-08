@@ -26,6 +26,7 @@ import {
   startMonthlyAnalysisNoticeCronJobs,
   startWeeklySummaryNoticeCronJobs,
 } from './cron/notificationCron';
+import basicAuth from 'express-basic-auth';
 
 const app: express.Application = express();
 
@@ -36,6 +37,28 @@ app.use(
     credentials: true,
   })
 );
+
+if (process.env.NODE_ENV === 'development' && process.env.DEV_ACCESS_PASSWORD) {
+  // 有多位測試人員
+  const parseUsers = (envString: string) => {
+    const users: { [key: string]: string } = {};
+    envString.split(',').forEach((pair) => {
+      const [user, pass] = pair.split(':');
+      if (user && pass) {
+        users[user.trim()] = pass.trim();
+      }
+    });
+    return users;
+  };
+
+  app.use(
+    basicAuth({
+      users: parseUsers(process.env.DEV_ACCESS_PASSWORD), // 使用者名稱固定為 admin
+      challenge: true, // 會彈出瀏覽器內建的登入視窗
+      unauthorizedResponse: '🔒 你不是測試人員，請你離開',
+    })
+  );
+}
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
