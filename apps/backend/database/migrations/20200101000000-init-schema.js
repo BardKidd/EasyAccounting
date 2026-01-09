@@ -136,6 +136,7 @@ module.exports = {
             },
             key: 'id',
           },
+          onDelete: 'CASCADE',
         },
         name: {
           type: Sequelize.STRING,
@@ -188,6 +189,7 @@ module.exports = {
             },
             key: 'id',
           },
+          onDelete: 'CASCADE',
         },
         accountId: {
           type: Sequelize.UUID,
@@ -199,6 +201,7 @@ module.exports = {
             },
             key: 'id',
           },
+          onDelete: 'CASCADE',
         },
         categoryId: {
           type: Sequelize.UUID,
@@ -210,6 +213,7 @@ module.exports = {
             },
             key: 'id',
           },
+          onDelete: 'CASCADE',
         },
         amount: {
           type: Sequelize.DECIMAL(20, 5),
@@ -249,6 +253,7 @@ module.exports = {
             },
             key: 'id',
           },
+          onDelete: 'CASCADE',
         },
         targetAccountId: {
           type: Sequelize.UUID,
@@ -260,6 +265,7 @@ module.exports = {
             },
             key: 'id',
           },
+          onDelete: 'CASCADE',
         },
         ...timestamps,
       },
@@ -286,6 +292,7 @@ module.exports = {
             },
             key: 'id',
           },
+          onDelete: 'CASCADE',
         },
         dailyReminder: {
           type: Sequelize.BOOLEAN,
