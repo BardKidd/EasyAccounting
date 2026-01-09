@@ -90,6 +90,11 @@ User.addHook('afterDestroy', async (user: any, options: any) => {
   await PersonnelNotification.destroy({ where: { userId }, transaction });
 });
 
+// Railway 會來戳這個確認服務是否正常
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 User.hasMany(Category);
 User.hasMany(Account);
 User.hasMany(Transaction);
