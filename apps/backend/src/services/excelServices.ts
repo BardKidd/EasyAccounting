@@ -177,6 +177,18 @@ const generateTransactionsBuffer = async ({
   accountNames.forEach((a, i) => (optionSheet.getCell(`A${i + 1}`).value = a));
   categoryNames.forEach((c, i) => (optionSheet.getCell(`B${i + 1}`).value = c));
 
+  // 這裡先提出來長度並先處理好下拉選單名稱的話會是一個固定的值，假如在 formulae 裡面才去決定裡面要使用的選單範圍時 Excel 可能會算錯長度導致底部有時會出現一個完全空白的選項出現。有可能會有判斷上的 bug 出現。
+  const accountCount = accountNames.length || 1;
+  const categoryCount = categoryNames.length || 1;
+  workbook.definedNames.add(
+    `'_Options'!$A$1:$A$${accountCount}`,
+    'AccountList'
+  );
+  workbook.definedNames.add(
+    `'_Options'!$B$1:$B$${categoryCount}`,
+    'CategoryList'
+  );
+
   if (!hasErrorColumn && transactions && transactions.length > 0) {
     transactions.forEach((t) => worksheet.addRow(t));
   } else if (hasErrorColumn && transactions && transactions.length > 0) {
@@ -250,21 +262,21 @@ const generateTransactionsBuffer = async ({
     r.getCell(5 + colOffset).dataValidation = {
       type: 'list',
       allowBlank: false,
-      formulae: [`_Options!$A$1:$A${accounts.length || 1}`],
+      formulae: ['AccountList'],
     };
 
     // 目標帳戶
     r.getCell(6 + colOffset).dataValidation = {
       type: 'list',
       allowBlank: true,
-      formulae: [`_Options!$A$1:$A${accounts.length || 1}`],
+      formulae: ['AccountList'],
     };
 
     // 分類
     r.getCell(7 + colOffset).dataValidation = {
       type: 'list',
       allowBlank: false,
-      formulae: [`_Options!$B$1:$B${categories.length || 1}`],
+      formulae: ['CategoryList'],
     };
   }
 
