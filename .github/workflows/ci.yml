@@ -54,8 +54,11 @@ jobs:
           NODE_ENV: test
         run: |
           cd apps/backend
-          # 如果您的 db:migrate 有互動式輸入，我們需要一個「無互動」的版本
-          # 這裡可以直接用 sequelize-cli 跑
+          # 在跑 Migration 之前，先手動建立 Schema
+          # 使用 PGPASSWORD 環境變數來讓 psql 不需要互動輸入密碼
+          PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -U $PG_USER -d $PG_DATABASE -c "CREATE SCHEMA IF NOT EXISTS accounting;"
+
+          # 然後再跑 Migration
           npx sequelize-cli db:migrate
 
       - name: Run Backend Tests
