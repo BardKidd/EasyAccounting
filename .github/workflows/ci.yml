@@ -29,9 +29,9 @@ jobs:
         image: postgres:17
         # 給 Postgres Image 看的變數名稱
         env:
-          POSTGRES_USER: $PG_USER
-          POSTGRES_PASSWORD: $PG_PASSWORD
-          POSTGRES_DB: $PG_DATABASE
+          POSTGRES_USER: ${{env.PG_USER}}
+          POSTGRES_PASSWORD: ${{env.PG_PASSWORD}}
+          POSTGRES_DB: ${{env.PG_DATABASE}}
         ports:
           - 5432:5432
         # 等待資料庫準備好的設定
