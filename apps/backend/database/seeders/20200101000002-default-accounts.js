@@ -48,7 +48,7 @@ module.exports = {
         name: '薪資帳戶',
         type: '銀行', // Account.BANK
         balance: 100000, // Rich!
-        icon: 'bank',
+        icon: 'Banknote',
         color: '#2196F3', // Blue
         isActive: true,
         createdAt: now,

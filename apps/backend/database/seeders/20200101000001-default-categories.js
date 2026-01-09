@@ -91,80 +91,85 @@ const COLOR_MAP = {
 };
 
 const ICON_MAP = {
-  飲食: 'restaurant',
-  早餐: 'breakfast_dining',
-  午餐: 'lunch_dining',
-  晚餐: 'dinner_dining',
-  點心: 'cookie', // Changed
-  飲料: 'local_cafe',
-  酒類: 'wine_bar', // specific
-  水果: 'nutrition',
-  食材: 'kitchen', // New
-  交通: 'commute', // Changed
-  公車: 'directions_bus',
-  捷運: 'directions_subway',
-  計程車: 'local_taxi',
-  '火車/高鐵': 'train',
-  機票: 'flight', // New
-  加油: 'local_gas_station',
-  停車: 'local_parking',
-  過路費: 'toll',
-  維修保養: 'build',
-  罰單: 'receipt_long', // New
-  娛樂: 'theater_comedy', // Changed
-  電影: 'movie',
-  遊戲: 'sports_esports',
-  聚會: 'groups', // New
-  旅遊: 'flight_takeoff',
-  音樂: 'music_note',
-  訂閱服務: 'subscriptions',
-  書籍: 'menu_book', // Moved
-  展覽: 'museum', // New
-  購物: 'shopping_bag',
-  服飾: 'checkroom',
-  '3C產品': 'devices',
-  生活用品: 'local_convenience_store', // Changed
-  美妝保養: 'face_retouching_natural',
-  家具: 'chair', // New
-  精品: 'diamond', // New
-  個人: 'person',
-  剪髮: 'content_cut',
-  化妝品: 'brush', // New
-  健身: 'fitness_center',
-  進修: 'school', // New
-  醫療: 'medical_services',
-  藥品: 'medication',
-  看診: 'local_hospital',
-  保險: 'security',
-  治療: 'healing', // New
-  家居: 'home',
-  房租: 'real_estate_agent',
-  水電瓦斯: 'lightbulb', // Changed
-  網路費: 'wifi',
-  管理費: 'domain', // New
-  修繕: 'plumbing', // New
-  家庭: 'family_restroom',
-  小孩: 'child_care',
-  寵物: 'pets',
-  孝親費: 'volunteer_activism',
-  雜支: 'more_horiz', // New
-  生活: 'living',
-  電話費: 'phone_iphone',
-  網路購物: 'shopping_cart', // New
-  學習: 'school',
-  課程: 'class',
-  學費: 'account_balance',
-  文具: 'edit', // New
-  其他: 'category',
-  捐款: 'volunteer_activism', // repeated but ok
-  稅金: 'account_balance',
-  手續費: 'paid',
-  遺失: 'help_outline', // New
-  薪水: 'attach_money',
-  獎金: 'card_giftcard',
-  轉帳: 'sync_alt',
-  提款: 'money_off',
-  存款: 'savings',
+  飲食: 'Utensils',
+  早餐: 'Coffee',
+  午餐: 'Utensils',
+  晚餐: 'UtensilsCrossed',
+  點心: 'Cookie',
+  飲料: 'CupSoda',
+  酒類: 'Wine',
+  水果: 'Apple',
+  食材: 'ShoppingBasket',
+  交通: 'Car',
+  公車: 'Bus',
+  捷運: 'Train',
+  計程車: 'CarTaxiFront',
+  '火車/高鐵': 'TrainFront',
+  機票: 'Plane',
+  加油: 'Fuel',
+  停車: 'ParkingCircle',
+  過路費: 'Ticket',
+  維修保養: 'Wrench',
+  罰單: 'Receipt',
+  娛樂: 'PartyPopper',
+  電影: 'Film',
+  遊戲: 'Gamepad2',
+  聚會: 'Users',
+  旅遊: 'Plane',
+  音樂: 'Music',
+  訂閱服務: 'RefreshCcw',
+  書籍: 'Book',
+  展覽: 'Ticket',
+  購物: 'ShoppingBag',
+  服飾: 'Shirt',
+  '3C產品': 'Smartphone',
+  生活用品: 'ShoppingBasket',
+  美妝保養: 'Sparkles',
+  家具: 'Home',
+  精品: 'Gift',
+  個人: 'User',
+  剪髮: 'Scissors',
+  化妝品: 'SprayCan',
+  健身: 'Dumbbell',
+  進修: 'GraduationCap',
+  醫療: 'Stethoscope',
+  藥品: 'Pill',
+  看診: 'Stethoscope',
+  保險: 'ShieldCheck',
+  治療: 'Stethoscope',
+  家居: 'Home',
+  房租: 'building', // Using lowercase key which maps to Building2
+  水電瓦斯: 'Zap',
+  網路費: 'Wifi',
+  管理費: 'building',
+  修繕: 'Wrench',
+  家庭: 'Users',
+  小孩: 'Baby',
+  寵物: 'PawPrint',
+  孝親費: 'HeartHandshake',
+  雜支: 'MoreHorizontal',
+  生活: 'Sparkles',
+  電話費: 'Phone',
+  網路購物: 'ShoppingBag',
+  學習: 'School',
+  課程: 'Presentation',
+  學費: 'School',
+  文具: 'FileText',
+  其他: 'MoreHorizontal',
+  捐款: 'Heart',
+  稅金: 'FileText',
+  手續費: 'Percent',
+  遺失: 'help',
+  薪水: 'Banknote',
+  獎金: 'Gift',
+  投資: 'TrendingUp',
+  還款: 'Undo2',
+  退款: 'ArrowDownToLine',
+  彩券: 'Ticket',
+  利息: 'Percent',
+  轉帳: 'ArrowRightLeft',
+  提款: 'ArrowUpFromLine',
+  存款: 'ArrowDownToLine',
 };
 
 // 定義分類階層結構 (根據 constants/index.ts 的最新改動)

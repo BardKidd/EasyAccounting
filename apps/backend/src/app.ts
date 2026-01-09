@@ -51,13 +51,16 @@ if (process.env.NODE_ENV === 'development' && process.env.DEV_ACCESS_PASSWORD) {
     return users;
   };
 
-  app.use(
-    basicAuth({
-      users: parseUsers(process.env.DEV_ACCESS_PASSWORD), // 使用者名稱固定為 admin
+  app.use((req, res, next) => {
+    // API 請求不需要 Basic Auth
+    if (req.path.startsWith('/api')) return next();
+
+    return basicAuth({
+      users: parseUsers(process.env.DEV_ACCESS_PASSWORD as string), // 使用者名稱固定為 admin
       challenge: true, // 會彈出瀏覽器內建的登入視窗
       unauthorizedResponse: '🔒 你不是測試人員，請你離開',
-    })
-  );
+    })(req, res, next);
+  });
 }
 
 app.use(express.json());
