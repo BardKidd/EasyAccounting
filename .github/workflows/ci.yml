@@ -56,6 +56,13 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
+      # Create schema 'accounting' <- 雖然 migration 裡面有建立 schema，不過 Sequelize 要執行任何 Storage 操作之前，必須先建立 schema
+      - name: Create schema 'accounting'
+        env:
+          PGPASSWORD: ${{ env.PG_PASSWORD }}
+        run: |
+          psql -h ${{env.PG_HOST}} -p ${{env.PG_PORT}} -U ${{env.PG_USER}} -d ${{env.PG_DATABASE}} -c "CREATE SCHEMA IF NOT EXISTS accounting;"
+
       # 執行 Migration
       - name: Database Migration
         run: |
