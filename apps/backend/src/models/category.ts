@@ -2,11 +2,7 @@ import Sequelize, { Model, Optional } from 'sequelize';
 import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
 import { RootType, MainType, SubType, CategoryType } from '@repo/shared';
 
-const allCategories = [
-  ...Object.values(RootType),
-  ...Object.values(MainType),
-  ...Object.values(SubType),
-];
+const allCategories = [...Object.values(RootType)];
 
 export interface CategoryAttributes
   extends Omit<CategoryType, 'parent' | 'children'> {}

@@ -59,33 +59,6 @@ const Account = sequelize.define<AccountInstance>(
       allowNull: false,
       defaultValue: true,
     },
-    // 信用卡專用
-    creditLimit: {
-      type: Sequelize.DECIMAL(20, 5),
-      allowNull: true,
-    },
-    unpaidAmount: {
-      type: Sequelize.DECIMAL(20, 5),
-      allowNull: true,
-    },
-    billingDay: {
-      // 每個月的繳款日
-      type: Sequelize.DATE,
-      allowNull: true,
-    },
-    nextBillingDate: {
-      // 下次繳款日
-      type: Sequelize.DATE,
-      allowNull: true,
-    },
-    paymentStatus: {
-      type: Sequelize.ENUM(...Object.values(PaymentStatus)),
-      allowNull: true,
-    },
-    daysUntilDue: {
-      type: Sequelize.INTEGER,
-      allowNull: true,
-    },
   },
   TABLE_DEFAULT_SETTING
 );

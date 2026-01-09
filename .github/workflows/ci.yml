@@ -1,5 +1,18 @@
 name: CI Pipeline
 
+env:
+  PG_USER: test_user
+  PG_HOST: localhost
+  PG_DATABASE: test_db
+  PG_PASSWORD: test_password
+  PG_PORT: 5432
+  DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
+  NODE_ENV: test
+  JWT_SECRET: test_secret_key
+  RESEND_API_KEY: re_123
+  AZURE_STORAGE_CONTAINER_NAME: test_container
+  AZURE_BLOB_CONNECTION_STRING: 'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net'
+
 on:
   push:
     branches: ['develop']
@@ -14,10 +27,11 @@ jobs:
     services:
       postgres:
         image: postgres:17
+        # 給 Postgres Image 看的變數名稱
         env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: test_db
+          POSTGRES_USER: $PG_USER
+          POSTGRES_PASSWORD: $PG_PASSWORD
+          POSTGRES_DB: $PG_DATABASE
         ports:
           - 5432:5432
         # 等待資料庫準備好的設定
@@ -44,34 +58,9 @@ jobs:
 
       # 執行 Migration
       - name: Database Migration
-        env:
-          DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
-          PG_USER: test_user
-          PG_HOST: localhost
-          PG_DATABASE: test_db
-          PG_PASSWORD: test_password
-          PG_PORT: 5432
-          NODE_ENV: test
         run: |
           cd apps/backend
-          # 在跑 Migration 之前，先手動建立 Schema
-          # 使用 PGPASSWORD 環境變數來讓 psql 不需要互動輸入密碼
-          PGPASSWORD=$PG_PASSWORD psql -h $PG_HOST -U $PG_USER -d $PG_DATABASE -c "CREATE SCHEMA IF NOT EXISTS accounting;"
-
-          # 然後再跑 Migration
           npx sequelize-cli db:migrate
 
       - name: Run Backend Tests
-        env:
-          PG_USER: test_user
-          PG_HOST: localhost
-          PG_DATABASE: test_db
-          PG_PASSWORD: test_password
-          PG_PORT: 5432
-          DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
-          NODE_ENV: test
-          JWT_SECRET: test_secret_key
-          RESEND_API_KEY: re_123
-          AZURE_STORAGE_CONTAINER_NAME: test_container
-          AZURE_BLOB_CONNECTION_STRING: 'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net'
         run: pnpm test --filter backend

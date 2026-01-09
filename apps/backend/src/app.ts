@@ -125,7 +125,6 @@ export { app };
 
 const startServer = async () => {
   try {
-    await sequelize.sync();
     await mongoConnection();
 
     // 只有非測試環境才啟動 Server
@@ -136,7 +135,7 @@ const startServer = async () => {
       });
     }
   } catch (error) {
-    console.error('Failed to sync database:', error);
+    console.error('Failed to start server:', error);
   }
 };
 
