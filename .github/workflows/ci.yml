@@ -6,12 +6,14 @@ env:
   PG_DATABASE: test_db
   PG_PASSWORD: test_password
   PG_PORT: 5432
-  DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
   NODE_ENV: test
+  DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
   JWT_SECRET: test_secret_key
   RESEND_API_KEY: re_123
   AZURE_STORAGE_CONTAINER_NAME: test_container
   AZURE_BLOB_CONNECTION_STRING: 'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net'
+  TEST_USER_EMAIL: test_user@example.com
+  TEST_USER_PASSWORD: test_password
 
 on:
   push:
