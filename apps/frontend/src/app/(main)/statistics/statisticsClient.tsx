@@ -4,6 +4,10 @@ import { useMemo, useState } from 'react';
 import { Container } from '@/components/ui/container';
 // import { ExcelExportButton } from '@/components/common/ExcelExportButton';
 // import { ExcelImportButton } from '@/components/common/ExcelImportButton';
+/**
+ * NOTE: import 路徑大小寫要與 Git 追蹤的檔名一致！
+ * macOS case-insensitive，但 Vercel (Linux) case-sensitive。
+ */
 import { StatisticsHeader } from '@/components/statistics/statisticsHeader';
 
 import { OverviewTab } from '@/components/statistics/overviewTab';
