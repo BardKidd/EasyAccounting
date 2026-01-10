@@ -19,6 +19,7 @@ import transactionRoute from '@/routes/transactionRoute';
 import authRoute from '@/routes/authRoute';
 import cookieParser from 'cookie-parser';
 import statisticsRoute from '@/routes/statisticsRoute';
+import deployHealthRoute from '@/routes/deployHealthRoute';
 import personnelNotificationRoute from '@/routes/personnelNotificationRoute';
 import excelRoute from '@/routes/excelRoute';
 import {
@@ -77,6 +78,7 @@ app.use('/api', authRoute);
 app.use('/api', statisticsRoute);
 app.use('/api', personnelNotificationRoute);
 app.use('/api', excelRoute);
+app.use('/api', deployHealthRoute);
 // 透過 Hook 實作軟刪除的 Cascade (Sequelize 的 hooks: true 只有再某些版本有效，手寫最穩)
 User.addHook('afterDestroy', async (user: any, options: any) => {
   const transaction = options.transaction;
@@ -88,11 +90,6 @@ User.addHook('afterDestroy', async (user: any, options: any) => {
   await Transaction.destroy({ where: { userId }, transaction });
   // 3. 刪除相關 Notification
   await PersonnelNotification.destroy({ where: { userId }, transaction });
-});
-
-// Railway 會來戳這個確認服務是否正常
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
 });
 
 User.hasMany(Category);
