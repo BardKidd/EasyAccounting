@@ -135,8 +135,9 @@ const startServer = async () => {
     // 只有非測試環境才啟動 Server
     // Supertest 會自動找空的 port 啟動 Server，所以測試環境不需要啟動
     if (process.env.NODE_ENV !== 'test') {
-      app.listen(3000, () => {
-        console.log('Server running on port 3000');
+      const port = process.env.PORT || 3000;
+      app.listen(port, () => {
+        console.log(`Server running on port ${port}`);
       });
     }
   } catch (error) {
