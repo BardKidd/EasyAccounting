@@ -22,10 +22,11 @@ import { Button } from '@/components/ui/button';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  createCategorySchema,
   CreateCategoryInput,
+  CreateCategoryFormValues,
   CategoryType,
   RootType,
-  baseCategorySchema,
 } from '@repo/shared';
 import IconPicker from '@/components/ui/icon-picker';
 import { HexColorPicker } from 'react-colorful';
@@ -71,12 +72,13 @@ export function CategoryDialog({
     parentId: parentId || null,
   };
 
-  const form = useForm<CreateCategoryInput>({
-    resolver: zodResolver(baseCategorySchema),
-    defaultValues,
+  const form = useForm<CreateCategoryFormValues>({
+    resolver: zodResolver(createCategorySchema),
+    defaultValues: defaultValues as any,
   });
 
-  const onSubmit = async (data: CreateCategoryInput) => {
+  const onSubmit = async (values: CreateCategoryFormValues) => {
+    const data = values as CreateCategoryInput;
     try {
       const payload = {
         ...data,
