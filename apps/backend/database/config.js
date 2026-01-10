@@ -28,5 +28,11 @@ module.exports = {
     port: parseInt(process.env.PG_PORT),
     dialect: 'postgres',
     schema: 'accounting',
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+    },
   },
 };
