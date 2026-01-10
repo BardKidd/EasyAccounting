@@ -9,7 +9,7 @@ const sequelize = new Sequelize(
   process.env.PG_PASSWORD as string,
   {
     dialectOptions:
-      process.env.NODE_ENV === 'production'
+      process.env.NODE_ENV === 'production' || process.env.PG_SSL === 'true'
         ? {
             ssl: {
               require: true,

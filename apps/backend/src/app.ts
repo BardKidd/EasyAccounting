@@ -34,7 +34,7 @@ const app: express.Application = express();
 // CORS 設定
 app.use(
   cors({
-    origin: 'http://localhost:8080',
+    origin: `${process.env.ORIGIN_URL}`,
     credentials: true,
   })
 );
