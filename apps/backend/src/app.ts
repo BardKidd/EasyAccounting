@@ -130,7 +130,7 @@ export { app };
 
 const startServer = async () => {
   try {
-    await mongoConnection();
+    // await mongoConnection();
 
     // 只有非測試環境才啟動 Server
     // Supertest 會自動找空的 port 啟動 Server，所以測試環境不需要啟動
