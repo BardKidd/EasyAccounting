@@ -22,9 +22,10 @@ import { Button } from '@/components/ui/button';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  createCategorySchema,
   CreateCategoryInput,
   CategoryType,
+  RootType,
+  baseCategorySchema,
 } from '@repo/shared';
 import IconPicker from '@/components/ui/icon-picker';
 import { HexColorPicker } from 'react-colorful';
@@ -62,17 +63,16 @@ export function CategoryDialog({
     parentId !== rootExpenseCategory.id &&
     !isEditMode;
 
-  const defaultValues: Partial<CreateCategoryInput> = {
+  const defaultValues: CreateCategoryInput = {
     name: '',
-    type: type as any,
+    type: type as RootType,
     icon: 'tag',
     color: '#3b82f6',
     parentId: parentId || null,
-    // userId: 'temp', // 會由後端自動帶入
   };
 
   const form = useForm<CreateCategoryInput>({
-    resolver: zodResolver(createCategorySchema),
+    resolver: zodResolver(baseCategorySchema),
     defaultValues,
   });
 
