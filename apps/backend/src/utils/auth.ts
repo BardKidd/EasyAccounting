@@ -20,11 +20,15 @@ interface TokenPayload {
   email: string;
 }
 
+const isPrdOrDev =
+  process.env.NODE_ENV === 'production' ||
+  process.env.NODE_ENV === 'development';
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
+  secure: isPrdOrDev,
+  sameSite: isPrdOrDev ? ('none' as const) : ('lax' as const), // 允許跨域，前提是 secure: true
   path: '/', //! 會鎖定 cookie 在這個路徑底下
+  domain: isPrdOrDev ? '.riinouo-eaccounting.win' : undefined,
   maxAge: COOKIE_MAX_AGE,
 };
 
