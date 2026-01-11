@@ -34,7 +34,21 @@ const app: express.Application = express();
 // CORS 設定
 app.use(
   cors({
-    origin: `${process.env.ORIGIN_URL}`,
+    origin: (origin, callback) => {
+      const allowedOrigin = process.env.ORIGIN_URL;
+
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigin && origin === allowedOrigin) {
+        callback(null, true);
+      } else {
+        console.log(
+          `[CORS BLOCK] Origin: '${origin}', Allowed: '${allowedOrigin}'`
+        );
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   })
 );
