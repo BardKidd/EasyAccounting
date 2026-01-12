@@ -17,9 +17,9 @@ env:
 
 on:
   push:
-    branches: ['develop']
+    branches: ['main', 'product']
   pull_request:
-    branches: ['develop']
+    branches: ['main', 'product']
 
 jobs:
   test-backend:

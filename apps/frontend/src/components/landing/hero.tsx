@@ -7,6 +7,11 @@ export function Hero() {
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex flex-col items-center text-center">
           <div className="space-y-4 max-w-3xl">
+            <div className="flex justify-center mb-4">
+              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800 dark:border-amber-800/30 dark:bg-amber-950/30 dark:text-amber-300 animate-in fade-in slide-in-from-bottom-2 duration-1000">
+                🚧 系統開發中 | 目前為先行版本
+              </span>
+            </div>
             <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl bg-clip-text text-transparent bg-linear-to-r from-primary to-primary/60 animate-in fade-in slide-in-from-bottom-4 duration-1000">
               EasyAccounting
               <br />

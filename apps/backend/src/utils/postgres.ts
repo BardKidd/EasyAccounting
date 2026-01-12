@@ -10,7 +10,7 @@ const sequelize = new Sequelize(
   {
     dialect: 'postgres',
     dialectOptions:
-      process.env.NODE_ENV === 'production' || process.env.PG_SSL === 'true'
+      process.env.NODE_ENV === 'production'
         ? {
             ssl: {
               require: true,
