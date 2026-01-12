@@ -21,12 +21,19 @@ interface TokenPayload {
 }
 
 const isPrd = process.env.NODE_ENV === 'production';
+const isCloudTest = process.env.IS_CLOUD_TEST === 'true';
+const whichDomain = (isPrd: boolean) => {
+  if (isCloudTest) return '.dev.riinouo-eaccounting.win';
+  if (isPrd) return '.riinouo-eaccounting.win';
+  return undefined;
+};
+
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isPrd,
   sameSite: isPrd ? ('none' as const) : ('lax' as const), // 允許跨域，前提是 secure: true
   path: '/', //! 會鎖定 cookie 在這個路徑底下
-  domain: isPrd ? '.riinouo-eaccounting.win' : undefined,
+  domain: whichDomain(isPrd),
   maxAge: COOKIE_MAX_AGE,
 };
 
