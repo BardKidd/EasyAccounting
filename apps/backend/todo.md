@@ -66,19 +66,29 @@
 - [x] 製作 `AssetTrendChart` 資料與圖表，使用倒推法 (Backward Calculation) 即時計算每月資產，無需額外 Table。
 - [x] 前端實作 ECharts dataZoom 與雙軸顯示。
 
-### 2.5 新增 UT (Unit Tests)
+### 2.5 測試策略 (Testing Strategy)
 
-- [x] 增加後端業務邏輯單元測試。
-  - 已完成: Notification, Excel, Category, Transaction 模組測試。
+- [x] **Unit & Integration Tests** (Backend):
+  - 使用 **Vitest** + **Supertest**。
+  - 已完成: Notification, Excel, Category, Transaction 等核心模組測試。
+- [x] **E2E Tests** (Frontend):
+  - 使用 **Playwright**。
+  - 建立 E2E 測試環境與基礎測試案例 (Login, Navigation)。
 
 ### 2.6 新增 Github Action (CI)
 
 - [ ] 設定自動化測試與 Lint 檢查。
 
-### 3. 部署與運維
+### 3. 部署與運維 (Deployment & DevOps)
 
-- [ ] **Containerization**: 撰寫 `Dockerfile` 與 `docker-compose.yml`。
-- [ ] **Azure Deployment**: 部署至 Azure App Service。
+- [x] **Deployment Setup**:
+  - [x] **Frontend**: 部署至 **Vercel**。
+    - Production: `riinouo-eaccounting.win`
+    - Development: `dev.riinouo-eaccounting.win`
+  - [x] **Backend**: 部署至 **Railway**。
+    - 採用 Docker/Nixpacks 部署策略。
+- [x] **CI/CD**:
+  - [x] Refine Github Actions workflow for automated testing and deployment.
 
 ### 4. 信用卡功能規劃
 
@@ -122,6 +132,49 @@
 
 ---
 
-## 📌 筆記與備註
+## � 詳細專案結構 (Project Structure)
+
+本專案為 Monorepo 架構，主要分為 Backend (Express) 與 Frontend (Next.js)。
+
+### Backend (`apps/backend`)
+
+```
+apps/backend/src
+├── config/         # 環境變數與設定檔
+├── controllers/    # 處理 HTTP Request 的控制器 (Controller Layer)
+├── cron/           # 排程任務邏輯 (Cron Jobs)
+├── emails/         # React Email 郵件樣板
+├── middlewares/    # Express Middlewares (Auth, Logging, Error Handling)
+├── models/         # Sequelize Models (Database Schema)
+├── routes/         # API 路由定義
+├── services/       # 核心業務邏輯 (Service Layer)
+├── utils/          # 共用工具函式 (DB 連線, Helper functions)
+└── app.ts          # 應用程式進入點 (Entry Point)
+```
+
+### Frontend (`apps/frontend`)
+
+```
+apps/frontend/src
+├── app/            # Next.js App Router 頁面與 Layout
+├── components/     # React UI 元件
+│   ├── landing/    # 首頁相關元件
+│   ├── ui/         # 共用 UI 元件 (Shadcn/UI)
+│   └── ...
+├── hooks/          # Custom React Hooks
+├── lib/            # 工具函式與第三方庫設定
+├── services/       # 前端 API 呼叫封裝
+└── types/          # 前端 TypeScript 型別定義
+```
+
+### Packages (`packages/`)
+
+- `shared`: 前後端共用的邏輯 (Zod Schemas, Types)。
+- `eslint-config`: 統一的 Lint 規則。
+- `typescript-config`: 統一的 TSConfig。
+
+---
+
+## �📌 筆記與備註
 
 - 此專案目前採用 Monorepo 架構 (TurboRepo)。

@@ -31,6 +31,7 @@ EasyAccounting 是一個現代化的個人記帳與資產管理應用程式，�
 - **UI Components**: [Radix UI](https://www.radix-ui.com/), [Lucide React](https://lucide.dev/) (Icons), [Sonner](https://sonner.emilkowal.ski/) (Toasts)
 - **Forms & Validation**: React Hook Form, Zod (via `@repo/shared`)
 - **Visualization**: [ECharts for React](https://git.hust.cc/echarts-for-react/)
+- **Testing**: [Playwright](https://playwright.dev/)
 
 ### Backend (`apps/backend`)
 
@@ -40,12 +41,19 @@ EasyAccounting 是一個現代化的個人記帳與資產管理應用程式，�
 - **Authentication**: JWT (JSON Web Tokens)
 - **Job Scheduling**: Node-cron
 - **File Handling**: ExcelJS (Excel 處理), Multer (檔案上傳)
+- **Testing**: [Vitest](https://vitest.dev/), [Supertest](https://github.com/ladjs/supertest)
 
 ### Shared Packages
 
 - `@repo/shared`: 共用的 TypeScript 型別定義、Zod Schema 與驗證邏輯
 - `@repo/eslint-config`: 統一的 ESLint 設定
 - `@repo/typescript-config`: 統一的 TypeScript 設定
+
+## ☁️ 部署 (Deployment)
+
+- **Frontend**: Hosted on [Vercel](https://vercel.com)
+  - Production: [riinouo-eaccounting.win](https://riinouo-eaccounting.win)
+- **Backend**: Hosted on [Railway](https://railway.com/)
 
 ## 🚀 快速開始 (Getting Started)
 
@@ -94,7 +102,9 @@ turbo deviation
 | `pnpm build`       | 建置所有應用與套件         |
 | `pnpm lint`        | 執行程式碼檢查             |
 | `pnpm format`      | 使用 Prettier 格式化程式碼 |
+| `pnpm format`      | 使用 Prettier 格式化程式碼 |
 | `pnpm check-types` | 執行 TypeScript 型別檢查   |
+| `pnpm test`        | 執行所有測試               |
 
 ### Backend 特定指令 (需進入 `apps/backend`)
 
