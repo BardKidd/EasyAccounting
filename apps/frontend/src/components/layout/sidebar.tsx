@@ -12,6 +12,7 @@ import {
   PieChart,
   Menu,
   Landmark,
+  FileCheck,
 } from 'lucide-react';
 import {
   Sheet,
@@ -41,6 +42,11 @@ const sidebarItems = [
     title: '統計報表',
     href: '/statistics',
     icon: PieChart,
+  },
+  {
+    title: '信用卡對帳',
+    href: '/reconciliation',
+    icon: FileCheck,
   },
   {
     title: '設定',

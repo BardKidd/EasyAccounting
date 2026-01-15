@@ -7,14 +7,18 @@ import {
   CreditAccountType,
 } from '@repo/shared';
 
-type AccountAttributes = AccountType & Partial<CreditAccountType>;
+type AccountAttributes = AccountType;
 
 type AccountCreationAttributes = Omit<AccountAttributes, 'id'>;
+
+import { CreditCardDetailInstance } from './CreditCardDetail';
 
 // 這個型別說明建立出來的 Model instance 要包含 AccountAttributes 的所有屬性，當使用 toJson() 後會剩下 AccountAttributes 的所有屬性
 interface AccountInstance
   extends Model<AccountAttributes, AccountCreationAttributes>,
-    AccountAttributes {}
+    AccountAttributes {
+  credit_card_detail?: CreditCardDetailInstance;
+}
 
 const Account = sequelize.define<AccountInstance>(
   'account',
@@ -54,10 +58,10 @@ const Account = sequelize.define<AccountInstance>(
       allowNull: false,
       defaultValue: '#000000',
     },
-    isActive: {
+    isArchived: {
       type: Sequelize.BOOLEAN,
       allowNull: false,
-      defaultValue: true,
+      defaultValue: false,
     },
   },
   TABLE_DEFAULT_SETTING

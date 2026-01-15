@@ -60,6 +60,11 @@ const Transaction = sequelize.define<TransactionInstance>(
       type: Sequelize.DATEONLY, // 只存年月日，e.g. 2025-12-11
       allowNull: false,
     },
+    // 入帳日 (信用卡帳單歸屬日)
+    billingDate: {
+      type: Sequelize.DATEONLY,
+      allowNull: false,
+    },
     // 時分秒
     time: {
       type: Sequelize.TIME, // 只存時分秒，e.g. 12:34:56
@@ -94,6 +99,23 @@ const Transaction = sequelize.define<TransactionInstance>(
         model: 'account',
         key: 'id',
       },
+    },
+    installmentPlanId: {
+      type: Sequelize.UUID,
+      allowNull: true,
+      references: {
+        model: 'installment_plan',
+        key: 'id',
+      },
+    },
+    isReconciled: {
+      type: Sequelize.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+    },
+    reconciliationDate: {
+      type: Sequelize.DATE,
+      allowNull: true,
     },
   },
   TABLE_DEFAULT_SETTING

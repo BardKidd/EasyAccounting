@@ -14,6 +14,10 @@ import {
   PaymentFrequency,
   transactionFormSchema,
   TransactionFormSchema,
+  InterestType,
+  CalculationMethod,
+  RemainderPlacement,
+  RewardsType,
 } from '@repo/shared';
 import { cn, getErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -94,6 +98,20 @@ function NewTransactionSheet({
           });
         }
       }
+
+      // 分期判斷
+      if (
+        data.paymentFrequency === PaymentFrequency.INSTALLMENT &&
+        data.installment
+      ) {
+        if (data.installment.totalInstallments < 2) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '分期期數至少 2 期',
+            path: ['installment.totalInstallments'],
+          });
+        }
+      }
     });
   }, [categories]);
 
@@ -112,6 +130,14 @@ function NewTransactionSheet({
       receipt: '',
       targetAccountId: '',
       paymentFrequency: PaymentFrequency.ONE_TIME,
+      installment: {
+        totalInstallments: 3,
+        interestType: InterestType.NONE,
+        calculationMethod: CalculationMethod.ROUND,
+        remainderPlacement: RemainderPlacement.FIRST,
+        gracePeriod: 0,
+        rewardsType: RewardsType.EVERY,
+      },
     },
   });
 
@@ -119,6 +145,14 @@ function NewTransactionSheet({
   const watchedType = form.watch('type');
   const watchedMainCategory = form.watch('mainCategory');
   const watchedAccountId = form.watch('accountId');
+  const watchedPaymentFrequency = form.watch('paymentFrequency');
+
+  const selectedAccount = useMemo(
+    () => accounts.find((a) => a.id === watchedAccountId),
+    [watchedAccountId, accounts]
+  );
+
+  const isCreditCard = selectedAccount?.type === Account.CREDIT_CARD;
 
   // 解決 Hydration Mismatch: 在 Client 端才設定預設時間。
   // 根本原因：SSR 的時候宣告 new Date() 會和 CSR 渲染時的結果不一樣，兩份 HTML 不一樣造成 React 警告。
@@ -172,6 +206,10 @@ function NewTransactionSheet({
       time: data.time,
       receipt: data.receipt,
       paymentFrequency: data.paymentFrequency,
+      installment:
+        data.paymentFrequency === PaymentFrequency.INSTALLMENT
+          ? (data.installment as CreateTransactionSchema['installment'])
+          : undefined,
     };
 
     try {
@@ -237,7 +275,7 @@ function NewTransactionSheet({
           <Plus className="mr-2 h-4 w-4" /> 新增交易
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto max-h-screen">
         <SheetHeader>
           <SheetTitle>新增交易</SheetTitle>
           <SheetDescription>
@@ -247,8 +285,7 @@ function NewTransactionSheet({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <div className="grid gap-6 py-4 px-4">
-              {/* Type Selection */}
+            <div className="grid gap-6 py-4 px-4 pb-20">
               <FormField
                 control={form.control}
                 name="type"
@@ -319,6 +356,56 @@ function NewTransactionSheet({
                         {RootType.OPERATE}
                       </Button>
                     </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="accountId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>帳戶</FormLabel>
+                    <Select
+                      onValueChange={(v) => {
+                        field.onChange(v);
+                        if (
+                          accounts.find((a) => a.id === v)?.type !==
+                          Account.CREDIT_CARD
+                        ) {
+                          form.setValue(
+                            'paymentFrequency',
+                            PaymentFrequency.ONE_TIME
+                          );
+                        }
+                      }}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full cursor-pointer">
+                          <SelectValue placeholder="選擇帳戶" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.values(Account).map((accountType) => {
+                          const typeAccounts = accounts.filter(
+                            (acc) => acc.type === accountType
+                          );
+                          if (typeAccounts.length === 0) return null;
+                          return (
+                            <SelectGroup key={accountType}>
+                              <SelectLabel>{accountType}</SelectLabel>
+                              {typeAccounts.map((acc) => (
+                                <SelectItem key={acc.id} value={acc.id}>
+                                  {acc.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -403,43 +490,6 @@ function NewTransactionSheet({
                 )}
               </div>
 
-              {/* Account Selection */}
-              <FormField
-                control={form.control}
-                name="accountId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>帳戶</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="w-full cursor-pointer">
-                          <SelectValue placeholder="選擇帳戶" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.values(Account).map((accountType) => {
-                          const typeAccounts = accounts.filter(
-                            (acc) => acc.type === accountType
-                          );
-                          if (typeAccounts.length === 0) return null;
-                          return (
-                            <SelectGroup key={accountType}>
-                              <SelectLabel>{accountType}</SelectLabel>
-                              {typeAccounts.map((acc) => (
-                                <SelectItem key={acc.id} value={acc.id}>
-                                  {acc.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               {/* Amount */}
               <FormField
                 control={form.control}
@@ -479,6 +529,121 @@ function NewTransactionSheet({
                   </FormItem>
                 )}
               />
+
+              {isCreditCard && watchedType !== RootType.OPERATE && (
+                <div className="border rounded-md p-4 bg-gray-50 dark:bg-zinc-900/50 space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="paymentFrequency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>繳款方式</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value={PaymentFrequency.ONE_TIME}>
+                              一次付清
+                            </SelectItem>
+                            <SelectItem value={PaymentFrequency.INSTALLMENT}>
+                              信用卡分期
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+
+                  {watchedPaymentFrequency === PaymentFrequency.INSTALLMENT && (
+                    <div className="space-y-4 pt-2">
+                      <FormField
+                        control={form.control}
+                        name="installment.totalInstallments"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>分期期數 (月)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                {...field}
+                                onChange={(e) =>
+                                  field.onChange(Number(e.target.value))
+                                }
+                                min={2}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="installment.calculationMethod"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>計算方式</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value={CalculationMethod.ROUND}>
+                                    四捨五入
+                                  </SelectItem>
+                                  <SelectItem value={CalculationMethod.FLOOR}>
+                                    無條件捨去
+                                  </SelectItem>
+                                  <SelectItem value={CalculationMethod.CEIL}>
+                                    無條件進位
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="installment.remainderPlacement"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>餘數分配</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value={RemainderPlacement.FIRST}>
+                                    首期調整
+                                  </SelectItem>
+                                  <SelectItem value={RemainderPlacement.LAST}>
+                                    末期調整
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Date / Time */}
               <div className="grid gap-4 grid-cols-2">
@@ -622,10 +787,10 @@ function NewTransactionSheet({
               />
             </div>
 
-            <SheetFooter>
+            <SheetFooter className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t">
               <Button
                 type="submit"
-                className="cursor-pointer"
+                className="cursor-pointer w-full"
                 disabled={isLoading}
               >
                 {isLoading ? '儲存中...' : '儲存交易'}

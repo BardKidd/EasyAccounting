@@ -8,4 +8,6 @@ export const transactionColumns = [
   { header: '分類*', key: 'category', width: 15 },
   { header: '發票', key: 'receipt', width: 15 },
   { header: '描述', key: 'description', width: 45 },
+  { header: '已核對', key: 'isReconciled', width: 10 },
+  { header: '核對日期', key: 'reconciliationDate', width: 15 },
 ];

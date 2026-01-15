@@ -10,6 +10,8 @@ import Category from '@/models/category';
 import Account from '@/models/account';
 import Transaction from '@/models/transaction';
 import PersonnelNotification from '@/models/personnel_notification';
+import CreditCardDetail from '@/models/CreditCardDetail';
+import InstallmentPlan from '@/models/InstallmentPlan';
 
 import userRoute from '@/routes/userRoute';
 import categoryRoute from '@/routes/categoryRoute';
@@ -22,6 +24,7 @@ import statisticsRoute from '@/routes/statisticsRoute';
 import deployHealthRoute from '@/routes/deployHealthRoute';
 import personnelNotificationRoute from '@/routes/personnelNotificationRoute';
 import excelRoute from '@/routes/excelRoute';
+import reconciliationRoute from '@/routes/reconciliationRoute';
 import {
   startDailyReminderCronJobs,
   startMonthlyAnalysisNoticeCronJobs,
@@ -67,6 +70,7 @@ app.use('/api', authRoute);
 app.use('/api', statisticsRoute);
 app.use('/api', personnelNotificationRoute);
 app.use('/api', excelRoute);
+app.use('/api', reconciliationRoute);
 app.use('/api', deployHealthRoute);
 // 透過 Hook 實作軟刪除的 Cascade (Sequelize 的 hooks: true 只有再某些版本有效，手寫最穩)
 User.addHook('afterDestroy', async (user: any, options: any) => {
@@ -79,17 +83,32 @@ User.addHook('afterDestroy', async (user: any, options: any) => {
   await Transaction.destroy({ where: { userId }, transaction });
   // 3. 刪除相關 Notification
   await PersonnelNotification.destroy({ where: { userId }, transaction });
+  // 4. 刪除相關 InstallmentPlan
+  await InstallmentPlan.destroy({ where: { userId }, transaction });
 });
 
 User.hasMany(Category);
 User.hasMany(Account);
 User.hasMany(Transaction);
+User.hasMany(InstallmentPlan);
 Category.belongsTo(User);
 Account.belongsTo(User);
 Transaction.belongsTo(User);
+InstallmentPlan.belongsTo(User);
 
 User.hasOne(PersonnelNotification);
 PersonnelNotification.belongsTo(User);
+
+// Account & CreditCardDetail
+Account.hasOne(CreditCardDetail, {
+  as: 'credit_card_detail',
+  foreignKey: 'accountId',
+});
+CreditCardDetail.belongsTo(Account);
+
+// InstallmentPlan & Transaction
+InstallmentPlan.hasMany(Transaction);
+Transaction.belongsTo(InstallmentPlan);
 
 // 可以使用 Magic 方法，加上 include 可以自動建立 children 和 parent 屬性
 // 這裡跟資料互相關聯並沒有直接關係喔！！！

@@ -11,7 +11,12 @@ module.exports = {
     port: parseInt(process.env.PG_PORT),
     dialect: 'postgres',
     schema: 'accounting',
-    dialectOptions: undefined,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+    },
   },
   // CI
   test: {
@@ -22,7 +27,12 @@ module.exports = {
     port: parseInt(process.env.PG_PORT),
     dialect: 'postgres',
     schema: 'accounting',
-    dialectOptions: undefined,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+    },
   },
   // 雲端(不論測試還是生產)
   production: {

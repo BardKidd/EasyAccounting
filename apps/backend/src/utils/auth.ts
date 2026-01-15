@@ -25,7 +25,7 @@ const isCloudTest = process.env.IS_CLOUD_TEST === 'true';
 const whichDomain = (isPrd: boolean) => {
   if (isCloudTest) return '.dev.riinouo-eaccounting.win';
   if (isPrd) return '.riinouo-eaccounting.win';
-  return undefined;
+  return '.localhost:8080';
 };
 
 const COOKIE_OPTIONS = {
@@ -33,7 +33,8 @@ const COOKIE_OPTIONS = {
   secure: isPrd,
   sameSite: isPrd ? ('none' as const) : ('lax' as const), // 允許跨域，前提是 secure: true
   path: '/', //! 會鎖定 cookie 在這個路徑底下
-  domain: whichDomain(isPrd),
+  //! 在本地開發時要註解該行
+  // domain: whichDomain(isPrd),
   maxAge: COOKIE_MAX_AGE,
 };
 

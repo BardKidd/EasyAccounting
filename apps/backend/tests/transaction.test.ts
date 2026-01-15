@@ -95,7 +95,7 @@ describe('Transaction API Integration Test', () => {
         balance: 10000,
         icon: 'bank',
         color: '#000000',
-        isActive: true,
+        isArchived: false,
       } as any);
     }
     account2Id = account2.id;

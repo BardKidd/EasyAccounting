@@ -153,3 +153,24 @@ export enum PageType {
   STATISTICS = 'statistics',
   SETTINGS = 'settings',
 }
+
+export enum InterestType {
+  NONE = 'NONE',
+  // REGULAR = 'REGULAR', // Future expansion
+}
+
+export enum CalculationMethod {
+  ROUND = 'ROUND',
+  FLOOR = 'FLOOR',
+  CEIL = 'CEIL',
+}
+
+export enum RemainderPlacement {
+  FIRST = 'FIRST',
+  LAST = 'LAST',
+}
+
+export enum RewardsType {
+  EVERY = 'EVERY',
+  FIRST = 'FIRST', // Future expansion
+}

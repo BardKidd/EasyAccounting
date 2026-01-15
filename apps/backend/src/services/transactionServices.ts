@@ -9,11 +9,19 @@ import {
   TransactionTypeWhenOperate,
   GetTransactionsDashboardSummarySchema,
   PeriodType,
+  PaymentFrequency,
+  InterestType,
+  CalculationMethod,
+  RemainderPlacement,
 } from '@repo/shared';
 import { simplifyTransaction } from '@/utils/common';
-import Transaction from '@/models/transaction';
-import Account from '@/models/account';
+import { Transaction, Account, InstallmentPlan } from '@/models';
+import sequelize from '@/utils/postgres';
 import { Op } from 'sequelize';
+import {
+  isCreditCardAccount,
+  getCreditCardBillingDates,
+} from '@/utils/creditCardUtils';
 import {
   format,
   getISOWeek,
@@ -22,6 +30,8 @@ import {
   eachWeekOfInterval,
   eachMonthOfInterval,
   eachYearOfInterval,
+  addMonths,
+  getDate,
 } from 'date-fns';
 
 const getTransactionsByDate = async (
@@ -44,9 +54,6 @@ const getTransactionsByDate = async (
 
   let typeFilter: any = {};
   if (type === RootType.OPERATE) {
-    // 若為「操作」(轉帳):
-    // 1. linkId 不為 null
-    // 2. 轉帳的主動方
     typeFilter = {
       linkId: {
         [Op.ne]: null,
@@ -54,14 +61,9 @@ const getTransactionsByDate = async (
       type: RootType.EXPENSE,
     };
   } else if (type) {
-    // 若為指定類型 (收入/支出): 找出該類型且 linkId 為 null (排除轉帳)
     typeFilter.type = type;
     typeFilter.linkId = null;
   } else {
-    // 預設 (沒有傳 type 時):
-    // 顯示:
-    // 1. 一般收支 (linkId is null)
-    // 2. 轉帳的主動方 (linkId is not null AND type != INCOME) -> 這邏輯是用來避免列表重複顯示轉帳的兩筆
     typeFilter[Op.or] = [
       { linkId: null },
       {
@@ -80,13 +82,13 @@ const getTransactionsByDate = async (
         userId,
       },
       limit: Number(limit),
-      offset, // 定義從第幾筆開始取資料，e.g. page=2, limit=10,offset=10
+      offset,
       order: [
         ['date', 'DESC'],
         ['time', 'DESC'],
       ],
       attributes: {
-        exclude: ['createdAt', 'updatedAt', 'deletedAt', 'linkId'], // 排除不需要的欄位
+        exclude: ['createdAt', 'updatedAt', 'deletedAt', 'linkId'],
       },
       raw: true,
     });
@@ -96,7 +98,7 @@ const getTransactionsByDate = async (
         total: count,
         page,
         limit,
-        totalPages: Math.ceil(count / Number(limit)), // 無條件進位
+        totalPages: Math.ceil(count / Number(limit)),
       },
     };
   } catch (error) {
@@ -127,14 +129,12 @@ const getTransactionsDashboardSummary = async (
       linkId: null as any,
     },
     attributes: ['amount', 'date', 'type'],
-    raw: true, // 直接回傳資料，可以不用再 .toJSON()
-    // Pick<TransactionType, ...>: TS 工具型別，表示從 TransactionType 中「只選取」這三個欄位，其他的屬性都會被排除
+    raw: true,
   })) as unknown as Pick<TransactionType, 'amount' | 'date' | 'type'>[];
 
   const start = new Date(startDate);
   const end = new Date(endDate);
 
-  // Generate generic buckets
   let buckets: {
     type: string;
     date: string;
@@ -151,14 +151,13 @@ const getTransactionsDashboardSummary = async (
       expense: 0,
     }));
   } else if (groupBy === PeriodType.WEEK) {
-    // ISO Week
     const weeks = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
     buckets = weeks.map((d) => {
       const year = getYear(d);
       const week = getISOWeek(d);
       return {
         type: PeriodType.WEEK,
-        date: `${year}-W${String(week).padStart(2, '0')}`, // 沒有兩位數就自動補 0
+        date: `${year}-W${String(week).padStart(2, '0')}`,
         income: 0,
         expense: 0,
       };
@@ -181,7 +180,6 @@ const getTransactionsDashboardSummary = async (
     }));
   }
 
-  // Calculate summary
   const summary = {
     income: 0,
     expense: 0,
@@ -233,8 +231,9 @@ const getTransactionById = async (id: string, userId: string) => {
   let result: TransactionType | null = null;
 
   if (instance) {
-    result = instance.toJSON();
-    const { id, ...other } = result;
+    const data = instance.toJSON() as TransactionType;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id, ...other } = data;
     return other;
   }
 
@@ -253,28 +252,144 @@ const calcAccountBalance = async (
   }
 };
 
-const createTransaction = async (
-  data: CreateTransactionSchema,
-  userId: string
+/**
+ * Helper to generate installment description
+ */
+const getInstallmentDescription = (
+  originalDesc: string,
+  current: number,
+  total: number
 ) => {
-  return await simplifyTransaction(async (t) => {
-    const transaction = await Transaction.create(
-      { ...data, userId },
-      { transaction: t }
-    );
+  return `${originalDesc} (${current}/${total})`;
+};
 
-    const account = await Account.findOne({
-      where: { id: data.accountId, userId },
-      transaction: t,
-    });
-    if (!account) throw new Error('Account not found');
+export const createTransaction = async (
+  data: TransactionType & {
+    installment?: CreateTransactionSchema['installment'];
+  }
+) => {
+  const transaction = await sequelize.transaction();
 
-    calcAccountBalance(account, data.type, data.amount);
+  try {
+    const account = await Account.findByPk(data.accountId);
+    if (!account) {
+      throw new Error('Account not found');
+    }
 
-    await account.save({ transaction: t });
+    // Handle Installment Plan
+    if (data.installment && data.installment.totalInstallments > 1) {
+      // 1. Create InstallmentPlan record
+      const installmentPlan = await InstallmentPlan.create(
+        {
+          userId: data.userId,
+          totalAmount: data.amount,
+          totalInstallments: data.installment.totalInstallments,
+          startDate: data.date,
+          description: data.description,
+          interestType: data.installment.interestType || InterestType.NONE,
+          calculationMethod:
+            data.installment.calculationMethod || CalculationMethod.ROUND,
+          remainderPlacement:
+            data.installment.remainderPlacement || RemainderPlacement.FIRST,
+          gracePeriod: data.installment.gracePeriod || 0,
+          rewardsType: data.installment.rewardsType,
+        },
+        { transaction }
+      );
 
-    return transaction.toJSON();
-  });
+      // 2. Calculate monthly amount
+      const totalAmount = data.amount;
+      const count = data.installment.totalInstallments;
+      let monthlyAmount = totalAmount / count;
+
+      // Apply rounding logic
+      // Note: We should probably store the high-precision monthly amount or handle remainders explicitly.
+      // For now, let's implement basic logic based on calculationMethod
+      if (
+        data.installment.calculationMethod === CalculationMethod.FLOOR ||
+        data.installment.calculationMethod === CalculationMethod.CEIL ||
+        data.installment.calculationMethod === CalculationMethod.ROUND
+      ) {
+        // Javascript default division is floating point.
+        // If we want to strictly follow FLOOR/CEIL/ROUND for integer-like currency handling:
+        if (data.installment.calculationMethod === CalculationMethod.FLOOR) {
+          monthlyAmount = Math.floor(monthlyAmount);
+        } else if (
+          data.installment.calculationMethod === CalculationMethod.CEIL
+        ) {
+          monthlyAmount = Math.ceil(monthlyAmount);
+        } else {
+          monthlyAmount = Math.round(monthlyAmount);
+        }
+      }
+
+      // 3. Handle remainder
+      // Calculate strict total of these monthly amounts
+      const calculatedTotal = monthlyAmount * count;
+      let remainder = totalAmount - calculatedTotal;
+
+      // Distribute remainder based on placement perference
+
+      const firstInstallmentAmount =
+        data.installment.remainderPlacement === RemainderPlacement.FIRST
+          ? monthlyAmount + remainder
+          : monthlyAmount;
+
+      const lastInstallmentAmount =
+        data.installment.remainderPlacement === RemainderPlacement.LAST
+          ? monthlyAmount + remainder
+          : monthlyAmount;
+
+      const middleInstallmentAmount = monthlyAmount;
+
+      // 4. Generate Transactions for each installment
+      // Determine billing dates if credit card
+      let billingDate = getDate(new Date(data.date)); // Default to transaction date
+      if (await isCreditCardAccount(data.accountId)) {
+        const dates = await getCreditCardBillingDates(
+          data.accountId,
+          new Date(data.date)
+        );
+        // Usually installments start billing on next statement or current, dependent on bank logic.
+        // For simplicity, let's assume it follows standard billing cycle logic.
+        // We might just use the transaction date as the "purchase date" and let the credit card logic handle billing cycle placement.
+        // BUT strict installment plans often fix the "billed date" for each month.
+        // Let's just create transactions spaced by 1 month for now.
+      }
+
+      for (let i = 1; i <= count; i++) {
+        let amount = middleInstallmentAmount;
+        if (i === 1) amount = firstInstallmentAmount;
+        if (i === count) amount = lastInstallmentAmount;
+
+        const date = addMonths(new Date(data.date), i - 1);
+
+        await Transaction.create(
+          {
+            ...data,
+            id: undefined, // Create new ID
+            amount: amount,
+            description: getInstallmentDescription(
+              data.description || '',
+              i,
+              count
+            ),
+            date: format(date, 'yyyy-MM-dd'),
+            installmentPlanId: installmentPlan.id,
+          },
+          { transaction }
+        );
+      }
+    } else {
+      // Normal transaction
+      await Transaction.create(data, { transaction });
+    }
+
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 };
 
 const updateIncomeExpense = async (
@@ -289,14 +404,12 @@ const updateIncomeExpense = async (
     });
     if (!transaction) throw new Error('Transaction not found');
 
-    // 1. 在做改變前先恢復成該筆交易前的狀態再做處理，否則直接改的話會有正負差問題。
     const oldAccount = await Account.findOne({
-      where: { id: transaction.accountId, userId },
+      where: { id: transaction.accountId!, userId },
       transaction: t,
     });
     if (!oldAccount) throw new Error('Old account not found');
 
-    // 所以這裡才要反過來
     const revertType =
       transaction.type === RootType.INCOME ? RootType.EXPENSE : RootType.INCOME;
     await calcAccountBalance(
@@ -306,9 +419,7 @@ const updateIncomeExpense = async (
     );
     await oldAccount.save({ transaction: t });
 
-    // 2. 之後就按照正常邏輯進行計算
     let newAccount = oldAccount;
-    // 不過還是先看看有沒有換帳戶(e.g. 原本紀錄錢包支出，記錯了改成銀行帳戶)
     if (data.accountId !== transaction.accountId) {
       const account = await Account.findOne({
         where: { id: data.accountId, userId },
@@ -321,7 +432,6 @@ const updateIncomeExpense = async (
     await calcAccountBalance(newAccount, data.type, data.amount);
     await newAccount.save({ transaction: t });
 
-    // 3. 更新資料
     await transaction.update(data, { transaction: t });
 
     return transaction.toJSON();
@@ -336,7 +446,6 @@ const deleteTransaction = async (id: string, userId: string) => {
     });
     if (!transaction) throw new Error('Transaction not found');
 
-    // 跟編輯一樣需要先去還原該筆交易前的狀態再做處理，否則直接改的話會有正負差問題。
     const account = await Account.findOne({
       where: { id: transaction.accountId, userId },
       transaction: t,
@@ -348,7 +457,6 @@ const deleteTransaction = async (id: string, userId: string) => {
     await calcAccountBalance(account, revertType, Number(transaction.amount));
     await account.save({ transaction: t });
 
-    // 當被刪除的是轉帳交易時要去順便把另一筆也刪掉
     if (transaction.linkId) {
       const linkedTransaction = await Transaction.findOne({
         where: { id: transaction.linkId, userId },
@@ -384,7 +492,6 @@ const deleteTransaction = async (id: string, userId: string) => {
   });
 };
 
-// 只要流程是 A -> B 帳戶，且流程是 A 為主動減少，B 為被動增加的流程就適合
 const createTransfer = async (
   data: CreateTransferSchema,
   userId: string
@@ -398,6 +505,7 @@ const createTransfer = async (
     const fromData = {
       ...data,
       type: RootType.EXPENSE,
+      billingDate: data.date, // Transfer default billing date = date
     };
 
     const toData = {
@@ -405,6 +513,7 @@ const createTransfer = async (
       targetAccountId: data.accountId,
       accountId: data.targetAccountId,
       type: RootType.INCOME,
+      billingDate: data.date,
     };
 
     const fromAccount = await Account.findByPk(data.accountId, {

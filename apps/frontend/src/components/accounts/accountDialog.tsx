@@ -7,8 +7,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { UpdateAccountInput } from '@repo/shared';
+import { UpdateAccountInput, Account } from '@repo/shared';
 import AccountForm from '@/components/accounts/accountForm';
+import { useState } from 'react';
 
 function AccountDialog({
   selectedAccount,
@@ -20,11 +21,20 @@ function AccountDialog({
   setIsOpen: (isOpen: boolean) => void;
 }) {
   const isEditMode = !!selectedAccount;
-  console.log('selectedAccount', selectedAccount);
+
+  const [currentAccountType, setCurrentAccountType] = useState<Account>(
+    (selectedAccount?.type as Account) || Account.CASH
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent
+        className={
+          currentAccountType === Account.CREDIT_CARD
+            ? 'sm:max-w-[800px] max-h-[90vh] overflow-y-auto'
+            : 'sm:max-w-[425px] max-h-[90vh] overflow-y-auto'
+        }
+      >
         <DialogHeader>
           <DialogTitle>{isEditMode ? '編輯帳戶' : '新增帳戶'}</DialogTitle>
           <DialogDescription>
@@ -37,6 +47,7 @@ function AccountDialog({
           selectedAccount={selectedAccount}
           isOpen={isOpen}
           setIsOpen={setIsOpen}
+          onTypeChange={setCurrentAccountType}
         />
       </DialogContent>
     </Dialog>

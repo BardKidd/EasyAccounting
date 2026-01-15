@@ -12,7 +12,8 @@ import {
 import { ModeToggle } from '@/components/mode-toggle';
 import { Bell } from 'lucide-react';
 import { simplifyTryCatch } from '@/lib/utils';
-import { apiHandler } from '@/lib/utils';
+import { getReconciliationNotifications } from '@/services/reconciliationService';
+import { logout } from '@/services/authService';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Progress } from '@/components/ui/progress';
@@ -33,10 +34,25 @@ function Header() {
     }
   }, []);
 
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await getReconciliationNotifications();
+        if (res.isSuccess && Array.isArray(res.data)) {
+          setNotificationCount(res.data.length);
+        }
+      } catch (error) {
+        console.error('Failed to fetch notifications', error);
+      }
+    };
+    fetchNotifications();
+  }, []);
+
   const handleLogout = () => {
     simplifyTryCatch(async () => {
-      const url = '/logout';
-      const result = await apiHandler(url, 'post', null);
+      const result = await logout();
       if (result.isSuccess) {
         localStorage.removeItem('user');
         toast.success(result.message);
@@ -50,19 +66,22 @@ function Header() {
   }, [user.name]);
 
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="flex h-14 items-center px-4 md:px-6 gap-4">
         <div className="ml-auto flex items-center gap-4">
           <ModeToggle />
-          {/* 暫時想不到要放什麼內容 */}
-          {/* <Button
+          <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 cursor-pointer"
+            className="h-8 w-8 cursor-pointer relative"
+            onClick={() => router.push('/reconciliation')}
           >
             <Bell className="h-4 w-4" />
+            {notificationCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-600 ring-2 ring-background" />
+            )}
             <span className="sr-only">Toggle notifications</span>
-          </Button> */}
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

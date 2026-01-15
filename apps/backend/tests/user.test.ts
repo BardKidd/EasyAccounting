@@ -125,7 +125,7 @@ describe('User API Integration Test', () => {
       balance: 1000,
       icon: 'test',
       color: '#000000',
-      isActive: true,
+      isArchived: false,
     });
 
     const transaction = await Transaction.create({

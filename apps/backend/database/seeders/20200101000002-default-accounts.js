@@ -38,7 +38,7 @@ module.exports = {
         balance: 5000,
         icon: 'wallet',
         color: '#4CAF50', // Green
-        isActive: true,
+        isArchived: false,
         createdAt: now,
         updatedAt: now,
       },
@@ -50,7 +50,7 @@ module.exports = {
         balance: 100000, // Rich!
         icon: 'Banknote',
         color: '#2196F3', // Blue
-        isActive: true,
+        isArchived: false,
         createdAt: now,
         updatedAt: now,
       },
