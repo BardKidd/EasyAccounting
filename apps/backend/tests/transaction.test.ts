@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
 import User from '@/models/user';
@@ -404,5 +404,62 @@ describe('Transaction API Integration Test', () => {
     expect(res.body.data.summary).toHaveProperty('income');
     expect(res.body.data.summary).toHaveProperty('expense');
     expect(res.body.data.summary).toHaveProperty('balance');
+  });
+
+  // ==========================================
+  // Rollback Test (1.3 Reverse)
+  // ==========================================
+  it('should rollback transaction and restore balances if transfer fails mid-way', async () => {
+    // 1. Get initial state
+    const account1 = await Account.findByPk(accountId);
+    const account2 = await Account.findByPk(account2Id);
+    if (!account1 || !account2) throw new Error('Accounts not found');
+
+    const initialBalance1 = Number(account1.balance);
+    const initialBalance2 = Number(account2.balance);
+
+    // 2. Mock a failure during the process
+    // We'll mock Transaction.prototype.update to throw an error
+    // This happens at the end of createTransfer when linking transactions
+    const updateSpy = vi
+      .spyOn(Transaction.prototype, 'update')
+      .mockRejectedValueOnce(new Error('Simulated Transfer Failure'));
+
+    const payload = {
+      accountId: accountId, // From
+      targetAccountId: account2Id, // To
+      amount: 100,
+      date: '2026-01-15',
+      time: '12:00',
+      type: RootType.OPERATE,
+      description: 'Rollback Test Transfer',
+      categoryId: categoryId,
+      receipt: null,
+      paymentFrequency: PaymentFrequency.ONE_TIME,
+    };
+
+    // 3. Execute transfer
+    const res = await agent.post('/api/transaction/transfer').send(payload);
+
+    // 4. Verify failure response
+    // The service catches error and throws, app likely catches and returns 500
+    expect(res.status).toBe(StatusCodes.INTERNAL_SERVER_ERROR);
+
+    // 5. Restore mock
+    updateSpy.mockRestore();
+
+    // 6. Verify Rollback
+    // Check Balances
+    const account1After = await Account.findByPk(accountId);
+    const account2After = await Account.findByPk(account2Id);
+
+    expect(Number(account1After?.balance)).toBe(initialBalance1);
+    expect(Number(account2After?.balance)).toBe(initialBalance2);
+
+    // Check no transaction created
+    const tx = await Transaction.findOne({
+      where: { description: 'Rollback Test Transfer' },
+    });
+    expect(tx).toBeNull();
   });
 });
