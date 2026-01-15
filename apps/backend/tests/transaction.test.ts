@@ -1,46 +1,21 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
-import { Sequelize } from 'sequelize';
-
-// Mock Resend
-vi.mock('resend', () => {
-  return {
-    Resend: class MockResend {
-      emails = {
-        send: vi.fn().mockResolvedValue({ id: 'mock-id' }),
-      };
-    },
-  };
-});
-
-// Mock Azure Blob
-vi.mock('@/utils/azureBlob', () => {
-  return {
-    uploadFileToBlob: vi.fn().mockResolvedValue('http://mock.url/file.png'),
-    getBlobUrl: vi.fn().mockReturnValue('http://mock.url/file.png'),
-    deleteBlob: vi.fn().mockResolvedValue(true),
-  };
-});
-
-// Mock Postgres to use SQLite
-vi.mock('@/utils/postgres', async () => {
-  const { Sequelize } = await import('sequelize');
-  const sequelize = new Sequelize('sqlite::memory:', {
-    logging: false,
-    dialect: 'sqlite',
-  });
-
-  return {
-    default: sequelize,
-    TABLE_DEFAULT_SETTING: {
-      paranoid: true,
-      timestamps: true,
-      freezeTableName: true,
-    },
-    __esModule: true,
-  };
-});
-
 import request from 'supertest';
+
+// Mock email service to avoid Resend API key error
+vi.mock('@/services/emailService', () => ({
+  sendDailyReminderEmail: vi.fn(),
+  sendWeeklySummaryEmail: vi.fn(),
+  sendMonthlyAnalysisEmail: vi.fn(),
+  sendWelcomeEmail: vi.fn(),
+}));
+
+// Mock azureBlob to avoid Invalid URL error
+vi.mock('@/utils/azureBlob', () => ({
+  uploadFileToBlob: vi.fn(),
+  generateSasUrl: vi.fn(),
+  downloadBuffer: vi.fn(),
+}));
+
 import { app } from '../src/app';
 import User from '@/models/user';
 import Account from '@/models/account';
@@ -481,6 +456,54 @@ describe('Transaction API Integration Test', () => {
     expect(toTx).toBeNull();
   });
 
+  it('should restore balance when transfer is deleted', async () => {
+    // 1. Get current balance of two accounts
+    const acc1 = await Account.findByPk(accountId);
+    const acc2 = await Account.findByPk(account2Id);
+
+    if (!acc1 || !acc2) throw new Error('Accounts not found');
+
+    const initialBalance1 = Number(acc1.balance);
+    const initialBalance2 = Number(acc2.balance);
+    const transferAmount = 300;
+
+    // 2. Create Transfer
+    const payload = {
+      accountId: accountId, // From
+      targetAccountId: account2Id, // To
+      amount: transferAmount,
+      date: '2026-01-20',
+      time: '12:00',
+      type: RootType.OPERATE,
+      description: 'Transfer for Delete Test',
+      categoryId: categoryId,
+      receipt: null,
+      paymentFrequency: PaymentFrequency.ONE_TIME,
+    };
+
+    const res = await agent.post('/api/transaction/transfer').send(payload);
+    expect(res.status).toBe(StatusCodes.CREATED);
+    const fromTxId = res.body.data.fromTransaction.id;
+
+    // 3. Verify Balance Changed
+    await acc1.reload();
+    await acc2.reload();
+
+    expect(Number(acc1.balance)).toBe(initialBalance1 - transferAmount);
+    expect(Number(acc2.balance)).toBe(initialBalance2 + transferAmount);
+
+    // 4. Delete Transfer
+    const delRes = await agent.delete(`/api/transaction/${fromTxId}`);
+    expect(delRes.status).toBe(StatusCodes.OK);
+
+    // 5. Verify Balance Restored
+    await acc1.reload();
+    await acc2.reload();
+
+    expect(Number(acc1.balance)).toBe(initialBalance1);
+    expect(Number(acc2.balance)).toBe(initialBalance2);
+  });
+
   // ==========================================
   // 統計報表測試 (Summary)
   // ==========================================
@@ -500,5 +523,62 @@ describe('Transaction API Integration Test', () => {
     expect(res.body.data.summary).toHaveProperty('income');
     expect(res.body.data.summary).toHaveProperty('expense');
     expect(res.body.data.summary).toHaveProperty('balance');
+  });
+
+  // ==========================================
+  // Rollback Test (1.3 Reverse)
+  // ==========================================
+  it('should rollback transaction and restore balances if transfer fails mid-way', async () => {
+    // 1. Get initial state
+    const account1 = await Account.findByPk(accountId);
+    const account2 = await Account.findByPk(account2Id);
+    if (!account1 || !account2) throw new Error('Accounts not found');
+
+    const initialBalance1 = Number(account1.balance);
+    const initialBalance2 = Number(account2.balance);
+
+    // 2. Mock a failure during the process
+    // We'll mock Transaction.prototype.update to throw an error
+    // This happens at the end of createTransfer when linking transactions
+    const updateSpy = vi
+      .spyOn(Transaction.prototype, 'update')
+      .mockRejectedValueOnce(new Error('Simulated Transfer Failure'));
+
+    const payload = {
+      accountId: accountId, // From
+      targetAccountId: account2Id, // To
+      amount: 100,
+      date: '2026-01-15',
+      time: '12:00',
+      type: RootType.OPERATE,
+      description: 'Rollback Test Transfer',
+      categoryId: categoryId,
+      receipt: null,
+      paymentFrequency: PaymentFrequency.ONE_TIME,
+    };
+
+    // 3. Execute transfer
+    const res = await agent.post('/api/transaction/transfer').send(payload);
+
+    // 4. Verify failure response
+    // The service catches error and throws, app likely catches and returns 500
+    expect(res.status).toBe(StatusCodes.INTERNAL_SERVER_ERROR);
+
+    // 5. Restore mock
+    updateSpy.mockRestore();
+
+    // 6. Verify Rollback
+    // Check Balances
+    const account1After = await Account.findByPk(accountId);
+    const account2After = await Account.findByPk(account2Id);
+
+    expect(Number(account1After?.balance)).toBe(initialBalance1);
+    expect(Number(account2After?.balance)).toBe(initialBalance2);
+
+    // Check no transaction created
+    const tx = await Transaction.findOne({
+      where: { description: 'Rollback Test Transfer' },
+    });
+    expect(tx).toBeNull();
   });
 });
