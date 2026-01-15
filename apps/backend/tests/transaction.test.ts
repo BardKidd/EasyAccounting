@@ -1,5 +1,21 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import request from 'supertest';
+
+// Mock email service to avoid Resend API key error
+vi.mock('@/services/emailService', () => ({
+  sendDailyReminderEmail: vi.fn(),
+  sendWeeklySummaryEmail: vi.fn(),
+  sendMonthlyAnalysisEmail: vi.fn(),
+  sendWelcomeEmail: vi.fn(),
+}));
+
+// Mock azureBlob to avoid Invalid URL error
+vi.mock('@/utils/azureBlob', () => ({
+  uploadFileToBlob: vi.fn(),
+  generateSasUrl: vi.fn(),
+  downloadBuffer: vi.fn(),
+}));
+
 import { app } from '../src/app';
 import User from '@/models/user';
 import Account from '@/models/account';
