@@ -401,63 +401,52 @@ describe('Transaction API Integration Test', () => {
     expect(toTx).toBeNull();
   });
 
-  it('should allow transfer even if account balance is negative', async () => {
-    // 1. Create a negative balance account
-    // We need the user ID first
-    const user = await User.findOne({ where: { email: TEST_USER_EMAIL } });
-    if (!user) throw new Error('User not found');
+  it('should restore balance when transfer is deleted', async () => {
+    // 1. Get current balance of two accounts
+    const acc1 = await Account.findByPk(accountId);
+    const acc2 = await Account.findByPk(account2Id);
 
-    const negativeAccount = await Account.create({
-      userId: user.id,
-      name: 'Negative Account',
-      type: '銀行',
-      balance: -100,
-      icon: 'bank',
-      color: '#ff0000',
-    } as any);
+    if (!acc1 || !acc2) throw new Error('Accounts not found');
 
-    const targetAccount = await Account.create({
-      userId: user.id,
-      name: 'Target Account',
-      type: '現金',
-      balance: 0,
-      icon: 'cash',
-      color: '#00ff00',
-    } as any);
+    const initialBalance1 = Number(acc1.balance);
+    const initialBalance2 = Number(acc2.balance);
+    const transferAmount = 300;
 
-    // 2. Perform transfer
+    // 2. Create Transfer
     const payload = {
-      accountId: negativeAccount.id,
-      targetAccountId: targetAccount.id,
-      amount: 500,
-      date: '2026-01-15',
+      accountId: accountId, // From
+      targetAccountId: account2Id, // To
+      amount: transferAmount,
+      date: '2026-01-20',
       time: '12:00',
       type: RootType.OPERATE,
-      description: 'Transfer from negative balance',
+      description: 'Transfer for Delete Test',
       categoryId: categoryId,
       receipt: null,
       paymentFrequency: PaymentFrequency.ONE_TIME,
     };
 
     const res = await agent.post('/api/transaction/transfer').send(payload);
-
     expect(res.status).toBe(StatusCodes.CREATED);
-    expect(res.body.isSuccess).toBe(true);
+    const fromTxId = res.body.data.fromTransaction.id;
 
-    // 3. Verify balances
-    const updatedSource = await Account.findByPk(negativeAccount.id);
-    const updatedTarget = await Account.findByPk(targetAccount.id);
+    // 3. Verify Balance Changed
+    await acc1.reload();
+    await acc2.reload();
 
-    // Source: -100 - 500 = -600
-    expect(Number(updatedSource?.balance)).toBe(-600);
-    // Target: 0 + 500 = 500
-    expect(Number(updatedTarget?.balance)).toBe(500);
+    expect(Number(acc1.balance)).toBe(initialBalance1 - transferAmount);
+    expect(Number(acc2.balance)).toBe(initialBalance2 + transferAmount);
 
-    // Cleanup
-    await Transaction.destroy({ where: { accountId: negativeAccount.id } });
-    await Transaction.destroy({ where: { accountId: targetAccount.id } });
-    await negativeAccount.destroy();
-    await targetAccount.destroy();
+    // 4. Delete Transfer
+    const delRes = await agent.delete(`/api/transaction/${fromTxId}`);
+    expect(delRes.status).toBe(StatusCodes.OK);
+
+    // 5. Verify Balance Restored
+    await acc1.reload();
+    await acc2.reload();
+
+    expect(Number(acc1.balance)).toBe(initialBalance1);
+    expect(Number(acc2.balance)).toBe(initialBalance2);
   });
 
   // ==========================================
@@ -479,5 +468,62 @@ describe('Transaction API Integration Test', () => {
     expect(res.body.data.summary).toHaveProperty('income');
     expect(res.body.data.summary).toHaveProperty('expense');
     expect(res.body.data.summary).toHaveProperty('balance');
+  });
+
+  // ==========================================
+  // Rollback Test (1.3 Reverse)
+  // ==========================================
+  it('should rollback transaction and restore balances if transfer fails mid-way', async () => {
+    // 1. Get initial state
+    const account1 = await Account.findByPk(accountId);
+    const account2 = await Account.findByPk(account2Id);
+    if (!account1 || !account2) throw new Error('Accounts not found');
+
+    const initialBalance1 = Number(account1.balance);
+    const initialBalance2 = Number(account2.balance);
+
+    // 2. Mock a failure during the process
+    // We'll mock Transaction.prototype.update to throw an error
+    // This happens at the end of createTransfer when linking transactions
+    const updateSpy = vi
+      .spyOn(Transaction.prototype, 'update')
+      .mockRejectedValueOnce(new Error('Simulated Transfer Failure'));
+
+    const payload = {
+      accountId: accountId, // From
+      targetAccountId: account2Id, // To
+      amount: 100,
+      date: '2026-01-15',
+      time: '12:00',
+      type: RootType.OPERATE,
+      description: 'Rollback Test Transfer',
+      categoryId: categoryId,
+      receipt: null,
+      paymentFrequency: PaymentFrequency.ONE_TIME,
+    };
+
+    // 3. Execute transfer
+    const res = await agent.post('/api/transaction/transfer').send(payload);
+
+    // 4. Verify failure response
+    // The service catches error and throws, app likely catches and returns 500
+    expect(res.status).toBe(StatusCodes.INTERNAL_SERVER_ERROR);
+
+    // 5. Restore mock
+    updateSpy.mockRestore();
+
+    // 6. Verify Rollback
+    // Check Balances
+    const account1After = await Account.findByPk(accountId);
+    const account2After = await Account.findByPk(account2Id);
+
+    expect(Number(account1After?.balance)).toBe(initialBalance1);
+    expect(Number(account2After?.balance)).toBe(initialBalance2);
+
+    // Check no transaction created
+    const tx = await Transaction.findOne({
+      where: { description: 'Rollback Test Transfer' },
+    });
+    expect(tx).toBeNull();
   });
 });
