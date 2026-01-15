@@ -12,7 +12,7 @@ import {
 const baseSchema = z.object({
   accountId: z.string().uuid(),
   categoryId: z.string().uuid(),
-  amount: z.number(),
+  amount: z.number().min(0),
   description: z.string().nullable(),
   date: z.string(),
   time: z.string(),
@@ -93,7 +93,7 @@ export type GetTransactionsDashboardSummarySchema = z.infer<
 // 前端專用的表單 schema，因為後端的 schema 欄位略有不同
 export const transactionFormSchema = z.object({
   accountId: z.string().min(1, '請選擇帳戶'),
-  amount: z.coerce.number().min(1, '金額必須大於 0'),
+  amount: z.coerce.number().min(0, '金額必須大於等於 0'),
   type: z.enum([RootType.INCOME, RootType.EXPENSE, RootType.OPERATE]),
   date: z.coerce.date(),
   time: z.string(),

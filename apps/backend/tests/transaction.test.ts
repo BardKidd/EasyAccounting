@@ -176,30 +176,41 @@ describe('Transaction API Integration Test', () => {
       amount: -500, // ❌ 負數支出
       date: '2026-01-06',
       time: '12:00',
-      type: '支出',
-      paymentFrequency: '單次',
+      type: RootType.EXPENSE,
+      paymentFrequency: PaymentFrequency.ONE_TIME,
       description: '惡意負數測試',
+      receipt: null,
+      mainCategory: categoryId,
     };
 
     const res = await agent.post('/api/transaction').send(negativePayload);
     expect(res.status).toBe(StatusCodes.BAD_REQUEST);
   });
 
-  // 邊緣測試 (Edge Case): 零元交易
-  it('should return 400 if amount is zero', async () => {
+  // 邊緣測試 (Edge Case): 零元交易 - 2.1 正向：建立 0 元支出交易成功
+  it('should create transaction successfully if amount is zero', async () => {
     const zeroPayload = {
       accountId: accountId,
       categoryId: categoryId,
-      amount: 0, // ❌ 零元沒意義
+      amount: 0,
       date: '2026-01-06',
       time: '12:00',
-      type: '支出',
-      paymentFrequency: '單次',
-      description: '零元測試',
+      type: RootType.EXPENSE,
+      paymentFrequency: PaymentFrequency.ONE_TIME,
+      description: 'Zero amount transaction',
+      receipt: null,
+      mainCategory: categoryId,
     };
 
     const res = await agent.post('/api/transaction').send(zeroPayload);
-    expect(res.status).toBe(StatusCodes.BAD_REQUEST);
+    expect(res.status).toBe(StatusCodes.CREATED);
+    expect(res.body.isSuccess).toBe(true);
+    expect(Number(res.body.data.amount)).toBe(0);
+
+    // DB Verify
+    const tx = await Transaction.findOne({ where: { description: 'Zero amount transaction' } });
+    expect(tx).toBeTruthy();
+    expect(Number(tx?.amount)).toBe(0);
   });
 
   // ==========================================

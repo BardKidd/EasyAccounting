@@ -10,10 +10,10 @@ import {
 const createTransaction = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const userId = req.user.userId;
-    const result = await transactionServices.createTransaction(
-      req.body,
-      userId
-    );
+    const result = await transactionServices.createTransaction({
+      ...req.body,
+      userId,
+    });
 
     return res
       .status(StatusCodes.CREATED)
