@@ -21,6 +21,7 @@ import User from '@/models/user';
 import Account from '@/models/account';
 import Category from '@/models/category';
 import Transaction from '@/models/transaction';
+import sequelize from '@/utils/postgres';
 import { RootType, PaymentFrequency } from '@repo/shared';
 import { StatusCodes } from 'http-status-codes';
 import bcrypt from 'bcrypt';
@@ -38,6 +39,9 @@ describe('Transaction API Integration Test', () => {
   const TEST_USER_PASSWORD = 'password';
 
   beforeAll(async () => {
+    // Sync DB (SQLite in memory)
+    await sequelize.sync({ force: true });
+
     // 1. Ensure User Exists & Login
     let user = await User.findOne({ where: { email: TEST_USER_EMAIL } });
     if (!user) {
@@ -360,6 +364,57 @@ describe('Transaction API Integration Test', () => {
     expect(res.body.data.toTransaction.targetAccountId).toBe(accountId); // toTransaction 的 Account 是 account2Id，所以 target 是 accountId
 
     transferFromId = res.body.data.fromTransaction.id;
+  });
+
+  it('should allow 0 amount transfer and keep balance unchanged', async () => {
+    // Get initial balances
+    const acc1 = await Account.findByPk(accountId);
+    const acc2 = await Account.findByPk(account2Id);
+    const initialBalance1 = Number(acc1?.balance);
+    const initialBalance2 = Number(acc2?.balance);
+
+    const payload = {
+      accountId: accountId, // From
+      targetAccountId: account2Id, // To
+      amount: 0,
+      date: '2026-01-15',
+      time: '12:00',
+      type: RootType.OPERATE, // 轉帳
+      description: 'Zero Transfer Test',
+      categoryId: categoryId,
+      receipt: null,
+      paymentFrequency: PaymentFrequency.ONE_TIME,
+    };
+
+    const res = await agent.post('/api/transaction/transfer').send(payload);
+
+    // Expect success
+    expect(res.status).toBe(StatusCodes.CREATED);
+    expect(res.body.isSuccess).toBe(true);
+    expect(Number(res.body.data.fromTransaction.amount)).toBe(0);
+    expect(Number(res.body.data.toTransaction.amount)).toBe(0);
+
+    // Verify balances unchanged
+    const acc1After = await Account.findByPk(accountId);
+    const acc2After = await Account.findByPk(account2Id);
+
+    expect(Number(acc1After?.balance)).toBe(initialBalance1);
+    expect(Number(acc2After?.balance)).toBe(initialBalance2);
+
+    // Cleanup
+    if (res.body.data?.fromTransaction?.id) {
+      // Deleting the main transfer transaction should verify cascade or handle it.
+      // We will rely on subsequent tests or just leave it since we are in a test suite that resets/mocks or we just want to test creation.
+      // But to be clean:
+      await Transaction.destroy({
+        where: { id: res.body.data.fromTransaction.id },
+        force: true,
+      });
+      await Transaction.destroy({
+        where: { id: res.body.data.toTransaction.id },
+        force: true,
+      });
+    }
   });
 
   it('should filter transactions by OPERATE type', async () => {
