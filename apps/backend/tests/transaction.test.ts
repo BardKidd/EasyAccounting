@@ -385,6 +385,54 @@ describe('Transaction API Integration Test', () => {
     expect(toTx).toBeNull();
   });
 
+  it('should restore balance when transfer is deleted', async () => {
+    // 1. Get current balance of two accounts
+    const acc1 = await Account.findByPk(accountId);
+    const acc2 = await Account.findByPk(account2Id);
+
+    if (!acc1 || !acc2) throw new Error('Accounts not found');
+
+    const initialBalance1 = Number(acc1.balance);
+    const initialBalance2 = Number(acc2.balance);
+    const transferAmount = 300;
+
+    // 2. Create Transfer
+    const payload = {
+      accountId: accountId, // From
+      targetAccountId: account2Id, // To
+      amount: transferAmount,
+      date: '2026-01-20',
+      time: '12:00',
+      type: RootType.OPERATE,
+      description: 'Transfer for Delete Test',
+      categoryId: categoryId,
+      receipt: null,
+      paymentFrequency: PaymentFrequency.ONE_TIME,
+    };
+
+    const res = await agent.post('/api/transaction/transfer').send(payload);
+    expect(res.status).toBe(StatusCodes.CREATED);
+    const fromTxId = res.body.data.fromTransaction.id;
+
+    // 3. Verify Balance Changed
+    await acc1.reload();
+    await acc2.reload();
+
+    expect(Number(acc1.balance)).toBe(initialBalance1 - transferAmount);
+    expect(Number(acc2.balance)).toBe(initialBalance2 + transferAmount);
+
+    // 4. Delete Transfer
+    const delRes = await agent.delete(`/api/transaction/${fromTxId}`);
+    expect(delRes.status).toBe(StatusCodes.OK);
+
+    // 5. Verify Balance Restored
+    await acc1.reload();
+    await acc2.reload();
+
+    expect(Number(acc1.balance)).toBe(initialBalance1);
+    expect(Number(acc2.balance)).toBe(initialBalance2);
+  });
+
   // ==========================================
   // 統計報表測試 (Summary)
   // ==========================================
