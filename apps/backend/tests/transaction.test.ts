@@ -1,5 +1,21 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import request from 'supertest';
+
+// Mock email service to avoid Resend API key error
+vi.mock('@/services/emailService', () => ({
+  sendDailyReminderEmail: vi.fn(),
+  sendWeeklySummaryEmail: vi.fn(),
+  sendMonthlyAnalysisEmail: vi.fn(),
+  sendWelcomeEmail: vi.fn(),
+}));
+
+// Mock azureBlob to avoid Invalid URL error
+vi.mock('@/utils/azureBlob', () => ({
+  uploadFileToBlob: vi.fn(),
+  generateSasUrl: vi.fn(),
+  downloadBuffer: vi.fn(),
+}));
+
 import { app } from '../src/app';
 import User from '@/models/user';
 import Account from '@/models/account';
@@ -383,6 +399,65 @@ describe('Transaction API Integration Test', () => {
       where: { linkId: transferFromId },
     });
     expect(toTx).toBeNull();
+  });
+
+  it('should allow transfer even if account balance is negative', async () => {
+    // 1. Create a negative balance account
+    // We need the user ID first
+    const user = await User.findOne({ where: { email: TEST_USER_EMAIL } });
+    if (!user) throw new Error('User not found');
+
+    const negativeAccount = await Account.create({
+      userId: user.id,
+      name: 'Negative Account',
+      type: '銀行',
+      balance: -100,
+      icon: 'bank',
+      color: '#ff0000',
+    } as any);
+
+    const targetAccount = await Account.create({
+      userId: user.id,
+      name: 'Target Account',
+      type: '現金',
+      balance: 0,
+      icon: 'cash',
+      color: '#00ff00',
+    } as any);
+
+    // 2. Perform transfer
+    const payload = {
+      accountId: negativeAccount.id,
+      targetAccountId: targetAccount.id,
+      amount: 500,
+      date: '2026-01-15',
+      time: '12:00',
+      type: RootType.OPERATE,
+      description: 'Transfer from negative balance',
+      categoryId: categoryId,
+      receipt: null,
+      paymentFrequency: PaymentFrequency.ONE_TIME,
+    };
+
+    const res = await agent.post('/api/transaction/transfer').send(payload);
+
+    expect(res.status).toBe(StatusCodes.CREATED);
+    expect(res.body.isSuccess).toBe(true);
+
+    // 3. Verify balances
+    const updatedSource = await Account.findByPk(negativeAccount.id);
+    const updatedTarget = await Account.findByPk(targetAccount.id);
+
+    // Source: -100 - 500 = -600
+    expect(Number(updatedSource?.balance)).toBe(-600);
+    // Target: 0 + 500 = 500
+    expect(Number(updatedTarget?.balance)).toBe(500);
+
+    // Cleanup
+    await Transaction.destroy({ where: { accountId: negativeAccount.id } });
+    await Transaction.destroy({ where: { accountId: targetAccount.id } });
+    await negativeAccount.destroy();
+    await targetAccount.destroy();
   });
 
   // ==========================================

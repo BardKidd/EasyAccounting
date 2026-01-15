@@ -266,7 +266,8 @@ const getInstallmentDescription = (
 export const createTransaction = async (
   data: TransactionType & {
     installment?: CreateTransactionSchema['installment'];
-  }
+  },
+  userId: string
 ) => {
   const transaction = await sequelize.transaction();
 
@@ -281,7 +282,7 @@ export const createTransaction = async (
       // 1. Create InstallmentPlan record
       const installmentPlan = await InstallmentPlan.create(
         {
-          userId: data.userId,
+          userId: userId,
           totalAmount: data.amount,
           totalInstallments: data.installment.totalInstallments,
           startDate: data.date,
@@ -367,6 +368,7 @@ export const createTransaction = async (
         await Transaction.create(
           {
             ...data,
+            userId,
             id: undefined, // Create new ID
             amount: amount,
             description: getInstallmentDescription(
@@ -375,6 +377,7 @@ export const createTransaction = async (
               count
             ),
             date: format(date, 'yyyy-MM-dd'),
+            billingDate: format(date, 'yyyy-MM-dd'), // Set billing date
             installmentPlanId: installmentPlan.id,
           },
           { transaction }
@@ -382,8 +385,20 @@ export const createTransaction = async (
       }
     } else {
       // Normal transaction
-      await Transaction.create(data, { transaction });
+      const newTransaction = await Transaction.create(
+        { ...data, userId, billingDate: data.date },
+        { transaction }
+      );
+      
+      await calcAccountBalance(account, data.type, Number(data.amount));
+      await account.save({ transaction });
+
+      await transaction.commit();
+      return newTransaction.toJSON();
     }
+
+    await calcAccountBalance(account, data.type, Number(data.amount));
+    await account.save({ transaction });
 
     await transaction.commit();
   } catch (error) {
