@@ -27,7 +27,7 @@ vi.mock('@/utils/azureBlob', () => ({
   downloadBuffer: vi.fn(),
 }));
 
-describe('Transaction Zero Amount Test', () => {
+describe('Transaction Income Zero Test', () => {
   const agent = request.agent(app);
   let accountId = '';
   let categoryId = '';
