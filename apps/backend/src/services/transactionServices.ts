@@ -648,12 +648,7 @@ const deleteTransaction = async (id: string, userId: string) => {
 };
 
 const createTransfer = async (
-  data: CreateTransferSchema & {
-    extraAdd?: number;
-    extraAddLabel?: string;
-    extraMinus?: number;
-    extraMinusLabel?: string;
-  },
+  data: CreateTransferSchema,
   userId: string
 ): Promise<{
   fromTransaction: TransactionTypeWhenOperate;
