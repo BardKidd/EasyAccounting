@@ -9,6 +9,7 @@ import User from '@/models/user';
 import Category from '@/models/category';
 import Account from '@/models/account';
 import Transaction from '@/models/transaction';
+import TransactionExtra from '@/models/TransactionExtra';
 import PersonnelNotification from '@/models/personnel_notification';
 import CreditCardDetail from '@/models/CreditCardDetail';
 import InstallmentPlan from '@/models/InstallmentPlan';
@@ -87,6 +88,28 @@ User.addHook('afterDestroy', async (user: any, options: any) => {
   await InstallmentPlan.destroy({ where: { userId }, transaction });
 });
 
+Transaction.addHook('afterDestroy', async (instance: any, options: any) => {
+  const transaction = options.transaction;
+  // 1. Cascade delete TransactionExtra
+  if (instance.transactionExtraId) {
+    await TransactionExtra.destroy({
+      where: { id: instance.transactionExtraId },
+      transaction,
+    });
+  }
+  // 2. Cascade delete linked transaction (for transfers)
+  if (instance.linkId) {
+    // 避免無限迴圈：只在另一邊還沒被刪除時才發動
+    const linked = await Transaction.findByPk(instance.linkId, { transaction });
+    if (linked) {
+      await Transaction.destroy({
+        where: { id: instance.linkId },
+        transaction,
+      });
+    }
+  }
+});
+
 User.hasMany(Category);
 User.hasMany(Account);
 User.hasMany(Transaction);
@@ -109,6 +132,8 @@ CreditCardDetail.belongsTo(Account);
 // InstallmentPlan & Transaction
 InstallmentPlan.hasMany(Transaction);
 Transaction.belongsTo(InstallmentPlan);
+Transaction.belongsTo(TransactionExtra);
+TransactionExtra.hasOne(Transaction);
 
 // 可以使用 Magic 方法，加上 include 可以自動建立 children 和 parent 屬性
 // 這裡跟資料互相關聯並沒有直接關係喔！！！

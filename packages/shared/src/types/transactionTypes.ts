@@ -21,6 +21,14 @@ export interface InstallmentPlanType {
   rewardsType: RewardsType;
 }
 
+export interface TransactionExtraType {
+  id: string;
+  extraAdd: number;
+  extraAddLabel: string;
+  extraMinus: number;
+  extraMinusLabel: string;
+}
+
 export interface TransactionType {
   userId: string;
   accountId: string;
@@ -42,6 +50,8 @@ export interface TransactionType {
   installmentPlanId?: string | null;
   isReconciled?: boolean;
   reconciliationDate?: Date | string | null;
+  transactionExtraId?: string | null;
+  transactionExtra?: TransactionExtraType | null;
 }
 
 export interface TransactionTypeWhenOperate extends TransactionType {

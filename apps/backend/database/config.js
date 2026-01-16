@@ -12,10 +12,10 @@ module.exports = {
     dialect: 'postgres',
     schema: 'accounting',
     dialectOptions: {
-      ssl: {
+      ssl: process.env.PG_SSL === 'true' ? {
         require: true,
         rejectUnauthorized: false,
-      },
+      } : false,
     },
   },
   // CI
@@ -28,10 +28,10 @@ module.exports = {
     dialect: 'postgres',
     schema: 'accounting',
     dialectOptions: {
-      ssl: {
+      ssl: process.env.PG_SSL === 'true' ? {
         require: true,
         rejectUnauthorized: false,
-      },
+      } : false,
     },
   },
   // 雲端(不論測試還是生產)
