@@ -14,6 +14,8 @@ import {
   getTransactions,
   addTransaction,
   addTransfer,
+  updateTransaction,
+  deleteTransaction,
   getTransactionsSummary,
 } from './transaction';
 import {
@@ -47,6 +49,8 @@ export default {
   deleteAccount,
   addTransaction,
   addTransfer,
+  updateTransaction,
+  deleteTransaction,
   getTransactionsSummary,
   getOverviewTrend,
   getOverviewTop3Categories,
