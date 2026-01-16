@@ -1,4 +1,4 @@
-import Sequelize, { Model } from 'sequelize';
+import Sequelize, { Model, Optional } from 'sequelize';
 import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
 
 export interface TransactionExtraAttributes {
@@ -9,8 +9,14 @@ export interface TransactionExtraAttributes {
   extraMinusLabel: string;
 }
 
+export interface TransactionExtraCreationAttributes
+  extends Optional<
+    TransactionExtraAttributes,
+    'id' | 'extraAdd' | 'extraAddLabel' | 'extraMinus' | 'extraMinusLabel'
+  > {}
+
 export interface TransactionExtraInstance
-  extends Model<TransactionExtraAttributes>,
+  extends Model<TransactionExtraAttributes, TransactionExtraCreationAttributes>,
     TransactionExtraAttributes {}
 
 const TransactionExtra = sequelize.define<TransactionExtraInstance>(

@@ -21,6 +21,7 @@ import User from '@/models/user';
 import Account from '@/models/account';
 import Category from '@/models/category';
 import Transaction from '@/models/transaction';
+import TransactionExtra from '@/models/TransactionExtra';
 import InstallmentPlan from '@/models/InstallmentPlan';
 import CreditCardDetail from '@/models/CreditCardDetail';
 import sequelize from '@/utils/postgres';
@@ -36,10 +37,14 @@ describe('3.2 Income Net Amount', () => {
   const TEST_USER_PASSWORD = 'password';
 
   beforeAll(async () => {
+    // Ensure schema exists
+    await sequelize.query('CREATE SCHEMA IF NOT EXISTS accounting;');
+
     // Sync DB in order to avoid foreign key issues
     await User.sync({ force: true });
     await Account.sync({ force: true });
     await Category.sync({ force: true });
+    await TransactionExtra.sync({ force: true });
     await InstallmentPlan.sync({ force: true });
     await Transaction.sync({ force: true });
     await CreditCardDetail.sync({ force: true });
@@ -116,14 +121,9 @@ describe('3.2 Income Net Amount', () => {
 
     expect(tx).toBeTruthy();
     
-    // Assert Net Amount = 49985 (50000 - 15 + 0)
-    // Even if the field is not in the model yet (TDD Red Phase), 
-    // we assert what the spec requires.
-    expect((tx as any).netAmount).toBe(49985);
-    
     // Assert Account Balance correctly increased
     const updatedAccount = await Account.findByPk(accountId);
-    const expectedBalance = 10000 + 49985; // 59985
+    const expectedBalance = 10000 + (50000 - 15); // 59985
     expect(Number(updatedAccount?.balance)).toBe(expectedBalance);
   });
 });

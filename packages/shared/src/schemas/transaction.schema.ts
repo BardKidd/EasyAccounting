@@ -24,6 +24,10 @@ const baseSchema = z.object({
   ]),
   isReconciled: z.boolean().optional(),
   reconciliationDate: z.union([z.string(), z.date()]).nullable().optional(),
+  extraAdd: z.number().optional(),
+  extraAddLabel: z.string().optional(),
+  extraMinus: z.number().optional(),
+  extraMinusLabel: z.string().optional(),
 });
 
 export const createTransactionSchema = baseSchema.and(
