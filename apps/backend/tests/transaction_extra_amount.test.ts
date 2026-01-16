@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../src/app';
+import Transaction from '@/models/transaction';
 import User from '@/models/user';
 import Account from '@/models/account';
 import Category from '@/models/category';
-import Transaction from '@/models/transaction';
+import InstallmentPlan from '@/models/InstallmentPlan';
 import sequelize from '@/utils/postgres';
 import { RootType, PaymentFrequency } from '@repo/shared';
 import { StatusCodes } from 'http-status-codes';
@@ -33,7 +34,15 @@ describe('Transaction Extra Amount Integration Test', () => {
 
   beforeAll(async () => {
     // Sync DB
-    await sequelize.sync({ force: true });
+    await sequelize.query('DROP SCHEMA IF EXISTS accounting CASCADE');
+    await sequelize.query('CREATE SCHEMA accounting');
+    
+    // Manually sync in order to avoid FK issues
+    await User.sync({ force: true });
+    await Account.sync({ force: true });
+    await Category.sync({ force: true });
+    await InstallmentPlan.sync({ force: true });
+    await Transaction.sync({ force: true });
 
     // 1. Ensure User Exists & Login
     const hashedPassword = await bcrypt.hash(TEST_USER_PASSWORD, 10);
@@ -85,6 +94,8 @@ describe('Transaction Extra Amount Integration Test', () => {
       accountId: accountId,
       categoryId: categoryId,
       paymentFrequency: PaymentFrequency.ONE_TIME,
+      description: 'Test extra amount',
+      receipt: null,
       extraAdd: 50,
       extraMinus: 10,
     };
@@ -93,8 +104,8 @@ describe('Transaction Extra Amount Integration Test', () => {
     const res = await agent.post('/api/transaction').send(transactionData);
 
     // Then
-    expect(res.status).toBe(StatusCodes.OK);
-    const transactionId = res.body.id;
+    expect(res.status).toBe(StatusCodes.CREATED);
+    const transactionId = res.body.data.id;
     expect(transactionId).toBeDefined();
 
     // Verify Transaction
