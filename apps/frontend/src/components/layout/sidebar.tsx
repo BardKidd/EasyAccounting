@@ -11,7 +11,7 @@ import {
   Settings,
   PieChart,
   Menu,
-  Landmark,
+  Command,
   FileCheck,
 } from 'lucide-react';
 import {
@@ -72,10 +72,10 @@ function SidebarContent({
           className="flex items-center gap-3 hover:opacity-90 transition-all cursor-pointer group"
         >
           <div className="p-2 rounded-xl bg-white/10 group-hover:bg-white/20 transition-colors">
-            <Landmark className="h-6 w-6 text-white" />
+            <Command className="h-6 w-6 text-white" />
           </div>
           <h2 className="text-xl font-bold tracking-wide text-white font-playfair">
-            EasyAccount
+            EasyAccounting
           </h2>
         </Link>
       </div>
