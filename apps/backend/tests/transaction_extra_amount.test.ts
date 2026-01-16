@@ -4,6 +4,9 @@ import { app } from '../src/app';
 import User from '@/models/user';
 import Account from '@/models/account';
 import Category from '@/models/category';
+import Transaction from '@/models/transaction';
+import InstallmentPlan from '@/models/InstallmentPlan';
+import CreditCardDetail from '@/models/CreditCardDetail';
 import sequelize from '@/utils/postgres';
 import { RootType, PaymentFrequency } from '@repo/shared';
 import { StatusCodes } from 'http-status-codes';
@@ -29,12 +32,18 @@ describe('Transaction Extra Amount Logic (TDD)', () => {
   let accountId: string;
   let categoryId: string;
 
-  const TEST_USER_EMAIL = 'test_transaction_extra@example.com';
+  const TEST_USER_EMAIL = `test_transaction_extra_${Date.now()}@example.com`;
   const TEST_USER_PASSWORD = 'password';
 
   beforeAll(async () => {
-    // Sync DB to ensure clean state
-    await sequelize.sync({ force: true });
+    // Ensure schema exists
+    await sequelize.query('CREATE SCHEMA IF NOT EXISTS accounting;');
+    // Try to sync without force to avoid relation errors and deadlocks if possible
+    try {
+      await sequelize.sync();
+    } catch (e) {
+      console.warn('Sync failed, but continuing...', e);
+    }
 
     // Create User
     const hashedPassword = await bcrypt.hash(TEST_USER_PASSWORD, 10);
@@ -100,7 +109,8 @@ describe('Transaction Extra Amount Logic (TDD)', () => {
     expect(res.body.isSuccess).toBe(true);
 
     // 1. Assert transactionExtraId is NULL
-    // If the feature is not implemented, this might be undefined, which causes test failure (Red Phase)
+    // In TDD Red Phase, this is expected to fail because the field doesn't exist yet
+    expect(res.body.data).toHaveProperty('transactionExtraId');
     expect(res.body.data.transactionExtraId).toBeNull();
 
     // 2. Assert Account Balance
