@@ -27,11 +27,9 @@ module.exports = {
     port: parseInt(process.env.PG_PORT),
     dialect: 'postgres',
     schema: 'accounting',
+    // CI 環境應使用測試環境，在該 container 中建立模擬的測試環境來測試，通常不需要 SSL
     dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false,
-      },
+      ssl: false,
     },
   },
   // 雲端(不論測試還是生產)

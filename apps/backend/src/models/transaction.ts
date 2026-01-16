@@ -5,6 +5,7 @@ import { TransactionType, RootType, PaymentFrequency } from '@repo/shared';
 export interface TransactionAttributes extends TransactionType {
   linkId?: string | null;
   targetAccountId?: string | null;
+  transactionExtraId?: string | null;
 }
 export interface TransactionInstance
   extends Model<TransactionAttributes>,
@@ -105,6 +106,14 @@ const Transaction = sequelize.define<TransactionInstance>(
       allowNull: true,
       references: {
         model: 'installment_plan',
+        key: 'id',
+      },
+    },
+    transactionExtraId: {
+      type: Sequelize.UUID,
+      allowNull: true,
+      references: {
+        model: 'transaction_extra',
         key: 'id',
       },
     },

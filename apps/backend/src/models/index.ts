@@ -1,6 +1,7 @@
 export { default as Account } from './account';
 export { default as Category } from './category';
 export { default as Transaction } from './transaction';
+export { default as TransactionExtra } from './TransactionExtra';
 export { default as User } from './user';
 export { default as CreditCardDetail } from './CreditCardDetail';
 export { default as InstallmentPlan } from './InstallmentPlan';
