@@ -21,6 +21,8 @@ import User from '@/models/user';
 import Account from '@/models/account';
 import Category from '@/models/category';
 import Transaction from '@/models/transaction';
+import InstallmentPlan from '@/models/InstallmentPlan';
+import CreditCardDetail from '@/models/CreditCardDetail';
 import sequelize from '@/utils/postgres';
 import { RootType, PaymentFrequency } from '@repo/shared';
 import { StatusCodes } from 'http-status-codes';
@@ -34,8 +36,13 @@ describe('3.2 Income Net Amount', () => {
   const TEST_USER_PASSWORD = 'password';
 
   beforeAll(async () => {
-    // Sync DB
-    await sequelize.sync({ force: true });
+    // Sync DB in order to avoid foreign key issues
+    await User.sync({ force: true });
+    await Account.sync({ force: true });
+    await Category.sync({ force: true });
+    await InstallmentPlan.sync({ force: true });
+    await Transaction.sync({ force: true });
+    await CreditCardDetail.sync({ force: true });
 
     // 1. Create User & Login
     const hashedPassword = await bcrypt.hash(TEST_USER_PASSWORD, 10);
@@ -101,9 +108,6 @@ describe('3.2 Income Net Amount', () => {
     expect(res.status).toBe(StatusCodes.CREATED);
     expect(res.body.isSuccess).toBe(true);
 
-    // Verify Net Amount calculation in Response (if applicable) or DB
-    // The spec implies the effect is on the account balance (and potentially the stored transaction net amount if that field exists, but usually it's derived or stored)
-    // Let's check the transaction in DB
     const tx = await Transaction.findOne({
       where: {
         description: 'Income with extras',
@@ -112,22 +116,14 @@ describe('3.2 Income Net Amount', () => {
 
     expect(tx).toBeTruthy();
     
-    // Check if 'netAmount' field exists on Transaction model or if we just check balance logic.
-    // Looking at the instruction: "斷言 Net Amount = 49985". 
-    // If the model has a netAmount field, we check it. If not, we might need to rely on the logic that updates the balance.
-    // However, usually "Net Amount" implies a field or a returned value.
-    // Let's assume for now we check the account balance change which is the ultimate proof of "Net Amount" application in accounting.
-    // AND if there is a netAmount field, we check that too.
+    // Assert Net Amount = 49985 (50000 - 15 + 0)
+    // Even if the field is not in the model yet (TDD Red Phase), 
+    // we assert what the spec requires.
+    expect((tx as any).netAmount).toBe(49985);
     
-    // Based on common practices in this project (I should check Transaction model if possible, but I can't modify src so I'll trust standard fields)
-    // I'll check the account balance first.
-    
+    // Assert Account Balance correctly increased
     const updatedAccount = await Account.findByPk(accountId);
-    const expectedBalance = 10000 + (50000 - 15 + 0); // 59985
+    const expectedBalance = 10000 + 49985; // 59985
     expect(Number(updatedAccount?.balance)).toBe(expectedBalance);
-
-    // If there is a netAmount field on the transaction (which is likely if it's a specific requirement), we assert it.
-    // Since I am writing the test first, I will assert it on the returned data or DB model if it exists. 
-    // I will check the model definition in `apps/backend/src/models/transaction.ts` first to be sure about the field name.
   });
 });
