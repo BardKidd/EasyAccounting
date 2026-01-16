@@ -649,6 +649,8 @@ const deleteTransaction = async (id: string, userId: string) => {
 
 const createTransfer = async (
   data: CreateTransferSchema & {
+    extraAdd?: number;
+    extraAddLabel?: string;
     extraMinus?: number;
     extraMinusLabel?: string;
   },
@@ -660,11 +662,14 @@ const createTransfer = async (
   return simplifyTransaction(async (t) => {
     if (data.type !== RootType.OPERATE) throw new Error('Must be operate type');
 
+    const extraAdd = Number(data.extraAdd || 0);
     const extraMinus = Number(data.extraMinus || 0);
     let fromExtraId: string | null = null;
-    if (extraMinus !== 0) {
+    if (extraAdd !== 0 || extraMinus !== 0) {
       const extra = await TransactionExtra.create(
         {
+          extraAdd,
+          extraAddLabel: data.extraAddLabel || '折扣',
           extraMinus,
           extraMinusLabel: data.extraMinusLabel || '手續費',
         },
@@ -709,12 +714,12 @@ const createTransfer = async (
       { transaction: t }
     );
 
-    // 來源帳戶：扣除 金額 + 手續費
+    // 來源帳戶：扣除 (金額 + 手續費 - 折扣)
     await calcAccountBalance(
       fromAccount,
       fromData.type,
       fromData.amount,
-      0,
+      extraAdd,
       extraMinus
     );
     // 目的帳戶：增加 金額 (無手續費)

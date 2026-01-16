@@ -111,6 +111,10 @@ export const transactionFormSchema = z.object({
     PaymentFrequency.RECURRING,
     PaymentFrequency.INSTALLMENT,
   ]),
+  extraAdd: z.coerce.number().optional(),
+  extraAddLabel: z.string().optional(),
+  extraMinus: z.coerce.number().optional(),
+  extraMinusLabel: z.string().optional(),
   installment: z
     .object({
       totalInstallments: z.number().int().min(2),
