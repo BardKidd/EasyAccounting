@@ -271,7 +271,7 @@ function NewTransactionSheet({
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <Button className="cursor-pointer">
+        <Button className="cursor-pointer bg-linear-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 border-0 transition-all duration-300 transform hover:scale-105 rounded-xl px-6">
           <Plus className="mr-2 h-4 w-4" /> 新增交易
         </Button>
       </SheetTrigger>

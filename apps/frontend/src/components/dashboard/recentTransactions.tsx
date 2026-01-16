@@ -44,20 +44,26 @@ function RecentTransactions({
   };
 
   return (
-    <Card className="col-span-3">
-      <CardHeader>
-        <CardTitle>近期交易</CardTitle>
+    <Card className="col-span-3 border-0 bg-slate-900/50 backdrop-blur-md shadow-lg shadow-black/10 ring-1 ring-white/10 h-full flex flex-col">
+      <CardHeader className="border-b border-white/5 pb-4">
+        <CardTitle className="text-lg font-bold font-playfair text-white">
+          近期交易
+        </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 overflow-hidden pt-4 px-2">
         {transactions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-muted-foreground">尚無交易記錄</p>
-            <p className="text-sm text-muted-foreground mt-2">
+          <div className="flex flex-col items-center justify-center py-12 text-center h-full">
+            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+              {/* Use a placeholder icon or consistent empty state */}
+              <div className="w-8 h-8 rounded-md border-2 border-dashed border-slate-600" />
+            </div>
+            <p className="text-slate-400 font-medium">尚無交易記錄</p>
+            <p className="text-sm text-slate-500 mt-2">
               點擊右上角「新增交易」按鈕開始記帳
             </p>
           </div>
         ) : (
-          <div className="space-y-8 h-[400px] overflow-y-auto pr-4">
+          <div className="space-y-2 h-full overflow-y-auto pr-2 custom-scrollbar">
             {transactions.map((item) => {
               const category = findCategory(item.categoryId, categories);
               const account = accounts.find((a) => a.id === item.accountId);
@@ -65,36 +71,46 @@ function RecentTransactions({
               const IconComponent = getIcon(category?.icon);
 
               return (
-                <div key={item.id} className="flex items-center">
+                <div
+                  key={item.id}
+                  className="flex items-center p-3 rounded-xl hover:bg-white/5 transition-all duration-200 group border border-transparent hover:border-white/5"
+                >
                   <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                      !category?.color ? 'bg-muted' : ''
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl shadow-inner ${
+                      !category?.color ? 'bg-slate-800' : ''
                     }`}
                     style={{
                       backgroundColor: category?.color
                         ? `${category.color}20` // 透明度
                         : undefined,
+                      boxShadow: category?.color
+                        ? `0 0 10px ${category.color}10`
+                        : 'none',
                     }}
                   >
                     <IconComponent
-                      className="h-5 w-5"
-                      style={{ color: category?.color || 'inherit' }}
+                      className="h-5 w-5 transition-transform group-hover:scale-110 duration-300"
+                      style={{ color: category?.color || '#94a3b8' }}
                     />
                   </div>
-                  <div className="ml-4 space-y-1">
-                    <p className="text-sm font-medium leading-none">
+                  <div className="ml-4 space-y-1 flex-1">
+                    <p className="text-sm font-medium leading-none text-slate-200 group-hover:text-white transition-colors">
                       {category?.name}
                     </p>
-                    {item.description && (
-                      <p className="text-xs text-muted-foreground">
-                        {item.description}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      {account?.name} • {item.date}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      {item.description && (
+                        <span className="text-xs text-slate-500 max-w-[150px] truncate">
+                          {item.description}
+                        </span>
+                      )}
+                      <span className="text-xs text-slate-600">
+                        {account?.name} • {item.date}
+                      </span>
+                    </div>
                   </div>
-                  <div className={`ml-auto font-medium ${color}`}>
+                  <div
+                    className={`ml-auto font-bold font-mono tracking-tight ${color === 'text-green-600' ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : color === 'text-red-600' ? 'text-rose-400 drop-shadow-[0_0_8px_rgba(251,113,133,0.3)]' : 'text-amber-400'}`}
+                  >
                     {prefix}
                     {formatCurrency(item.amount)}
                   </div>

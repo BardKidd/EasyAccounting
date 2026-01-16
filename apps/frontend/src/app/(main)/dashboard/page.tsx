@@ -31,18 +31,23 @@ export default async function DashboardPage() {
     ]);
 
   return (
-    <Container className="py-8 space-y-8">
+    <Container className="py-8 space-y-8 max-w-[1600px] px-4 md:px-8">
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">儀表板</h2>
+        <div className="space-y-1">
+          <h2 className="text-3xl font-bold tracking-tight bg-linear-to-r from-white to-white/60 bg-clip-text text-transparent font-playfair">
+            儀表板
+          </h2>
+          <p className="text-sm text-slate-400">歡迎回來，掌握您的財務狀況</p>
+        </div>
         <NewTransactionSheet categories={categories} accounts={accounts} />
       </div>
 
       <SummaryCards accounts={accounts} summaryData={summary.trends} />
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         <AssetTrendChart data={assetTrend} />
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7 h-auto">
           <div className="lg:col-span-3 h-[500px]">
             <AccountSummaryCard accounts={accounts} />
           </div>

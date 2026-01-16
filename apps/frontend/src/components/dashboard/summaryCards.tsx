@@ -9,29 +9,29 @@ const summaryCardsData = (values = [0, 0, 0, 0] as number[]) => {
       title: '總資產',
       value: formatCurrency(values[0]),
       icon: Wallet,
-      color: 'text-slate-900 dark:text-slate-50',
-      bg: 'bg-slate-100 dark:bg-slate-800',
+      color: 'text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]',
+      bg: 'bg-indigo-500/10',
     },
     {
       title: '本月收入',
       value: formatCurrency(values[1]),
       icon: TrendingUp,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-100 dark:bg-emerald-900/20',
+      color: 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]',
+      bg: 'bg-emerald-500/10',
     },
     {
       title: '本月支出',
       value: formatCurrency(values[2]),
       icon: TrendingDown,
-      color: 'text-rose-600',
-      bg: 'bg-rose-100 dark:bg-rose-900/20',
+      color: 'text-rose-400 drop-shadow-[0_0_8px_rgba(251,113,133,0.5)]',
+      bg: 'bg-rose-500/10',
     },
     {
       title: '本月損益',
       value: formatCurrency(values[3]),
       icon: PiggyBank,
-      color: 'text-indigo-600',
-      bg: 'bg-indigo-100 dark:bg-indigo-900/20',
+      color: 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]',
+      bg: 'bg-amber-500/10',
     },
   ];
 };
@@ -86,15 +86,24 @@ function SummaryCards({
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {summary.map((item) => (
-        <Card key={item.title}>
+        <Card
+          key={item.title}
+          className="border-0 bg-slate-900/50 backdrop-blur-md shadow-lg shadow-black/10 ring-1 ring-white/10 hover:bg-slate-900/70 transition-all duration-300 group"
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
-            <div className={`p-2 rounded-full ${item.bg}`}>
+            <CardTitle className="text-sm font-medium text-slate-400 group-hover:text-slate-300 transition-colors">
+              {item.title}
+            </CardTitle>
+            <div
+              className={`p-2 rounded-xl transition-all duration-300 group-hover:scale-110 ${item.bg.replace('bg-', 'bg-opacity-20 ')}`}
+            >
               <item.icon className={`h-4 w-4 ${item.color}`} />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{item.value}</div>
+            <div className="text-2xl font-bold text-slate-50 font-playfair tracking-wide">
+              {item.value}
+            </div>
           </CardContent>
         </Card>
       ))}

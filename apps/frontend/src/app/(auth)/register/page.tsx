@@ -50,12 +50,12 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="w-full max-w-[350px] mx-auto space-y-6">
-      <div className="flex flex-col space-y-2 text-center">
-        <h1 className="text-3xl font-playfair font-semibold tracking-tight">
+    <div className="w-full bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl rounded-2xl p-8 md:p-10 space-y-6">
+      <div className="flex flex-col space-y-2 text-center text-white">
+        <h1 className="text-3xl font-playfair font-semibold tracking-wide drop-shadow-sm">
           建立帳戶
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-white/80 font-light tracking-wide">
           開始使用 EasyAccounting 管理您的財務
         </p>
       </div>
@@ -65,17 +65,19 @@ export default function RegisterPage() {
             control={form.control}
             name="name"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>姓名</FormLabel>
+              <FormItem className="space-y-1">
+                <FormLabel className="text-white/90 font-light">姓名</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="請輸入您的名字"
-                    autoComplete="name"
-                    className="h-11"
-                    {...field}
-                  />
+                  <div className="relative group">
+                    <Input
+                      placeholder="請輸入您的名字"
+                      autoComplete="name"
+                      className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-1 focus-visible:ring-white/40 focus-visible:border-white/40 transition-all duration-300 hover:bg-white/10 focus:bg-white/10"
+                      {...field}
+                    />
+                  </div>
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-300 font-light" />
               </FormItem>
             )}
           />
@@ -83,18 +85,22 @@ export default function RegisterPage() {
             control={form.control}
             name="email"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>電子郵件</FormLabel>
+              <FormItem className="space-y-1">
+                <FormLabel className="text-white/90 font-light">
+                  電子郵件
+                </FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="請輸入您的電子郵件"
-                    type="email"
-                    autoComplete="email"
-                    className="h-11"
-                    {...field}
-                  />
+                  <div className="relative group">
+                    <Input
+                      placeholder="請輸入您的電子郵件"
+                      type="email"
+                      autoComplete="email"
+                      className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-1 focus-visible:ring-white/40 focus-visible:border-white/40 transition-all duration-300 hover:bg-white/10 focus:bg-white/10"
+                      {...field}
+                    />
+                  </div>
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-300 font-light" />
               </FormItem>
             )}
           />
@@ -102,18 +108,20 @@ export default function RegisterPage() {
             control={form.control}
             name="password"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>密碼</FormLabel>
+              <FormItem className="space-y-1">
+                <FormLabel className="text-white/90 font-light">密碼</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="請輸入您的密碼"
-                    type="password"
-                    autoComplete="new-password"
-                    className="h-11"
-                    {...field}
-                  />
+                  <div className="relative group">
+                    <Input
+                      placeholder="請輸入您的密碼"
+                      type="password"
+                      autoComplete="new-password"
+                      className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-1 focus-visible:ring-white/40 focus-visible:border-white/40 transition-all duration-300 hover:bg-white/10 focus:bg-white/10"
+                      {...field}
+                    />
+                  </div>
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-300 font-light" />
               </FormItem>
             )}
           />
@@ -121,35 +129,46 @@ export default function RegisterPage() {
             control={form.control}
             name="confirmPassword"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>確認密碼</FormLabel>
+              <FormItem className="space-y-1">
+                <FormLabel className="text-white/90 font-light">
+                  確認密碼
+                </FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="請再次輸入您的密碼"
-                    type="password"
-                    disabled={isLoading}
-                    className="h-11"
-                    {...field}
-                  />
+                  <div className="relative group">
+                    <Input
+                      placeholder="請再次輸入您的密碼"
+                      type="password"
+                      disabled={isLoading}
+                      className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-1 focus-visible:ring-white/40 focus-visible:border-white/40 transition-all duration-300 hover:bg-white/10 focus:bg-white/10"
+                      {...field}
+                    />
+                  </div>
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-300 font-light" />
               </FormItem>
             )}
           />
           <Button
             type="submit"
-            className="w-full h-11 cursor-pointer font-medium"
+            className="w-full h-12 mt-2 bg-linear-to-r from-white/90 to-white/70 hover:from-white hover:to-white/90 text-slate-900 border-0 shadow-lg shadow-white/5 transition-all duration-300 transform hover:-translate-y-0.5 font-medium text-base tracking-wide"
             disabled={isLoading}
           >
-            {isLoading ? '註冊中...' : '註冊'}
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                註冊中...
+              </span>
+            ) : (
+              '註冊'
+            )}
           </Button>
         </form>
       </Form>
-      <div className="text-center text-sm text-muted-foreground">
+      <div className="text-center text-sm text-white/60">
         已經有帳戶？{' '}
         <Link
           href="/login"
-          className="text-primary underline-offset-4 hover:underline font-medium"
+          className="text-white underline-offset-4 hover:underline font-medium hover:text-white/90 transition-colors"
         >
           立即登入
         </Link>

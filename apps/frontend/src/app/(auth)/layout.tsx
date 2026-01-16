@@ -7,20 +7,33 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen w-full lg:grid lg:grid-cols-2">
-      <div className="hidden lg:block relative h-full w-full">
+    <div className="min-h-screen w-full relative flex items-center justify-center overflow-hidden bg-slate-950">
+      {/* Background Image with optional blur for Depth of Field */}
+      <div className="absolute inset-0 w-full h-full z-0">
         <Image
           src={LoginBackground}
           alt="Authentication background"
           fill
-          className="object-cover"
+          className="object-cover opacity-90 transition-opacity duration-700 hover:scale-105 transform hover:opacity-100 ease-in-out"
           priority
           placeholder="blur"
+          style={{
+            /* Subtle zoom effect for "alive" feel */
+            transition: 'transform 20s ease-in-out',
+          }}
         />
-        <div className="absolute inset-0 bg-black/40" />{' '}
-        {/* Overlay for better text readability if needed */}
-        <div className="relative z-20 flex h-full flex-col justify-between p-10 text-white">
-          <div className="flex items-center text-lg font-medium">
+        {/* Dark overlay with blur for DOF effect behind the glass card */}
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
+      </div>
+
+      {/* Main Content Container - Centered Glass Card Context */}
+      <div className="relative z-10 w-full max-w-lg px-4 animate-in fade-in zoom-in duration-500 slide-in-from-bottom-4">
+        {/* Logo and Slogan typically go inside the card or just above it. 
+            For this design, let's keep it clean and put the logo inside the cards or just above.
+            We'll pass children through which will be the cards.
+        */}
+        <div className="flex flex-col items-center justify-center mb-8 text-center space-y-2 text-white drop-shadow-md">
+          <div className="flex items-center text-2xl font-semibold tracking-wide">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -29,23 +42,20 @@ export default function AuthLayout({
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="mr-2 h-6 w-6"
+              className="mr-3 h-8 w-8 text-white"
             >
               <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
             </svg>
             EasyAccounting
           </div>
-          <div className="space-y-2">
-            <blockquote className="space-y-2">
-              <p className="text-lg font-playfair italic">
-                &ldquo;掌控財務，就是掌控人生。讓每一筆收支都清晰可見，為您的未來奠定堅實基礎。&rdquo;
-              </p>
-            </blockquote>
-          </div>
         </div>
-      </div>
-      <div className="flex h-full items-center justify-center p-8 bg-slate-50 dark:bg-slate-950">
+
         {children}
+      </div>
+
+      {/* Footer / Copyright / Additional Links if needed */}
+      <div className="absolute bottom-4 text-xs text-white/50 z-10">
+        © {new Date().getFullYear()} EasyAccounting. All rights reserved.
       </div>
     </div>
   );
