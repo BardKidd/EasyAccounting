@@ -1,4 +1,5 @@
 import { RootType } from '../constants';
+import { TransactionExtraType } from './transactionTypes';
 
 export interface OverviewTrendType {
   income: number;
@@ -67,6 +68,7 @@ export interface DetailsTransaction {
   description: string;
   accountName: string;
   targetAccountName?: string;
+  transactionExtra?: TransactionExtraType | null;
 }
 
 // 類別 API 回覆欄位

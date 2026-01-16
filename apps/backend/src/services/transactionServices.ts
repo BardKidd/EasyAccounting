@@ -90,10 +90,16 @@ const getTransactionsByDate = async (
       attributes: {
         exclude: ['createdAt', 'updatedAt', 'deletedAt', 'linkId'],
       },
-      raw: true,
+      include: [
+        {
+          model: TransactionExtra,
+          as: 'transactionExtra',
+          attributes: { exclude: ['createdAt', 'updatedAt', 'deletedAt'] },
+        },
+      ],
     });
     return {
-      items: rows as unknown as TransactionType[],
+      items: rows.map((r) => r.toJSON()) as unknown as TransactionType[],
       pagination: {
         total: count,
         page,
@@ -122,15 +128,20 @@ const getTransactionsDashboardSummary = async (
     };
   }
 
-  const transactions = (await Transaction.findAll({
+  const transactions = await Transaction.findAll({
     where: {
       ...dateFilter,
       userId,
       linkId: null as any,
     },
-    attributes: ['amount', 'date', 'type'],
-    raw: true,
-  })) as unknown as Pick<TransactionType, 'amount' | 'date' | 'type'>[];
+    attributes: ['amount', 'date', 'type', 'transactionExtraId'],
+    include: [
+      {
+        model: TransactionExtra,
+        as: 'transactionExtra',
+      },
+    ],
+  });
 
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -186,8 +197,9 @@ const getTransactionsDashboardSummary = async (
     balance: 0,
   };
 
-  transactions.forEach((t) => {
-    const date = new Date(t.date);
+  transactions.forEach((t: any) => {
+    const data = t.toJSON();
+    const date = new Date(data.date);
     let key = '';
 
     if (groupBy === PeriodType.DAY) {
@@ -204,14 +216,18 @@ const getTransactionsDashboardSummary = async (
 
     const bucket = buckets.find((b) => b.date === key);
     if (bucket) {
-      if (t.type === RootType.INCOME) {
-        const val = Number(t.amount);
-        bucket.income += val;
-        summary.income += val;
-      } else if (t.type === RootType.EXPENSE) {
-        const val = Number(t.amount);
-        bucket.expense += val;
-        summary.expense += val;
+      const extraAdd = Number(data.transactionExtra?.extraAdd || 0);
+      const extraMinus = Number(data.transactionExtra?.extraMinus || 0);
+      const amount = Number(data.amount);
+
+      if (data.type === RootType.INCOME) {
+        const netAmount = amount - extraMinus + extraAdd;
+        bucket.income += netAmount;
+        summary.income += netAmount;
+      } else if (data.type === RootType.EXPENSE) {
+        const netAmount = amount + extraMinus - extraAdd;
+        bucket.expense += netAmount;
+        summary.expense += netAmount;
       }
     }
   });

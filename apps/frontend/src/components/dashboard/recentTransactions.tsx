@@ -6,7 +6,7 @@ import {
   RootType,
 } from '@repo/shared';
 import { getIcon } from '@/lib/icon-mapping';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, calculateNetAmount } from '@/lib/utils';
 
 function RecentTransactions({
   transactions,
@@ -35,12 +35,32 @@ function RecentTransactions({
   };
 
   const getAmountStyle = (item: TransactionType) => {
-    if (item.targetAccountId) {
-      return { color: 'text-orange-500', prefix: '' };
+    const netAmount = calculateNetAmount(item);
+    const isTransfer = !!item.targetAccountId;
+
+    if (isTransfer) {
+      return { color: 'text-amber-400', prefix: '', amount: netAmount };
     }
+
+    if (netAmount === 0) {
+      return {
+        color: 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]',
+        prefix: '',
+        amount: netAmount,
+      };
+    }
+
     return item.type === RootType.INCOME
-      ? { color: 'text-green-600', prefix: '+' }
-      : { color: 'text-red-600', prefix: '-' };
+      ? {
+          color: 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]',
+          prefix: '+',
+          amount: netAmount,
+        }
+      : {
+          color: 'text-rose-400 drop-shadow-[0_0_8px_rgba(251,113,133,0.3)]',
+          prefix: '-',
+          amount: netAmount,
+        };
   };
 
   return (
@@ -67,7 +87,7 @@ function RecentTransactions({
             {transactions.map((item) => {
               const category = findCategory(item.categoryId, categories);
               const account = accounts.find((a) => a.id === item.accountId);
-              const { color, prefix } = getAmountStyle(item);
+              const { color, prefix, amount } = getAmountStyle(item);
               const IconComponent = getIcon(category?.icon);
 
               return (
@@ -109,10 +129,10 @@ function RecentTransactions({
                     </div>
                   </div>
                   <div
-                    className={`ml-auto font-bold font-mono tracking-tight ${color === 'text-green-600' ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : color === 'text-red-600' ? 'text-rose-400 drop-shadow-[0_0_8px_rgba(251,113,133,0.3)]' : 'text-amber-400'}`}
+                    className={`ml-auto font-bold font-mono tracking-tight ${color}`}
                   >
                     {prefix}
-                    {formatCurrency(item.amount)}
+                    {formatCurrency(Math.abs(amount))}
                   </div>
                 </div>
               );

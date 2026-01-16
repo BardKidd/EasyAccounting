@@ -18,6 +18,7 @@ import CustomPagination from '@/components/customPagination';
 import { format } from 'date-fns';
 import { ArrowRightLeft, ArrowRight } from 'lucide-react';
 import { ACCOUNT_ICONS, IconName } from '@/lib/icon-mapping';
+import { calculateNetAmount } from '@/lib/utils';
 
 interface TransactionTableProps {
   transactions: TransactionResponse;
@@ -60,7 +61,13 @@ function TransactionTable({
   const isTransfer = (item: any) => !!item.targetAccountId;
 
   const formatAmount = (item: any) => {
-    const formatted = Math.abs(item.amount).toLocaleString();
+    const netAmount = calculateNetAmount(item);
+    const formatted = Math.abs(netAmount).toLocaleString();
+
+    // Net Amount 為 0 元，顯示綠色樣式
+    if (netAmount === 0 && !isTransfer(item)) {
+      return <span className="text-emerald-500 font-medium">{formatted}</span>;
+    }
 
     // 轉帳顯示橙黃色，不帶正負號
     if (isTransfer(item)) {
@@ -98,7 +105,7 @@ function TransactionTable({
             <TableHead className="w-[120px]">分類</TableHead>
             <TableHead className="w-[200px]">帳戶</TableHead>
             <TableHead>備註</TableHead>
-            <TableHead className="text-right w-[120px]">金額</TableHead>
+            <TableHead className="text-right w-[150px]">實付/實收金額</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

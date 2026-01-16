@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, calculateNetAmount } from '@/lib/utils';
 import { getIcon } from '@/lib/icon-mapping';
 import { DetailsTransaction, RootType } from '@repo/shared';
 
@@ -13,16 +13,21 @@ export function DailyTransactionList({
   transactions,
 }: DailyTransactionListProps) {
   const getAmountStyle = (item: DetailsTransaction) => {
+    const netAmount = calculateNetAmount(item);
     if (item.targetAccountName) {
-      return { color: 'text-orange-500', prefix: '' };
+      return { color: 'text-orange-500', prefix: '', amount: netAmount };
+    }
+
+    if (netAmount === 0) {
+      return { color: 'text-emerald-500', prefix: '', amount: netAmount };
     }
 
     if (item.type === RootType.INCOME)
-      return { color: 'text-green-600', prefix: '+' };
+      return { color: 'text-green-600', prefix: '+', amount: netAmount };
     if (item.type === RootType.EXPENSE)
-      return { color: 'text-red-600', prefix: '-' };
+      return { color: 'text-red-600', prefix: '-', amount: netAmount };
 
-    return { color: 'text-gray-600', prefix: '' };
+    return { color: 'text-gray-600', prefix: '', amount: netAmount };
   };
 
   return (
@@ -33,7 +38,7 @@ export function DailyTransactionList({
       <CardContent>
         <div className="space-y-6">
           {transactions.map((item) => {
-            const { color, prefix } = getAmountStyle(item);
+            const { color, prefix, amount } = getAmountStyle(item);
             const IconComponent = getIcon(item.categoryIcon);
 
             return (
@@ -74,7 +79,7 @@ export function DailyTransactionList({
                 {/* Amount */}
                 <div className={`ml-auto font-medium ${color}`}>
                   {prefix}
-                  {formatCurrency(item.amount)}
+                  {formatCurrency(Math.abs(amount))}
                 </div>
               </div>
             );

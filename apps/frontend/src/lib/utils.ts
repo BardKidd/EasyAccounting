@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { toast } from 'sonner';
-import { PeriodType, ResponseHelper } from '@repo/shared';
+import { PeriodType, ResponseHelper, RootType } from '@repo/shared';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -145,3 +145,20 @@ export const formatCurrency = (val: number) => {
     maximumFractionDigits: 0,
   }).format(val);
 };
+
+/**
+ * 計算交易的 Net Amount (實付/實收金額)
+ * 支出：Net Amount = Amount + extraMinus (手續費) - extraAdd (折扣)
+ * 收入：Net Amount = Amount - extraMinus (手續費) + extraAdd (折扣)
+ */
+export function calculateNetAmount(item: any): number {
+  const amount = Number(item.amount) || 0;
+  const extraAdd = Number(item.transactionExtra?.extraAdd || 0);
+  const extraMinus = Number(item.transactionExtra?.extraMinus || 0);
+
+  if (item.type === RootType.INCOME) {
+    return amount - extraMinus + extraAdd;
+  }
+  // 支出或轉帳 (轉帳通常在來源端視為支出)
+  return amount + extraMinus - extraAdd;
+}
