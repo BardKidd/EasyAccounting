@@ -36,8 +36,16 @@ describe('Transaction Extra Cascade Delete', () => {
   const TEST_USER_PASSWORD = 'password';
 
   beforeAll(async () => {
-    // Initialize DB
-    await sequelize.sync({ force: true });
+    // Ensure schema exists
+    await sequelize.query('CREATE SCHEMA IF NOT EXISTS accounting;');
+    
+    // Sync models in order
+    await User.sync({ force: true });
+    await Account.sync({ force: true });
+    await Category.sync({ force: true });
+    await InstallmentPlan.sync({ force: true });
+    await CreditCardDetail.sync({ force: true });
+    await Transaction.sync({ force: true });
 
     // Create User
     const hashedPassword = await bcrypt.hash(TEST_USER_PASSWORD, 10);
@@ -95,6 +103,8 @@ describe('Transaction Extra Cascade Delete', () => {
       accountId: accountId,
       categoryId: categoryId,
       paymentFrequency: PaymentFrequency.ONE_TIME,
+      description: 'Test extra description',
+      receipt: null,
       // Extra fields
       extraAdd: 100,
       extraAddLabel: 'Discount',
@@ -107,7 +117,7 @@ describe('Transaction Extra Cascade Delete', () => {
     // We expect 201 Created. If implementation is missing, this might pass but ignore extra fields, 
     // or fail if validation is strict.
     expect(createRes.status).toBe(StatusCodes.CREATED);
-    const transactionId = createRes.body.id;
+    const transactionId = createRes.body.data.id;
     expect(transactionId).toBeDefined();
 
     // Verify TransactionExtra exists via linkage
