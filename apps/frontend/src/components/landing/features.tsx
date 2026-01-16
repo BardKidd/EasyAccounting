@@ -46,27 +46,42 @@ const features = [
 
 export function Features() {
   return (
-    <section id="features" className="py-20 bg-muted/50">
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-            強大功能，簡單易用
+    <section
+      id="features"
+      className="py-24 bg-white dark:bg-slate-900 transition-colors duration-500"
+    >
+      <div className="container mx-auto px-6 md:px-12">
+        <div className="text-center mb-20 space-y-4">
+          <h2 className="font-[family-name:var(--font-playfair)] text-4xl md:text-5xl font-medium tracking-tight text-slate-900 dark:text-slate-50">
+            精緻生活，
+            <span className="italic text-slate-500 dark:text-slate-400">
+              從記帳開始
+            </span>
           </h2>
-          <p className="mt-4 text-muted-foreground md:text-xl max-w-2xl mx-auto">
-            我們提供您所需的一切工具，幫助您更好地管理個人財務。
+          <div className="h-px w-16 mx-auto bg-amber-500/50 my-6" />
+          <p className="mt-4 text-slate-600 dark:text-slate-300 md:text-lg max-w-2xl mx-auto font-light leading-relaxed tracking-wide">
+            我們提供您所需的一切工具，幫助您以最優雅的方式管理個人財務。
           </p>
         </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {features.map((feature) => (
+          {features.map((feature, index) => (
             <div
               key={feature.name}
-              className="flex flex-col items-center text-center p-6 bg-background rounded-xl shadow-sm border hover:shadow-md transition-shadow"
+              className="group relative p-8 bg-slate-50 dark:bg-slate-800/50 rounded-sm border border-slate-100 dark:border-slate-800 hover:border-amber-200 dark:hover:border-amber-900/50 transition-all duration-500 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-none"
             >
-              <div className="p-3 bg-primary/10 rounded-full mb-4">
-                <feature.icon className="h-8 w-8 text-primary" />
+              <div className="absolute top-0 left-8 -translate-y-1/2 bg-white dark:bg-slate-900 p-3 rounded-full border border-slate-100 dark:border-slate-800 group-hover:border-amber-200 dark:group-hover:border-amber-900/50 transition-colors duration-500">
+                <feature.icon className="h-6 w-6 text-slate-400 group-hover:text-amber-600 transition-colors duration-500" />
               </div>
-              <h3 className="text-xl font-bold mb-2">{feature.name}</h3>
-              <p className="text-muted-foreground">{feature.description}</p>
+
+              <div className="mt-4 space-y-3">
+                <h3 className="text-xl font-medium text-slate-900 dark:text-slate-100 tracking-wide font-serif">
+                  {feature.name}
+                </h3>
+                <p className="text-slate-500 dark:text-slate-400 leading-7 font-light text-sm">
+                  {feature.description}
+                </p>
+              </div>
             </div>
           ))}
         </div>
