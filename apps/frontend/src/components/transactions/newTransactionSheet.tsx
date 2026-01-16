@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { CalendarIcon, Plus } from 'lucide-react';
+import { CalendarIcon, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   CategoryType,
@@ -72,6 +72,7 @@ function NewTransactionSheet({
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showExtra, setShowExtra] = useState(false);
 
   // 因為 subCategory 還沒選擇，所以只能在這裡判斷
   const formSchema = useMemo(() => {
@@ -112,6 +113,22 @@ function NewTransactionSheet({
           });
         }
       }
+
+      // 額外金額驗證
+      if (data.extraAdd && data.extraAdd < 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: '金額不可為負數',
+          path: ['extraAdd'],
+        });
+      }
+      if (data.extraMinus && data.extraMinus < 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: '金額不可為負數',
+          path: ['extraMinus'],
+        });
+      }
     });
   }, [categories]);
 
@@ -130,6 +147,10 @@ function NewTransactionSheet({
       receipt: '',
       targetAccountId: '',
       paymentFrequency: PaymentFrequency.ONE_TIME,
+      extraAdd: 0,
+      extraAddLabel: '折扣/折價',
+      extraMinus: 0,
+      extraMinusLabel: '服務費/手續費',
       installment: {
         totalInstallments: 3,
         interestType: InterestType.NONE,
@@ -210,6 +231,10 @@ function NewTransactionSheet({
         data.paymentFrequency === PaymentFrequency.INSTALLMENT
           ? (data.installment as CreateTransactionSchema['installment'])
           : undefined,
+      extraAdd: data.extraAdd,
+      extraAddLabel: data.extraAddLabel,
+      extraMinus: data.extraMinus,
+      extraMinusLabel: data.extraMinusLabel,
     };
 
     try {
@@ -220,6 +245,7 @@ function NewTransactionSheet({
         toast.success(result.message);
         router.refresh();
         form.reset();
+        setShowExtra(false);
       }
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -241,6 +267,10 @@ function NewTransactionSheet({
       receipt: data.receipt,
       paymentFrequency: data.paymentFrequency,
       targetAccountId: data.targetAccountId as string,
+      extraAdd: data.extraAdd,
+      extraAddLabel: data.extraAddLabel,
+      extraMinus: data.extraMinus,
+      extraMinusLabel: data.extraMinusLabel,
     };
 
     try {
@@ -251,6 +281,7 @@ function NewTransactionSheet({
         toast.success(result.message);
         router.refresh();
         form.reset();
+        setShowExtra(false);
       }
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -644,6 +675,144 @@ function NewTransactionSheet({
                   )}
                 </div>
               )}
+
+              {/* Extra Amount Section */}
+              <div className="space-y-4">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-full flex justify-between items-center px-2 hover:bg-muted/50 cursor-pointer"
+                  onClick={() => setShowExtra(!showExtra)}
+                >
+                  <span className="text-sm font-medium text-muted-foreground">
+                    額外金額 (加項/減項)
+                  </span>
+                  {showExtra ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+
+                {showExtra && (
+                  <div className="grid gap-4 p-4 border rounded-lg bg-muted/30 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="extraAddLabel"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">加項名稱</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="例如：折扣、獎金"
+                                {...field}
+                                className="h-9 text-sm"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="extraAdd"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">加項金額</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-2 top-2.5 text-xs text-muted-foreground">
+                                  +
+                                </span>
+                                <Input
+                                  type="number"
+                                  placeholder="0.00"
+                                  {...field}
+                                  className="h-9 text-sm pl-6"
+                                  value={field.value || ''}
+                                  onChange={(e) =>
+                                    field.onChange(e.target.valueAsNumber || 0)
+                                  }
+                                  onFocus={(e) => {
+                                    if (field.value === 0) {
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    const parsed =
+                                      parseFloat(e.target.value) || 0;
+                                    field.onChange(parsed);
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="extraMinusLabel"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">減項名稱</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="例如：服務費、稅金"
+                                {...field}
+                                className="h-9 text-sm"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="extraMinus"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">減項金額</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-2 top-2.5 text-xs text-muted-foreground">
+                                  -
+                                </span>
+                                <Input
+                                  type="number"
+                                  placeholder="0.00"
+                                  {...field}
+                                  className="h-9 text-sm pl-6"
+                                  value={field.value || ''}
+                                  onChange={(e) =>
+                                    field.onChange(e.target.valueAsNumber || 0)
+                                  }
+                                  onFocus={(e) => {
+                                    if (field.value === 0) {
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    const parsed =
+                                      parseFloat(e.target.value) || 0;
+                                    field.onChange(parsed);
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Date / Time */}
               <div className="grid gap-4 grid-cols-2">
