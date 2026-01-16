@@ -26,13 +26,18 @@ module.exports = {
     host: process.env.PG_HOST,
     port: parseInt(process.env.PG_PORT),
     dialect: 'postgres',
-    schema: 'accounting',
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false,
-      },
-    },
+    // schema: 'accounting',
+    dialectOptions:
+      process.env.PG_HOST &&
+      (process.env.PG_HOST.includes('localhost') ||
+        process.env.PG_HOST.includes('127.0.0.1'))
+        ? undefined
+        : {
+            ssl: {
+              require: true,
+              rejectUnauthorized: false,
+            },
+          },
   },
   // 雲端(不論測試還是生產)
   production: {
