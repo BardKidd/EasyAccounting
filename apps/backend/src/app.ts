@@ -79,9 +79,9 @@ User.addHook('afterDestroy', async (user: any, options: any) => {
   const userId = user.id;
 
   // 1. 刪除相關 Account
-  await Account.destroy({ where: { userId }, transaction });
+  await Account.destroy({ where: { userId }, transaction, individualHooks: true });
   // 2. 刪除相關 Transaction
-  await Transaction.destroy({ where: { userId }, transaction });
+  await Transaction.destroy({ where: { userId }, transaction, individualHooks: true });
   // 3. 刪除相關 Notification
   await PersonnelNotification.destroy({ where: { userId }, transaction });
   // 4. 刪除相關 InstallmentPlan

@@ -12,10 +12,10 @@ module.exports = {
     dialect: 'postgres',
     schema: 'accounting',
     dialectOptions: {
-      ssl: process.env.PG_SSL === 'true' ? {
+      ssl: {
         require: true,
         rejectUnauthorized: false,
-      } : false,
+      },
     },
   },
   // CI
