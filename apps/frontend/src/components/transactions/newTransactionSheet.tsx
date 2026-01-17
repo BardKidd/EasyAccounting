@@ -148,9 +148,9 @@ function NewTransactionSheet({
       targetAccountId: '',
       paymentFrequency: PaymentFrequency.ONE_TIME,
       extraAdd: 0,
-      extraAddLabel: '折扣/折價',
+      extraAddLabel: '折扣',
       extraMinus: 0,
-      extraMinusLabel: '服務費/手續費',
+      extraMinusLabel: '手續費',
       installment: {
         totalInstallments: 3,
         interestType: InterestType.NONE,
