@@ -20,21 +20,28 @@ interface TokenPayload {
   email: string;
 }
 
-const isPrd = process.env.NODE_ENV === 'production';
-const isCloudTest = process.env.IS_CLOUD_TEST === 'true';
-const whichDomain = (isPrd: boolean) => {
-  if (isCloudTest) return '.dev.riinouo-eaccounting.win';
-  if (isPrd) return '.riinouo-eaccounting.win';
-  return '.localhost:8080';
+const isProduction = process.env.NODE_ENV === 'production';
+// 判斷是否為雲端環境 (透過 DB Host 判斷)
+const isCloudHost =
+  !!process.env.PG_HOST &&
+  !process.env.PG_HOST.includes('localhost') &&
+  !process.env.PG_HOST.includes('127.0.0.1');
+
+const whichDomain = () => {
+  if (isProduction) return '.riinouo-eaccounting.win';
+  if (isCloudHost) return '.dev.riinouo-eaccounting.win';
+  return undefined; // Localhost 不需設定 Domain (或交由瀏覽器自動處理)
 };
+
+// 在雲端環境 (不論是 Prod 還是 Dev) 都應啟用 Secure
+const isSecure = isProduction || isCloudHost;
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: isPrd,
-  sameSite: isPrd ? ('none' as const) : ('lax' as const), // 允許跨域，前提是 secure: true
+  secure: isSecure,
+  sameSite: isSecure ? ('none' as const) : ('lax' as const), // Secure 時允許跨域 (None)
   path: '/', //! 會鎖定 cookie 在這個路徑底下
-  //! 在本地開發時要註解該行
-  // domain: whichDomain(isPrd),
+  domain: whichDomain(),
   maxAge: COOKIE_MAX_AGE,
 };
 
