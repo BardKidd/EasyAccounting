@@ -52,8 +52,9 @@ export function getErrorMessage(errors: unknown): string {
 // 適合直接呼叫某個 UI 等待結果
 export async function simplifyTryCatch(
   cb: () => Promise<any>,
-  setIsLoading: (isLoading: boolean) => void
+  setIsLoading: (isLoading: boolean) => void,
 ) {
+  setIsLoading(true);
   try {
     await cb();
   } catch (error) {
@@ -68,7 +69,7 @@ export async function apiHandler(
   method: string,
   data: any,
   headers?: any,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<ResponseHelper<any>> {
   const domain = process.env.NEXT_PUBLIC_API_DOMAIN;
   const caseInsensitiveMethod = method.toUpperCase();

@@ -16,7 +16,7 @@ import { getReconciliationNotifications } from '@/services/reconciliationService
 import { logout } from '@/services/authService';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { Progress } from '@/components/ui/progress';
+import { ElegantLoader } from '@/components/ui/elegant-loader';
 import { useMemo, useState, useEffect } from 'react';
 
 function Header() {
@@ -135,12 +135,7 @@ function Header() {
           </DropdownMenu>
         </div>
       </div>
-      {isLoading && (
-        <Progress
-          value={isLoading ? 100 : 0}
-          className="h-0.5 absolute bottom-0 w-full rounded-b-2xl"
-        />
-      )}
+      {isLoading && <ElegantLoader message="登出中..." />}
     </header>
   );
 }
