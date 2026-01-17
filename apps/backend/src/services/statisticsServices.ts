@@ -254,6 +254,8 @@ const getOverviewTop3Expenses = async (body: any, userId: string) => {
       },
     ],
     order: [[sequelize.col('amount'), 'DESC']],
+    raw: true,
+    nest: true,
   });
 
   return transactions.map((t: any) => {
