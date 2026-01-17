@@ -128,20 +128,14 @@ const AccountForm = ({
           className={
             type === Account.CREDIT_CARD
               ? 'grid grid-cols-1 md:grid-cols-2 gap-6'
-              : 'grid gap-4 py-4'
+              : 'grid gap-4 pt-0 pb-4'
           }
         >
           {/* Left Column (Basic Info) */}
           <div className="space-y-4">
-            <h3
-              className={
-                type === Account.CREDIT_CARD
-                  ? 'font-semibold text-lg mb-4'
-                  : 'hidden'
-              }
-            >
-              基本資訊
-            </h3>
+            {type === Account.CREDIT_CARD && (
+              <h3 className="font-semibold text-lg mb-4">基本資訊</h3>
+            )}
             <FormField
               control={form.control}
               name="icon"
@@ -168,7 +162,7 @@ const AccountForm = ({
                       <Input
                         id="name"
                         placeholder="例如: 薪轉戶"
-                        className="col-span-3"
+                        className="col-span-3 h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-slate-400"
                         {...field}
                       />
                     </div>
@@ -196,7 +190,7 @@ const AccountForm = ({
                         value={field.value}
                         onValueChange={field.onChange}
                       >
-                        <SelectTrigger className="col-span-3 cursor-pointer w-full">
+                        <SelectTrigger className="col-span-3 cursor-pointer w-full h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-slate-400">
                           <SelectValue placeholder="選擇帳戶類型" />
                         </SelectTrigger>
                         <SelectContent>
@@ -230,7 +224,7 @@ const AccountForm = ({
                       <Input
                         id="balance"
                         type="number"
-                        className="col-span-3"
+                        className="col-span-3 h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-slate-400 font-mono"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                         onFocus={(e) => {
@@ -265,7 +259,7 @@ const AccountForm = ({
                       <Input
                         id="color"
                         type="text"
-                        className="col-span-3"
+                        className="col-span-3 h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-slate-400 font-mono uppercase"
                         {...field}
                       />
                       <div
@@ -310,7 +304,7 @@ const AccountForm = ({
           {type === Account.CREDIT_CARD && (
             <div className="space-y-4">
               <h3 className="font-semibold text-lg mb-4">信用卡設定</h3>
-              <div className="border rounded-md p-4 space-y-4 bg-gray-50 dark:bg-zinc-900/50">
+              <div className="border border-slate-200 dark:border-white/10 rounded-2xl p-6 space-y-4 bg-slate-50/50 dark:bg-white/5">
                 <FormField
                   control={form.control}
                   name="creditCardDetail.creditLimit"
@@ -318,10 +312,10 @@ const AccountForm = ({
                     <FormItem>
                       <FormControl>
                         <div className="grid grid-cols-4 items-center gap-4">
-                          <Label className="text-right">信用額度</Label>
+                          <Label className="text-left">信用額度</Label>
                           <Input
                             type="number"
-                            className="col-span-3"
+                            className="col-span-3 h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-slate-400 font-mono"
                             {...field}
                             value={field.value ?? 0}
                             onChange={(e) =>
@@ -341,12 +335,12 @@ const AccountForm = ({
                     <FormItem>
                       <FormControl>
                         <div className="grid grid-cols-4 items-center gap-4">
-                          <Label className="text-right">結帳日</Label>
+                          <Label className="text-left">結帳日</Label>
                           <Select
                             value={String(field.value)}
                             onValueChange={(v) => field.onChange(Number(v))}
                           >
-                            <SelectTrigger className="col-span-3">
+                            <SelectTrigger className="col-span-3 h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-slate-400">
                               <SelectValue placeholder="選擇日期" />
                             </SelectTrigger>
                             <SelectContent>
@@ -370,12 +364,12 @@ const AccountForm = ({
                     <FormItem>
                       <FormControl>
                         <div className="grid grid-cols-4 items-center gap-4">
-                          <Label className="text-right">繳款日</Label>
+                          <Label className="text-left">繳款日</Label>
                           <Select
                             value={String(field.value)}
                             onValueChange={(v) => field.onChange(Number(v))}
                           >
-                            <SelectTrigger className="col-span-3">
+                            <SelectTrigger className="col-span-3 h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-slate-400">
                               <SelectValue placeholder="選擇日期" />
                             </SelectTrigger>
                             <SelectContent>
@@ -399,10 +393,10 @@ const AccountForm = ({
                     <FormItem>
                       <FormControl>
                         <div className="grid grid-cols-4 items-center gap-4">
-                          <Label className="text-right">寬限期 (天)</Label>
+                          <Label className="text-left">寬限期 (天)</Label>
                           <Input
                             type="number"
-                            className="col-span-3"
+                            className="col-span-3 h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-slate-400"
                             {...field}
                             value={field.value ?? 0}
                             onChange={(e) =>
@@ -422,10 +416,10 @@ const AccountForm = ({
                     <FormItem>
                       <FormControl>
                         <div className="grid grid-cols-4 items-center gap-4">
-                          <Label className="text-right">循環利率 (%)</Label>
+                          <Label className="text-left">循環利率 (%)</Label>
                           <Input
                             type="number"
-                            className="col-span-3"
+                            className="col-span-3 h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-slate-400"
                             {...field}
                             value={field.value ?? 0}
                             onChange={(e) =>
@@ -445,7 +439,7 @@ const AccountForm = ({
                     <FormItem>
                       <FormControl>
                         <div className="grid grid-cols-4 items-center gap-4">
-                          <Label className="text-right">計入總資產</Label>
+                          <Label className="text-left">計入總資產</Label>
                           <Switch
                             checked={field.value}
                             onCheckedChange={field.onChange}
@@ -460,7 +454,10 @@ const AccountForm = ({
           )}
         </div>
         <div className="flex justify-end">
-          <Button type="submit" className="cursor-pointer">
+          <Button
+            type="submit"
+            className="cursor-pointer bg-slate-900 dark:bg-slate-50 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 shadow-lg shadow-slate-300/50 dark:shadow-none transition-all duration-300 hover:scale-[1.02] rounded-full px-8 font-medium font-playfair tracking-wide"
+          >
             {isEditMode ? '更新帳戶' : '建立帳戶'}
           </Button>
         </div>
