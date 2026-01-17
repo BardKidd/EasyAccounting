@@ -24,11 +24,13 @@ const getOverviewTrend = async (body: any, userId: string) => {
         as: 'transactionExtra',
       },
     ],
+    raw: true,
+    nest: true,
   });
 
   const result = transactions.reduce(
     (total, t: any) => {
-      const data = t.toJSON();
+      const data = t;
       const amount = Number(data.amount);
       const extraAdd = Number(data.transactionExtra?.extraAdd || 0);
       const extraMinus = Number(data.transactionExtra?.extraMinus || 0);
@@ -255,7 +257,7 @@ const getOverviewTop3Expenses = async (body: any, userId: string) => {
   });
 
   return transactions.map((t: any) => {
-    const data = t.toJSON();
+    const data = t;
     const amount = Number(data.amount);
     const extraAdd = Number(data.transactionExtra?.extraAdd || 0);
     const extraMinus = Number(data.transactionExtra?.extraMinus || 0);
@@ -318,10 +320,12 @@ const getDetailTabData = async (body: any, userId: string) => {
       [sequelize.col('date'), 'DESC'],
       [sequelize.col('time'), 'DESC'],
     ],
+    raw: true,
+    nest: true,
   });
 
   return detailData.map((item: any) => {
-    const data = item.toJSON();
+    const data = item;
     return {
       ...data,
       category: {
@@ -461,10 +465,12 @@ const getRankingTabData = async (body: any, userId: string) => {
       },
     ],
     order: [[sequelize.col('amount'), 'DESC']],
+    raw: true,
+    nest: true,
   });
 
   return result.map((t: any) => {
-    const data = t.toJSON();
+    const data = t;
     const amount = Number(data.amount);
     const extraAdd = Number(data.transactionExtra?.extraAdd || 0);
     const extraMinus = Number(data.transactionExtra?.extraMinus || 0);

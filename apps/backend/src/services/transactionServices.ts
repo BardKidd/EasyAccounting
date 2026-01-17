@@ -97,9 +97,11 @@ const getTransactionsByDate = async (
           attributes: { exclude: ['createdAt', 'updatedAt', 'deletedAt'] },
         },
       ],
+      raw: true,
+      nest: true,
     });
     return {
-      items: rows.map((r) => r.toJSON()) as unknown as TransactionType[],
+      items: rows as unknown as TransactionType[],
       pagination: {
         total: count,
         page,
@@ -141,6 +143,8 @@ const getTransactionsDashboardSummary = async (
         as: 'transactionExtra',
       },
     ],
+    raw: true,
+    nest: true,
   });
 
   const start = new Date(startDate);
@@ -198,7 +202,7 @@ const getTransactionsDashboardSummary = async (
   };
 
   transactions.forEach((t: any) => {
-    const data = t.toJSON();
+    const data = t;
     const date = new Date(data.date);
     let key = '';
 
