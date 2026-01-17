@@ -48,7 +48,7 @@ export function Features() {
   return (
     <section
       id="features"
-      className="py-24 bg-white dark:bg-slate-900 transition-colors duration-500"
+      className="py-24 bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 transition-colors duration-500"
     >
       <div className="container mx-auto px-6 md:px-12">
         <div className="text-center mb-20 space-y-4">
@@ -59,7 +59,7 @@ export function Features() {
             </span>
           </h2>
           <div className="h-px w-16 mx-auto bg-amber-500/50 my-6" />
-          <p className="mt-4 text-slate-600 dark:text-slate-300 md:text-lg max-w-2xl mx-auto font-light leading-relaxed tracking-wide">
+          <p className="mt-4 text-slate-700 dark:text-slate-300 md:text-lg max-w-2xl mx-auto font-light leading-relaxed tracking-wide">
             我們提供您所需的一切工具，幫助您以最優雅的方式管理個人財務。
           </p>
         </div>
@@ -68,9 +68,9 @@ export function Features() {
           {features.map((feature, index) => (
             <div
               key={feature.name}
-              className="group relative p-8 bg-slate-50 dark:bg-slate-800/50 rounded-sm border border-slate-100 dark:border-slate-800 hover:border-amber-200 dark:hover:border-amber-900/50 transition-all duration-500 hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-none"
+              className="group relative p-8 bg-white dark:bg-slate-800/50 rounded-sm border border-slate-200 dark:border-slate-800 hover:border-amber-200 dark:hover:border-amber-900/50 transition-all duration-500 shadow-sm hover:shadow-xl hover:shadow-slate-300/40 dark:hover:shadow-none"
             >
-              <div className="absolute top-0 left-8 -translate-y-1/2 bg-white dark:bg-slate-900 p-3 rounded-full border border-slate-100 dark:border-slate-800 group-hover:border-amber-200 dark:group-hover:border-amber-900/50 transition-colors duration-500">
+              <div className="absolute top-0 left-8 -translate-y-1/2 bg-white dark:bg-slate-900 p-3 rounded-full border border-slate-200 dark:border-slate-800 group-hover:border-amber-200 dark:group-hover:border-amber-900/50 transition-colors duration-500">
                 <feature.icon className="h-6 w-6 text-slate-400 group-hover:text-amber-600 transition-colors duration-500" />
               </div>
 
@@ -78,7 +78,7 @@ export function Features() {
                 <h3 className="text-xl font-medium text-slate-900 dark:text-slate-100 tracking-wide font-serif">
                   {feature.name}
                 </h3>
-                <p className="text-slate-500 dark:text-slate-400 leading-7 font-light text-sm">
+                <p className="text-slate-600 dark:text-slate-400 leading-7 font-light text-sm">
                   {feature.description}
                 </p>
               </div>

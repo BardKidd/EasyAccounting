@@ -20,7 +20,7 @@ function RecentTransactions({
   const findCategory = (
     id: string,
     categoryList: CategoryType[],
-    parentColor: string | null = null
+    parentColor: string | null = null,
   ): CategoryType | null => {
     for (const category of categoryList) {
       const effectiveColor = category.color || parentColor;
@@ -64,20 +64,22 @@ function RecentTransactions({
   };
 
   return (
-    <Card className="col-span-3 border-0 bg-slate-900/50 backdrop-blur-md shadow-lg shadow-black/10 ring-1 ring-white/10 h-full flex flex-col">
-      <CardHeader className="border-b border-white/5 pb-4">
-        <CardTitle className="text-lg font-bold font-playfair text-white">
+    <Card className="col-span-3 border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 h-full flex flex-col">
+      <CardHeader className="border-b border-slate-200 dark:border-white/5 pb-4">
+        <CardTitle className="text-lg font-bold font-playfair text-slate-900 dark:text-white">
           近期交易
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 overflow-hidden pt-4 px-2">
         {transactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center h-full">
-            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-4">
               {/* Use a placeholder icon or consistent empty state */}
-              <div className="w-8 h-8 rounded-md border-2 border-dashed border-slate-600" />
+              <div className="w-8 h-8 rounded-md border-2 border-dashed border-slate-300 dark:border-slate-600" />
             </div>
-            <p className="text-slate-400 font-medium">尚無交易記錄</p>
+            <p className="text-slate-500 dark:text-slate-400 font-medium">
+              尚無交易記錄
+            </p>
             <p className="text-sm text-slate-500 mt-2">
               點擊右上角「新增交易」按鈕開始記帳
             </p>
@@ -93,11 +95,11 @@ function RecentTransactions({
               return (
                 <div
                   key={item.id}
-                  className="flex items-center p-3 rounded-xl hover:bg-white/5 transition-all duration-200 group border border-transparent hover:border-white/5"
+                  className="flex items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all duration-200 group border border-transparent hover:border-slate-200 dark:hover:border-white/5"
                 >
                   <div
                     className={`flex h-10 w-10 items-center justify-center rounded-xl shadow-inner ${
-                      !category?.color ? 'bg-slate-800' : ''
+                      !category?.color ? 'bg-slate-100 dark:bg-slate-800' : ''
                     }`}
                     style={{
                       backgroundColor: category?.color
@@ -114,7 +116,7 @@ function RecentTransactions({
                     />
                   </div>
                   <div className="ml-4 space-y-1 flex-1">
-                    <p className="text-sm font-medium leading-none text-slate-200 group-hover:text-white transition-colors">
+                    <p className="text-sm font-medium leading-none text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
                       {category?.name}
                     </p>
                     <div className="flex items-center gap-2">

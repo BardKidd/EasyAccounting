@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
@@ -85,7 +86,7 @@ function NewTransactionSheet({
 
       // 找出選中的 Main Category
       const mainCategory = root.children.find(
-        (c) => c.id === data.mainCategory
+        (c) => c.id === data.mainCategory,
       );
       if (!mainCategory) return;
 
@@ -170,7 +171,7 @@ function NewTransactionSheet({
 
   const selectedAccount = useMemo(
     () => accounts.find((a) => a.id === watchedAccountId),
-    [watchedAccountId, accounts]
+    [watchedAccountId, accounts],
   );
 
   const isCreditCard = selectedAccount?.type === Account.CREDIT_CARD;
@@ -190,7 +191,7 @@ function NewTransactionSheet({
     if (!categories) return [];
 
     const roots = categories.filter(
-      (root) => root.type === (watchedType as RootType)
+      (root) => root.type === (watchedType as RootType),
     );
 
     // flatMap 比較少用記錄一下：先 map 後 flat，少一步驟。e.g. [{children: []}, {children: []}] -> map: [ [], [] ] -> flat: []
@@ -302,90 +303,60 @@ function NewTransactionSheet({
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <Button className="cursor-pointer bg-linear-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 border-0 transition-all duration-300 transform hover:scale-105 rounded-xl px-6">
-          <Plus className="mr-2 h-4 w-4" /> 新增交易
+        <Button className="cursor-pointer bg-slate-900 dark:bg-slate-50 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 shadow-xl shadow-slate-300/50 dark:shadow-none border-0 transition-all duration-300 transform hover:scale-105 rounded-full px-8 h-12 text-base font-medium font-playfair tracking-wide">
+          <Plus className="mr-2 h-5 w-5" /> 新增交易
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto max-h-screen">
-        <SheetHeader>
-          <SheetTitle>新增交易</SheetTitle>
-          <SheetDescription>
-            請輸入交易詳細資訊。完成後點擊儲存。
+      <SheetContent className="w-full sm:max-w-[540px] p-0 flex flex-col h-dvh bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-2xl border-l border-slate-200 dark:border-white/10 shadow-2xl">
+        <SheetHeader className="px-6 py-6 border-b border-slate-200/50 dark:border-white/5 bg-white/50 dark:bg-white/2">
+          <SheetTitle className="text-2xl font-bold font-playfair text-slate-900 dark:text-slate-50">
+            新增交易
+          </SheetTitle>
+          <SheetDescription className="text-slate-500 dark:text-slate-400">
+            請輸入交易詳細資訊
           </SheetDescription>
         </SheetHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <div className="grid gap-6 py-4 px-4 pb-20">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col flex-1 overflow-hidden"
+          >
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
               <FormField
                 control={form.control}
                 name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-3 gap-4">
-                      <Button
-                        type="button"
-                        variant={
-                          field.value === RootType.EXPENSE
-                            ? 'default'
-                            : 'outline'
-                        }
-                        className={cn(
-                          field.value === RootType.EXPENSE &&
-                            'bg-rose-600 hover:bg-rose-700',
-                          'cursor-pointer'
-                        )}
-                        onClick={() => {
-                          field.onChange(RootType.EXPENSE);
-                          form.setValue('mainCategory', '');
-                          form.setValue('subCategory', '');
-                          form.clearErrors();
-                        }}
-                      >
-                        {RootType.EXPENSE}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={
-                          field.value === RootType.INCOME
-                            ? 'default'
-                            : 'outline'
-                        }
-                        className={cn(
-                          field.value === RootType.INCOME &&
-                            'bg-emerald-600 hover:bg-emerald-700',
-                          'cursor-pointer'
-                        )}
-                        onClick={() => {
-                          field.onChange(RootType.INCOME);
-                          form.setValue('mainCategory', '');
-                          form.setValue('subCategory', '');
-                          form.clearErrors();
-                        }}
-                      >
-                        {RootType.INCOME}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={
-                          field.value === RootType.OPERATE
-                            ? 'default'
-                            : 'outline'
-                        }
-                        className={cn(
-                          field.value === RootType.OPERATE &&
-                            'bg-amber-500 hover:bg-amber-600',
-                          'cursor-pointer'
-                        )}
-                        onClick={() => {
-                          field.onChange(RootType.OPERATE);
-                          form.setValue('mainCategory', '');
-                          form.setValue('subCategory', '');
-                          form.clearErrors();
-                        }}
-                      >
-                        {RootType.OPERATE}
-                      </Button>
+                    <div className="bg-slate-200/50 dark:bg-white/5 p-1 rounded-2xl flex gap-1">
+                      {[
+                        RootType.EXPENSE,
+                        RootType.INCOME,
+                        RootType.OPERATE,
+                      ].map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => {
+                            field.onChange(type);
+                            form.setValue('mainCategory', '');
+                            form.setValue('subCategory', '');
+                            form.clearErrors();
+                          }}
+                          className={cn(
+                            'flex-1 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 shadow-sm',
+                            field.value === type
+                              ? type === RootType.EXPENSE
+                                ? 'bg-rose-500 text-white shadow-rose-200 dark:shadow-rose-900/30'
+                                : type === RootType.INCOME
+                                  ? 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-emerald-900/30'
+                                  : 'bg-amber-500 text-white shadow-amber-200 dark:shadow-amber-900/30'
+                              : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-white/5 shadow-none',
+                          )}
+                        >
+                          {type}
+                        </button>
+                      ))}
                     </div>
                     <FormMessage />
                   </FormItem>
@@ -407,7 +378,7 @@ function NewTransactionSheet({
                         ) {
                           form.setValue(
                             'paymentFrequency',
-                            PaymentFrequency.ONE_TIME
+                            PaymentFrequency.ONE_TIME,
                           );
                         }
                       }}
@@ -421,7 +392,7 @@ function NewTransactionSheet({
                       <SelectContent>
                         {Object.values(Account).map((accountType) => {
                           const typeAccounts = accounts.filter(
-                            (acc) => acc.type === accountType
+                            (acc) => acc.type === accountType,
                           );
                           if (typeAccounts.length === 0) return null;
                           return (
@@ -446,7 +417,7 @@ function NewTransactionSheet({
               <div
                 className={cn(
                   'grid gap-4',
-                  watchedType !== RootType.OPERATE && ' grid-cols-2'
+                  watchedType !== RootType.OPERATE && ' grid-cols-2',
                 )}
               >
                 <FormField
@@ -522,77 +493,82 @@ function NewTransactionSheet({
               </div>
 
               {/* Amount */}
-              <FormField
-                control={form.control}
-                name="amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>金額</FormLabel>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1.5 text-muted-foreground">
-                        $
-                      </span>
+              <div className="pt-2 pb-4">
+                <FormField
+                  control={form.control}
+                  name="amount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>金額</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="0.00"
-                          className="pl-7 text-lg font-semibold"
-                          type="number"
-                          {...field}
-                          value={field.value || ''}
-                          onChange={(e) =>
-                            field.onChange(e.target.valueAsNumber || 0)
-                          }
-                          onFocus={(e) => {
-                            // 當數值為 0 時，清空輸入框讓使用者直接輸入
-                            if (field.value === 0) {
-                              e.target.value = '';
+                        <div className="relative group">
+                          <span
+                            className={cn(
+                              'absolute left-3 top-2 text-xl font-serif',
+                              watchedType === RootType.EXPENSE
+                                ? 'text-rose-500'
+                                : watchedType === RootType.INCOME
+                                  ? 'text-emerald-500'
+                                  : 'text-amber-500',
+                            )}
+                          >
+                            $
+                          </span>
+                          <Input
+                            type="number"
+                            placeholder="0.00"
+                            {...field}
+                            className={cn(
+                              'h-10 text-base pl-8 font-medium bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800',
+                              watchedType === RootType.EXPENSE
+                                ? 'focus-visible:ring-rose-500/30'
+                                : watchedType === RootType.INCOME
+                                  ? 'focus-visible:ring-emerald-500/30'
+                                  : 'focus-visible:ring-amber-500/30',
+                            )}
+                            value={field.value || ''}
+                            onChange={(e) =>
+                              field.onChange(e.target.valueAsNumber || 0)
                             }
-                          }}
-                          onBlur={(e) => {
-                            // 離開時解析數值，自動去除開頭的 0
-                            const parsed = parseFloat(e.target.value) || 0;
-                            field.onChange(parsed);
-                          }}
-                        />
+                            onFocus={(e) => {
+                              if (field.value === 0) e.target.value = '';
+                            }}
+                            onBlur={(e) => {
+                              const parsed = parseFloat(e.target.value) || 0;
+                              field.onChange(parsed);
+                            }}
+                          />
+                        </div>
                       </FormControl>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               {isCreditCard && watchedType !== RootType.OPERATE && (
-                <div className="border rounded-md p-4 bg-gray-50 dark:bg-zinc-900/50 space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="paymentFrequency"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>繳款方式</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value={PaymentFrequency.ONE_TIME}>
-                              一次付清
-                            </SelectItem>
-                            <SelectItem value={PaymentFrequency.INSTALLMENT}>
-                              信用卡分期
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
+                <div className="rounded-2xl p-6 bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <FormLabel className="text-base font-medium">
+                      啟用分期付款
+                    </FormLabel>
+                    <Switch
+                      checked={
+                        watchedPaymentFrequency === PaymentFrequency.INSTALLMENT
+                      }
+                      onCheckedChange={(checked) => {
+                        form.setValue(
+                          'paymentFrequency',
+                          checked
+                            ? PaymentFrequency.INSTALLMENT
+                            : PaymentFrequency.ONE_TIME,
+                        );
+                      }}
+                    />
+                  </div>
 
                   {watchedPaymentFrequency === PaymentFrequency.INSTALLMENT && (
-                    <div className="space-y-4 pt-2">
+                    <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
                       <FormField
                         control={form.control}
                         name="installment.totalInstallments"
@@ -600,15 +576,20 @@ function NewTransactionSheet({
                           <FormItem>
                             <FormLabel>分期期數 (月)</FormLabel>
                             <FormControl>
-                              <Input
-                                type="number"
-                                {...field}
-                                onChange={(e) =>
-                                  field.onChange(Number(e.target.value))
-                                }
-                                min={2}
-                              />
+                              <div className="relative group">
+                                <Input
+                                  type="number"
+                                  {...field}
+                                  className="h-12 text-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-slate-400"
+                                  placeholder="0"
+                                  onChange={(e) =>
+                                    field.onChange(Number(e.target.value))
+                                  }
+                                  min={2}
+                                />
+                              </div>
                             </FormControl>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -624,7 +605,7 @@ function NewTransactionSheet({
                                 value={field.value}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className="h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                                     <SelectValue />
                                   </SelectTrigger>
                                 </FormControl>
@@ -654,7 +635,7 @@ function NewTransactionSheet({
                                 value={field.value}
                               >
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger className="h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                                     <SelectValue />
                                   </SelectTrigger>
                                 </FormControl>
@@ -677,38 +658,40 @@ function NewTransactionSheet({
               )}
 
               {/* Extra Amount Section */}
-              <div className="space-y-4">
+              <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-white/5">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="w-full flex justify-between items-center px-2 hover:bg-muted/50 cursor-pointer"
+                  className="w-full flex justify-between items-center px-0 hover:bg-transparent hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer group"
                   onClick={() => setShowExtra(!showExtra)}
                 >
-                  <span className="text-sm font-medium text-muted-foreground">
+                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
                     額外金額 (加項/減項)
                   </span>
                   {showExtra ? (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    <ChevronUp className="h-4 w-4 text-slate-400 transition-transform duration-200" />
                   ) : (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    <ChevronDown className="h-4 w-4 text-slate-400 transition-transform duration-200" />
                   )}
                 </Button>
 
                 {showExtra && (
-                  <div className="grid gap-4 p-4 border rounded-lg bg-muted/30 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="grid gap-6 p-4 rounded-2xl bg-slate-50/80 dark:bg-white/5 border border-slate-100 dark:border-white/5 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="extraAddLabel"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">加項名稱</FormLabel>
+                            <FormLabel className="text-xs text-slate-500">
+                              加項名稱
+                            </FormLabel>
                             <FormControl>
                               <Input
-                                placeholder="例如：折扣、獎金"
+                                placeholder="例如：獎金"
                                 {...field}
-                                className="h-9 text-sm"
+                                className="h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
                               />
                             </FormControl>
                             <FormMessage />
@@ -720,17 +703,19 @@ function NewTransactionSheet({
                         name="extraAdd"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">加項金額</FormLabel>
+                            <FormLabel className="text-xs text-slate-500">
+                              加項金額
+                            </FormLabel>
                             <FormControl>
-                              <div className="relative">
-                                <span className="absolute left-2 top-2.5 text-xs text-muted-foreground">
+                              <div className="relative group">
+                                <span className="absolute left-3 top-2.5 text-base font-serif text-emerald-500">
                                   +
                                 </span>
                                 <Input
                                   type="number"
                                   placeholder="0.00"
                                   {...field}
-                                  className="h-9 text-sm pl-6"
+                                  className="h-10 text-base pl-8 font-medium bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-emerald-500/30"
                                   value={field.value || ''}
                                   onChange={(e) =>
                                     field.onChange(e.target.valueAsNumber || 0)
@@ -760,12 +745,14 @@ function NewTransactionSheet({
                         name="extraMinusLabel"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">減項名稱</FormLabel>
+                            <FormLabel className="text-xs text-slate-500">
+                              減項名稱
+                            </FormLabel>
                             <FormControl>
                               <Input
-                                placeholder="例如：服務費、稅金"
+                                placeholder="例如：稅金"
                                 {...field}
-                                className="h-9 text-sm"
+                                className="h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
                               />
                             </FormControl>
                             <FormMessage />
@@ -777,17 +764,19 @@ function NewTransactionSheet({
                         name="extraMinus"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">減項金額</FormLabel>
+                            <FormLabel className="text-xs text-slate-500">
+                              減項金額
+                            </FormLabel>
                             <FormControl>
-                              <div className="relative">
-                                <span className="absolute left-2 top-2.5 text-xs text-muted-foreground">
+                              <div className="relative group">
+                                <span className="absolute left-3 top-2.5 text-base font-serif text-rose-500">
                                   -
                                 </span>
                                 <Input
                                   type="number"
                                   placeholder="0.00"
                                   {...field}
-                                  className="h-9 text-sm pl-6"
+                                  className="h-10 text-base pl-8 font-medium bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-rose-500/30"
                                   value={field.value || ''}
                                   onChange={(e) =>
                                     field.onChange(e.target.valueAsNumber || 0)
@@ -830,7 +819,7 @@ function NewTransactionSheet({
                               variant={'outline'}
                               className={cn(
                                 'justify-start text-left font-normal w-full cursor-pointer',
-                                !field.value && 'text-muted-foreground'
+                                !field.value && 'text-muted-foreground',
                               )}
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
@@ -898,7 +887,7 @@ function NewTransactionSheet({
                             const typeAccounts = accounts.filter(
                               (acc) =>
                                 acc.type === accountType &&
-                                acc.id !== watchedAccountId
+                                acc.id !== watchedAccountId,
                             );
                             if (typeAccounts.length === 0) return null;
                             return (
@@ -956,15 +945,15 @@ function NewTransactionSheet({
               />
             </div>
 
-            <SheetFooter className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t">
+            <div className="p-6 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 mt-auto">
               <Button
                 type="submit"
-                className="cursor-pointer w-full"
+                className="cursor-pointer w-full h-12 text-lg font-medium rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 shadow-xl shadow-slate-300/50 dark:shadow-none transition-all duration-300 hover:scale-[1.02]"
                 disabled={isLoading}
               >
                 {isLoading ? '儲存中...' : '儲存交易'}
               </Button>
-            </SheetFooter>
+            </div>
           </form>
         </Form>
       </SheetContent>

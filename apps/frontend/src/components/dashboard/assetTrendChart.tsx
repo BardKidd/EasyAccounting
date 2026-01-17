@@ -29,10 +29,12 @@ export default function AssetTrendChart({
   const option = {
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(15, 23, 42, 0.95)',
+      backgroundColor: isDark
+        ? 'rgba(15, 23, 42, 0.95)'
+        : 'rgba(255, 255, 255, 0.95)',
       borderColor: 'rgba(255, 255, 255, 0.1)',
       textStyle: {
-        color: '#f8fafc',
+        color: isDark ? '#f8fafc' : '#0f172a',
         fontFamily: 'Geist Mono',
       },
       padding: [12, 16],
@@ -44,7 +46,7 @@ export default function AssetTrendChart({
       },
       formatter: function (params: any[]) {
         const date = params[0].axisValue;
-        let result = `<div class="font-bold mb-2 text-slate-300">${date}</div>`;
+        let result = `<div class="font-bold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}">${date}</div>`;
         params.forEach((param) => {
           const value = param.value.toLocaleString();
           const color = param.color.colorStops
@@ -55,11 +57,11 @@ export default function AssetTrendChart({
 
           result += `
             <div class="flex items-center justify-between gap-4 text-xs font-mono mb-1">
-              <span class="flex items-center gap-2 text-slate-400">
+              <span class="flex items-center gap-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}">
                 <span class="w-2 h-2 rounded-full" style="background-color: ${color}"></span>
                 ${label}
               </span>
-              <span class="font-bold text-white">$${value}</span>
+              <span class="font-bold ${isDark ? 'text-white' : 'text-slate-900'}">$${value}</span>
             </div>
           `;
         });
@@ -148,7 +150,7 @@ export default function AssetTrendChart({
         },
         splitLine: {
           lineStyle: {
-            color: 'rgba(255, 255, 255, 0.03)',
+            color: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.05)',
           },
         },
       },
@@ -222,13 +224,15 @@ export default function AssetTrendChart({
   };
 
   return (
-    <Card className="h-[450px] border-0 bg-slate-900/50 backdrop-blur-md shadow-lg shadow-black/10 ring-1 ring-white/10 group">
-      <CardHeader className="pb-2 border-b border-white/5 flex flex-row items-center justify-between">
+    <Card className="h-[450px] border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 group">
+      <CardHeader className="pb-2 border-b border-slate-200 dark:border-white/5 flex flex-row items-center justify-between">
         <div className="space-y-1">
-          <CardTitle className="text-xl font-bold font-playfair text-white">
+          <CardTitle className="text-xl font-bold font-playfair text-slate-900 dark:text-white">
             財務概況
           </CardTitle>
-          <p className="text-sm text-slate-400">收支與資產趨勢分析</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            收支與資產趨勢分析
+          </p>
         </div>
       </CardHeader>
       <CardContent className="h-[370px] pt-4">
