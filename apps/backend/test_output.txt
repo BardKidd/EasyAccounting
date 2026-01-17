@@ -1,0 +1,810 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.16 [39m[90m/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend[39m
+
+[90mstdout[2m | tests/excel.test.ts
+[22m[39m[dotenv@17.2.3] injecting env (14) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+
+[90mstdout[2m | tests/excel.test.ts
+[22m[39m[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+JWT_SECRET env check: Exists
+
+Sourcemap for "/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/.pnpm/node-cron@4.2.1/node_modules/node-cron/dist/esm/node-cron.js" points to missing source files
+[90mstdout[2m | tests/excel.test.ts
+[22m[39m[Cron] Start cron jobs
+[Cron] Start cron jobs
+[Cron] Start cron jobs
+
+[90mstdout[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould import valid transactions (Income, Expense, Operate)
+[22m[39m[90m[2026-01-17T04:33:05.764Z][0m [36mIncoming Request:[0m
+[1mMethod:[0m [33mPOST[0m
+[1mURL:[0m [1m[35m/api/excel/import-transactions[0m
+[90m------------------------------------------------[0m
+
+[90mstderr[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould import valid transactions (Income, Expense, Operate)
+[22m[39mError: Error: 
+    at Query.run (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/dialects/postgres/query.js:50:25)
+    at /Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/sequelize.js:315:28
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at PostgresQueryInterface.select (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/dialects/abstract/query-interface.js:407:12)
+    at Function.findAll (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/model.js:1140:21)
+    at Object.importNewTransactionsExcel [90m(/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/services/excelServices.ts:613:20[90m)[39m
+    at [90m/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/controllers/excelControllers.ts:41:20
+    at simplifyTryCatch [90m(/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/utils/common.ts:13:5[90m)[39m {
+  name: [32m'SequelizeDatabaseError'[39m,
+  parent: error: invalid input syntax for type uuid: "user1"
+      at Parser.parseErrorMessage (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:285:98)
+      at Parser.handlePacket (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:122:29)
+      at Parser.parse (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:35:38)
+      at TLSSocket.<anonymous> (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/index.js:11:42)
+  [90m    at TLSSocket.emit (node:events:513:28)[39m
+  [90m    at addChunk (node:internal/streams/readable:559:12)[39m
+  [90m    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)[39m
+  [90m    at TLSSocket.Readable.push (node:internal/streams/readable:390:5)[39m
+  [90m    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)[39m {
+    length: [33m105[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'22P02'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [32m'124'[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'uuid.c'[39m,
+    line: [32m'138'[39m,
+    routine: [32m'string_to_uuid'[39m,
+    sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+    parameters: [90mundefined[39m
+  },
+  original: error: invalid input syntax for type uuid: "user1"
+      at Parser.parseErrorMessage (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:285:98)
+      at Parser.handlePacket (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:122:29)
+      at Parser.parse (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:35:38)
+      at TLSSocket.<anonymous> (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/index.js:11:42)
+  [90m    at TLSSocket.emit (node:events:513:28)[39m
+  [90m    at addChunk (node:internal/streams/readable:559:12)[39m
+  [90m    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)[39m
+  [90m    at TLSSocket.Readable.push (node:internal/streams/readable:390:5)[39m
+  [90m    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)[39m {
+    length: [33m105[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'22P02'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [32m'124'[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'uuid.c'[39m,
+    line: [32m'138'[39m,
+    routine: [32m'string_to_uuid'[39m,
+    sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+    parameters: [90mundefined[39m
+  },
+  sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+  parameters: {}
+}
+
+[90mstdout[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould import valid transactions (Income, Expense, Operate)
+[22m[39m[90m[2026-01-17T04:33:09.408Z][0m [34mOutgoing Response:[0m
+[1mStatus:[0m [31m500[0m
+[1mBody:[0m {
+  "message": "Internal server error",
+  "error": "invalid input syntax for type uuid: \"user1\""
+}
+[1mDuration:[0m [31m3644ms[0m
+[90m================================================[0m
+
+
+[90mstdout[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould export transactions correctly
+[22m[39m[90m[2026-01-17T04:33:09.416Z][0m [36mIncoming Request:[0m
+[1mMethod:[0m [32mGET[0m
+[1mURL:[0m [1m[35m/api/excel/user-transactions[0m
+[90m------------------------------------------------[0m
+
+[90mstderr[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould export transactions correctly
+[22m[39mError: Error: 
+    at Query.run (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/dialects/postgres/query.js:50:25)
+    at /Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/sequelize.js:315:28
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at PostgresQueryInterface.select (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/dialects/abstract/query-interface.js:407:12)
+    at Function.findAll (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/model.js:1140:21)
+    at Function.findOne (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/model.js:1240:12)
+    at Function.findByPk (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/model.js:1221:12)
+    at Object.exportUserTransactionsExcel [90m(/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/services/excelServices.ts:330:16[90m)[39m
+    at [90m/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/controllers/excelControllers.ts:27:17
+    at simplifyTryCatch [90m(/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/utils/common.ts:13:5[90m)[39m {
+  name: [32m'SequelizeDatabaseError'[39m,
+  parent: error: invalid input syntax for type uuid: "user1"
+      at Parser.parseErrorMessage (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:285:98)
+      at Parser.handlePacket (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:122:29)
+      at Parser.parse (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:35:38)
+      at TLSSocket.<anonymous> (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/index.js:11:42)
+  [90m    at TLSSocket.emit (node:events:513:28)[39m
+  [90m    at addChunk (node:internal/streams/readable:559:12)[39m
+  [90m    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)[39m
+  [90m    at TLSSocket.Readable.push (node:internal/streams/readable:390:5)[39m
+  [90m    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)[39m {
+    length: [33m105[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'22P02'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [32m'168'[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'uuid.c'[39m,
+    line: [32m'138'[39m,
+    routine: [32m'string_to_uuid'[39m,
+    sql: [32m`SELECT "id", "name", "email", "password", "createdAt", "updatedAt", "deletedAt" FROM "accounting"."user" AS "user" WHERE ("user"."deletedAt" IS NULL AND "user"."id" = 'user1');`[39m,
+    parameters: [90mundefined[39m
+  },
+  original: error: invalid input syntax for type uuid: "user1"
+      at Parser.parseErrorMessage (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:285:98)
+      at Parser.handlePacket (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:122:29)
+      at Parser.parse (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:35:38)
+      at TLSSocket.<anonymous> (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/index.js:11:42)
+  [90m    at TLSSocket.emit (node:events:513:28)[39m
+  [90m    at addChunk (node:internal/streams/readable:559:12)[39m
+  [90m    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)[39m
+  [90m    at TLSSocket.Readable.push (node:internal/streams/readable:390:5)[39m
+  [90m    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)[39m {
+    length: [33m105[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'22P02'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [32m'168'[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'uuid.c'[39m,
+    line: [32m'138'[39m,
+    routine: [32m'string_to_uuid'[39m,
+    sql: [32m`SELECT "id", "name", "email", "password", "createdAt", "updatedAt", "deletedAt" FROM "accounting"."user" AS "user" WHERE ("user"."deletedAt" IS NULL AND "user"."id" = 'user1');`[39m,
+    parameters: [90mundefined[39m
+  },
+  sql: [32m`SELECT "id", "name", "email", "password", "createdAt", "updatedAt", "deletedAt" FROM "accounting"."user" AS "user" WHERE ("user"."deletedAt" IS NULL AND "user"."id" = 'user1');`[39m,
+  parameters: {}
+}
+
+[90mstdout[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould export transactions correctly
+[22m[39m[90m[2026-01-17T04:33:09.590Z][0m [34mOutgoing Response:[0m
+[1mStatus:[0m [31m500[0m
+[1mBody:[0m {
+  "message": "Internal server error",
+  "error": "invalid input syntax for type uuid: \"user1\""
+}
+[1mDuration:[0m [32m174ms[0m
+[90m================================================[0m
+
+
+[90mstdout[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould return Error Excel when validation fails (Missing Fields)
+[22m[39m[90m[2026-01-17T04:33:09.598Z][0m [36mIncoming Request:[0m
+[1mMethod:[0m [33mPOST[0m
+[1mURL:[0m [1m[35m/api/excel/import-transactions[0m
+[90m------------------------------------------------[0m
+
+[90mstderr[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould return Error Excel when validation fails (Missing Fields)
+[22m[39mError: Error: 
+    at Query.run (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/dialects/postgres/query.js:50:25)
+    at /Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/sequelize.js:315:28
+    at PostgresQueryInterface.select (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/dialects/abstract/query-interface.js:407:12)
+    at Function.findAll (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/model.js:1140:21)
+    at Object.importNewTransactionsExcel [90m(/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/services/excelServices.ts:613:20[90m)[39m
+    at [90m/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/controllers/excelControllers.ts:41:20
+    at simplifyTryCatch [90m(/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/utils/common.ts:13:5[90m)[39m {
+  name: [32m'SequelizeDatabaseError'[39m,
+  parent: error: invalid input syntax for type uuid: "user1"
+      at Parser.parseErrorMessage (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:285:98)
+      at Parser.handlePacket (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:122:29)
+      at Parser.parse (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:35:38)
+      at TLSSocket.<anonymous> (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/index.js:11:42)
+  [90m    at TLSSocket.emit (node:events:513:28)[39m
+  [90m    at addChunk (node:internal/streams/readable:559:12)[39m
+  [90m    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)[39m
+  [90m    at TLSSocket.Readable.push (node:internal/streams/readable:390:5)[39m
+  [90m    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)[39m {
+    length: [33m105[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'22P02'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [32m'124'[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'uuid.c'[39m,
+    line: [32m'138'[39m,
+    routine: [32m'string_to_uuid'[39m,
+    sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+    parameters: [90mundefined[39m
+  },
+  original: error: invalid input syntax for type uuid: "user1"
+      at Parser.parseErrorMessage (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:285:98)
+      at Parser.handlePacket (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:122:29)
+      at Parser.parse (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:35:38)
+      at TLSSocket.<anonymous> (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/index.js:11:42)
+  [90m    at TLSSocket.emit (node:events:513:28)[39m
+  [90m    at addChunk (node:internal/streams/readable:559:12)[39m
+  [90m    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)[39m
+  [90m    at TLSSocket.Readable.push (node:internal/streams/readable:390:5)[39m
+  [90m    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)[39m {
+    length: [33m105[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'22P02'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [32m'124'[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'uuid.c'[39m,
+    line: [32m'138'[39m,
+    routine: [32m'string_to_uuid'[39m,
+    sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+    parameters: [90mundefined[39m
+  },
+  sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+  parameters: {}
+}
+
+[90mstdout[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould return Error Excel when validation fails (Missing Fields)
+[22m[39m[90m[2026-01-17T04:33:09.785Z][0m [34mOutgoing Response:[0m
+[1mStatus:[0m [31m500[0m
+[1mBody:[0m {
+  "message": "Internal server error",
+  "error": "invalid input syntax for type uuid: \"user1\""
+}
+[1mDuration:[0m [32m187ms[0m
+[90m================================================[0m
+
+
+[90mstdout[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould return Error Excel for Logical Errors (Negative Amount, Invalid Types)
+[22m[39m[90m[2026-01-17T04:33:09.791Z][0m [36mIncoming Request:[0m
+[1mMethod:[0m [33mPOST[0m
+[1mURL:[0m [1m[35m/api/excel/import-transactions[0m
+[90m------------------------------------------------[0m
+
+[90mstderr[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould return Error Excel for Logical Errors (Negative Amount, Invalid Types)
+[22m[39mError: Error: 
+    at Query.run (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/dialects/postgres/query.js:50:25)
+    at /Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/sequelize.js:315:28
+    at PostgresQueryInterface.select (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/dialects/abstract/query-interface.js:407:12)
+    at Function.findAll (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/model.js:1140:21)
+    at Object.importNewTransactionsExcel [90m(/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/services/excelServices.ts:613:20[90m)[39m
+    at [90m/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/controllers/excelControllers.ts:41:20
+    at simplifyTryCatch [90m(/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/utils/common.ts:13:5[90m)[39m {
+  name: [32m'SequelizeDatabaseError'[39m,
+  parent: error: invalid input syntax for type uuid: "user1"
+      at Parser.parseErrorMessage (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:285:98)
+      at Parser.handlePacket (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:122:29)
+      at Parser.parse (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:35:38)
+      at TLSSocket.<anonymous> (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/index.js:11:42)
+  [90m    at TLSSocket.emit (node:events:513:28)[39m
+  [90m    at addChunk (node:internal/streams/readable:559:12)[39m
+  [90m    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)[39m
+  [90m    at TLSSocket.Readable.push (node:internal/streams/readable:390:5)[39m
+  [90m    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)[39m {
+    length: [33m105[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'22P02'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [32m'124'[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'uuid.c'[39m,
+    line: [32m'138'[39m,
+    routine: [32m'string_to_uuid'[39m,
+    sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+    parameters: [90mundefined[39m
+  },
+  original: error: invalid input syntax for type uuid: "user1"
+      at Parser.parseErrorMessage (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:285:98)
+      at Parser.handlePacket (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:122:29)
+      at Parser.parse (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:35:38)
+      at TLSSocket.<anonymous> (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/index.js:11:42)
+  [90m    at TLSSocket.emit (node:events:513:28)[39m
+  [90m    at addChunk (node:internal/streams/readable:559:12)[39m
+  [90m    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)[39m
+  [90m    at TLSSocket.Readable.push (node:internal/streams/readable:390:5)[39m
+  [90m    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)[39m {
+    length: [33m105[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'22P02'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [32m'124'[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'uuid.c'[39m,
+    line: [32m'138'[39m,
+    routine: [32m'string_to_uuid'[39m,
+    sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+    parameters: [90mundefined[39m
+  },
+  sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+  parameters: {}
+}
+
+[90mstdout[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould return Error Excel for Logical Errors (Negative Amount, Invalid Types)
+[22m[39m[90m[2026-01-17T04:33:09.966Z][0m [34mOutgoing Response:[0m
+[1mStatus:[0m [31m500[0m
+[1mBody:[0m {
+  "message": "Internal server error",
+  "error": "invalid input syntax for type uuid: \"user1\""
+}
+[1mDuration:[0m [32m175ms[0m
+[90m================================================[0m
+
+
+[90mstdout[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould return Error Excel for Operate without Target Account
+[22m[39m[90m[2026-01-17T04:33:09.972Z][0m [36mIncoming Request:[0m
+[1mMethod:[0m [33mPOST[0m
+[1mURL:[0m [1m[35m/api/excel/import-transactions[0m
+[90m------------------------------------------------[0m
+
+[90mstderr[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould return Error Excel for Operate without Target Account
+[22m[39mError: Error: 
+    at Query.run (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/dialects/postgres/query.js:50:25)
+    at /Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/sequelize.js:315:28
+    at PostgresQueryInterface.select (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/dialects/abstract/query-interface.js:407:12)
+    at Function.findAll (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/model.js:1140:21)
+    at Object.importNewTransactionsExcel [90m(/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/services/excelServices.ts:613:20[90m)[39m
+    at [90m/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/controllers/excelControllers.ts:41:20
+    at simplifyTryCatch [90m(/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/utils/common.ts:13:5[90m)[39m {
+  name: [32m'SequelizeDatabaseError'[39m,
+  parent: error: invalid input syntax for type uuid: "user1"
+      at Parser.parseErrorMessage (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:285:98)
+      at Parser.handlePacket (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:122:29)
+      at Parser.parse (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:35:38)
+      at TLSSocket.<anonymous> (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/index.js:11:42)
+  [90m    at TLSSocket.emit (node:events:513:28)[39m
+  [90m    at addChunk (node:internal/streams/readable:559:12)[39m
+  [90m    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)[39m
+  [90m    at TLSSocket.Readable.push (node:internal/streams/readable:390:5)[39m
+  [90m    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)[39m {
+    length: [33m105[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'22P02'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [32m'124'[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'uuid.c'[39m,
+    line: [32m'138'[39m,
+    routine: [32m'string_to_uuid'[39m,
+    sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+    parameters: [90mundefined[39m
+  },
+  original: error: invalid input syntax for type uuid: "user1"
+      at Parser.parseErrorMessage (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:285:98)
+      at Parser.handlePacket (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:122:29)
+      at Parser.parse (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:35:38)
+      at TLSSocket.<anonymous> (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/index.js:11:42)
+  [90m    at TLSSocket.emit (node:events:513:28)[39m
+  [90m    at addChunk (node:internal/streams/readable:559:12)[39m
+  [90m    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)[39m
+  [90m    at TLSSocket.Readable.push (node:internal/streams/readable:390:5)[39m
+  [90m    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)[39m {
+    length: [33m105[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'22P02'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [32m'124'[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'uuid.c'[39m,
+    line: [32m'138'[39m,
+    routine: [32m'string_to_uuid'[39m,
+    sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+    parameters: [90mundefined[39m
+  },
+  sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+  parameters: {}
+}
+
+[90mstdout[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould return Error Excel for Operate without Target Account
+[22m[39m[90m[2026-01-17T04:33:10.154Z][0m [34mOutgoing Response:[0m
+[1mStatus:[0m [31m500[0m
+[1mBody:[0m {
+  "message": "Internal server error",
+  "error": "invalid input syntax for type uuid: \"user1\""
+}
+[1mDuration:[0m [32m182ms[0m
+[90m================================================[0m
+
+
+[90mstdout[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould handle re-upload of Error Excel (ignore first column)
+[22m[39m[90m[2026-01-17T04:33:10.161Z][0m [36mIncoming Request:[0m
+[1mMethod:[0m [33mPOST[0m
+[1mURL:[0m [1m[35m/api/excel/import-transactions[0m
+[90m------------------------------------------------[0m
+
+[90mstderr[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould handle re-upload of Error Excel (ignore first column)
+[22m[39mError: Error: 
+    at Query.run (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/dialects/postgres/query.js:50:25)
+    at /Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/sequelize.js:315:28
+    at PostgresQueryInterface.select (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/dialects/abstract/query-interface.js:407:12)
+    at Function.findAll (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/model.js:1140:21)
+    at Object.importNewTransactionsExcel [90m(/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/services/excelServices.ts:613:20[90m)[39m
+    at [90m/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/controllers/excelControllers.ts:41:20
+    at simplifyTryCatch [90m(/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/utils/common.ts:13:5[90m)[39m {
+  name: [32m'SequelizeDatabaseError'[39m,
+  parent: error: invalid input syntax for type uuid: "user1"
+      at Parser.parseErrorMessage (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:285:98)
+      at Parser.handlePacket (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:122:29)
+      at Parser.parse (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:35:38)
+      at TLSSocket.<anonymous> (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/index.js:11:42)
+  [90m    at TLSSocket.emit (node:events:513:28)[39m
+  [90m    at addChunk (node:internal/streams/readable:559:12)[39m
+  [90m    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)[39m
+  [90m    at TLSSocket.Readable.push (node:internal/streams/readable:390:5)[39m
+  [90m    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)[39m {
+    length: [33m105[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'22P02'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [32m'124'[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'uuid.c'[39m,
+    line: [32m'138'[39m,
+    routine: [32m'string_to_uuid'[39m,
+    sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+    parameters: [90mundefined[39m
+  },
+  original: error: invalid input syntax for type uuid: "user1"
+      at Parser.parseErrorMessage (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:285:98)
+      at Parser.handlePacket (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:122:29)
+      at Parser.parse (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:35:38)
+      at TLSSocket.<anonymous> (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/index.js:11:42)
+  [90m    at TLSSocket.emit (node:events:513:28)[39m
+  [90m    at addChunk (node:internal/streams/readable:559:12)[39m
+  [90m    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)[39m
+  [90m    at TLSSocket.Readable.push (node:internal/streams/readable:390:5)[39m
+  [90m    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)[39m {
+    length: [33m105[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'22P02'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [32m'124'[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'uuid.c'[39m,
+    line: [32m'138'[39m,
+    routine: [32m'string_to_uuid'[39m,
+    sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+    parameters: [90mundefined[39m
+  },
+  sql: [32m`SELECT "id", "name" FROM "accounting"."account" AS "account" WHERE ("account"."deletedAt" IS NULL AND "account"."userId" = 'user1');`[39m,
+  parameters: {}
+}
+
+[90mstdout[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould handle re-upload of Error Excel (ignore first column)
+[22m[39m[90m[2026-01-17T04:33:10.352Z][0m [34mOutgoing Response:[0m
+[1mStatus:[0m [31m500[0m
+[1mBody:[0m {
+  "message": "Internal server error",
+  "error": "invalid input syntax for type uuid: \"user1\""
+}
+[1mDuration:[0m [32m191ms[0m
+[90m================================================[0m
+
+
+[90mstdout[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould export headers even if no transactions exist (Edge Case)
+[22m[39m[90m[2026-01-17T04:33:10.354Z][0m [36mIncoming Request:[0m
+[1mMethod:[0m [32mGET[0m
+[1mURL:[0m [1m[35m/api/excel/user-transactions[0m
+[90m------------------------------------------------[0m
+
+[90mstderr[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould export headers even if no transactions exist (Edge Case)
+[22m[39mError: Error: 
+    at Query.run (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/dialects/postgres/query.js:50:25)
+    at /Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/sequelize.js:315:28
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+    at PostgresQueryInterface.select (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/dialects/abstract/query-interface.js:407:12)
+    at Function.findAll (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/model.js:1140:21)
+    at Function.findOne (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/model.js:1240:12)
+    at Function.findByPk (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/sequelize@6.37.7_pg-hstore@2.3.4_pg@8.16.3/node_modules/[4msequelize[24m/lib/model.js:1221:12)
+    at Object.exportUserTransactionsExcel [90m(/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/services/excelServices.ts:330:16[90m)[39m
+    at [90m/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/controllers/excelControllers.ts:27:17
+    at simplifyTryCatch [90m(/Users/rinouo/Frontend/Projects/EasyAccounting/apps/backend/[39msrc/utils/common.ts:13:5[90m)[39m {
+  name: [32m'SequelizeDatabaseError'[39m,
+  parent: error: invalid input syntax for type uuid: "user1"
+      at Parser.parseErrorMessage (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:285:98)
+      at Parser.handlePacket (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:122:29)
+      at Parser.parse (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:35:38)
+      at TLSSocket.<anonymous> (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/index.js:11:42)
+  [90m    at TLSSocket.emit (node:events:513:28)[39m
+  [90m    at addChunk (node:internal/streams/readable:559:12)[39m
+  [90m    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)[39m
+  [90m    at TLSSocket.Readable.push (node:internal/streams/readable:390:5)[39m
+  [90m    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)[39m {
+    length: [33m105[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'22P02'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [32m'168'[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'uuid.c'[39m,
+    line: [32m'138'[39m,
+    routine: [32m'string_to_uuid'[39m,
+    sql: [32m`SELECT "id", "name", "email", "password", "createdAt", "updatedAt", "deletedAt" FROM "accounting"."user" AS "user" WHERE ("user"."deletedAt" IS NULL AND "user"."id" = 'user1');`[39m,
+    parameters: [90mundefined[39m
+  },
+  original: error: invalid input syntax for type uuid: "user1"
+      at Parser.parseErrorMessage (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:285:98)
+      at Parser.handlePacket (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:122:29)
+      at Parser.parse (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/parser.js:35:38)
+      at TLSSocket.<anonymous> (/Users/rinouo/Frontend/Projects/EasyAccounting/node_modules/[4m.pnpm[24m/pg-protocol@1.10.3/node_modules/[4mpg-protocol[24m/dist/index.js:11:42)
+  [90m    at TLSSocket.emit (node:events:513:28)[39m
+  [90m    at addChunk (node:internal/streams/readable:559:12)[39m
+  [90m    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)[39m
+  [90m    at TLSSocket.Readable.push (node:internal/streams/readable:390:5)[39m
+  [90m    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)[39m {
+    length: [33m105[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'22P02'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [32m'168'[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [90mundefined[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'uuid.c'[39m,
+    line: [32m'138'[39m,
+    routine: [32m'string_to_uuid'[39m,
+    sql: [32m`SELECT "id", "name", "email", "password", "createdAt", "updatedAt", "deletedAt" FROM "accounting"."user" AS "user" WHERE ("user"."deletedAt" IS NULL AND "user"."id" = 'user1');`[39m,
+    parameters: [90mundefined[39m
+  },
+  sql: [32m`SELECT "id", "name", "email", "password", "createdAt", "updatedAt", "deletedAt" FROM "accounting"."user" AS "user" WHERE ("user"."deletedAt" IS NULL AND "user"."id" = 'user1');`[39m,
+  parameters: {}
+}
+
+[90mstdout[2m | tests/excel.test.ts[2m > [22m[2mExcel Import/Export API Test (Mocked)[2m > [22m[2mshould export headers even if no transactions exist (Edge Case)
+[22m[39m[90m[2026-01-17T04:33:10.526Z][0m [34mOutgoing Response:[0m
+[1mStatus:[0m [31m500[0m
+[1mBody:[0m {
+  "message": "Internal server error",
+  "error": "invalid input syntax for type uuid: \"user1\""
+}
+[1mDuration:[0m [32m172ms[0m
+[90m================================================[0m
+
+
+ [31m❯[39m tests/excel.test.ts [2m([22m[2m7 tests[22m[2m | [22m[31m7 failed[39m[2m)[22m[33m 4788[2mms[22m[39m
+[31m     [31m×[31m should import valid transactions (Income, Expense, Operate)[39m[33m 3674[2mms[22m[39m
+[31m     [31m×[31m should export transactions correctly[39m[32m 178[2mms[22m[39m
+[31m     [31m×[31m should return Error Excel when validation fails (Missing Fields)[39m[32m 194[2mms[22m[39m
+[31m     [31m×[31m should return Error Excel for Logical Errors (Negative Amount, Invalid Types)[39m[32m 181[2mms[22m[39m
+[31m     [31m×[31m should return Error Excel for Operate without Target Account[39m[32m 188[2mms[22m[39m
+[31m     [31m×[31m should handle re-upload of Error Excel (ignore first column)[39m[32m 197[2mms[22m[39m
+[31m     [31m×[31m should export headers even if no transactions exist (Edge Case)[39m[32m 174[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 7 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/excel.test.ts[2m > [22mExcel Import/Export API Test (Mocked)[2m > [22mshould import valid transactions (Income, Expense, Operate)
+[31m[1mAssertionError[22m: expected 500 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 500[39m
+
+[36m [2m❯[22m tests/excel.test.ts:[2m175:24[22m[39m
+    [90m173| [39m      [33m.[39m[34mattach[39m([32m'file'[39m[33m,[39m buffer [35mas[39m any[33m,[39m [32m'valid_import.xlsx'[39m)[33m;[39m
+    [90m174| [39m
+    [90m175| [39m    [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([33mStatusCodes[39m[33m.[39m[33mOK[39m)[33m;[39m
+    [90m   | [39m                       [31m^[39m
+    [90m176| [39m    [34mexpect[39m(res[33m.[39mbody[33m.[39misSuccess)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m177| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/excel.test.ts[2m > [22mExcel Import/Export API Test (Mocked)[2m > [22mshould export transactions correctly
+[31m[1mAssertionError[22m: expected 500 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 500[39m
+
+[36m [2m❯[22m tests/excel.test.ts:[2m200:24[22m[39m
+    [90m198| [39m    [35mconst[39m res [33m=[39m [35mawait[39m agent[33m.[39m[35mget[39m([32m'/api/excel/user-transactions'[39m)[33m;[39m
+    [90m199| [39m
+    [90m200| [39m    [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([33mStatusCodes[39m[33m.[39m[33mOK[39m)[33m;[39m
+    [90m   | [39m                       [31m^[39m
+    [90m201| [39m    [34mexpect[39m(res[33m.[39mbody[33m.[39misSuccess)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m202| [39m    [34mexpect[39m(res[33m.[39mbody[33m.[39mdata)[33m.[39m[34mtoContain[39m([32m'https://mock-sas-url.com'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/excel.test.ts[2m > [22mExcel Import/Export API Test (Mocked)[2m > [22mshould return Error Excel when validation fails (Missing Fields)
+[31m[1mAssertionError[22m: expected 500 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 500[39m
+
+[36m [2m❯[22m tests/excel.test.ts:[2m227:24[22m[39m
+    [90m225| [39m      [33m.[39m[34mattach[39m([32m'file'[39m[33m,[39m buffer [35mas[39m any[33m,[39m [32m'invalid.xlsx'[39m)[33m;[39m
+    [90m226| [39m
+    [90m227| [39m    [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([33mStatusCodes[39m[33m.[39m[33mOK[39m)[33m;[39m
+    [90m   | [39m                       [31m^[39m
+    [90m228| [39m    [34mexpect[39m(res[33m.[39mbody[33m.[39misSuccess)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m229| [39m    [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39merrorUrl)[33m.[39m[34mtoBeTruthy[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/excel.test.ts[2m > [22mExcel Import/Export API Test (Mocked)[2m > [22mshould return Error Excel for Logical Errors (Negative Amount, Invalid Types)
+[31m[1mAssertionError[22m: expected undefined to be true // Object.is equality[39m
+
+[32m- Expected:[39m 
+true
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2m❯[22m tests/excel.test.ts:[2m252:32[22m[39m
+    [90m250| [39m      [33m.[39m[34mattach[39m([32m'file'[39m[33m,[39m buffer [35mas[39m any[33m,[39m [32m'negative.xlsx'[39m)[33m;[39m
+    [90m251| [39m
+    [90m252| [39m    [34mexpect[39m(res[33m.[39mbody[33m.[39misSuccess)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   | [39m                               [31m^[39m
+    [90m253| [39m    [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39merrorUrl)[33m.[39m[34mtoBeTruthy[39m()[33m;[39m
+    [90m254| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/excel.test.ts[2m > [22mExcel Import/Export API Test (Mocked)[2m > [22mshould return Error Excel for Operate without Target Account
+[31m[1mAssertionError[22m: expected undefined to be true // Object.is equality[39m
+
+[32m- Expected:[39m 
+true
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2m❯[22m tests/excel.test.ts:[2m286:32[22m[39m
+    [90m284| [39m      [33m.[39m[34mattach[39m([32m'file'[39m[33m,[39m buffer [35mas[39m any[33m,[39m [32m'bad_operate.xlsx'[39m)[33m;[39m
+    [90m285| [39m
+    [90m286| [39m    [34mexpect[39m(res[33m.[39mbody[33m.[39misSuccess)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   | [39m                               [31m^[39m
+    [90m287| [39m    [34mexpect[39m(res[33m.[39mbody[33m.[39mdata[33m.[39merrorUrl)[33m.[39m[34mtoBeTruthy[39m()[33m;[39m
+    [90m288| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/excel.test.ts[2m > [22mExcel Import/Export API Test (Mocked)[2m > [22mshould handle re-upload of Error Excel (ignore first column)
+[31m[1mAssertionError[22m: expected 500 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 500[39m
+
+[36m [2m❯[22m tests/excel.test.ts:[2m366:24[22m[39m
+    [90m364| [39m      [33m.[39m[34mattach[39m([32m'file'[39m[33m,[39m buffer [35mas[39m any[33m,[39m [32m'reupload.xlsx'[39m)[33m;[39m
+    [90m365| [39m
+    [90m366| [39m    [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([33mStatusCodes[39m[33m.[39m[33mOK[39m)[33m;[39m
+    [90m   | [39m                       [31m^[39m
+    [90m367| [39m    [34mexpect[39m(res[33m.[39mbody[33m.[39misSuccess)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m368| [39m    [34mexpect[39m([33mTransaction[39m[33m.[39mcreate)[33m.[39m[34mtoHaveBeenCalledWith[39m(
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/excel.test.ts[2m > [22mExcel Import/Export API Test (Mocked)[2m > [22mshould export headers even if no transactions exist (Edge Case)
+[31m[1mAssertionError[22m: expected 500 to be 200 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 200[39m
+[31m+ 500[39m
+
+[36m [2m❯[22m tests/excel.test.ts:[2m382:24[22m[39m
+    [90m380| [39m
+    [90m381| [39m    [35mconst[39m res [33m=[39m [35mawait[39m agent[33m.[39m[35mget[39m([32m'/api/excel/user-transactions'[39m)[33m;[39m
+    [90m382| [39m    [34mexpect[39m(res[33m.[39mstatus)[33m.[39m[34mtoBe[39m([33mStatusCodes[39m[33m.[39m[33mOK[39m)[33m;[39m
+    [90m   | [39m                       [31m^[39m
+    [90m383| [39m    [90m// Should return URL[39m
+    [90m384| [39m    [34mexpect[39m(res[33m.[39mbody[33m.[39mdata)[33m.[39m[34mtoContain[39m([32m'https://mock-sas-url.com'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m7 failed[39m[22m[90m (7)[39m
+[2m   Start at [22m 12:33:03
+[2m   Duration [22m 6.59s[2m (transform 299ms, setup 0ms, import 1.69s, tests 4.79s, environment 0ms)[22m
+

@@ -451,7 +451,7 @@ export const createTransaction = async (
   }
 };
 
-const updateIncomeExpense = async (
+export const updateIncomeExpense = async (
   id: string,
   data: UpdateTransactionSchema & {
     extraAdd?: number;
@@ -579,7 +579,7 @@ const updateIncomeExpense = async (
   });
 };
 
-const deleteTransaction = async (id: string, userId: string) => {
+export const deleteTransaction = async (id: string, userId: string) => {
   return simplifyTransaction(async (t) => {
     const transaction = await Transaction.findOne({
       where: { id, userId },

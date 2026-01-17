@@ -1,7 +1,6 @@
-import Category from '@/models/category';
+import { Category, Account, Transaction, User } from '@/models';
 import { Op } from 'sequelize';
 import ExcelJS from 'exceljs';
-import Account from '@/models/account';
 import { generateSasUrl, uploadFileToBlob } from '@/utils/azureBlob';
 import {
   CreateTransactionSchema,
@@ -9,8 +8,6 @@ import {
   RootType,
   PaymentFrequency,
 } from '@repo/shared';
-import Transaction from '@/models/transaction';
-import User from '@/models/user';
 import { format } from 'date-fns';
 import transactionServices from './transactionServices';
 import { transactionColumns } from '@/excelColumns/transactionColumns';
@@ -96,7 +93,8 @@ const getAllCategoriesHyphenString = async (userId: string) => {
       cat.parentId &&
       rootCategoriesId.includes(cat.parentId)
     ) {
-      stringCollection.push(cat.name);
+      const parentName = categoryMap.get(cat.parentId)!.name;
+      stringCollection.push(`${parentName}-${cat.name}`);
     }
   });
 
@@ -524,6 +522,11 @@ const validateAndParseRows = async (
       errFields.push('amount');
     } else {
       amount = Number(amount);
+    }
+
+    if (type === RootType.OPERATE && !targetAccountName) {
+      errMsg += '目標帳戶為必填欄位, ';
+      errFields.push('targetAccount');
     }
 
     const accountId = accountMap.get(accountName);
