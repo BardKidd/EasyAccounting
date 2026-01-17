@@ -21,6 +21,14 @@
   - 收支記錄 CRUD。
   - 轉帳功能 (自動產生兩筆關聯交易)。
   - 自動更新帳戶餘額 (Wallet)。
+- [x] **信用卡進階管理 (Credit Card Management)**:
+  - [x] **資料庫架構**: `CreditCardDetail` Table (結帳日、繳款日、額度)、`InstallmentPlan` Table (分期母計畫)。
+  - [x] **帳單週期邏輯**: 支援 `billingDate` 自動歸屬帳單月份 (Implemented in `createTransaction`).
+  - [x] **分期付款 (Installment)**: 建立分期交易 (自動展開 N 期)、餘額與額度計算 (總額佔用額度)。
+  - [x] **繳款紀錄**: 使用轉帳 (Transfer) 邏輯實作，支援從銀行帳戶繳款。
+- [x] **交易功能增強 (Transaction Enhancements)**:
+  - [x] **0 元交易**: 支援全額折抵或贈品紀錄 (Net Amount = 0, UI 顯示綠色)。
+  - [x] **額外金額結構 (Transaction Extra)**: 資料表 `TransactionExtra` (手續費、折扣)、實際金額 (Net Amount) 計算公式、負數輸入自動轉正邏輯。
 
 ### 統計與報表 (Statistics)
 
@@ -49,8 +57,9 @@
 ### 工程與運維 (Engineering & DevOps)
 
 - [x] **測試策略 (Testing)**:
-  - Backend: Vitest + Supertest.
-  - Frontend: Playwright E2E.
+  - Backend: Vitest (Unit Test)。
+    > Follow `backend-testing-standard`: 全面使用 Mock 隔離資料庫與外部依賴，專注於業務邏輯驗證，確保 CI/CD 執行效率。
+  - Frontend: Playwright E2E。
 - [x] **部署架構 (Deployment)**:
   - Frontend: Vercel.
   - Backend: Railway.
@@ -60,24 +69,17 @@
 
 ## 🚧 開發中 / 待辦清單 (Roadmap)
 
-### 1. 信用卡進階管理 (Credit Card Management) - Priority High
-
-- [ ] **帳單週期管理**: 區分帳單日 (Statement Date) 與 繳款日 (Payment Date)。
-- [ ] **繳款紀錄**: 實作「繳卡費」轉帳類別，自動從銀行帳戶扣款並沖銷信用卡未出帳金額。
-- [ ] **分期付款**: (Future) 支援消費分期設定，自動計算每月應繳金額。
-
-### 2. 預算系統 (Budget System) - Priority High
+### 1. 預算系統 (Budget System) - Priority High
 
 - [ ] **預算設定**: 支援按「月」設定總預算與個別分類預算。
 - [ ] **監控儀表板**: 新增預算達成率 Widget，視覺化顯示剩餘額度。
 - [ ] **超支提醒**: (Future) 預算使用達 80%/100% 時發送通知。
 
-### 3. 交易功能增強 (Transaction Enhancements)
+### 2. 交易功能增強 (Transaction Enhancements) - Todo only
 
-- [ ] **0 元交易**: 支援全額折抵或贈品紀錄。
 - [ ] **交易複製**: 快速複製歷史交易。
 - [ ] **週期性交易**: 設定固定收支 (如房租、訂閱制)，自動建立交易紀錄。
 
-### 4. 多幣別支援 (Multi-currency) - Backlog
+### 3. 多幣別支援 (Multi-currency) - Backlog
 
 - [ ] 獲取即時匯率，支援外幣帳戶與交易換算。
