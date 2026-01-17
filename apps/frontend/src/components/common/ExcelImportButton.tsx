@@ -159,7 +159,7 @@ export default function ExcelImportButton({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="gap-2 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white">
+        <Button className="gap-2 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white h-11 rounded-full shadow-lg shadow-emerald-500/20 transition-all active:scale-95">
           <CloudUpload className="h-4 w-4" />
           匯入 Excel
         </Button>
@@ -184,7 +184,7 @@ export default function ExcelImportButton({
                   'rounded-lg border p-4 flex flex-col items-center gap-2 text-center',
                   result.failureCount > 0
                     ? 'bg-yellow-50 border-yellow-200'
-                    : 'bg-green-50 border-green-200'
+                    : 'bg-green-50 border-green-200',
                 )}
               >
                 {result.failureCount > 0 ? (
@@ -197,7 +197,7 @@ export default function ExcelImportButton({
                     'font-medium text-lg',
                     result.failureCount > 0
                       ? 'text-yellow-600'
-                      : 'text-green-600'
+                      : 'text-green-600',
                   )}
                 >
                   匯入完成
@@ -249,7 +249,7 @@ export default function ExcelImportButton({
                 isDragOver
                   ? 'border-primary bg-primary/5'
                   : 'border-slate-200 hover:border-primary/50 hover:bg-slate-50',
-                selectedFile ? 'bg-slate-50 border-solid border-slate-300' : ''
+                selectedFile ? 'bg-slate-50 border-solid border-slate-300' : '',
               )}
               // 拖著檔案在上面經過或停留就會觸發
               onDragOver={handleDragOver}

@@ -5,11 +5,13 @@ import {
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
-  PaginationLink,
   PaginationNext,
   PaginationPrevious,
+  PaginationLink,
 } from '@/components/ui/pagination';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useTransition } from 'react';
+import { cn } from '@/lib/utils'; // Assuming this exists or imports correct lib
 
 type PaginationType = {
   total: number;
@@ -21,7 +23,10 @@ type PaginationType = {
 const CustomPagination = ({ pagination }: { pagination: PaginationType }) => {
   // query 的固定寫法，以前都用 window.location.search，但 SSR 的話會沒有 window
   // 這個是「唯獨」的當前參數(會自動監聽變化所以也不需要去寫監聽)
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   const createPageURL = (pageNumber: number | string) => {
     // 複製一份 Web API 的格式後才可以修改並且使用其他操作
@@ -33,13 +38,37 @@ const CustomPagination = ({ pagination }: { pagination: PaginationType }) => {
     return `?${params.toString()}`;
   };
 
+  const handlePageChange = (
+    e: React.MouseEvent,
+    pageNumber: number | string,
+  ) => {
+    e.preventDefault();
+    if (isPending) return;
+
+    startTransition(() => {
+      const queryString = createPageURL(pageNumber);
+      router.push(`${pathname}${queryString}`);
+    });
+  };
+
   return (
-    <Pagination>
+    <Pagination className={cn(isPending && 'opacity-50 pointer-events-none')}>
       <PaginationContent>
         <PaginationItem>
           <PaginationPrevious
             href={createPageURL(
-              Number(pagination.page) > 1 ? Number(pagination.page) - 1 : 1
+              Number(pagination.page) > 1 ? Number(pagination.page) - 1 : 1,
+            )}
+            onClick={(e) =>
+              handlePageChange(
+                e,
+                Number(pagination.page) > 1 ? Number(pagination.page) - 1 : 1,
+              )
+            }
+            aria-disabled={Number(pagination.page) <= 1 || isPending}
+            className={cn(
+              (Number(pagination.page) <= 1 || isPending) &&
+                'pointer-events-none opacity-50',
             )}
           />
         </PaginationItem>
@@ -96,7 +125,9 @@ const CustomPagination = ({ pagination }: { pagination: PaginationType }) => {
               <PaginationItem key={p}>
                 <PaginationLink
                   href={createPageURL(p)}
+                  onClick={(e) => handlePageChange(e, p)}
                   isActive={Number(page) === Number(p)}
+                  className={cn(isPending && 'cursor-not-allowed')}
                 >
                   {p}
                 </PaginationLink>
@@ -109,7 +140,24 @@ const CustomPagination = ({ pagination }: { pagination: PaginationType }) => {
             href={createPageURL(
               Number(pagination.page) === Number(pagination.totalPages)
                 ? Number(pagination.page)
-                : Number(pagination.page) + 1
+                : Number(pagination.page) + 1,
+            )}
+            onClick={(e) =>
+              handlePageChange(
+                e,
+                Number(pagination.page) === Number(pagination.totalPages)
+                  ? Number(pagination.page)
+                  : Number(pagination.page) + 1,
+              )
+            }
+            aria-disabled={
+              Number(pagination.page) >= Number(pagination.totalPages) ||
+              isPending
+            }
+            className={cn(
+              (Number(pagination.page) >= Number(pagination.totalPages) ||
+                isPending) &&
+                'pointer-events-none opacity-50',
             )}
           />
         </PaginationItem>

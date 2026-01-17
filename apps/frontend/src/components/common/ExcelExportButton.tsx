@@ -48,8 +48,8 @@ export function ExcelExportButton({ type, className }: ExcelExportButtonProps) {
       onClick={handleExport}
       disabled={loading}
       className={cn(
-        'cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white',
-        className
+        'cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white h-11 rounded-full shadow-lg shadow-emerald-500/20 transition-all active:scale-95',
+        className,
       )}
     >
       {loading ? (

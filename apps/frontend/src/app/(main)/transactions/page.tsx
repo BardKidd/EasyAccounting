@@ -55,11 +55,17 @@ async function TransactionsPage(props: PageProps) {
   ]);
 
   return (
-    <Container className="py-8 space-y-8">
-      <div className="flex items-center justify-between space-y-2">
-        {/* tracking-tight 會讓字距更緊湊 */}
-        <h2 className="text-3xl font-bold tracking-tight">交易紀錄</h2>
-        <div className="flex items-center gap-2">
+    <Container className="py-8 space-y-8 max-w-[1600px] px-4 md:px-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-3xl font-bold tracking-tight bg-linear-to-r from-slate-900 to-slate-700 dark:from-white dark:to-white/60 bg-clip-text text-transparent font-playfair">
+            交易紀錄
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            管理與檢視您的每一筆收支
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <TemplateDownloadButton />
           <ExcelImportButton shouldRefresh={true} />
           <ExcelExportButton type={PageType.TRANSACTIONS} />
