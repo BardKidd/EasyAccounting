@@ -3,12 +3,8 @@ import dotenv from 'dotenv';
 import { Request, Response } from 'express';
 dotenv.config();
 
-console.log(
-  'JWT_SECRET env check:',
-  process.env.JWT_SECRET ? 'Exists' : 'Missing'
-);
 const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'default_secret_for_dev_only_do_not_use'
+  process.env.JWT_SECRET || 'default_secret_for_dev_only_do_not_use',
 );
 
 const JWT_ACCESS_IN = '15m';
@@ -25,12 +21,16 @@ const isProduction = process.env.NODE_ENV === 'production';
 const isCloudHost =
   !!process.env.PG_HOST &&
   !process.env.PG_HOST.includes('localhost') &&
-  !process.env.PG_HOST.includes('127.0.0.1');
+  !process.env.PG_HOST.includes('127.0.0.1') &&
+  !process.env.ORIGIN_URL?.includes('localhost');
 
 const whichDomain = () => {
+  // Local 開發時 (Origin 為 localhost)，不設定 Domain (由瀏覽器自動處理)
+  if (process.env.ORIGIN_URL?.includes('localhost')) return undefined;
+
   if (isProduction) return '.riinouo-eaccounting.win';
   if (isCloudHost) return '.dev.riinouo-eaccounting.win';
-  return undefined; // Localhost 不需設定 Domain (或交由瀏覽器自動處理)
+  return undefined;
 };
 
 // 在雲端環境 (不論是 Prod 還是 Dev) 都應啟用 Secure
