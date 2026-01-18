@@ -25,7 +25,7 @@ export function StatisticsLegend({
     <div
       className={cn(
         'flex flex-wrap items-center justify-center gap-2',
-        className
+        className,
       )}
     >
       {options.map((option) => {
@@ -35,13 +35,18 @@ export function StatisticsLegend({
             key={option.key}
             onClick={() => onToggle(option.key)}
             className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors border cursor-pointer',
+              'flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border cursor-pointer hover:shadow-sm hover:scale-105',
               selected
-                ? 'bg-muted text-foreground border-primary'
-                : 'bg-transparent text-muted-foreground border-transparent hover:bg-muted/50'
+                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 shadow-sm'
+                : 'bg-transparent text-slate-500 dark:text-slate-400 border-transparent hover:bg-slate-100 dark:hover:bg-white/5',
             )}
           >
-            <span className={cn('w-2 h-2 rounded-full', option.color)} />
+            <span
+              className={cn('w-2 h-2 rounded-full shadow-sm', option.color)}
+              style={
+                selected ? { boxShadow: `0 0 8px ${option.color}` } : undefined
+              }
+            />
             {option.label}
           </button>
         );

@@ -82,13 +82,24 @@ export function DonutChart({ data, totalAmount }: CategoryPieChartProps) {
         formatter: (params: any) => {
           if (params.seriesIndex !== 0) return '';
           const prefix = params.data.type === RootType.EXPENSE ? '-' : '';
-          return `${params.name}:  ${prefix}${formatCurrency(params.value)} (${params.percent}%)`;
+          return `
+            <div class="flex flex-col gap-1">
+               <span class="font-bold text-xs ${isDark ? 'text-slate-200' : 'text-slate-700'}">${params.name}</span>
+               <span class="font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}">${prefix}${formatCurrency(params.value)} <span class="text-xs font-normal opacity-70">(${params.percent}%)</span></span>
+            </div>
+          `;
         },
-        backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)',
-        borderColor: isDark ? '#333' : '#ccc',
+        backgroundColor: isDark
+          ? 'rgba(15, 23, 42, 0.95)'
+          : 'rgba(255, 255, 255, 0.95)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
         textStyle: {
-          color: isDark ? '#fff' : '#333',
+          color: isDark ? '#f8fafc' : '#0f172a',
+          fontFamily: 'Geist Mono',
         },
+        padding: [8, 12],
+        extraCssText:
+          'backdrop-filter: blur(8px); border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);',
       },
       legend: {
         show: false,
@@ -133,11 +144,13 @@ export function DonutChart({ data, totalAmount }: CategoryPieChartProps) {
   }, [data, totalAmount, isDark]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>統計佔比</CardTitle>
+    <Card className="border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 hover:bg-white dark:hover:bg-slate-900/70 transition-all duration-300 group">
+      <CardHeader className="border-b border-slate-200 dark:border-white/5 pb-4">
+        <CardTitle className="text-xl font-bold font-playfair text-slate-900 dark:text-white">
+          統計佔比
+        </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <ReactECharts option={option} style={{ height: '350px' }} />
       </CardContent>
     </Card>
