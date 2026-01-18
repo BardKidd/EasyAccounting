@@ -27,7 +27,7 @@ export function NotificationSettings({
 }) {
   const router = useRouter();
   const [isDailyNotification, setIsDailyNotification] = useState(
-    notifications.isDailyNotification
+    notifications.isDailyNotification,
   );
   const [isWeeklySummaryNotification, setIsWeeklySummaryNotification] =
     useState(notifications.isWeeklySummaryNotification);
@@ -100,7 +100,7 @@ export function NotificationSettings({
     setIsDailyNotification(notifications.isDailyNotification);
     setIsWeeklySummaryNotification(notifications.isWeeklySummaryNotification);
     setIsMonthlyAnalysisNotification(
-      notifications.isMonthlyAnalysisNotification
+      notifications.isMonthlyAnalysisNotification,
     );
     toast.info('已還原變更');
   };
@@ -157,19 +157,19 @@ export function NotificationSettings({
         onConfirm={handleConfirmLeave}
         onCancel={handleCancelLeave}
       />
-      <Card>
-        <CardHeader>
-          <CardTitle>通知設定</CardTitle>
+      <Card className="backdrop-blur-xl bg-background/60 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300">
+        <CardHeader className="border-b border-border/10 pb-4">
+          <CardTitle className="text-xl font-semibold">通知設定</CardTitle>
           <CardDescription>管理您的應用程式通知</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between space-x-2">
+        <CardContent className="space-y-6 pt-6">
+          <div className="flex items-center justify-between space-x-2 p-3 hover:bg-muted/30 rounded-lg transition-colors">
             <Label
               htmlFor="daily-reminder"
-              className="flex flex-col space-y-1 text-left items-start"
+              className="flex flex-col space-y-1.5 text-left items-start cursor-pointer"
             >
-              <span>每日記帳提醒</span>
-              <span className="font-normal text-xs text-muted-foreground">
+              <span className="font-medium text-base">每日記帳提醒</span>
+              <span className="font-normal text-sm text-muted-foreground/80">
                 每天晚上 9 點提醒您記錄今日開銷
               </span>
             </Label>
@@ -177,15 +177,16 @@ export function NotificationSettings({
               id="daily-reminder"
               checked={isDailyNotification}
               onCheckedChange={setIsDailyNotification}
+              className="data-[state=checked]:bg-primary"
             />
           </div>
-          <div className="flex items-center justify-between space-x-2">
+          <div className="flex items-center justify-between space-x-2 p-3 hover:bg-muted/30 rounded-lg transition-colors">
             <Label
               htmlFor="weekly-report"
-              className="flex flex-col space-y-1 text-left items-start"
+              className="flex flex-col space-y-1.5 text-left items-start cursor-pointer"
             >
-              <span>每週摘要</span>
-              <span className="font-normal text-xs text-muted-foreground">
+              <span className="font-medium text-base">每週摘要</span>
+              <span className="font-normal text-sm text-muted-foreground/80">
                 每週一寄送上週收支摘要
               </span>
             </Label>
@@ -193,15 +194,16 @@ export function NotificationSettings({
               id="weekly-report"
               checked={isWeeklySummaryNotification}
               onCheckedChange={setIsWeeklySummaryNotification}
+              className="data-[state=checked]:bg-primary"
             />
           </div>
-          <div className="flex items-center justify-between space-x-2">
+          <div className="flex items-center justify-between space-x-2 p-3 hover:bg-muted/30 rounded-lg transition-colors">
             <Label
               htmlFor="monthly-analysis"
-              className="flex flex-col space-y-1 text-left items-start"
+              className="flex flex-col space-y-1.5 text-left items-start cursor-pointer"
             >
-              <span>月度分析報告</span>
-              <span className="font-normal text-xs text-muted-foreground">
+              <span className="font-medium text-base">月度分析報告</span>
+              <span className="font-normal text-sm text-muted-foreground/80">
                 每月初提供上個月的詳細分析報告
               </span>
             </Label>
@@ -209,31 +211,41 @@ export function NotificationSettings({
               id="monthly-analysis"
               checked={isMonthlyAnalysisNotification}
               onCheckedChange={setIsMonthlyAnalysisNotification}
+              className="data-[state=checked]:bg-primary"
             />
           </div>
         </CardContent>
-        <CardFooter className="flex justify-between border-t px-6 py-4">
-          <div className="flex items-center text-sm text-muted-foreground">
+        <CardFooter className="flex justify-between border-t border-border/10 bg-muted/5 px-6 py-4">
+          <div className="flex items-center text-sm">
             {showSuccess ? (
-              <span className="text-green-600 font-bold">所有變更已儲存</span>
+              <span className="text-emerald-500 font-medium flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                所有變更已儲存
+              </span>
             ) : isDirty ? (
-              '您有未儲存的變更'
+              <span className="text-amber-500 font-medium flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                您有未儲存的變更
+              </span>
             ) : null}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {isDirty && (
               <Button
                 variant="ghost"
                 onClick={handleReset}
                 disabled={isSaving}
-                className="text-muted-foreground cursor-pointer"
+                className="text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 還原
               </Button>
             )}
             <Button
               onClick={handleSave}
-              className={cn('cursor-pointer', isSaving && 'cursor-not-allowed')}
+              className={cn(
+                'cursor-pointer shadow-sm transition-all hover:shadow-md active:scale-95',
+                isSaving && 'cursor-not-allowed',
+              )}
               disabled={!isDirty || isSaving}
             >
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
