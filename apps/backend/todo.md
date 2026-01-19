@@ -71,7 +71,7 @@
 
 ### 1. 預算系統 (Budget System) - Priority High
 
-> 📄 **技術規格**: [budget-system-spec.md](./docs/budget-system-spec.md)
+> 📄 **技術規格**: [budget-system-spec.md](../../docs/specs/budget-system-spec.md)
 
 - [ ] **核心功能**:
   - [ ] 預算專案 CRUD (支援年/月/週/日週期)
