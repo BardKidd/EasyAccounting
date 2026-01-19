@@ -13,6 +13,7 @@ import {
   Menu,
   Command,
   FileCheck,
+  Calculator,
 } from 'lucide-react';
 import {
   Sheet,
@@ -47,6 +48,11 @@ const sidebarItems = [
     title: '信用卡對帳',
     href: '/reconciliation',
     icon: FileCheck,
+  },
+  {
+    title: '預算管理',
+    href: '/budgets',
+    icon: Calculator,
   },
   {
     title: '設定',

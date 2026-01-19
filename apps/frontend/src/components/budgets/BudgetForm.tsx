@@ -152,9 +152,23 @@ export function BudgetForm({
                 render={({ field }) => (
                     <FormItem className="flex-1">
                     <FormLabel>週期起始日</FormLabel>
+                    <Select 
+                        onValueChange={(val) => field.onChange(Number(val))} 
+                        value={field.value?.toString()}
+                    >
                     <FormControl>
-                        <Input type="number" {...field} min={1} max={31} />
+                        <SelectTrigger>
+                            <SelectValue placeholder="選擇日期" />
+                        </SelectTrigger>
                     </FormControl>
+                    <SelectContent>
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                            <SelectItem key={day} value={day.toString()}>
+                                {day}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                    </Select>
                     <FormDescription>
                         {cycleType === BudgetCycleType.MONTH ? '1-31' : 
                          cycleType === BudgetCycleType.WEEK ? '1 (週一) - 7 (週日)' : '不適用'}
