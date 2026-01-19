@@ -71,9 +71,26 @@
 
 ### 1. 預算系統 (Budget System) - Priority High
 
-- [ ] **預算設定**: 支援按「月」設定總預算與個別分類預算。
-- [ ] **監控儀表板**: 新增預算達成率 Widget，視覺化顯示剩餘額度。
-- [ ] **超支提醒**: (Future) 預算使用達 80%/100% 時發送通知。
+> 📄 **技術規格**: [budget-system-spec.md](./docs/budget-system-spec.md)
+
+- [ ] **核心功能**:
+  - [ ] 預算專案 CRUD (支援年/月/週/日週期)
+  - [ ] 子預算 (分類級別額度設定)
+  - [ ] 自訂週期起始日
+  - [ ] 重複循環 vs 單次預算
+  - [ ] 餘額結轉 (Rollover)
+- [ ] **交易整合**:
+  - [ ] 交易表單新增「歸入預算」多選欄位
+  - [ ] TransactionBudget 關聯表
+- [ ] **監控儀表板**:
+  - [ ] 預算卡片 Widget (進度條、使用率、倒數天數)
+  - [ ] 顏色規則 (<80% 綠色 / 80-99% 橘色 / ≥100% 紅色)
+- [ ] **Alert 系統**:
+  - [ ] 80%/100% 超支提醒 (Email + In-App)
+- [ ] **進階功能**:
+  - [ ] 回溯補帳遞迴重算 (Async Queue)
+  - [ ] 週期快照 (Snapshot) 保護歷史資料
+  - [ ] 惰性快照建立 (Lazy Evaluation)
 
 ### 2. 交易功能增強 (Transaction Enhancements) - Todo only
 
