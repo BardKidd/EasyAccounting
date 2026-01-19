@@ -85,7 +85,7 @@ function NewTransactionSheet({
   useEffect(() => {
     const fetchBudgets = async () => {
       const res = await budgetService.getBudgets();
-      if (res.isSuccess) setBudgets(res.data.filter(b => b.isActive));
+      if (res.isSuccess) setBudgets(res.data.filter((b) => b.isActive));
     };
     fetchBudgets();
   }, []);
@@ -234,24 +234,39 @@ function NewTransactionSheet({
     if (watchedMainCategory || form.getValues('subCategory')) {
       // Mock auto-selection: if no budget selected, pick first one if available
       // In real app, we would check BudgetCategory map
-      if (budgets.length > 0 && selectedBudgetIds.length === 0 && watchedType === RootType.EXPENSE) {
-         // Just a mock behavior
-         // setSelectedBudgetIds([budgets[0].id]);
+      if (
+        budgets.length > 0 &&
+        selectedBudgetIds.length === 0 &&
+        watchedType === RootType.EXPENSE
+      ) {
+        // Just a mock behavior
+        // setSelectedBudgetIds([budgets[0].id]);
       }
     }
-  }, [watchedMainCategory, form.watch('subCategory'), budgets, watchedType, selectedBudgetIds.length]);
+  }, [
+    watchedMainCategory,
+    form.watch('subCategory'),
+    budgets,
+    watchedType,
+    selectedBudgetIds.length,
+  ]);
 
   const handleExpenseAndIncomeChange = async (data: TransactionFormSchema) => {
     // Mock Backdating check
     const transactionDate = new Date(data.date);
     const today = new Date();
     // Simple check: if month is different (earlier)
-    const isBackdated = transactionDate < new Date(today.getFullYear(), today.getMonth(), 1);
-    
+    const isBackdated =
+      transactionDate < new Date(today.getFullYear(), today.getMonth(), 1);
+
     if (isBackdated) {
-        if (!confirm('⚠️ 回溯補帳確認\n\n您正在新增過去週期的交易，這可能會觸發預算歷史重算。\n確定要繼續嗎？')) {
-            return;
-        }
+      if (
+        !confirm(
+          '⚠️ 回溯補帳確認\n\n您正在新增過去週期的交易，這可能會觸發預算歷史重算。\n確定要繼續嗎？',
+        )
+      ) {
+        return;
+      }
     }
 
     // 整理成 API 需要的格式
@@ -353,9 +368,6 @@ function NewTransactionSheet({
           <SheetTitle className="text-2xl font-bold font-playfair text-slate-900 dark:text-slate-50">
             新增交易
           </SheetTitle>
-          <SheetDescription className="text-slate-500 dark:text-slate-400">
-            請輸入交易詳細資訊
-          </SheetDescription>
         </SheetHeader>
 
         <Form {...form}>
@@ -537,53 +549,91 @@ function NewTransactionSheet({
               {watchedType === RootType.EXPENSE && (
                 <div className="space-y-2">
                   <FormLabel>歸入預算 (Mock Data)</FormLabel>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {selectedBudgetIds.map((id) => {
-                      const b = budgets.find((x) => x.id === id);
-                      if (!b) return null;
-                      return (
-                        <Badge
-                          key={id}
-                          variant="secondary"
-                          className="cursor-pointer"
-                          onClick={() =>
-                            setSelectedBudgetIds((prev) =>
-                              prev.filter((p) => p !== id),
-                            )
-                          }
-                        >
-                          {b.name} <X className="ml-1 h-3 w-3" />
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                  <Select
-                    onValueChange={(val) => {
-                      const id = Number(val);
-                      if (!selectedBudgetIds.includes(id)) {
-                        setSelectedBudgetIds([...selectedBudgetIds, id]);
-                      }
-                    }}
-                    value=""
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="選擇預算..." />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {budgets
-                        .filter((b) => !selectedBudgetIds.includes(b.id))
-                        .map((b) => (
-                          <SelectItem key={b.id} value={b.id.toString()}>
-                            {b.name}
-                          </SelectItem>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal min-h-10 h-auto py-2 cursor-pointer"
+                      >
+                        {selectedBudgetIds.length === 0 ? (
+                          <span className="text-muted-foreground">
+                            無預算專案
+                          </span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {selectedBudgetIds.map((id) => {
+                              const b = budgets.find((x) => x.id === id);
+                              if (!b) return null;
+                              return (
+                                <Badge
+                                  key={id}
+                                  variant="secondary"
+                                  className="cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedBudgetIds((prev) =>
+                                      prev.filter((p) => p !== id),
+                                    );
+                                  }}
+                                >
+                                  {b.name} <X className="ml-1 h-3 w-3" />
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-2">
+                      <div className="space-y-1">
+                        {budgets.map((b) => (
+                          <div
+                            key={b.id}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                            onClick={() => {
+                              setSelectedBudgetIds((prev) =>
+                                prev.includes(b.id)
+                                  ? prev.filter((p) => p !== b.id)
+                                  : [...prev, b.id],
+                              );
+                            }}
+                          >
+                            <div
+                              className={cn(
+                                'h-4 w-4 rounded border flex items-center justify-center',
+                                selectedBudgetIds.includes(b.id)
+                                  ? 'bg-primary border-primary'
+                                  : 'border-input',
+                              )}
+                            >
+                              {selectedBudgetIds.includes(b.id) && (
+                                <svg
+                                  className="h-3 w-3 text-primary-foreground"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={3}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M5 13l4 4L19 7"
+                                  />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-sm">{b.name}</span>
+                          </div>
                         ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    💡 根據分類設定，已預選相關預算
-                  </p>
+                        {budgets.length === 0 && (
+                          <div className="text-sm text-muted-foreground py-2 text-center">
+                            尚無預算專案
+                          </div>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
 

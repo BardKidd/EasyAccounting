@@ -6,7 +6,7 @@
 
 ## 🗄️ Task 1: Database Schema
 
-**Assignee**: ****\_****  
+**Assignee**: \***\*\_\*\***  
 **Priority**: High  
 **Estimated**: 2-3 days  
 **Phase**: 1 (與 Task 2 同時進行)
@@ -34,7 +34,7 @@
 
 ## 🎨 Task 2: Frontend UI (Mock Data)
 
-**Assignee**: ****\_****  
+**Assignee**: \***\*\_\*\***  
 **Priority**: High  
 **Estimated**: 4-5 days  
 **Phase**: 1 (與 Task 1 同時進行)
@@ -60,11 +60,19 @@
 
 2. **預算列表頁面** - 參考規格 Section 5.2
 3. **預算新增/編輯表單** - 參考規格 Section 5.1
-4. **預算修改確認 Modal** - 參考規格 Section 5.3
-5. **交易表單「歸入預算」欄位** - 參考規格 Section 5.5
-6. **重算中狀態 UI** - Loading skeleton + 禁用按鈕
-7. **回溯補帳確認 Modal** - 參考規格 Section 3.6
-8. **首頁預算 Widget** - 參考規格 Section 5.2
+   - ❗ **簡化版**：不包含子預算/關聯分類設定
+4. **預算詳情頁面 + 子預算管理** - 參考規格 Section 5.6
+   - 顯示子預算列表及使用率
+   - 「+ 新增子預算」功能：下拉選單只列 **MainCategory**
+   - 可編輯/刪除子預算
+5. **預算修改確認 Modal** - 參考規格 Section 5.3
+6. **交易表單「歸入預算」欄位** - 參考規格 Section 5.5
+   - ❗ **多選 Popover UI**：Tag 在選擇框內，Checkbox 清單
+   - 預設顯示「無預算專案」
+   - 選擇後不自動關閉 Popover
+7. **重算中狀態 UI** - Loading skeleton + 禁用按鈕
+8. **回溯補帳確認 Modal** - 參考規格 Section 3.6
+9. **首頁預算 Widget** - 參考規格 Section 5.2
 
 ### 驗收標準
 
@@ -77,7 +85,7 @@
 
 ## ⚙️ Task 3: Backend API
 
-**Assignee**: ****\_****  
+**Assignee**: \***\*\_\*\***  
 **Priority**: High  
 **Estimated**: 5-7 days  
 **Phase**: 2 (等待 Phase 1 完成)
@@ -96,12 +104,15 @@
 
 1. **Budget API** - 參考規格 Section 4.1
 2. **BudgetCategory API** - 參考規格 Section 4.2
+   - ❗ **分類限制**：只接受 MainCategory 等級的分類
+   - 驗證 `categoryId` 的 `parentId` 必須指向 Root Category
 3. **Statistics API** - 參考規格 Section 4.3
 
 #### 3.2 Business Logic
 
 4. **週期計算** - 參考規格 Section 3.1
 5. **使用率計算** - 參考規格 Section 3.3
+   - ❗ 基於 `TransactionBudget` 關聯，而非 Category
 6. **修改生效時間** - 參考規格 Section 3.4
 
 #### 3.3 Advanced
@@ -109,19 +120,20 @@
 7. **Alert 觸發** - 參考規格 Section 3.5
 8. **回溯補帳處理** - 參考規格 Section 3.6
 9. **Snapshot 惰性建立** - 參考規格 Section 3.7
-10. **修改 Transaction Service** - 儲存 TransactionBudget 關聯
+10. **修改 Transaction Service** - 儲存 `TransactionBudget` 關聯（budgetIds 陣列）
 
 ### 驗收標準
 
 - [ ] 所有 API 可正常運作
 - [ ] Unit Test 覆蓋核心邏輯 (follow `backend-testing-standard`)
+- [ ] BudgetCategory 只允許 MainCategory
 - [ ] 回溯補帳可觸發重算
 
 ---
 
 ## 🔗 Task 4: Frontend API Integration
 
-**Assignee**: ****\_****  
+**Assignee**: \***\*\_\*\***  
 **Priority**: High  
 **Estimated**: 2-3 days  
 **Phase**: 3 (等待 Phase 2 完成)
