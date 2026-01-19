@@ -45,7 +45,8 @@
     "react-dom": "19.2.0",
     "react-hook-form": "^7.67.0",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "vibe-kanban-web-companion": "^0.0.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
