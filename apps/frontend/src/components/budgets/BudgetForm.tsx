@@ -27,26 +27,31 @@ import { BudgetCycleType, CreateBudgetRequest, Budget } from '@/types/budget';
 import { CategoryType } from '@repo/shared';
 import { useEffect } from 'react';
 
-const formSchema = z.object({
-  name: z.string().min(1, '請輸入預算名稱'),
-  description: z.string().optional(),
-  amount: z.coerce.number().min(1, '金額必須大於 0'),
-  cycleType: z.nativeEnum(BudgetCycleType),
-  cycleStartDay: z.coerce.number().min(1).max(31),
-  startDate: z.string().min(1, '請選擇起始日期'),
-  endDate: z.string().optional(),
-  isRecurring: z.boolean(),
-  rollover: z.boolean(),
-  categoryIds: z.array(z.number()).optional(),
-}).refine((data) => {
-  if (!data.isRecurring && !data.endDate) {
-    return false;
-  }
-  return true;
-}, {
-  message: "單次預算必須設定結束日期",
-  path: ["endDate"],
-});
+const formSchema = z
+  .object({
+    name: z.string().min(1, '請輸入預算名稱'),
+    description: z.string().optional(),
+    amount: z.coerce.number().min(1, '金額必須大於 0'),
+    cycleType: z.nativeEnum(BudgetCycleType),
+    cycleStartDay: z.coerce.number().min(1).max(31),
+    startDate: z.string().min(1, '請選擇起始日期'),
+    endDate: z.string().optional(),
+    isRecurring: z.boolean(),
+    rollover: z.boolean(),
+    categoryIds: z.array(z.number()).optional(),
+  })
+  .refine(
+    (data) => {
+      if (!data.isRecurring && !data.endDate) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: '單次預算必須設定結束日期',
+      path: ['endDate'],
+    },
+  );
 
 export type BudgetFormData = z.infer<typeof formSchema>;
 
@@ -71,7 +76,9 @@ export function BudgetForm({
       amount: initialData?.amount || 0,
       cycleType: initialData?.cycleType || BudgetCycleType.MONTH,
       cycleStartDay: initialData?.cycleStartDay || 1,
-      startDate: initialData?.startDate ? initialData.startDate.split('T')[0] : new Date().toISOString().split('T')[0],
+      startDate: initialData?.startDate
+        ? initialData.startDate.split('T')[0]
+        : new Date().toISOString().split('T')[0],
       endDate: initialData?.endDate ? initialData.endDate.split('T')[0] : '',
       isRecurring: initialData?.isRecurring ?? true,
       rollover: initialData?.rollover ?? true,
@@ -84,8 +91,8 @@ export function BudgetForm({
 
   useEffect(() => {
     if (initialData) {
-        // Reset form with initial data if it changes or just on mount
-        // logic handled by defaultValues for now
+      // Reset form with initial data if it changes or just on mount
+      // logic handled by defaultValues for now
     }
   }, [initialData]);
 
@@ -121,95 +128,96 @@ export function BudgetForm({
         />
 
         <div className="flex gap-4">
-            <FormField
+          <FormField
             control={form.control}
             name="cycleType"
             render={({ field }) => (
-                <FormItem className="flex-1">
+              <FormItem className="flex-1">
                 <FormLabel>週期類型</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                    <SelectTrigger>
-                        <SelectValue placeholder="選擇週期" />
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="選擇週期" />
                     </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
+                  </FormControl>
+                  <SelectContent>
                     <SelectItem value={BudgetCycleType.MONTH}>每月</SelectItem>
                     <SelectItem value={BudgetCycleType.YEAR}>每年</SelectItem>
                     <SelectItem value={BudgetCycleType.WEEK}>每週</SelectItem>
                     <SelectItem value={BudgetCycleType.DAY}>每日</SelectItem>
-                    </SelectContent>
+                  </SelectContent>
                 </Select>
                 <FormMessage />
-                </FormItem>
+              </FormItem>
             )}
-            />
+          />
 
-             {isRecurring && (
-                <FormField
-                control={form.control}
-                name="cycleStartDay"
-                render={({ field }) => (
-                    <FormItem className="flex-1">
-                    <FormLabel>週期起始日</FormLabel>
-                    <Select 
-                        onValueChange={(val) => field.onChange(Number(val))} 
-                        value={field.value?.toString()}
-                    >
+          {isRecurring && (
+            <FormField
+              control={form.control}
+              name="cycleStartDay"
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormLabel>週期起始日</FormLabel>
+                  <Select
+                    onValueChange={(val) => field.onChange(Number(val))}
+                    value={field.value?.toString()}
+                  >
                     <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder="選擇日期" />
-                        </SelectTrigger>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="選擇日期" />
+                      </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                        {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                            <SelectItem key={day} value={day.toString()}>
-                                {day}
-                            </SelectItem>
-                        ))}
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(
+                        (day) => (
+                          <SelectItem key={day} value={day.toString()}>
+                            {day}
+                          </SelectItem>
+                        ),
+                      )}
                     </SelectContent>
-                    </Select>
-                    <FormDescription>
-                        {cycleType === BudgetCycleType.MONTH ? '1-31' : 
-                         cycleType === BudgetCycleType.WEEK ? '1 (週一) - 7 (週日)' : '不適用'}
-                    </FormDescription>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-             )}
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
 
         <div className="flex gap-4">
-            <FormField
+          <FormField
             control={form.control}
             name="startDate"
             render={({ field }) => (
-                <FormItem className="flex-1">
+              <FormItem className="flex-1">
                 <FormLabel>生效起始日</FormLabel>
                 <FormControl>
-                    <Input type="date" {...field} />
+                  <Input type="date" {...field} />
                 </FormControl>
                 <FormMessage />
-                </FormItem>
+              </FormItem>
             )}
-            />
+          />
 
-            {!isRecurring && (
-                <FormField
-                control={form.control}
-                name="endDate"
-                render={({ field }) => (
-                    <FormItem className="flex-1">
-                    <FormLabel>結束日期</FormLabel>
-                    <FormControl>
-                        <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-            )}
+          {!isRecurring && (
+            <FormField
+              control={form.control}
+              name="endDate"
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormLabel>結束日期</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
 
         <FormField
@@ -219,9 +227,7 @@ export function BudgetForm({
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
               <div className="space-y-0.5">
                 <FormLabel>重複循環</FormLabel>
-                <FormDescription>
-                  預算是否每個週期自動重複
-                </FormDescription>
+                <FormDescription>預算是否每個週期自動重複</FormDescription>
               </div>
               <FormControl>
                 <Switch
@@ -234,28 +240,26 @@ export function BudgetForm({
         />
 
         {isRecurring && (
-            <FormField
+          <FormField
             control={form.control}
             name="rollover"
             render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                 <div className="space-y-0.5">
-                    <FormLabel>餘額結轉</FormLabel>
-                    <FormDescription>
-                    將剩餘預算結轉至下個週期
-                    </FormDescription>
+                  <FormLabel>餘額結轉</FormLabel>
+                  <FormDescription>將剩餘預算結轉至下個週期</FormDescription>
                 </div>
                 <FormControl>
-                    <Switch
+                  <Switch
                     checked={field.value}
                     onCheckedChange={field.onChange}
-                    />
+                  />
                 </FormControl>
-                </FormItem>
+              </FormItem>
             )}
-            />
+          />
         )}
-        
+
         <FormField
           control={form.control}
           name="categoryIds"
@@ -288,7 +292,7 @@ export function BudgetForm({
                                 return checked
                                   ? field.onChange([...current, id])
                                   : field.onChange(
-                                      current.filter((value) => value !== id)
+                                      current.filter((value) => value !== id),
                                     );
                               }}
                             />
@@ -308,7 +312,7 @@ export function BudgetForm({
         />
 
         <Button type="submit" disabled={isLoading}>
-            {initialData ? '更新預算' : '建立預算'}
+          {initialData ? '更新預算' : '建立預算'}
         </Button>
       </form>
     </Form>
