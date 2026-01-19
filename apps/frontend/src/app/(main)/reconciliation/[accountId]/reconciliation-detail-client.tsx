@@ -176,8 +176,8 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
         </div>
       </div>
 
-      <Card className="border-slate-200/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl shadow-sm overflow-hidden">
-        <CardHeader className="pb-4 border-b border-slate-100/50 dark:border-slate-800/50 bg-slate-50/30 dark:bg-slate-900/30">
+      <Card className="shadow-sm overflow-hidden">
+        <CardHeader className="pb-4 border-b">
           <div className="flex items-center justify-between">
             <CardTitle className="font-playfair text-xl">
               待核對交易列表

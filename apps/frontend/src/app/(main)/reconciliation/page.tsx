@@ -39,9 +39,8 @@ export default async function ReconciliationPage() {
           {notifications.map((notification) => (
             <Card
               key={notification.accountId}
-              className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.01] border-slate-200/60 dark:border-slate-800/60 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl flex flex-col"
+              className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.01] flex flex-col"
             >
-              <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 font-playfair text-xl">
                   <div className="p-2 rounded-full bg-primary/10 text-primary">
