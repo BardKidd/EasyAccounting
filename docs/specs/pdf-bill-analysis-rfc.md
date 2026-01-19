@@ -58,8 +58,6 @@ flowchart LR
     D --> K
 ```
 
-![pdf-architecture](https://github.com/BardKidd/EasyAccounting/blob/main/docs/specs/pdf-architecture.png)
-
 ### 2.2 元件關係
 
 | 元件     | 技術                    | 說明                            |
