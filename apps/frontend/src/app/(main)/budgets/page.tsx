@@ -12,6 +12,16 @@ import { CategoryType } from '@repo/shared';
 import { getCategories } from '@/services/category';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function BudgetsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -21,6 +31,7 @@ export default function BudgetsPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | undefined>(undefined);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -73,14 +84,16 @@ export default function BudgetsPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm('確定要刪除此預算嗎？')) {
+  const confirmDelete = async () => {
+    if (deleteId) {
         try {
-            await budgetService.deleteBudget(id);
+            await budgetService.deleteBudget(deleteId);
             toast.success('刪除成功');
             fetchData();
         } catch (error) {
             toast.error('刪除失敗');
+        } finally {
+            setDeleteId(null);
         }
     }
   };
@@ -94,7 +107,7 @@ export default function BudgetsPage() {
     <Container className="py-8 space-y-8 max-w-[1600px] px-4 md:px-8">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-white/60 bg-clip-text text-transparent font-playfair">
+          <h2 className="text-3xl font-bold tracking-tight bg-linear-to-r from-slate-900 to-slate-700 dark:from-white dark:to-white/60 bg-clip-text text-transparent font-playfair">
             預算管理
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -126,7 +139,7 @@ export default function BudgetsPage() {
                     budget={budget}
                     usage={usage}
                     onEdit={handleEdit}
-                    onDelete={handleDelete}
+                    onDelete={setDeleteId}
                 />
             );
           })}
@@ -140,6 +153,21 @@ export default function BudgetsPage() {
         initialData={editingBudget}
         categories={categories}
       />
+
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>確定要刪除此預算嗎？</AlertDialogTitle>
+            <AlertDialogDescription>
+                此動作無法復原。這將永久刪除您的預算設定及相關歷史紀錄。
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">刪除</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Container>
   );
 }
