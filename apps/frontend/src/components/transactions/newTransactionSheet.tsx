@@ -63,6 +63,11 @@ import { z } from '@repo/shared';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
+import { budgetService } from '@/services/mock/budgetMock';
+import { Budget } from '@/types/budget';
+import { Badge } from '@/components/ui/badge';
+import { X } from 'lucide-react';
+
 function NewTransactionSheet({
   categories,
   accounts,
@@ -74,6 +79,16 @@ function NewTransactionSheet({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showExtra, setShowExtra] = useState(false);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [selectedBudgetIds, setSelectedBudgetIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    const fetchBudgets = async () => {
+      const res = await budgetService.getBudgets();
+      if (res.isSuccess) setBudgets(res.data.filter(b => b.isActive));
+    };
+    fetchBudgets();
+  }, []);
 
   // 因為 subCategory 還沒選擇，所以只能在這裡判斷
   const formSchema = useMemo(() => {
@@ -215,7 +230,30 @@ function NewTransactionSheet({
     return selectedMain.children;
   }, [watchedMainCategory, currentMainCategory]);
 
+  useEffect(() => {
+    if (watchedMainCategory || form.getValues('subCategory')) {
+      // Mock auto-selection: if no budget selected, pick first one if available
+      // In real app, we would check BudgetCategory map
+      if (budgets.length > 0 && selectedBudgetIds.length === 0 && watchedType === RootType.EXPENSE) {
+         // Just a mock behavior
+         // setSelectedBudgetIds([budgets[0].id]);
+      }
+    }
+  }, [watchedMainCategory, form.watch('subCategory'), budgets, watchedType, selectedBudgetIds.length]);
+
   const handleExpenseAndIncomeChange = async (data: TransactionFormSchema) => {
+    // Mock Backdating check
+    const transactionDate = new Date(data.date);
+    const today = new Date();
+    // Simple check: if month is different (earlier)
+    const isBackdated = transactionDate < new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    if (isBackdated) {
+        if (!confirm('⚠️ 回溯補帳確認\n\n您正在新增過去週期的交易，這可能會觸發預算歷史重算。\n確定要繼續嗎？')) {
+            return;
+        }
+    }
+
     // 整理成 API 需要的格式
     const payload: CreateTransactionSchema = {
       accountId: data.accountId,
@@ -237,6 +275,9 @@ function NewTransactionSheet({
       extraMinus: data.extraMinus,
       extraMinusLabel: data.extraMinusLabel,
     };
+
+    // Mock: Include selected budgets
+    (payload as any).budgetIds = selectedBudgetIds;
 
     try {
       setIsLoading(true);
@@ -491,6 +532,60 @@ function NewTransactionSheet({
                   />
                 )}
               </div>
+
+              {/* Budget Selection */}
+              {watchedType === RootType.EXPENSE && (
+                <div className="space-y-2">
+                  <FormLabel>歸入預算 (Mock Data)</FormLabel>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {selectedBudgetIds.map((id) => {
+                      const b = budgets.find((x) => x.id === id);
+                      if (!b) return null;
+                      return (
+                        <Badge
+                          key={id}
+                          variant="secondary"
+                          className="cursor-pointer"
+                          onClick={() =>
+                            setSelectedBudgetIds((prev) =>
+                              prev.filter((p) => p !== id),
+                            )
+                          }
+                        >
+                          {b.name} <X className="ml-1 h-3 w-3" />
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                  <Select
+                    onValueChange={(val) => {
+                      const id = Number(val);
+                      if (!selectedBudgetIds.includes(id)) {
+                        setSelectedBudgetIds([...selectedBudgetIds, id]);
+                      }
+                    }}
+                    value=""
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="選擇預算..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {budgets
+                        .filter((b) => !selectedBudgetIds.includes(b.id))
+                        .map((b) => (
+                          <SelectItem key={b.id} value={b.id.toString()}>
+                            {b.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    💡 根據分類設定，已預選相關預算
+                  </p>
+                </div>
+              )}
 
               {/* Amount */}
               <div className="pt-2 pb-4">
