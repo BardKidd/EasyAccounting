@@ -25,12 +25,13 @@ EasyAccounting 是一個現代化的個人記帳與資產管理應用程式，�
 
 ### Frontend (`apps/frontend`)
 
-- **Framework**: [Next.js](https://nextjs.org/) (App Router)
+- **Framework**: [Next.js](https://nextjs.org/)
 - **Language**: TypeScript
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/), `tw-animate-css`
-- **UI Components**: [Radix UI](https://www.radix-ui.com/), [Lucide React](https://lucide.dev/) (Icons), [Sonner](https://sonner.emilkowal.ski/) (Toasts)
+- **UI Components**: [Shadcn](https://ui.shadcn.com/), [Radix UI](https://www.radix-ui.com/), [Lucide React](https://lucide.dev/) (Icons), [Sonner](https://sonner.emilkowal.ski/) (Toasts)
 - **Forms & Validation**: React Hook Form, Zod (via `@repo/shared`)
 - **Visualization**: [ECharts for React](https://git.hust.cc/echarts-for-react/)
+- **Testing**: [Playwright](https://playwright.dev/)
 
 ### Backend (`apps/backend`)
 
@@ -40,6 +41,7 @@ EasyAccounting 是一個現代化的個人記帳與資產管理應用程式，�
 - **Authentication**: JWT (JSON Web Tokens)
 - **Job Scheduling**: Node-cron
 - **File Handling**: ExcelJS (Excel 處理), Multer (檔案上傳)
+- **Testing**: [Vitest](https://vitest.dev/), [Supertest](https://github.com/ladjs/supertest)
 
 ### Shared Packages
 
@@ -47,11 +49,18 @@ EasyAccounting 是一個現代化的個人記帳與資產管理應用程式，�
 - `@repo/eslint-config`: 統一的 ESLint 設定
 - `@repo/typescript-config`: 統一的 TypeScript 設定
 
+## ☁️ 部署 (Deployment)
+
+- **Frontend**: Hosted on [Vercel](https://vercel.com)
+  - Production: [riinouo-eaccounting.win](https://riinouo-eaccounting.win)
+  - Development: [dev.riinouo-eaccounting.win](https://dev.riinouo-eaccounting.win)
+- **Backend**: Hosted on [Railway](https://railway.com/)
+
 ## 🚀 快速開始 (Getting Started)
 
 ### 前置需求
 
-- [Node.js](https://nodejs.org/) (>= 18)
+- [Node.js](https://nodejs.org/) (>= 22)
 - [pnpm](https://pnpm.io/) (建議使用)
 - [PostgreSQL](https://www.postgresql.org/) 資料庫
 
@@ -61,31 +70,6 @@ EasyAccounting 是一個現代化的個人記帳與資產管理應用程式，�
 pnpm install
 ```
 
-### 環境變數設定
-
-請確保在 `apps/backend` 與 `apps/frontend` 目錄下建立對應的 `.env` 檔案，並填入必要的環境變數（如資料庫連線字串、JWT Secret、Resend API Key 等）。
-
-### 資料庫遷移 (Backend)
-
-在 `apps/backend` 目錄下執行：
-
-```bash
-pnpm db:migrate:up
-```
-
-### 啟動開發伺服器
-
-在專案根目錄執行以下指令，將同時啟動 Frontend 與 Backend：
-
-```bash
-pnpm dev
-# 或
-turbo deviation
-```
-
-- Frontend: http://localhost:3000
-- Backend: http://localhost:8080 (預設)
-
 ## 📜 常用指令
 
 | 指令               | 說明                       |
@@ -94,7 +78,9 @@ turbo deviation
 | `pnpm build`       | 建置所有應用與套件         |
 | `pnpm lint`        | 執行程式碼檢查             |
 | `pnpm format`      | 使用 Prettier 格式化程式碼 |
+| `pnpm format`      | 使用 Prettier 格式化程式碼 |
 | `pnpm check-types` | 執行 TypeScript 型別檢查   |
+| `pnpm test`        | 執行所有測試               |
 
 ### Backend 特定指令 (需進入 `apps/backend`)
 
@@ -105,17 +91,49 @@ turbo deviation
 | `pnpm db:migrate:down` | 還原上一次的遷移        |
 | `pnpm email`           | 預覽電子郵件樣板        |
 
-## 📂 專案結構
+## � 詳細專案結構 (Project Structure)
+
+本專案為 Monorepo 架構，主要分為 Backend (Express) 與 Frontend (Next.js)。
+
+### Backend (`apps/backend`)
 
 ```
-.
-├── apps
-│   ├── backend    # Express API Server
-│   └── frontend   # Next.js Application
-├── packages
-│   ├── eslint-config
-│   ├── shared     # Shared types & schemas
-│   ├── typescript-config
-│   └── ui         # Shared UI components (optional)
-└── ...
+apps/backend/src
+├── config/         # 環境變數與設定檔
+├── controllers/    # 處理 HTTP Request 的控制器 (Controller Layer)
+├── cron/           # 排程任務邏輯 (Cron Jobs)
+├── emails/         # React Email 郵件樣板
+├── middlewares/    # Express Middlewares (Auth, Logging, Error Handling)
+├── models/         # Sequelize Models (Database Schema)
+├── routes/         # API 路由定義
+├── services/       # 核心業務邏輯 (Service Layer)
+├── utils/          # 共用工具函式 (DB 連線, Helper functions)
+└── app.ts          # 應用程式進入點 (Entry Point)
 ```
+
+### Frontend (`apps/frontend`)
+
+```
+apps/frontend/src
+├── app/            # Next.js App Router 頁面與 Layout
+├── components/     # React UI 元件
+│   ├── landing/    # 首頁相關元件
+│   ├── ui/         # 共用 UI 元件 (Shadcn/UI)
+│   └── ...
+├── hooks/          # Custom React Hooks
+├── lib/            # 工具函式與第三方庫設定
+├── services/       # 前端 API 呼叫封裝
+└── types/          # 前端 TypeScript 型別定義
+```
+
+### Packages (`packages/`)
+
+- `shared`: 前後端共用的邏輯 (Zod Schemas, Types)。
+- `eslint-config`: 統一的 Lint 規則。
+- `typescript-config`: 統一的 TSConfig。
+
+---
+
+## 📝 筆記與備註
+
+- 待開發的功能詳見 `todo.md`

@@ -63,19 +63,27 @@ export function TrendLineChart({
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
-        backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)',
-        borderColor: isDark ? '#333' : '#ccc',
+        backgroundColor: isDark
+          ? 'rgba(15, 23, 42, 0.95)'
+          : 'rgba(255, 255, 255, 0.95)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
         textStyle: {
-          color: isDark ? '#fff' : '#333',
+          color: isDark ? '#f8fafc' : '#0f172a',
+          fontFamily: 'Geist Mono',
         },
+        padding: [12, 16],
+        extraCssText:
+          'backdrop-filter: blur(8px); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);',
         formatter: (params: any[]) => {
-          let result = `<div>${params[0].axisValue}</div>`;
+          let result = `<div class="font-bold mb-2 pb-2 border-b border-slate-200 dark:border-slate-700">${params[0].axisValue}</div>`;
+          result += '<div class="space-y-1">';
           params.forEach((param) => {
-            result += `<div style="display:flex; justify-content:space-between; gap:10px;">
-              <span>${param.marker} ${param.seriesName}</span>
-              <span style="font-weight:bold;">${formatCurrency(param.value)}</span>
+            result += `<div style="display:flex; justify-content:space-between; gap:20px; align-items:center;">
+              <span style="display:flex; align-items:center; gap:6px;">${param.marker} <span class="text-xs opacity-80">${param.seriesName}</span></span>
+              <span class="font-mono font-bold">${formatCurrency(param.value)}</span>
             </div>`;
           });
+          result += '</div>';
           return result;
         },
       },
@@ -119,11 +127,13 @@ export function TrendLineChart({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>收支趨勢</CardTitle>
+    <Card className="border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 hover:bg-white dark:hover:bg-slate-900/70 transition-all duration-300 group">
+      <CardHeader className="border-b border-slate-200 dark:border-white/5 pb-4">
+        <CardTitle className="text-xl font-bold font-playfair text-slate-900 dark:text-white">
+          收支趨勢
+        </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <ReactECharts
           option={getOption()}
           style={{ height: '350px', width: '100%' }}

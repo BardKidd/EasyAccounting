@@ -21,6 +21,14 @@
   - 收支記錄 CRUD。
   - 轉帳功能 (自動產生兩筆關聯交易)。
   - 自動更新帳戶餘額 (Wallet)。
+- [x] **信用卡進階管理 (Credit Card Management)**:
+  - [x] **資料庫架構**: `CreditCardDetail` Table (結帳日、繳款日、額度)、`InstallmentPlan` Table (分期母計畫)。
+  - [x] **帳單週期邏輯**: 支援 `billingDate` 自動歸屬帳單月份 (Implemented in `createTransaction`).
+  - [x] **分期付款 (Installment)**: 建立分期交易 (自動展開 N 期)、餘額與額度計算 (總額佔用額度)。
+  - [x] **繳款紀錄**: 使用轉帳 (Transfer) 邏輯實作，支援從銀行帳戶繳款。
+- [x] **交易功能增強 (Transaction Enhancements)**:
+  - [x] **0 元交易**: 支援全額折抵或贈品紀錄 (Net Amount = 0, UI 顯示綠色)。
+  - [x] **額外金額結構 (Transaction Extra)**: 資料表 `TransactionExtra` (手續費、折扣)、實際金額 (Net Amount) 計算公式、負數輸入自動轉正邏輯。
 
 ### 統計與報表 (Statistics)
 
@@ -30,6 +38,7 @@
   - 分類支出圓餅圖 (Pie Chart)。
   - 月度收支統計。
   - [x] **總資產趨勢圖 (Asset Trend Chart)**: 雙 Y軸圖表 (ECharts)，結合收支柱狀圖與總資產折線圖 (含 Zoom 功能)。
+  - [x] **總資產計算優化**: 實作倒推法 (Backward Calculation) 即時計算每月資產。
 
 ### 自動化通知 (Automation)
 
@@ -43,85 +52,51 @@
 
 - [x] **系統公告**: 使用 **MongoDB (Mongoose)** 儲存公告資訊 (混合架構練習)。
 - [x] **軟刪除 (Soft Delete)**: 重要資料 (User, Transaction 等) 支援軟刪除與還原。
+- [x] **Excel 匯入/匯出**: 整合 Azure Blob Storage 與 ExcelJS，完整支援交易記錄匯入與備份導出。
+
+### 工程與運維 (Engineering & DevOps)
+
+- [x] **測試策略 (Testing)**:
+  - Backend: Vitest (Unit Test)。
+    > Follow `backend-testing-standard`: 全面使用 Mock 隔離資料庫與外部依賴，專注於業務邏輯驗證，確保 CI/CD 執行效率。
+  - Frontend: Playwright E2E。
+- [x] **部署架構 (Deployment)**:
+  - Frontend: Vercel.
+  - Backend: Railway.
+- [x] **CI/CD**: Basic Github Actions workflow.
 
 ---
 
 ## 🚧 開發中 / 待辦清單 (Roadmap)
 
-### 1. Excel 匯入/匯出 (Excel Import/Export) - Next Priority
+### 1. 預算系統 (Budget System) - Priority High
 
-> 使用 `exceljs` 處理檔案，並儲存於 `Azure Blob Storage`。
+> 📄 **技術規格**: [budget-system-spec.md](../../docs/specs/budget-system-spec.md)
 
-- [x] **匯出功能**:
-  - [x] 匯出交易記錄 (支援日期範圍篩選)。
-  - [ ] 匯出月度報表。
-  - [x] 上傳生成的 Excel 至 Azure Blob，並回傳下載連結 (SAS Token 或 Public URL)。
-- [x] **匯入功能**:
-  - [x] 下載範本格式。
-  - [x] 上傳 Excel 檔案至 Azure Blob (存檔備份)。
-  - [x] 解析 Excel 並批次寫入交易記錄 (Batch Insert)。
+- [ ] **核心功能**:
+  - [ ] 預算專案 CRUD (支援年/月/週/日週期)
+  - [ ] 子預算 (分類級別額度設定)
+  - [ ] 自訂週期起始日
+  - [ ] 重複循環 vs 單次預算
+  - [ ] 餘額結轉 (Rollover)
+- [ ] **交易整合**:
+  - [ ] 交易表單新增「歸入預算」多選欄位
+  - [ ] TransactionBudget 關聯表
+- [ ] **監控儀表板**:
+  - [ ] 預算卡片 Widget (進度條、使用率、倒數天數)
+  - [ ] 顏色規則 (<80% 綠色 / 80-99% 橘色 / ≥100% 紅色)
+- [ ] **Alert 系統**:
+  - [ ] 80%/100% 超支提醒 (Email + In-App)
+- [ ] **進階功能**:
+  - [ ] 回溯補帳遞迴重算 (Async Queue)
+  - [ ] 週期快照 (Snapshot) 保護歷史資料
+  - [ ] 惰性快照建立 (Lazy Evaluation)
 
-### 2. 總資產計算優化
+### 2. 交易功能增強 (Transaction Enhancements) - Todo only
 
-- [x] 製作 `AssetTrendChart` 資料與圖表，使用倒推法 (Backward Calculation) 即時計算每月資產，無需額外 Table。
-- [x] 前端實作 ECharts dataZoom 與雙軸顯示。
+- [ ] **交易複製**: 快速複製歷史交易。
+- [ ] **週期性交易**: 設定固定收支 (如房租、訂閱制)，自動建立交易紀錄。
 
-### 2.5 新增 UT (Unit Tests)
+### 3. 多幣別支援 (Multi-currency) - Backlog
 
-- [x] 增加後端業務邏輯單元測試。
-  - 已完成: Notification, Excel, Category, Transaction 模組測試。
-
-### 2.6 新增 Github Action (CI)
-
-- [ ] 設定自動化測試與 Lint 檢查。
-
-### 3. 部署與運維
-
-- [ ] **Containerization**: 撰寫 `Dockerfile` 與 `docker-compose.yml`。
-- [ ] **Azure Deployment**: 部署至 Azure App Service。
-
-### 4. 信用卡功能規劃
-
-- [ ] 自動繳款紀錄、循環利息計算等進階功能。
-
-### 5. 不同幣別換算 (Multi-currency)
-
-- [ ] 支援多種貨幣與匯率換算。
-- [ ] MVP 暫不包含，未來實作。
-
-### 6. 預算功能開發
-
-- [ ] 基礎預算設定與超支提醒。
-
-### 7. 交易功能增強
-
-- [ ] **支援 0 元交易**: 允許輸入金額為 0 (例如：全額折扣、免費贈品)，需調整後端驗證邏輯解除最小金額限制。
-
----
-
-## 🛠️ 技術棧 (Tech Stack)
-
-### Backend
-
-- **Framework**: Express.js
-- **Database**:
-  - PostgreSQL (Sequelize ORM) - 核心業務資料
-  - MongoDB (Mongoose) - 系統公告、Log
-- **Services**:
-  - `node-cron` (排程)
-  - `nodemailer` / `resend` (郵件)
-  - `exceljs` (報表)
-  - `@azure/storage-blob` (檔案儲存)
-
-### Frontend
-
-- **Framework**: Next.js 14+ (App Router)
-- **UI Library**: Shadcn/UI (Tailwind CSS)
-- **State Management**: React Hooks
-- **Charts**: EChart.js
-
----
-
-## 📌 筆記與備註
-
-- 此專案目前採用 Monorepo 架構 (TurboRepo)。
+- [ ] 獲取即時匯率，支援外幣帳戶與交易換算。

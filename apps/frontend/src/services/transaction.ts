@@ -6,6 +6,7 @@ import {
   CreateTransactionSchema,
   TransactionResponse,
   CreateTransferSchema,
+  UpdateTransactionSchema,
 } from '@repo/shared';
 import { toast } from 'sonner';
 
@@ -123,3 +124,41 @@ export const addTransfer = async (transaction: CreateTransferSchema) => {
     throw err;
   }
 };
+
+export const updateTransaction = async (
+  id: string,
+  transaction: UpdateTransactionSchema
+) => {
+  try {
+    const result = (await apiHandler(
+      `/transaction/${id}`,
+      'put',
+      transaction
+    )) as ResponseHelper<TransactionType>;
+
+    if (result.isSuccess) {
+      return result;
+    }
+    return null;
+  } catch (err) {
+    throw err;
+  }
+};
+
+export const deleteTransaction = async (id: string) => {
+  try {
+    const result = (await apiHandler(
+      `/transaction/${id}`,
+      'delete',
+      null
+    )) as ResponseHelper<any>;
+
+    if (result.isSuccess) {
+      return result;
+    }
+    return null;
+  } catch (err) {
+    throw err;
+  }
+};
+

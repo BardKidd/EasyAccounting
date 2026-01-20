@@ -101,7 +101,21 @@ export function SummaryBarChart({ data }: { data: SummaryData }) {
   const option = {
     tooltip: {
       trigger: 'axis',
-      axisPointer: { type: 'shadow' },
+      backgroundColor: isDark
+        ? 'rgba(15, 23, 42, 0.95)'
+        : 'rgba(255, 255, 255, 0.95)',
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      textStyle: {
+        color: isDark ? '#f8fafc' : '#0f172a',
+        fontFamily: 'Geist Mono',
+      },
+      padding: [12, 16],
+      axisPointer: {
+        type: 'shadow',
+        shadowStyle: {
+          color: 'rgba(255, 255, 255, 0.05)',
+        },
+      },
       formatter: (params: any[]) => {
         const item = params[0];
         let prefix = '';
@@ -112,42 +126,54 @@ export function SummaryBarChart({ data }: { data: SummaryData }) {
         if (item.name === SummaryType.BALANCE)
           prefix = item.value > 0 ? '+' : '';
 
-        return `${item.name}<br/>${item.marker} ${prefix} ${formatCurrency(item.value)}`;
+        const color = item.color.colorStops
+          ? item.color.colorStops[0].color
+          : item.color;
+
+        return `
+            <div class="flex items-center justify-between gap-4 text-xs font-mono">
+              <span class="flex items-center gap-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}">
+                <span class="w-2 h-2 rounded-full" style="background-color: ${color}"></span>
+                ${item.name}
+              </span>
+              <span class="font-bold ${isDark ? 'text-white' : 'text-slate-900'}">${prefix} ${formatCurrency(item.value)}</span>
+            </div>
+          `;
       },
-      backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)',
-      borderColor: isDark ? '#333' : '#ccc',
-      textStyle: {
-        color: isDark ? '#fff' : '#333',
-      },
+      extraCssText:
+        'backdrop-filter: blur(8px); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);',
     },
     grid: {
       left: '3%',
-      right: '15%', // Increase right margin to fit longer labels (+ $xx,xxx)
+      right: '4%',
       bottom: '3%',
       top: '5%',
       containLabel: true,
     },
     xAxis: {
-      type: 'value', // 數值軸
+      type: 'value',
       axisLabel: {
         formatter: (value: number) => {
           if (value >= 10000) return `${value / 10000}萬`;
           return value;
         },
-        color: isDark ? '#9ca3af' : '#6b7280',
+        color: isDark ? '#64748b' : '#94a3b8',
+        fontFamily: 'Geist Mono',
+        fontSize: 10,
       },
       splitLine: {
         lineStyle: {
-          color: isDark ? '#374151' : '#e5e7eb',
+          color: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.05)',
         },
       },
     },
     yAxis: {
-      type: 'category', // 類別軸
+      type: 'category',
       data: getSortedKeys(),
       axisLabel: {
-        color: isDark ? '#ffffff' : '#374151',
+        color: isDark ? '#f8fafc' : '#0f172a',
         fontWeight: 'bold',
+        fontFamily: 'Inter',
       },
       axisLine: { show: false },
       axisTick: { show: false },
@@ -155,18 +181,56 @@ export function SummaryBarChart({ data }: { data: SummaryData }) {
     series: [
       {
         type: 'bar',
-        data: buildSeriesData(),
-        barWidth: '60%',
+        data: buildSeriesData().map((item) => ({
+          ...item,
+          itemStyle: {
+            ...item.itemStyle,
+            color:
+              item.itemStyle.color === '#10b981'
+                ? {
+                    type: 'linear',
+                    x: 0,
+                    y: 0,
+                    x2: 1,
+                    y2: 0,
+                    colorStops: [
+                      { offset: 0, color: '#10b981' },
+                      { offset: 1, color: '#34d399' },
+                    ],
+                  }
+                : item.itemStyle.color === '#ef4444'
+                  ? {
+                      type: 'linear',
+                      x: 0,
+                      y: 0,
+                      x2: 1,
+                      y2: 0,
+                      colorStops: [
+                        { offset: 0, color: '#ef4444' },
+                        { offset: 1, color: '#f87171' },
+                      ],
+                    }
+                  : item.itemStyle.color,
+          },
+        })),
+        barWidth: '50%',
+        showBackground: true,
+        backgroundStyle: {
+          color: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+          borderRadius: [0, 4, 4, 0],
+        },
       },
     ],
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg">收支概況</CardTitle>
+    <Card className="border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 hover:bg-white dark:hover:bg-slate-900/70 transition-all duration-300 group">
+      <CardHeader className="pb-2 border-b border-slate-200 dark:border-white/5">
+        <CardTitle className="text-xl font-bold font-playfair text-slate-900 dark:text-white">
+          收支概況
+        </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         <ReactECharts
           option={option}
           style={{ height: '300px', width: '100%' }}

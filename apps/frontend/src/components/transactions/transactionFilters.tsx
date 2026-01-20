@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
@@ -32,6 +32,7 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   const [date, setDate] = useState<DateRange | undefined>(() => {
     const start = searchParams.get('startDate');
@@ -44,13 +45,13 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
 
   const [type, setType] = useState(searchParams.get('type') || 'all');
   const [accountId, setAccountId] = useState(
-    searchParams.get('accountId') || 'all'
+    searchParams.get('accountId') || 'all',
   );
 
   const updateFilters = (
     newDate?: DateRange,
     newType?: string,
-    newAccountId?: string
+    newAccountId?: string,
   ) => {
     const params = new URLSearchParams(searchParams);
 
@@ -81,7 +82,9 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
     // Reset pagination
     params.delete('page');
 
-    router.replace(`${pathname}?${params.toString()}`);
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`);
+    });
   };
 
   const handleDateChange = (val: DateRange | undefined) => {
@@ -104,47 +107,51 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
   };
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-      <div className="grid gap-2">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              id="date"
-              variant={'outline'}
-              className={cn(
-                'w-[260px] justify-start text-left font-normal cursor-pointer',
-                !date && 'text-muted-foreground'
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {date?.from ? (
-                date.to ? (
-                  <>
-                    {format(date.from, 'yyyy-MM-dd')} -{' '}
-                    {format(date.to, 'yyyy-MM-dd')}
-                  </>
-                ) : (
-                  format(date.from, 'yyyy-MM-dd')
-                )
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            id="date"
+            variant={'outline'}
+            disabled={isPending}
+            className={cn(
+              'w-full sm:w-[260px] justify-start text-left font-normal cursor-pointer h-11',
+              'bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+              !date && 'text-muted-foreground',
+            )} // updated classes
+          >
+            <CalendarIcon className="mr-2 h-4 w-4 text-slate-500" />
+            {date?.from ? (
+              date.to ? (
+                <>
+                  {format(date.from, 'yyyy-MM-dd')} -{' '}
+                  {format(date.to, 'yyyy-MM-dd')}
+                </>
               ) : (
-                <span>選擇日期範圍</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="range"
-              defaultMonth={date?.from}
-              selected={date}
-              onSelect={handleDateChange}
-              numberOfMonths={2}
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
+                format(date.from, 'yyyy-MM-dd')
+              )
+            ) : (
+              <span className="text-slate-500">選擇日期範圍</span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="range"
+            defaultMonth={date?.from}
+            selected={date}
+            onSelect={handleDateChange}
+            numberOfMonths={2}
+          />
+        </PopoverContent>
+      </Popover>
 
-      <Select value={type} onValueChange={handleTypeChange}>
-        <SelectTrigger className="w-[180px] cursor-pointer">
+      <Select
+        value={type}
+        onValueChange={handleTypeChange}
+        disabled={isPending}
+      >
+        <SelectTrigger className="w-full sm:w-[180px] cursor-pointer !h-11 bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
           <SelectValue placeholder="交易類型" />
         </SelectTrigger>
         <SelectContent>
@@ -155,32 +162,34 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
         </SelectContent>
       </Select>
 
-      <Select value={accountId} onValueChange={handleAccountChange}>
-        <SelectTrigger className="w-[180px] cursor-pointer">
+      <Select
+        value={accountId}
+        onValueChange={handleAccountChange}
+        disabled={isPending}
+      >
+        <SelectTrigger className="w-full sm:w-[180px] cursor-pointer !h-11 bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
           <SelectValue placeholder="選擇帳戶" />
         </SelectTrigger>
         <SelectContent>
-          <SelectContent>
-            <SelectGroup key="all">
-              <SelectItem value="all">所有帳戶</SelectItem>
-            </SelectGroup>
-            {Object.values(Account).map((accountType) => {
-              const typeAccounts = accounts.filter(
-                (acc) => acc.type === accountType
-              );
-              if (typeAccounts.length === 0) return null;
-              return (
-                <SelectGroup key={accountType}>
-                  <SelectLabel>{accountType}</SelectLabel>
-                  {typeAccounts.map((acc) => (
-                    <SelectItem key={acc.id} value={acc.id}>
-                      {acc.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              );
-            })}
-          </SelectContent>
+          <SelectGroup key="all">
+            <SelectItem value="all">所有帳戶</SelectItem>
+          </SelectGroup>
+          {Object.values(Account).map((accountType) => {
+            const typeAccounts = accounts.filter(
+              (acc) => acc.type === accountType,
+            );
+            if (typeAccounts.length === 0) return null;
+            return (
+              <SelectGroup key={accountType}>
+                <SelectLabel>{accountType}</SelectLabel>
+                {typeAccounts.map((acc) => (
+                  <SelectItem key={acc.id} value={acc.id}>
+                    {acc.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            );
+          })}
         </SelectContent>
       </Select>
     </div>

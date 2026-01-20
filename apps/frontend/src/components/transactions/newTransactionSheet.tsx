@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { CalendarIcon, Plus } from 'lucide-react';
+import { CalendarIcon, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   CategoryType,
@@ -14,6 +14,10 @@ import {
   PaymentFrequency,
   transactionFormSchema,
   TransactionFormSchema,
+  InterestType,
+  CalculationMethod,
+  RemainderPlacement,
+  RewardsType,
 } from '@repo/shared';
 import { cn, getErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -37,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
@@ -58,6 +63,11 @@ import { z } from '@repo/shared';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
+import { budgetService } from '@/services/budget';
+import { Budget } from '@/types/budget';
+import { Badge } from '@/components/ui/badge';
+import { X } from 'lucide-react';
+
 function NewTransactionSheet({
   categories,
   accounts,
@@ -68,6 +78,17 @@ function NewTransactionSheet({
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showExtra, setShowExtra] = useState(false);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [selectedBudgetIds, setSelectedBudgetIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    const fetchBudgets = async () => {
+      const res = await budgetService.getBudgets();
+      if (res.isSuccess) setBudgets(res.data.filter((b) => b.isActive));
+    };
+    fetchBudgets();
+  }, []);
 
   // 因為 subCategory 還沒選擇，所以只能在這裡判斷
   const formSchema = useMemo(() => {
@@ -80,7 +101,7 @@ function NewTransactionSheet({
 
       // 找出選中的 Main Category
       const mainCategory = root.children.find(
-        (c) => c.id === data.mainCategory
+        (c) => c.id === data.mainCategory,
       );
       if (!mainCategory) return;
 
@@ -93,6 +114,36 @@ function NewTransactionSheet({
             path: ['subCategory'],
           });
         }
+      }
+
+      // 分期判斷
+      if (
+        data.paymentFrequency === PaymentFrequency.INSTALLMENT &&
+        data.installment
+      ) {
+        if (data.installment.totalInstallments < 2) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '分期期數至少 2 期',
+            path: ['installment.totalInstallments'],
+          });
+        }
+      }
+
+      // 額外金額驗證
+      if (data.extraAdd && data.extraAdd < 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: '金額不可為負數',
+          path: ['extraAdd'],
+        });
+      }
+      if (data.extraMinus && data.extraMinus < 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: '金額不可為負數',
+          path: ['extraMinus'],
+        });
       }
     });
   }, [categories]);
@@ -112,6 +163,18 @@ function NewTransactionSheet({
       receipt: '',
       targetAccountId: '',
       paymentFrequency: PaymentFrequency.ONE_TIME,
+      extraAdd: 0,
+      extraAddLabel: '折扣',
+      extraMinus: 0,
+      extraMinusLabel: '手續費',
+      installment: {
+        totalInstallments: 3,
+        interestType: InterestType.NONE,
+        calculationMethod: CalculationMethod.ROUND,
+        remainderPlacement: RemainderPlacement.FIRST,
+        gracePeriod: 0,
+        rewardsType: RewardsType.EVERY,
+      },
     },
   });
 
@@ -119,6 +182,14 @@ function NewTransactionSheet({
   const watchedType = form.watch('type');
   const watchedMainCategory = form.watch('mainCategory');
   const watchedAccountId = form.watch('accountId');
+  const watchedPaymentFrequency = form.watch('paymentFrequency');
+
+  const selectedAccount = useMemo(
+    () => accounts.find((a) => a.id === watchedAccountId),
+    [watchedAccountId, accounts],
+  );
+
+  const isCreditCard = selectedAccount?.type === Account.CREDIT_CARD;
 
   // 解決 Hydration Mismatch: 在 Client 端才設定預設時間。
   // 根本原因：SSR 的時候宣告 new Date() 會和 CSR 渲染時的結果不一樣，兩份 HTML 不一樣造成 React 警告。
@@ -135,7 +206,7 @@ function NewTransactionSheet({
     if (!categories) return [];
 
     const roots = categories.filter(
-      (root) => root.type === (watchedType as RootType)
+      (root) => root.type === (watchedType as RootType),
     );
 
     // flatMap 比較少用記錄一下：先 map 後 flat，少一步驟。e.g. [{children: []}, {children: []}] -> map: [ [], [] ] -> flat: []
@@ -159,7 +230,45 @@ function NewTransactionSheet({
     return selectedMain.children;
   }, [watchedMainCategory, currentMainCategory]);
 
+  useEffect(() => {
+    if (watchedMainCategory || form.getValues('subCategory')) {
+      // Mock auto-selection: if no budget selected, pick first one if available
+      // In real app, we would check BudgetCategory map
+      if (
+        budgets.length > 0 &&
+        selectedBudgetIds.length === 0 &&
+        watchedType === RootType.EXPENSE
+      ) {
+        // Just a mock behavior
+        // setSelectedBudgetIds([budgets[0].id]);
+      }
+    }
+  }, [
+    watchedMainCategory,
+    form.watch('subCategory'),
+    budgets,
+    watchedType,
+    selectedBudgetIds.length,
+  ]);
+
   const handleExpenseAndIncomeChange = async (data: TransactionFormSchema) => {
+    // Mock Backdating check
+    const transactionDate = new Date(data.date);
+    const today = new Date();
+    // Simple check: if month is different (earlier)
+    const isBackdated =
+      transactionDate < new Date(today.getFullYear(), today.getMonth(), 1);
+
+    if (isBackdated) {
+      if (
+        !confirm(
+          '⚠️ 回溯補帳確認\n\n您正在新增過去週期的交易，這可能會觸發預算歷史重算。\n確定要繼續嗎？',
+        )
+      ) {
+        return;
+      }
+    }
+
     // 整理成 API 需要的格式
     const payload: CreateTransactionSchema = {
       accountId: data.accountId,
@@ -172,7 +281,18 @@ function NewTransactionSheet({
       time: data.time,
       receipt: data.receipt,
       paymentFrequency: data.paymentFrequency,
+      installment:
+        data.paymentFrequency === PaymentFrequency.INSTALLMENT
+          ? (data.installment as CreateTransactionSchema['installment'])
+          : undefined,
+      extraAdd: data.extraAdd,
+      extraAddLabel: data.extraAddLabel,
+      extraMinus: data.extraMinus,
+      extraMinusLabel: data.extraMinusLabel,
     };
+
+    // Mock: Include selected budgets
+    (payload as any).budgetIds = selectedBudgetIds;
 
     try {
       setIsLoading(true);
@@ -182,6 +302,7 @@ function NewTransactionSheet({
         toast.success(result.message);
         router.refresh();
         form.reset();
+        setShowExtra(false);
       }
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -203,6 +324,10 @@ function NewTransactionSheet({
       receipt: data.receipt,
       paymentFrequency: data.paymentFrequency,
       targetAccountId: data.targetAccountId as string,
+      extraAdd: data.extraAdd,
+      extraAddLabel: data.extraAddLabel,
+      extraMinus: data.extraMinus,
+      extraMinusLabel: data.extraMinusLabel,
     };
 
     try {
@@ -213,6 +338,7 @@ function NewTransactionSheet({
         toast.success(result.message);
         router.refresh();
         form.reset();
+        setShowExtra(false);
       }
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -233,92 +359,108 @@ function NewTransactionSheet({
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <Button className="cursor-pointer">
+        <Button className="cursor-pointer bg-slate-900 dark:bg-slate-50 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 shadow-xl shadow-slate-300/50 dark:shadow-none border-0 transition-all duration-300 transform hover:scale-105 rounded-full px-6 h-11 text-sm font-medium font-playfair tracking-wide">
           <Plus className="mr-2 h-4 w-4" /> 新增交易
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>新增交易</SheetTitle>
-          <SheetDescription>
-            請輸入交易詳細資訊。完成後點擊儲存。
-          </SheetDescription>
+      <SheetContent className="w-full sm:max-w-[540px] p-0 flex flex-col h-dvh bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-2xl border-l border-slate-200 dark:border-white/10 shadow-2xl">
+        <SheetHeader className="px-6 py-6 border-b border-slate-200/50 dark:border-white/5 bg-white/50 dark:bg-white/2">
+          <SheetTitle className="text-2xl font-bold font-playfair text-slate-900 dark:text-slate-50">
+            新增交易
+          </SheetTitle>
         </SheetHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <div className="grid gap-6 py-4 px-4">
-              {/* Type Selection */}
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col flex-1 overflow-hidden"
+          >
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
               <FormField
                 control={form.control}
                 name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-3 gap-4">
-                      <Button
-                        type="button"
-                        variant={
-                          field.value === RootType.EXPENSE
-                            ? 'default'
-                            : 'outline'
-                        }
-                        className={cn(
-                          field.value === RootType.EXPENSE &&
-                            'bg-rose-600 hover:bg-rose-700',
-                          'cursor-pointer'
-                        )}
-                        onClick={() => {
-                          field.onChange(RootType.EXPENSE);
-                          form.setValue('mainCategory', '');
-                          form.setValue('subCategory', '');
-                          form.clearErrors();
-                        }}
-                      >
-                        {RootType.EXPENSE}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={
-                          field.value === RootType.INCOME
-                            ? 'default'
-                            : 'outline'
-                        }
-                        className={cn(
-                          field.value === RootType.INCOME &&
-                            'bg-emerald-600 hover:bg-emerald-700',
-                          'cursor-pointer'
-                        )}
-                        onClick={() => {
-                          field.onChange(RootType.INCOME);
-                          form.setValue('mainCategory', '');
-                          form.setValue('subCategory', '');
-                          form.clearErrors();
-                        }}
-                      >
-                        {RootType.INCOME}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={
-                          field.value === RootType.OPERATE
-                            ? 'default'
-                            : 'outline'
-                        }
-                        className={cn(
-                          field.value === RootType.OPERATE &&
-                            'bg-amber-500 hover:bg-amber-600',
-                          'cursor-pointer'
-                        )}
-                        onClick={() => {
-                          field.onChange(RootType.OPERATE);
-                          form.setValue('mainCategory', '');
-                          form.setValue('subCategory', '');
-                          form.clearErrors();
-                        }}
-                      >
-                        {RootType.OPERATE}
-                      </Button>
+                    <div className="bg-slate-200/50 dark:bg-white/5 p-1 rounded-2xl flex gap-1">
+                      {[
+                        RootType.EXPENSE,
+                        RootType.INCOME,
+                        RootType.OPERATE,
+                      ].map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => {
+                            field.onChange(type);
+                            form.setValue('mainCategory', '');
+                            form.setValue('subCategory', '');
+                            form.clearErrors();
+                          }}
+                          className={cn(
+                            'flex-1 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 shadow-sm',
+                            field.value === type
+                              ? type === RootType.EXPENSE
+                                ? 'bg-rose-500 text-white shadow-rose-200 dark:shadow-rose-900/30'
+                                : type === RootType.INCOME
+                                  ? 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-emerald-900/30'
+                                  : 'bg-amber-500 text-white shadow-amber-200 dark:shadow-amber-900/30'
+                              : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-white/5 shadow-none',
+                          )}
+                        >
+                          {type}
+                        </button>
+                      ))}
                     </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="accountId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>帳戶</FormLabel>
+                    <Select
+                      onValueChange={(v) => {
+                        field.onChange(v);
+                        if (
+                          accounts.find((a) => a.id === v)?.type !==
+                          Account.CREDIT_CARD
+                        ) {
+                          form.setValue(
+                            'paymentFrequency',
+                            PaymentFrequency.ONE_TIME,
+                          );
+                        }
+                      }}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full cursor-pointer">
+                          <SelectValue placeholder="選擇帳戶" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.values(Account).map((accountType) => {
+                          const typeAccounts = accounts.filter(
+                            (acc) => acc.type === accountType,
+                          );
+                          if (typeAccounts.length === 0) return null;
+                          return (
+                            <SelectGroup key={accountType}>
+                              <SelectLabel>{accountType}</SelectLabel>
+                              {typeAccounts.map((acc) => (
+                                <SelectItem key={acc.id} value={acc.id}>
+                                  {acc.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -328,7 +470,7 @@ function NewTransactionSheet({
               <div
                 className={cn(
                   'grid gap-4',
-                  watchedType !== RootType.OPERATE && ' grid-cols-2'
+                  watchedType !== RootType.OPERATE && ' grid-cols-2',
                 )}
               >
                 <FormField
@@ -403,82 +545,408 @@ function NewTransactionSheet({
                 )}
               </div>
 
-              {/* Account Selection */}
-              <FormField
-                control={form.control}
-                name="accountId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>帳戶</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="w-full cursor-pointer">
-                          <SelectValue placeholder="選擇帳戶" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.values(Account).map((accountType) => {
-                          const typeAccounts = accounts.filter(
-                            (acc) => acc.type === accountType
-                          );
-                          if (typeAccounts.length === 0) return null;
-                          return (
-                            <SelectGroup key={accountType}>
-                              <SelectLabel>{accountType}</SelectLabel>
-                              {typeAccounts.map((acc) => (
-                                <SelectItem key={acc.id} value={acc.id}>
-                                  {acc.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Budget Selection */}
+              {watchedType === RootType.EXPENSE && (
+                <div className="space-y-2">
+                  <FormLabel>歸入預算 (Mock Data)</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal min-h-10 h-auto py-2 cursor-pointer"
+                      >
+                        {selectedBudgetIds.length === 0 ? (
+                          <span className="text-muted-foreground">
+                            無預算專案
+                          </span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {selectedBudgetIds.map((id) => {
+                              const b = budgets.find((x) => x.id === id);
+                              if (!b) return null;
+                              return (
+                                <Badge
+                                  key={id}
+                                  variant="secondary"
+                                  className="cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedBudgetIds((prev) =>
+                                      prev.filter((p) => p !== id),
+                                    );
+                                  }}
+                                >
+                                  {b.name} <X className="ml-1 h-3 w-3" />
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-2">
+                      <div className="space-y-1">
+                        {budgets.map((b) => (
+                          <div
+                            key={b.id}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                            onClick={() => {
+                              setSelectedBudgetIds((prev) =>
+                                prev.includes(b.id)
+                                  ? prev.filter((p) => p !== b.id)
+                                  : [...prev, b.id],
+                              );
+                            }}
+                          >
+                            <div
+                              className={cn(
+                                'h-4 w-4 rounded border flex items-center justify-center',
+                                selectedBudgetIds.includes(b.id)
+                                  ? 'bg-primary border-primary'
+                                  : 'border-input',
+                              )}
+                            >
+                              {selectedBudgetIds.includes(b.id) && (
+                                <svg
+                                  className="h-3 w-3 text-primary-foreground"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={3}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M5 13l4 4L19 7"
+                                  />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-sm">{b.name}</span>
+                          </div>
+                        ))}
+                        {budgets.length === 0 && (
+                          <div className="text-sm text-muted-foreground py-2 text-center">
+                            尚無預算專案
+                          </div>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
 
               {/* Amount */}
-              <FormField
-                control={form.control}
-                name="amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>金額</FormLabel>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1.5 text-muted-foreground">
-                        $
-                      </span>
+              <div className="pt-2 pb-4">
+                <FormField
+                  control={form.control}
+                  name="amount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>金額</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="0.00"
-                          className="pl-7 text-lg font-semibold"
-                          type="number"
-                          {...field}
-                          value={field.value || ''}
-                          onChange={(e) =>
-                            field.onChange(e.target.valueAsNumber || 0)
-                          }
-                          onFocus={(e) => {
-                            // 當數值為 0 時，清空輸入框讓使用者直接輸入
-                            if (field.value === 0) {
-                              e.target.value = '';
+                        <div className="relative group">
+                          <span
+                            className={cn(
+                              'absolute left-3 top-2 text-xl font-serif',
+                              watchedType === RootType.EXPENSE
+                                ? 'text-rose-500'
+                                : watchedType === RootType.INCOME
+                                  ? 'text-emerald-500'
+                                  : 'text-amber-500',
+                            )}
+                          >
+                            $
+                          </span>
+                          <Input
+                            type="number"
+                            placeholder="0.00"
+                            {...field}
+                            className={cn(
+                              'h-10 text-base pl-8 font-medium bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800',
+                              watchedType === RootType.EXPENSE
+                                ? 'focus-visible:ring-rose-500/30'
+                                : watchedType === RootType.INCOME
+                                  ? 'focus-visible:ring-emerald-500/30'
+                                  : 'focus-visible:ring-amber-500/30',
+                            )}
+                            value={field.value || ''}
+                            onChange={(e) =>
+                              field.onChange(e.target.valueAsNumber || 0)
                             }
-                          }}
-                          onBlur={(e) => {
-                            // 離開時解析數值，自動去除開頭的 0
-                            const parsed = parseFloat(e.target.value) || 0;
-                            field.onChange(parsed);
-                          }}
-                        />
+                            onFocus={(e) => {
+                              if (field.value === 0) e.target.value = '';
+                            }}
+                            onBlur={(e) => {
+                              const parsed = parseFloat(e.target.value) || 0;
+                              field.onChange(parsed);
+                            }}
+                          />
+                        </div>
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {isCreditCard && watchedType !== RootType.OPERATE && (
+                <div className="rounded-2xl p-6 bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <FormLabel className="text-base font-medium">
+                      啟用分期付款
+                    </FormLabel>
+                    <Switch
+                      checked={
+                        watchedPaymentFrequency === PaymentFrequency.INSTALLMENT
+                      }
+                      onCheckedChange={(checked) => {
+                        form.setValue(
+                          'paymentFrequency',
+                          checked
+                            ? PaymentFrequency.INSTALLMENT
+                            : PaymentFrequency.ONE_TIME,
+                        );
+                      }}
+                    />
+                  </div>
+
+                  {watchedPaymentFrequency === PaymentFrequency.INSTALLMENT && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <FormField
+                        control={form.control}
+                        name="installment.totalInstallments"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>分期期數 (月)</FormLabel>
+                            <FormControl>
+                              <div className="relative group">
+                                <Input
+                                  type="number"
+                                  {...field}
+                                  className="h-12 text-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-slate-400"
+                                  placeholder="0"
+                                  onChange={(e) =>
+                                    field.onChange(Number(e.target.value))
+                                  }
+                                  min={2}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="installment.calculationMethod"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>計算方式</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value={CalculationMethod.ROUND}>
+                                    四捨五入
+                                  </SelectItem>
+                                  <SelectItem value={CalculationMethod.FLOOR}>
+                                    無條件捨去
+                                  </SelectItem>
+                                  <SelectItem value={CalculationMethod.CEIL}>
+                                    無條件進位
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="installment.remainderPlacement"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>餘數分配</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value={RemainderPlacement.FIRST}>
+                                    首期調整
+                                  </SelectItem>
+                                  <SelectItem value={RemainderPlacement.LAST}>
+                                    末期調整
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </div>
-                    <FormMessage />
-                  </FormItem>
+                  )}
+                </div>
+              )}
+
+              {/* Extra Amount Section */}
+              <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-white/5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-full flex justify-between items-center px-0 hover:bg-transparent hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer group"
+                  onClick={() => setShowExtra(!showExtra)}
+                >
+                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
+                    額外金額 (加項/減項)
+                  </span>
+                  {showExtra ? (
+                    <ChevronUp className="h-4 w-4 text-slate-400 transition-transform duration-200" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-slate-400 transition-transform duration-200" />
+                  )}
+                </Button>
+
+                {showExtra && (
+                  <div className="grid gap-6 p-4 rounded-2xl bg-slate-50/80 dark:bg-white/5 border border-slate-100 dark:border-white/5 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="extraAddLabel"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs text-slate-500">
+                              加項名稱
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="例如：獎金"
+                                {...field}
+                                className="h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="extraAdd"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs text-slate-500">
+                              加項金額
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative group">
+                                <span className="absolute left-3 top-2.5 text-base font-serif text-emerald-500">
+                                  +
+                                </span>
+                                <Input
+                                  type="number"
+                                  placeholder="0.00"
+                                  {...field}
+                                  className="h-10 text-base pl-8 font-medium bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-emerald-500/30"
+                                  value={field.value || ''}
+                                  onChange={(e) =>
+                                    field.onChange(e.target.valueAsNumber || 0)
+                                  }
+                                  onFocus={(e) => {
+                                    if (field.value === 0) {
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    const parsed =
+                                      parseFloat(e.target.value) || 0;
+                                    field.onChange(parsed);
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="extraMinusLabel"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs text-slate-500">
+                              減項名稱
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="例如：稅金"
+                                {...field}
+                                className="h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="extraMinus"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs text-slate-500">
+                              減項金額
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative group">
+                                <span className="absolute left-3 top-2.5 text-base font-serif text-rose-500">
+                                  -
+                                </span>
+                                <Input
+                                  type="number"
+                                  placeholder="0.00"
+                                  {...field}
+                                  className="h-10 text-base pl-8 font-medium bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-rose-500/30"
+                                  value={field.value || ''}
+                                  onChange={(e) =>
+                                    field.onChange(e.target.valueAsNumber || 0)
+                                  }
+                                  onFocus={(e) => {
+                                    if (field.value === 0) {
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    const parsed =
+                                      parseFloat(e.target.value) || 0;
+                                    field.onChange(parsed);
+                                  }}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
                 )}
-              />
+              </div>
 
               {/* Date / Time */}
               <div className="grid gap-4 grid-cols-2">
@@ -496,7 +964,7 @@ function NewTransactionSheet({
                               variant={'outline'}
                               className={cn(
                                 'justify-start text-left font-normal w-full cursor-pointer',
-                                !field.value && 'text-muted-foreground'
+                                !field.value && 'text-muted-foreground',
                               )}
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
@@ -564,7 +1032,7 @@ function NewTransactionSheet({
                             const typeAccounts = accounts.filter(
                               (acc) =>
                                 acc.type === accountType &&
-                                acc.id !== watchedAccountId
+                                acc.id !== watchedAccountId,
                             );
                             if (typeAccounts.length === 0) return null;
                             return (
@@ -622,15 +1090,15 @@ function NewTransactionSheet({
               />
             </div>
 
-            <SheetFooter>
+            <div className="p-6 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 mt-auto">
               <Button
                 type="submit"
-                className="cursor-pointer"
+                className="cursor-pointer w-full h-12 text-lg font-medium rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 shadow-xl shadow-slate-300/50 dark:shadow-none transition-all duration-300 hover:scale-[1.02]"
                 disabled={isLoading}
               >
                 {isLoading ? '儲存中...' : '儲存交易'}
               </Button>
-            </SheetFooter>
+            </div>
           </form>
         </Form>
       </SheetContent>

@@ -51,7 +51,7 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
   const mapCategories = (
     cats: CategoryType[],
     isTopLevel: boolean,
-    isIncome: boolean = false
+    isIncome: boolean = false,
   ): ExtendedCategoryType[] => {
     return cats.map((c) => {
       let isMain = isTopLevel;
@@ -73,20 +73,20 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
   const incomeTree = mapCategories(
     categories.filter((c) => c.type === RootType.INCOME)[0]?.children || [],
     true,
-    true
+    true,
   );
   const expenseTree = mapCategories(
     categories.filter((c) => c.type === RootType.EXPENSE)[0]?.children || [],
     true,
-    false
+    false,
   );
 
   // rootCategory，在新增 mainCategory 時需要
   const rootIncomeCategory = categories.filter(
-    (c) => c.type === RootType.INCOME
+    (c) => c.type === RootType.INCOME,
   )[0];
   const rootExpenseCategory = categories.filter(
-    (c) => c.type === RootType.EXPENSE
+    (c) => c.type === RootType.EXPENSE,
   )[0];
 
   const handleAddMain = (type: string) => {
@@ -165,25 +165,26 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
   }, [dialogState.mode, dialogState.node, dialogState.type]);
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <div className="grid gap-8 md:grid-cols-2">
+      <Card className="backdrop-blur-xl bg-background/60 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b border-border/10">
           <div className="space-y-1">
-            <CardTitle>支出分類</CardTitle>
+            <CardTitle className="text-xl font-semibold">支出分類</CardTitle>
             <CardDescription>管理您的支出類別結構</CardDescription>
           </div>
           <Button
             size="sm"
-            className="cursor-pointer"
+            variant="ghost"
+            className="cursor-pointer hover:bg-red-500/10 hover:text-red-500 transition-colors rounded-full"
             onClick={() => handleAddMain(RootType.EXPENSE)}
           >
             <Plus className="mr-2 h-4 w-4" />
             新增分類
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {expenseTree.length > 0 ? (
-            <div className="mt-4 space-y-1">
+            <div className="space-y-1">
               {expenseTree.map((node) => (
                 <CategoryTreeItem
                   key={node.id}
@@ -195,31 +196,32 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
               ))}
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground py-4 text-center">
-              尚無支出分類
+            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground bg-muted/20 rounded-lg">
+              <span className="text-sm">尚無支出分類</span>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <Card className="backdrop-blur-xl bg-background/60 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b border-border/10">
           <div className="space-y-1">
-            <CardTitle>收入分類</CardTitle>
+            <CardTitle className="text-xl font-semibold">收入分類</CardTitle>
             <CardDescription>管理您的收入類別結構</CardDescription>
           </div>
           <Button
             size="sm"
-            className="cursor-pointer"
+            variant="ghost"
+            className="cursor-pointer hover:bg-green-500/10 hover:text-green-500 transition-colors rounded-full"
             onClick={() => handleAddMain(RootType.INCOME)}
           >
             <Plus className="mr-2 h-4 w-4" />
             新增分類
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {incomeTree.length > 0 ? (
-            <div className="mt-4 space-y-1">
+            <div className="space-y-1">
               {incomeTree.map((node) => (
                 <CategoryTreeItem
                   key={node.id}
@@ -231,8 +233,8 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
               ))}
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground py-4 text-center">
-              尚無收入分類
+            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground bg-muted/20 rounded-lg">
+              <span className="text-sm">尚無收入分類</span>
             </div>
           )}
         </CardContent>

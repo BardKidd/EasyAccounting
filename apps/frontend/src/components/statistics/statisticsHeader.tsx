@@ -149,12 +149,12 @@ export function StatisticsHeader({
   const periodList = generatePeriodList();
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 p-2 rounded-2xl bg-white/50 dark:bg-slate-900/30 backdrop-blur-sm border border-slate-200/50 dark:border-white/5">
       <div className="flex items-center gap-2 order-2 sm:order-1">
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
-          className="cursor-pointer"
+          className="cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400"
           onClick={handlePrev}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -165,30 +165,37 @@ export function StatisticsHeader({
             <Button
               variant="outline"
               className={cn(
-                'w-auto h-auto flex-row items-center justify-center py-2 px-4 gap-2 border-dashed hover:border-solid cursor-pointer',
-                open && 'border-solid ring-2 ring-primary/20'
+                'w-auto h-auto flex-row items-center justify-center py-2 px-4 gap-2 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer bg-white/50 dark:bg-transparent backdrop-blur-sm transition-all duration-200 shadow-sm',
+                open && 'border-indigo-500/50 ring-2 ring-indigo-500/20',
               )}
             >
-              <CalendarIcon className="w-4 h-4 opacity-70" />
-              <span className="font-bold text-lg">{getMainLabel(date)}</span>
-              <span className="text-sm text-muted-foreground font-normal hidden sm:inline-block">
+              <CalendarIcon className="w-4 h-4 text-indigo-500/70 dark:text-indigo-400/70" />
+              <span className="font-bold text-lg font-playfair text-slate-800 dark:text-slate-100">
+                {getMainLabel(date)}
+              </span>
+              <span className="text-sm text-slate-500 dark:text-slate-400 font-normal hidden sm:inline-block font-mono">
                 ({getRangeLabel(date)})
               </span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[320px] p-0" align="center">
+          <PopoverContent
+            className="w-[320px] p-0 border-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 ring-1 ring-slate-200 dark:ring-white/10"
+            align="center"
+          >
             <ScrollArea className="h-[300px]">
-              <div className="flex flex-col p-1">
+              <div className="flex flex-col p-2 space-y-1">
                 {periodList.map((item, idx) => {
                   const isSelected =
                     getMainLabel(item.date) === getMainLabel(date);
                   return (
                     <Button
                       key={idx}
-                      variant={isSelected ? 'secondary' : 'ghost'}
+                      variant="ghost"
                       className={cn(
-                        'justify-start h-auto py-3 px-4 flex-row items-center gap-2 font-normal',
-                        isSelected && 'bg-secondary font-medium'
+                        'justify-start h-auto py-3 px-4 flex-row items-center gap-2 font-normal rounded-xl transition-all duration-200',
+                        isSelected
+                          ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-medium'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-200',
                       )}
                       onClick={() => {
                         onDateChange(item.date);
@@ -196,7 +203,7 @@ export function StatisticsHeader({
                       }}
                     >
                       <span className="text-base">{item.mainLabel}</span>
-                      <span className="text-xs text-muted-foreground ml-auto">
+                      <span className="text-xs text-muted-foreground ml-auto font-mono opacity-70">
                         {item.rangeLabel}
                       </span>
                     </Button>
@@ -208,10 +215,10 @@ export function StatisticsHeader({
         </Popover>
 
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
           onClick={handleNext}
-          className="cursor-pointer"
+          className="cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -222,14 +229,23 @@ export function StatisticsHeader({
         onValueChange={(v) => onPeriodChange(v as PeriodType)}
         className="order-1 sm:order-2"
       >
-        <TabsList>
-          <TabsTrigger className="cursor-pointer" value={PeriodType.WEEK}>
+        <TabsList className="bg-slate-100/50 dark:bg-white/5 p-1 border border-slate-200/50 dark:border-white/5">
+          <TabsTrigger
+            className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 data-[state=active]:shadow-sm transition-all duration-300"
+            value={PeriodType.WEEK}
+          >
             週
           </TabsTrigger>
-          <TabsTrigger className="cursor-pointer" value={PeriodType.MONTH}>
+          <TabsTrigger
+            className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 data-[state=active]:shadow-sm transition-all duration-300"
+            value={PeriodType.MONTH}
+          >
             月
           </TabsTrigger>
-          <TabsTrigger className="cursor-pointer" value={PeriodType.YEAR}>
+          <TabsTrigger
+            className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 data-[state=active]:shadow-sm transition-all duration-300"
+            value={PeriodType.YEAR}
+          >
             年
           </TabsTrigger>
         </TabsList>

@@ -1,7 +1,6 @@
-import Category from '@/models/category';
+import { Category, Account, Transaction, User } from '@/models';
 import { Op } from 'sequelize';
 import ExcelJS from 'exceljs';
-import Account from '@/models/account';
 import { generateSasUrl, uploadFileToBlob } from '@/utils/azureBlob';
 import {
   CreateTransactionSchema,
@@ -9,8 +8,6 @@ import {
   RootType,
   PaymentFrequency,
 } from '@repo/shared';
-import Transaction from '@/models/transaction';
-import User from '@/models/user';
 import { format } from 'date-fns';
 import transactionServices from './transactionServices';
 import { transactionColumns } from '@/excelColumns/transactionColumns';
@@ -37,6 +34,8 @@ interface ImportTransactionRow {
   // 只有 User 輸入錯誤時才會有這個值
   error?: string;
   errFields?: string[];
+  isReconciled?: string; // Excel 中讀取進來可能是字串
+  reconciliationDate?: string;
 }
 
 /**
@@ -94,7 +93,8 @@ const getAllCategoriesHyphenString = async (userId: string) => {
       cat.parentId &&
       rootCategoriesId.includes(cat.parentId)
     ) {
-      stringCollection.push(cat.name);
+      const parentName = categoryMap.get(cat.parentId)!.name;
+      stringCollection.push(`${parentName}-${cat.name}`);
     }
   });
 
@@ -278,6 +278,27 @@ const generateTransactionsBuffer = async ({
       allowBlank: false,
       formulae: ['CategoryList'],
     };
+
+    // 已核對
+    r.getCell(10 + colOffset).dataValidation = {
+      type: 'list',
+      allowBlank: true,
+      formulae: ['"是,否"'],
+    };
+
+    // 核對日期
+    const recDateCell = r.getCell(11 + colOffset);
+    recDateCell.numFmt = 'yyyy-mm-dd';
+    recDateCell.dataValidation = {
+      type: 'date',
+      operator: 'between',
+      formulae: [new Date('1900-01-01'), new Date('2100-12-31')],
+      showErrorMessage: true,
+      errorStyle: 'stop',
+      errorTitle: '日期格式錯誤',
+      error: '請輸入有效的日期格式 (YYYY-MM-DD)',
+      allowBlank: true,
+    };
   }
 
   return (await workbook.xlsx.writeBuffer()) as ExcelJS.Buffer;
@@ -335,6 +356,8 @@ const exportUserTransactionsExcel = async (userId: string) => {
       'categoryId',
       'receipt',
       'description',
+      'isReconciled',
+      'reconciliationDate',
     ],
     raw: true,
     order: [
@@ -353,6 +376,10 @@ const exportUserTransactionsExcel = async (userId: string) => {
         ? accountMap.get(t.targetAccountId) || ''
         : '',
       category: categoryMap.get(t.categoryId) || '',
+      isReconciled: t.isReconciled ? '是' : '否',
+      reconciliationDate: t.reconciliationDate
+        ? format(new Date(t.reconciliationDate), 'yyyy-MM-dd')
+        : '',
     }));
 
   // 產生檔案
@@ -440,6 +467,8 @@ const validateAndParseRows = async (
     const category = row.getCell(7 + colOffset).text;
     const receipt = row.getCell(8 + colOffset).text;
     const description = row.getCell(9 + colOffset).text;
+    const isReconciledText = row.getCell(10 + colOffset).text;
+    const reconciliationDateVal = row.getCell(11 + colOffset).value; // Date or string
 
     if (
       !date &&
@@ -495,6 +524,11 @@ const validateAndParseRows = async (
       amount = Number(amount);
     }
 
+    if (type === RootType.OPERATE && !targetAccountName) {
+      errMsg += '目標帳戶為必填欄位, ';
+      errFields.push('targetAccount');
+    }
+
     const accountId = accountMap.get(accountName);
     if (accountName && !accountId) {
       errMsg += `帳戶[${accountName}]不存在, `;
@@ -542,6 +576,14 @@ const validateAndParseRows = async (
         receipt,
         description,
         paymentFrequency: PaymentFrequency.ONE_TIME,
+        isReconciled: isReconciledText === '是',
+        reconciliationDate: (() => {
+          if (!reconciliationDateVal) return null;
+          if (reconciliationDateVal instanceof Date)
+            return reconciliationDateVal;
+          const d = new Date(String(reconciliationDateVal));
+          return isNaN(d.getTime()) ? null : d;
+        })(),
       });
     }
   });
@@ -557,7 +599,7 @@ const insertTransactions = async (
     if (row.type === RootType.OPERATE) {
       await transactionServices.createTransfer(row, userId);
     } else {
-      await transactionServices.createTransaction(row, userId);
+      await transactionServices.createTransaction({ ...row, userId });
     }
   }
 };

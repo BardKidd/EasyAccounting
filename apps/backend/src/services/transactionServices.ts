@@ -9,11 +9,22 @@ import {
   TransactionTypeWhenOperate,
   GetTransactionsDashboardSummarySchema,
   PeriodType,
+  PaymentFrequency,
+  InterestType,
+  CalculationMethod,
+  RemainderPlacement,
 } from '@repo/shared';
 import { simplifyTransaction } from '@/utils/common';
-import Transaction from '@/models/transaction';
-import Account from '@/models/account';
-import { Op } from 'sequelize';
+import {
+  Transaction,
+  Account,
+  InstallmentPlan,
+  TransactionExtra,
+  TransactionBudget,
+} from '@/models';
+import { handleBudgetImpact, BudgetImpact } from './budgetService';
+import sequelize from '@/utils/postgres';
+import { Op, Transaction as SequelizeTransaction } from 'sequelize';
 import {
   format,
   getISOWeek,
@@ -22,11 +33,12 @@ import {
   eachWeekOfInterval,
   eachMonthOfInterval,
   eachYearOfInterval,
+  addMonths,
 } from 'date-fns';
 
 const getTransactionsByDate = async (
   query: GetTransactionsByDateSchema,
-  userId: string
+  userId: string,
 ) => {
   const { startDate, endDate, type, page = 1, ...otherFilters } = query;
   const limit = 10;
@@ -44,9 +56,6 @@ const getTransactionsByDate = async (
 
   let typeFilter: any = {};
   if (type === RootType.OPERATE) {
-    // 若為「操作」(轉帳):
-    // 1. linkId 不為 null
-    // 2. 轉帳的主動方
     typeFilter = {
       linkId: {
         [Op.ne]: null,
@@ -54,14 +63,9 @@ const getTransactionsByDate = async (
       type: RootType.EXPENSE,
     };
   } else if (type) {
-    // 若為指定類型 (收入/支出): 找出該類型且 linkId 為 null (排除轉帳)
     typeFilter.type = type;
     typeFilter.linkId = null;
   } else {
-    // 預設 (沒有傳 type 時):
-    // 顯示:
-    // 1. 一般收支 (linkId is null)
-    // 2. 轉帳的主動方 (linkId is not null AND type != INCOME) -> 這邏輯是用來避免列表重複顯示轉帳的兩筆
     typeFilter[Op.or] = [
       { linkId: null },
       {
@@ -80,15 +84,23 @@ const getTransactionsByDate = async (
         userId,
       },
       limit: Number(limit),
-      offset, // 定義從第幾筆開始取資料，e.g. page=2, limit=10,offset=10
+      offset,
       order: [
         ['date', 'DESC'],
         ['time', 'DESC'],
       ],
       attributes: {
-        exclude: ['createdAt', 'updatedAt', 'deletedAt', 'linkId'], // 排除不需要的欄位
+        exclude: ['createdAt', 'updatedAt', 'deletedAt', 'linkId'],
       },
+      include: [
+        {
+          model: TransactionExtra,
+          as: 'transactionExtra',
+          attributes: { exclude: ['createdAt', 'updatedAt', 'deletedAt'] },
+        },
+      ],
       raw: true,
+      nest: true,
     });
     return {
       items: rows as unknown as TransactionType[],
@@ -96,7 +108,7 @@ const getTransactionsByDate = async (
         total: count,
         page,
         limit,
-        totalPages: Math.ceil(count / Number(limit)), // 無條件進位
+        totalPages: Math.ceil(count / Number(limit)),
       },
     };
   } catch (error) {
@@ -107,7 +119,7 @@ const getTransactionsByDate = async (
 
 const getTransactionsDashboardSummary = async (
   params: GetTransactionsDashboardSummarySchema,
-  userId: string
+  userId: string,
 ) => {
   const { startDate, endDate, groupBy = PeriodType.MONTH } = params;
   let dateFilter = {};
@@ -120,21 +132,26 @@ const getTransactionsDashboardSummary = async (
     };
   }
 
-  const transactions = (await Transaction.findAll({
+  const transactions = await Transaction.findAll({
     where: {
       ...dateFilter,
       userId,
       linkId: null as any,
     },
-    attributes: ['amount', 'date', 'type'],
-    raw: true, // 直接回傳資料，可以不用再 .toJSON()
-    // Pick<TransactionType, ...>: TS 工具型別，表示從 TransactionType 中「只選取」這三個欄位，其他的屬性都會被排除
-  })) as unknown as Pick<TransactionType, 'amount' | 'date' | 'type'>[];
+    attributes: ['amount', 'date', 'type', 'transactionExtraId'],
+    include: [
+      {
+        model: TransactionExtra,
+        as: 'transactionExtra',
+      },
+    ],
+    raw: true,
+    nest: true,
+  });
 
   const start = new Date(startDate);
   const end = new Date(endDate);
 
-  // Generate generic buckets
   let buckets: {
     type: string;
     date: string;
@@ -151,14 +168,13 @@ const getTransactionsDashboardSummary = async (
       expense: 0,
     }));
   } else if (groupBy === PeriodType.WEEK) {
-    // ISO Week
     const weeks = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
     buckets = weeks.map((d) => {
       const year = getYear(d);
       const week = getISOWeek(d);
       return {
         type: PeriodType.WEEK,
-        date: `${year}-W${String(week).padStart(2, '0')}`, // 沒有兩位數就自動補 0
+        date: `${year}-W${String(week).padStart(2, '0')}`,
         income: 0,
         expense: 0,
       };
@@ -181,15 +197,15 @@ const getTransactionsDashboardSummary = async (
     }));
   }
 
-  // Calculate summary
   const summary = {
     income: 0,
     expense: 0,
     balance: 0,
   };
 
-  transactions.forEach((t) => {
-    const date = new Date(t.date);
+  transactions.forEach((t: any) => {
+    const data = t;
+    const date = new Date(data.date);
     let key = '';
 
     if (groupBy === PeriodType.DAY) {
@@ -206,14 +222,18 @@ const getTransactionsDashboardSummary = async (
 
     const bucket = buckets.find((b) => b.date === key);
     if (bucket) {
-      if (t.type === RootType.INCOME) {
-        const val = Number(t.amount);
-        bucket.income += val;
-        summary.income += val;
-      } else if (t.type === RootType.EXPENSE) {
-        const val = Number(t.amount);
-        bucket.expense += val;
-        summary.expense += val;
+      const extraAdd = Number(data.transactionExtra?.extraAdd || 0);
+      const extraMinus = Number(data.transactionExtra?.extraMinus || 0);
+      const amount = Number(data.amount);
+
+      if (data.type === RootType.INCOME) {
+        const netAmount = amount - extraMinus + extraAdd;
+        bucket.income += netAmount;
+        summary.income += netAmount;
+      } else if (data.type === RootType.EXPENSE) {
+        const netAmount = amount + extraMinus - extraAdd;
+        bucket.expense += netAmount;
+        summary.expense += netAmount;
       }
     }
   });
@@ -233,8 +253,9 @@ const getTransactionById = async (id: string, userId: string) => {
   let result: TransactionType | null = null;
 
   if (instance) {
-    result = instance.toJSON();
-    const { id, ...other } = result;
+    const data = instance.toJSON() as TransactionType;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id, ...other } = data;
     return other;
   }
 
@@ -242,73 +263,316 @@ const getTransactionById = async (id: string, userId: string) => {
 };
 
 const calcAccountBalance = async (
-  accountInstance: AccountType,
+  accountInstance: any,
   type: string,
-  amount: number
+  amount: number,
+  extraAdd: number = 0,
+  extraMinus: number = 0,
 ) => {
-  if (type === RootType.INCOME) {
-    accountInstance.balance = Number(accountInstance.balance) + Number(amount);
-  } else if (type === RootType.EXPENSE) {
-    accountInstance.balance = Number(accountInstance.balance) - Number(amount);
+  let netAmount = Number(amount);
+
+  if (type === RootType.EXPENSE) {
+    // 支出 Net Amount = 金額 + 手續費 - 折扣
+    netAmount = Number(amount) + Number(extraMinus) - Number(extraAdd);
+    accountInstance.balance = Number(accountInstance.balance) - netAmount;
+  } else if (type === RootType.INCOME) {
+    // 收入 Net Amount = 金額 - 手續費 + 折扣
+    netAmount = Number(amount) - Number(extraMinus) + Number(extraAdd);
+    accountInstance.balance = Number(accountInstance.balance) + netAmount;
   }
 };
 
-const createTransaction = async (
-  data: CreateTransactionSchema,
-  userId: string
+/**
+ * Helper to generate installment description
+ */
+const getInstallmentDescription = (
+  originalDesc: string,
+  current: number,
+  total: number,
 ) => {
-  return await simplifyTransaction(async (t) => {
-    const transaction = await Transaction.create(
-      { ...data, userId },
-      { transaction: t }
-    );
-
-    const account = await Account.findOne({
-      where: { id: data.accountId, userId },
-      transaction: t,
-    });
-    if (!account) throw new Error('Account not found');
-
-    calcAccountBalance(account, data.type, data.amount);
-
-    await account.save({ transaction: t });
-
-    return transaction.toJSON();
-  });
+  return `${originalDesc} (${current}/${total})`;
 };
 
-const updateIncomeExpense = async (
-  id: string,
-  data: UpdateTransactionSchema,
-  userId: string
+export const createTransaction = async (
+  data: TransactionType & {
+    installment?: CreateTransactionSchema['installment'];
+    extraAdd?: number;
+    extraAddLabel?: string;
+    extraMinus?: number;
+    extraMinusLabel?: string;
+    budgetIds?: string[];
+  },
+  userId: string,
 ) => {
-  return simplifyTransaction(async (t) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const account = await Account.findByPk(data.accountId);
+    if (!account) {
+      throw new Error('Account not found');
+    }
+
+    // 負數輸入處理：只取絕對值，不反轉類型
+    let amount = Number(data.amount);
+    let type = data.type;
+    if (amount < 0) {
+      amount = Math.abs(amount);
+    }
+
+    // 額外金額處理：只有當有值時才建立關聯資料
+    let transactionExtraId: string | null = null;
+    const extraAdd = Number(data.extraAdd || 0);
+    const extraMinus = Number(data.extraMinus || 0);
+
+    if (extraAdd !== 0 || extraMinus !== 0) {
+      const extra = await TransactionExtra.create(
+        {
+          extraAdd,
+          extraAddLabel: data.extraAddLabel || '折扣',
+          extraMinus,
+          extraMinusLabel: data.extraMinusLabel || '手續費',
+        },
+        { transaction },
+      );
+      transactionExtraId = extra.id;
+    }
+
+    // Handle Installment Plan
+    if (data.installment && data.installment.totalInstallments > 1) {
+      // 1. 建立分期付款主計畫 InstallmentPlan
+      // 分期付款債務邏輯：債務應扣除「原始金額」，而非 Net Amount
+      const installmentPlan = await InstallmentPlan.create(
+        {
+          userId: userId,
+          totalAmount: amount,
+          totalInstallments: data.installment.totalInstallments,
+          startDate: data.date,
+          description: data.description,
+          interestType: data.installment.interestType || InterestType.NONE,
+          calculationMethod:
+            data.installment.calculationMethod || CalculationMethod.ROUND,
+          remainderPlacement:
+            data.installment.remainderPlacement || RemainderPlacement.FIRST,
+          gracePeriod: data.installment.gracePeriod || 0,
+          rewardsType: data.installment.rewardsType,
+        },
+        { transaction },
+      );
+
+      // 2. 計算每期金額 (分期邏輯)
+      const totalAmount = amount;
+      const count = data.installment.totalInstallments;
+      let monthlyAmount = totalAmount / count;
+
+      // Apply rounding logic
+      if (
+        data.installment.calculationMethod === CalculationMethod.FLOOR ||
+        data.installment.calculationMethod === CalculationMethod.CEIL ||
+        data.installment.calculationMethod === CalculationMethod.ROUND
+      ) {
+        if (data.installment.calculationMethod === CalculationMethod.FLOOR) {
+          monthlyAmount = Math.floor(monthlyAmount);
+        } else if (
+          data.installment.calculationMethod === CalculationMethod.CEIL
+        ) {
+          monthlyAmount = Math.ceil(monthlyAmount);
+        } else {
+          monthlyAmount = Math.round(monthlyAmount);
+        }
+      }
+
+      // 3. 餘額分配處理 (Remainder)
+      const calculatedTotal = monthlyAmount * count;
+      let remainder = totalAmount - calculatedTotal;
+
+      const firstInstallmentAmount =
+        data.installment.remainderPlacement === RemainderPlacement.FIRST
+          ? monthlyAmount + remainder
+          : monthlyAmount;
+
+      const lastInstallmentAmount =
+        data.installment.remainderPlacement === RemainderPlacement.LAST
+          ? monthlyAmount + remainder
+          : monthlyAmount;
+
+      const middleInstallmentAmount = monthlyAmount;
+
+      for (let i = 1; i <= count; i++) {
+        let currentAmount = middleInstallmentAmount;
+        if (i === 1) currentAmount = firstInstallmentAmount;
+        if (i === count) currentAmount = lastInstallmentAmount;
+
+        const date = addMonths(new Date(data.date), i - 1);
+
+        await Transaction.create(
+          {
+            ...data,
+            userId,
+            id: undefined, // Create new ID
+            amount: currentAmount,
+            type,
+            description: getInstallmentDescription(
+              data.description || '',
+              i,
+              count,
+            ),
+            date: format(date, 'yyyy-MM-dd'),
+            billingDate: format(date, 'yyyy-MM-dd'),
+            installmentPlanId: installmentPlan.id,
+          },
+          { transaction },
+        );
+      }
+    } else {
+      // Normal transaction
+      const newTransaction = await Transaction.create(
+        {
+          ...data,
+          amount,
+          type,
+          userId,
+          billingDate: data.date,
+          transactionExtraId,
+        },
+        { transaction },
+      );
+
+      await calcAccountBalance(account, type, amount, extraAdd, extraMinus);
+      await account.save({ transaction });
+
+      // 寫入 TransactionBudget 關聯
+      if (data.budgetIds?.length) {
+        await TransactionBudget.bulkCreate(
+          data.budgetIds.map((budgetId) => ({
+            transactionId: newTransaction.id!,
+            budgetId,
+          })),
+          { transaction },
+        );
+      }
+
+      await transaction.commit();
+
+      // 觸發預算檢查
+      if (data.budgetIds?.length) {
+        await handleBudgetImpact(
+          userId,
+          data.budgetIds
+            .map((bid) => ({ bid, date: newTransaction.date }))
+            .map((x) => ({ budgetId: x.bid, date: x.date as string })),
+        );
+      }
+
+      return newTransaction.toJSON();
+    }
+
+    await calcAccountBalance(account, type, amount, extraAdd, extraMinus);
+    await account.save({ transaction });
+
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+};
+
+export const updateIncomeExpense = async (
+  id: string,
+  data: UpdateTransactionSchema & {
+    extraAdd?: number;
+    extraAddLabel?: string;
+    extraMinus?: number;
+    extraMinusLabel?: string;
+    budgetIds?: string[];
+  },
+  userId: string,
+) => {
+  const responseData = await simplifyTransaction(async (t) => {
     const transaction = await Transaction.findOne({
       where: { id, userId },
+      include: [{ model: TransactionExtra, as: 'transactionExtra' }],
       transaction: t,
     });
     if (!transaction) throw new Error('Transaction not found');
 
-    // 1. 在做改變前先恢復成該筆交易前的狀態再做處理，否則直接改的話會有正負差問題。
     const oldAccount = await Account.findOne({
-      where: { id: transaction.accountId, userId },
+      where: { id: transaction.accountId!, userId },
       transaction: t,
     });
     if (!oldAccount) throw new Error('Old account not found');
 
-    // 所以這裡才要反過來
+    // 先沖銷舊交易 (Revert old transaction impact)
+    const oldExtra = (transaction as any).transactionExtra;
+    const oldExtraAdd = Number(oldExtra?.extraAdd || 0);
+    const oldExtraMinus = Number(oldExtra?.extraMinus || 0);
+
     const revertType =
       transaction.type === RootType.INCOME ? RootType.EXPENSE : RootType.INCOME;
+    // 沖銷時，需交換 extraAdd 與 extraMinus，才能正確還原 Net Amount
+    // 因為 Income 與 Expense 的 Net Amount 公式中，加減項剛好相反
     await calcAccountBalance(
       oldAccount,
       revertType,
-      Number(transaction.amount)
+      Number(transaction.amount),
+      oldExtraMinus, // Swap: Use oldExtraMinus as extraAdd for revert
+      oldExtraAdd, // Swap: Use oldExtraAdd as extraMinus for revert
     );
     await oldAccount.save({ transaction: t });
 
-    // 2. 之後就按照正常邏輯進行計算
+    // 處理新資料的負數與計算 (Sign Conversion for New Data)
+    let newAmount = Number(data.amount);
+    let newType = data.type;
+    if (newAmount < 0) {
+      newAmount = Math.abs(newAmount);
+    }
+
+    // Handle TransactionExtra Update/Create/Delete
+    let newTransactionExtraId = transaction.transactionExtraId;
+    const newExtraAdd = Number(data.extraAdd || 0);
+    const newExtraMinus = Number(data.extraMinus || 0);
+
+    if (newExtraAdd !== 0 || newExtraMinus !== 0) {
+      // 若有額外金額，更新或建立 Extra 記錄
+      if (transaction.transactionExtraId) {
+        const extra = await TransactionExtra.findByPk(
+          transaction.transactionExtraId,
+          { transaction: t },
+        );
+        if (extra) {
+          await extra.update(
+            {
+              extraAdd: newExtraAdd,
+              extraAddLabel: data.extraAddLabel || '折扣',
+              extraMinus: newExtraMinus,
+              extraMinusLabel: data.extraMinusLabel || '手續費',
+            },
+            { transaction: t },
+          );
+        }
+      } else {
+        const extra = await TransactionExtra.create(
+          {
+            extraAdd: newExtraAdd,
+            extraAddLabel: data.extraAddLabel || '折扣',
+            extraMinus: newExtraMinus,
+            extraMinusLabel: data.extraMinusLabel || '手續費',
+          },
+          { transaction: t },
+        );
+        newTransactionExtraId = extra.id;
+      }
+    } else {
+      // 若都為 0，自動刪除 Extra 記錄以節省空間
+      if (transaction.transactionExtraId) {
+        await TransactionExtra.destroy({
+          where: { id: transaction.transactionExtraId },
+          transaction: t,
+        });
+        newTransactionExtraId = null;
+      }
+    }
+
     let newAccount = oldAccount;
-    // 不過還是先看看有沒有換帳戶(e.g. 原本紀錄錢包支出，記錯了改成銀行帳戶)
     if (data.accountId !== transaction.accountId) {
       const account = await Account.findOne({
         where: { id: data.accountId, userId },
@@ -318,40 +582,117 @@ const updateIncomeExpense = async (
       newAccount = account;
     }
 
-    await calcAccountBalance(newAccount, data.type, data.amount);
+    await calcAccountBalance(
+      newAccount,
+      newType,
+      newAmount,
+      newExtraAdd,
+      newExtraMinus,
+    );
     await newAccount.save({ transaction: t });
 
-    // 3. 更新資料
-    await transaction.update(data, { transaction: t });
+    await transaction.update(
+      {
+        ...data,
+        amount: newAmount,
+        type: newType,
+        transactionExtraId: newTransactionExtraId,
+      },
+      { transaction: t },
+    );
 
-    return transaction.toJSON();
+    // 同步 TransactionBudget 關聯
+    if (data.budgetIds !== undefined) {
+      // 先刪除舊關聯
+      await TransactionBudget.destroy({
+        where: { transactionId: id },
+        transaction: t,
+      });
+      // 再建立新關聯
+      if (data.budgetIds.length) {
+        await TransactionBudget.bulkCreate(
+          data.budgetIds.map((budgetId) => ({
+            transactionId: id,
+            budgetId,
+          })),
+          { transaction: t },
+        );
+      }
+    }
+
+    const result = transaction.toJSON();
+    // 捕捉影響
+    const impacts: BudgetImpact[] = [];
+    // 舊的影響（如果有的話）
+    const oldTransactionBudgets = await TransactionBudget.findAll({
+      where: { transactionId: id },
+      transaction: t,
+    });
+    oldTransactionBudgets.forEach((tb) => {
+      impacts.push({ budgetId: tb.budgetId, date: transaction.date });
+    });
+
+    // 新的影響
+    if (data.budgetIds) {
+      data.budgetIds.forEach((bid) => {
+        impacts.push({ budgetId: bid, date: data.date || transaction.date });
+      });
+    } else {
+      // 如果 update 中未提供 budgetIds，通常表示不變更關聯。
+      // 但若日期變更，我們需要重新評估現有預算的影響！
+      if (data.date && data.date !== transaction.date) {
+        oldTransactionBudgets.forEach((tb) => {
+          impacts.push({ budgetId: tb.budgetId, date: data.date as string });
+        });
+      }
+    }
+
+    return { result, impacts };
   });
+
+  // 在交易完成後執行影響評估
+  if (responseData?.impacts?.length) {
+    await handleBudgetImpact(userId, responseData.impacts);
+  }
+
+  return responseData.result;
 };
 
-const deleteTransaction = async (id: string, userId: string) => {
-  return simplifyTransaction(async (t) => {
+export const deleteTransaction = async (id: string, userId: string) => {
+  const responseData = await simplifyTransaction(async (t) => {
     const transaction = await Transaction.findOne({
       where: { id, userId },
+      include: [{ model: TransactionExtra, as: 'transactionExtra' }],
       transaction: t,
     });
     if (!transaction) throw new Error('Transaction not found');
 
-    // 跟編輯一樣需要先去還原該筆交易前的狀態再做處理，否則直接改的話會有正負差問題。
     const account = await Account.findOne({
       where: { id: transaction.accountId, userId },
       transaction: t,
     });
     if (!account) throw new Error('Account not found');
 
+    const oldExtra = (transaction as any).transactionExtra;
+    const oldExtraAdd = Number(oldExtra?.extraAdd || 0);
+    const oldExtraMinus = Number(oldExtra?.extraMinus || 0);
+
     const revertType =
       transaction.type === RootType.INCOME ? RootType.EXPENSE : RootType.INCOME;
-    await calcAccountBalance(account, revertType, Number(transaction.amount));
+    // 沖銷時需交換 extraAdd 與 extraMinus
+    await calcAccountBalance(
+      account,
+      revertType,
+      Number(transaction.amount),
+      oldExtraMinus, // Swap
+      oldExtraAdd, // Swap
+    );
     await account.save({ transaction: t });
 
-    // 當被刪除的是轉帳交易時要去順便把另一筆也刪掉
     if (transaction.linkId) {
       const linkedTransaction = await Transaction.findOne({
         where: { id: transaction.linkId, userId },
+        include: [{ model: TransactionExtra, as: 'transactionExtra' }],
         transaction: t,
       });
 
@@ -362,32 +703,69 @@ const deleteTransaction = async (id: string, userId: string) => {
         });
 
         if (linkedAccount) {
+          const linkedExtra = (linkedTransaction as any).transactionExtra;
+          const linkedExtraAdd = Number(linkedExtra?.extraAdd || 0);
+          const linkedExtraMinus = Number(linkedExtra?.extraMinus || 0);
+
           const linkedRevertType =
             linkedTransaction.type === RootType.INCOME
               ? RootType.EXPENSE
               : RootType.INCOME;
+          // 沖銷時需交換 extraAdd 與 extraMinus
           await calcAccountBalance(
             linkedAccount,
             linkedRevertType,
-            Number(linkedTransaction.amount)
+            Number(linkedTransaction.amount),
+            linkedExtraMinus, // Swap
+            linkedExtraAdd, // Swap
           );
           await linkedAccount.save({ transaction: t });
         }
 
+        const linkedExtraId = linkedTransaction.transactionExtraId;
         await linkedTransaction.destroy({ transaction: t });
+        if (linkedExtraId) {
+          await TransactionExtra.destroy({
+            where: { id: linkedExtraId },
+            transaction: t,
+          });
+        }
       }
     }
 
+    const extraId = transaction.transactionExtraId;
     await transaction.destroy({ transaction: t });
+    if (extraId) {
+      await TransactionExtra.destroy({
+        where: { id: extraId },
+        transaction: t,
+      });
+    }
 
-    return transaction.toJSON();
+    // 在刪除前捕捉影響
+    const impacts: BudgetImpact[] = [];
+    const transactionBudgets = await TransactionBudget.findAll({
+      where: { transactionId: id },
+      transaction: t,
+    });
+    transactionBudgets.forEach((tb) => {
+      impacts.push({ budgetId: tb.budgetId, date: transaction.date });
+    });
+
+    return { result: transaction.toJSON(), impacts };
   });
+
+  // 執行影響評估
+  if (responseData?.impacts?.length) {
+    await handleBudgetImpact(userId, responseData.impacts);
+  }
+
+  return responseData.result;
 };
 
-// 只要流程是 A -> B 帳戶，且流程是 A 為主動減少，B 為被動增加的流程就適合
 const createTransfer = async (
   data: CreateTransferSchema,
-  userId: string
+  userId: string,
 ): Promise<{
   fromTransaction: TransactionTypeWhenOperate;
   toTransaction: TransactionTypeWhenOperate;
@@ -395,9 +773,27 @@ const createTransfer = async (
   return simplifyTransaction(async (t) => {
     if (data.type !== RootType.OPERATE) throw new Error('Must be operate type');
 
+    const extraAdd = Number(data.extraAdd || 0);
+    const extraMinus = Number(data.extraMinus || 0);
+    let fromExtraId: string | null = null;
+    if (extraAdd !== 0 || extraMinus !== 0) {
+      const extra = await TransactionExtra.create(
+        {
+          extraAdd,
+          extraAddLabel: data.extraAddLabel || '折扣',
+          extraMinus,
+          extraMinusLabel: data.extraMinusLabel || '手續費',
+        },
+        { transaction: t },
+      );
+      fromExtraId = extra.id;
+    }
+
     const fromData = {
       ...data,
       type: RootType.EXPENSE,
+      billingDate: data.date,
+      transactionExtraId: fromExtraId,
     };
 
     const toData = {
@@ -405,6 +801,8 @@ const createTransfer = async (
       targetAccountId: data.accountId,
       accountId: data.targetAccountId,
       type: RootType.INCOME,
+      billingDate: data.date,
+      transactionExtraId: null, // 接收方通常不記錄手續費 (依簡單模型)
     };
 
     const fromAccount = await Account.findByPk(data.accountId, {
@@ -419,32 +817,40 @@ const createTransfer = async (
 
     const fromTransaction = await Transaction.create(
       { ...fromData, userId },
-      { transaction: t }
+      { transaction: t },
     );
 
     const toTransaction = await Transaction.create(
       { ...toData, userId },
-      { transaction: t }
+      { transaction: t },
     );
 
-    await calcAccountBalance(fromAccount, fromData.type, fromData.amount);
-    await calcAccountBalance(toAccount, toData.type, toData.amount);
+    // 來源帳戶：扣除 (金額 + 手續費 - 折扣)
+    await calcAccountBalance(
+      fromAccount,
+      fromData.type,
+      fromData.amount,
+      extraAdd,
+      extraMinus,
+    );
+    // 目的帳戶：增加 金額 (無手續費)
+    await calcAccountBalance(toAccount, toData.type, toData.amount, 0, 0);
 
     await fromAccount.save({ transaction: t });
     await toAccount.save({ transaction: t });
 
     await fromTransaction.update(
       { linkId: toTransaction.id },
-      { transaction: t }
+      { transaction: t },
     );
     await toTransaction.update(
       { linkId: fromTransaction.id },
-      { transaction: t }
+      { transaction: t },
     );
 
     return {
-      fromTransaction: fromTransaction.toJSON(),
-      toTransaction: toTransaction.toJSON(),
+      fromTransaction: fromTransaction.toJSON() as TransactionTypeWhenOperate,
+      toTransaction: toTransaction.toJSON() as TransactionTypeWhenOperate,
     };
   });
 };

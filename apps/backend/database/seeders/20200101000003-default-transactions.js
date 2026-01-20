@@ -60,8 +60,10 @@ module.exports = {
       type: '收入',
       description: '一月份薪水',
       date: formatDate(new Date(now.getFullYear(), now.getMonth(), 5)), // 每月 5 號發薪
+      billingDate: formatDate(new Date(now.getFullYear(), now.getMonth(), 5)),
       time: '09:00:00',
       paymentFrequency: '單次',
+      isReconciled: false,
       createdAt: now,
       updatedAt: now,
     });
@@ -76,8 +78,10 @@ module.exports = {
       type: '支出',
       description: '一月份房租',
       date: formatDate(new Date(now.getFullYear(), now.getMonth(), 1)),
+      billingDate: formatDate(new Date(now.getFullYear(), now.getMonth(), 1)),
       time: '10:00:00',
       paymentFrequency: '單次',
+      isReconciled: false,
       createdAt: now,
       updatedAt: now,
     });
@@ -96,8 +100,10 @@ module.exports = {
         type: '支出',
         description: isLunch ? '午餐' : '捷運通勤',
         date: formatDate(date),
+        billingDate: formatDate(date),
         time: '12:30:00',
         paymentFrequency: '單次',
+        isReconciled: false,
         createdAt: now,
         updatedAt: now,
       });

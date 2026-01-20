@@ -1,8 +1,10 @@
 'use client';
 
 import ReactECharts from 'echarts-for-react';
+import * as echarts from 'echarts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import useDark from '@/hooks/useDark';
+import { format } from 'date-fns';
 
 interface AssetTrendData {
   year: string;
@@ -27,125 +29,173 @@ export default function AssetTrendChart({
   const option = {
     tooltip: {
       trigger: 'axis',
+      backgroundColor: isDark
+        ? 'rgba(15, 23, 42, 0.95)'
+        : 'rgba(255, 255, 255, 0.95)',
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      textStyle: {
+        color: isDark ? '#f8fafc' : '#0f172a',
+        fontFamily: 'Geist Mono',
+      },
+      padding: [12, 16],
       axisPointer: {
-        type: 'cross',
-        label: {
-          backgroundColor: '#6a7985',
+        type: 'shadow',
+        shadowStyle: {
+          color: 'rgba(255, 255, 255, 0.05)',
         },
+      },
+      formatter: function (params: any[]) {
+        const date = params[0].axisValue;
+        let result = `<div class="font-bold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}">${date}</div>`;
+        params.forEach((param) => {
+          const value = param.value.toLocaleString();
+          const color = param.color.colorStops
+            ? param.color.colorStops[0].color
+            : param.color;
+
+          let label = param.seriesName;
+
+          result += `
+            <div class="flex items-center justify-between gap-4 text-xs font-mono mb-1">
+              <span class="flex items-center gap-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}">
+                <span class="w-2 h-2 rounded-full" style="background-color: ${color}"></span>
+                ${label}
+              </span>
+              <span class="font-bold ${isDark ? 'text-white' : 'text-slate-900'}">$${value}</span>
+            </div>
+          `;
+        });
+        return result;
       },
     },
     legend: {
       data: ['收入', '支出', '總資產'],
       top: 0,
+      left: 'center',
       textStyle: {
-        color: isDark ? '#edeeee' : '#374151',
+        color: isDark ? '#94a3b8' : '#64748b',
       },
+      itemWidth: 12,
+      itemHeight: 12,
+      icon: 'roundRect',
+    },
+    grid: {
+      top: '15%',
+      left: '2%',
+      right: '2%',
+      bottom: '12%',
+      containLabel: true,
     },
     dataZoom: [
       {
         type: 'slider',
         show: true,
         xAxisIndex: [0],
-        startValue: Math.max(0, data.length - 12), // 至少展示 12 個月
-        endValue: data.length - 1,
-        bottom: 10,
-        height: 20,
+        bottom: 0,
+        height: 16,
         borderColor: 'transparent',
-        // AI 寫的 SVG 向量圖...
-        handleIcon:
-          'path://M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z',
-        handleSize: '80%',
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        fillerColor: 'rgba(255,255,255,0.1)',
+        handleSize: '100%',
         handleStyle: {
-          color: '#fff',
+          color: '#64748b',
           shadowBlur: 3,
           shadowColor: 'rgba(0, 0, 0, 0.6)',
-          shadowOffsetX: 2,
-          shadowOffsetY: 2,
         },
-        textStyle: {
-          color: isDark ? '#edeeee' : '#374151',
-        },
+        textStyle: { color: 'transparent' },
+        brushSelect: false,
+        start: 0,
+        end: 100, // Show all by default, user can zoom
       },
       {
         type: 'inside',
         xAxisIndex: [0],
-        startValue: Math.max(0, data.length - 12),
-        endValue: data.length - 1,
+        zoomOnMouseWheel: true,
+        moveOnMouseWheel: true,
       },
     ],
-    grid: {
-      top: '15%',
-      left: '3%',
-      right: '3%',
-      bottom: '3%',
-      containLabel: true,
-    },
     xAxis: [
       {
         type: 'category',
-        boundaryGap: true,
         data: data.map((item) => `${item.year}-${item.month}`),
         axisLabel: {
           formatter: function (value: string) {
-            const [year, month] = value.split('-');
-            if (month === '1') {
-              return year;
-            }
-            return `${month}月`;
+            const date = new Date(value);
+            return format(date, 'MMM yyyy');
           },
-          color: isDark ? '#9ca3af' : '#4b5563',
+          color: isDark ? '#94a3b8' : '#64748b',
+          fontFamily: 'Geist Mono',
+          fontSize: 10,
+          margin: 14,
         },
-        axisLine: {
-          lineStyle: {
-            color: isDark ? '#374151' : '#e5e7eb',
-          },
-        },
+        axisLine: { show: false },
+        axisTick: { show: false },
       },
     ],
     yAxis: [
       {
         type: 'value',
         name: '收支',
+        nameTextStyle: {
+          color: '#64748b',
+          align: 'right',
+          padding: [0, 8, 0, 0],
+        },
+        position: 'left',
         axisLabel: {
-          color: isDark ? '#9ca3af' : '#4b5563',
+          formatter: (value: number) => `${(value / 1000).toFixed(0)}k`,
+          color: isDark ? '#64748b' : '#94a3b8',
+          fontFamily: 'Geist Mono',
+          fontSize: 10,
         },
         splitLine: {
           lineStyle: {
-            color: isDark ? '#374151' : '#e5e7eb',
+            color: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.05)',
           },
         },
       },
       {
         type: 'value',
         name: '總資產',
+        nameTextStyle: {
+          color: '#64748b',
+          align: 'left',
+          padding: [0, 0, 0, 8],
+        },
+        position: 'right',
         axisLabel: {
-          color: isDark ? '#9ca3af' : '#4b5563',
+          formatter: (value: number) => `${(value / 1000).toFixed(0)}k`,
+          color: isDark ? '#64748b' : '#94a3b8',
+          fontFamily: 'Geist Mono',
+          fontSize: 10,
         },
-        splitLine: {
-          show: false, // 只顯示收支的，不然好亂...
-        },
+        splitLine: { show: false },
       },
     ],
     series: [
       {
         name: '收入',
         type: 'bar',
-        emphasis: {
-          focus: 'series',
-        },
+        barMaxWidth: 12,
         itemStyle: {
-          color: '#10b981', // Green
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#10b981' }, // Emerald-500
+            { offset: 1, color: 'rgba(16, 185, 129, 0.1)' },
+          ]),
+          borderRadius: [4, 4, 0, 0],
         },
         data: data.map((item) => item.income),
       },
       {
         name: '支出',
         type: 'bar',
-        emphasis: {
-          focus: 'series',
-        },
+        barMaxWidth: 12,
         itemStyle: {
-          color: '#ef4444', // Red
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#f43f5e' }, // Rose-500
+            { offset: 1, color: 'rgba(244, 63, 94, 0.1)' },
+          ]),
+          borderRadius: [4, 4, 0, 0],
         },
         data: data.map((item) => item.expense),
       },
@@ -154,11 +204,19 @@ export default function AssetTrendChart({
         type: 'line',
         yAxisIndex: 1,
         smooth: true,
-        itemStyle: {
-          color: '#8b5cf6', // Purple
-        },
+        showSymbol: false,
         lineStyle: {
           width: 3,
+          color: '#8b5cf6', // Violet-500
+          shadowColor: 'rgba(139, 92, 246, 0.5)',
+          shadowBlur: 10,
+        },
+        areaStyle: {
+          opacity: 0.1,
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#8b5cf6' },
+            { offset: 1, color: 'rgba(139, 92, 246, 0)' },
+          ]),
         },
         data: data.map((item) => item.balance),
       },
@@ -166,20 +224,28 @@ export default function AssetTrendChart({
   };
 
   return (
-    <Card className="col-span-4">
-      <CardHeader>
-        <CardTitle>總資產趨勢</CardTitle>
+    <Card className="h-[450px] border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 group">
+      <CardHeader className="pb-2 border-b border-slate-200 dark:border-white/5 flex flex-row items-center justify-between">
+        <div className="space-y-1">
+          <CardTitle className="text-xl font-bold font-playfair text-slate-900 dark:text-white">
+            財務概況
+          </CardTitle>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            收支與資產趨勢分析
+          </p>
+        </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="h-[370px] pt-4">
         {isLoading ? (
-          <div className="h-[350px] w-full flex items-center justify-center bg-muted/10 animate-pulse rounded-lg">
-            載入中...
+          <div className="h-full w-full flex items-center justify-center bg-white/5 animate-pulse rounded-lg">
+            <span className="text-slate-400">載入中...</span>
           </div>
         ) : (
           <ReactECharts
             option={option}
-            style={{ height: '350px', width: '100%' }}
+            style={{ height: '100%', width: '100%' }}
             notMerge
+            lazyUpdate
           />
         )}
       </CardContent>

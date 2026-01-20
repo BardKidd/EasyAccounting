@@ -1,35 +1,26 @@
 import { z } from 'zod';
-import { Account, PaymentStatus } from '../constants';
+import { Account } from '../constants';
 
 const allAccountTypes = [...Object.values(Account)] as const;
-const allPaymentStatus = [...Object.values(PaymentStatus)] as const;
 
 export const createAccountSchema = z.object({
   name: z.string().min(1, '帳戶名稱為必填'),
   type: z.enum(allAccountTypes as [string, ...string[]], {
     errorMap: () => ({ message: '無效的帳戶類型' }),
   }),
-  balance: z.number().min(0, '餘額必須大於或等於 0'),
+  balance: z.number(), // 可以是負值
   icon: z.string().min(1, '圖示為必填'),
   color: z.string().min(1, '顏色為必填'),
-  isActive: z.boolean().default(true),
-  creditLimit: z
-    .number()
-    .min(0, '信用額度必須大於或等於 0')
-    .nullable()
-    .optional(),
-  unpaidAmount: z
-    .number()
-    .min(0, '未繳金額必須大於或等於 0')
-    .nullable()
-    .optional(),
-  billingDay: z.coerce.date().nullable().optional(),
-  nextBillingDate: z.coerce.date().nullable().optional(),
-  paymentStatus: z
-    .enum(allPaymentStatus as [string, ...string[]], {
-      errorMap: () => ({ message: '無效的繳款狀態' }),
+  isArchived: z.boolean().default(false),
+  creditCardDetail: z
+    .object({
+      statementDate: z.coerce.number().min(1).max(31),
+      paymentDueDate: z.coerce.number().min(1).max(31),
+      gracePeriod: z.coerce.number().min(0).max(60).default(0),
+      interestRate: z.coerce.number().min(0).max(100).default(0).optional(),
+      creditLimit: z.coerce.number().min(0),
+      includeInTotal: z.boolean().default(true),
     })
-    .nullable()
     .optional(),
 });
 

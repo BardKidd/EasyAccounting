@@ -1,5 +1,13 @@
 import { z } from 'zod';
-import { RootType, PaymentFrequency, PeriodType } from '../constants';
+import {
+  RootType,
+  PaymentFrequency,
+  PeriodType,
+  InterestType,
+  CalculationMethod,
+  RemainderPlacement,
+  RewardsType,
+} from '../constants';
 
 const baseSchema = z.object({
   accountId: z.string().uuid(),
@@ -14,11 +22,40 @@ const baseSchema = z.object({
     PaymentFrequency.RECURRING,
     PaymentFrequency.INSTALLMENT,
   ]),
+  isReconciled: z.boolean().optional(),
+  reconciliationDate: z.union([z.string(), z.date()]).nullable().optional(),
+  extraAdd: z.number().optional(),
+  extraAddLabel: z.string().optional(),
+  extraMinus: z.number().optional(),
+  extraMinusLabel: z.string().optional(),
 });
 
 export const createTransactionSchema = baseSchema.and(
   z.object({
     type: z.enum([RootType.INCOME, RootType.EXPENSE]),
+    billingDate: z.string().optional(),
+    installment: z
+      .object({
+        totalInstallments: z.number().int().min(2),
+        interestType: z
+          .nativeEnum(InterestType)
+          .optional()
+          .default(InterestType.NONE),
+        calculationMethod: z
+          .nativeEnum(CalculationMethod)
+          .optional()
+          .default(CalculationMethod.ROUND),
+        remainderPlacement: z
+          .nativeEnum(RemainderPlacement)
+          .optional()
+          .default(RemainderPlacement.FIRST),
+        gracePeriod: z.number().int().optional().default(0),
+        rewardsType: z
+          .nativeEnum(RewardsType)
+          .optional()
+          .default(RewardsType.EVERY),
+      })
+      .optional(),
   })
 );
 
@@ -74,5 +111,31 @@ export const transactionFormSchema = z.object({
     PaymentFrequency.RECURRING,
     PaymentFrequency.INSTALLMENT,
   ]),
+  extraAdd: z.coerce.number().optional(),
+  extraAddLabel: z.string().optional(),
+  extraMinus: z.coerce.number().optional(),
+  extraMinusLabel: z.string().optional(),
+  installment: z
+    .object({
+      totalInstallments: z.number().int().min(2),
+      interestType: z
+        .nativeEnum(InterestType)
+        .optional()
+        .default(InterestType.NONE),
+      calculationMethod: z
+        .nativeEnum(CalculationMethod)
+        .optional()
+        .default(CalculationMethod.ROUND),
+      remainderPlacement: z
+        .nativeEnum(RemainderPlacement)
+        .optional()
+        .default(RemainderPlacement.FIRST),
+      gracePeriod: z.number().int().optional().default(0),
+      rewardsType: z
+        .nativeEnum(RewardsType)
+        .optional()
+        .default(RewardsType.EVERY),
+    })
+    .optional(),
 });
 export type TransactionFormSchema = z.input<typeof transactionFormSchema>;

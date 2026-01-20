@@ -58,9 +58,11 @@ export function StatisticsClient({ initialDate }: StatisticsClientProps) {
   }, [periodType, date]);
 
   return (
-    <Container className="py-8 space-y-8">
+    <Container className="py-8 space-y-8 max-w-[1600px] px-4 md:px-8">
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">統計報表</h2>
+        <h2 className="text-3xl font-bold tracking-tight bg-linear-to-r from-slate-900 to-slate-700 dark:from-white dark:to-white/60 bg-clip-text text-transparent font-playfair">
+          統計報表
+        </h2>
         <div className="flex items-center gap-2">
           {/* <ExcelImportButton type={PageType.STATISTICS} />
           <ExcelExportButton type={PageType.STATISTICS} /> */}
@@ -77,20 +79,35 @@ export function StatisticsClient({ initialDate }: StatisticsClientProps) {
         />
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
-            <TabsTrigger value="overview" className="cursor-pointer">
+          <TabsList className="grid w-full grid-cols-5 mb-6 p-1 bg-slate-100/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-white/5 rounded-2xl backdrop-blur-sm">
+            <TabsTrigger
+              value="overview"
+              className="rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 transition-all duration-300"
+            >
               總覽
             </TabsTrigger>
-            <TabsTrigger value="details" className="cursor-pointer">
+            <TabsTrigger
+              value="details"
+              className="rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 transition-all duration-300"
+            >
               明細
             </TabsTrigger>
-            <TabsTrigger value="category" className="cursor-pointer">
+            <TabsTrigger
+              value="category"
+              className="rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 transition-all duration-300"
+            >
               類別
             </TabsTrigger>
-            <TabsTrigger value="ranking" className="cursor-pointer">
+            <TabsTrigger
+              value="ranking"
+              className="rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 transition-all duration-300"
+            >
               排行
             </TabsTrigger>
-            <TabsTrigger value="account" className="cursor-pointer">
+            <TabsTrigger
+              value="account"
+              className="rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 transition-all duration-300"
+            >
               帳戶
             </TabsTrigger>
           </TabsList>

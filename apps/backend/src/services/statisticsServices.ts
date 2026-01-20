@@ -1,6 +1,7 @@
 import Transaction from '@/models/transaction';
 import Category from '@/models/category';
 import Account from '@/models/account';
+import TransactionExtra from '@/models/TransactionExtra';
 import { CategoryTabDataType, RootType } from '@repo/shared';
 import { Op, QueryTypes } from 'sequelize';
 import sequelize from '@/utils/postgres';
@@ -16,22 +17,34 @@ const getOverviewTrend = async (body: any, userId: string) => {
         [Op.between]: [startDate, endDate],
       },
     },
-    raw: true,
     attributes: ['amount', 'type', 'targetAccountId'],
+    include: [
+      {
+        model: TransactionExtra,
+        as: 'transactionExtra',
+      },
+    ],
+    raw: true,
+    nest: true,
   });
 
   const result = transactions.reduce(
-    (total, t) => {
-      if (t.targetAccountId) {
-        if (t.type === RootType.INCOME) {
-          total.transferIn += Number(t.amount);
-        } else if (t.type === RootType.EXPENSE) {
-          total.transferOut += Number(t.amount);
+    (total, t: any) => {
+      const data = t;
+      const amount = Number(data.amount);
+      const extraAdd = Number(data.transactionExtra?.extraAdd || 0);
+      const extraMinus = Number(data.transactionExtra?.extraMinus || 0);
+
+      if (data.targetAccountId) {
+        if (data.type === RootType.INCOME) {
+          total.transferIn += amount;
+        } else if (data.type === RootType.EXPENSE) {
+          total.transferOut += amount + extraMinus - extraAdd;
         }
-      } else if (t.type === RootType.INCOME) {
-        total.income += Number(t.amount);
-      } else if (t.type === RootType.EXPENSE) {
-        total.expense += Number(t.amount);
+      } else if (data.type === RootType.INCOME) {
+        total.income += amount - extraMinus + extraAdd;
+      } else if (data.type === RootType.EXPENSE) {
+        total.expense += amount + extraMinus - extraAdd;
       }
       return total;
     },
@@ -146,7 +159,7 @@ const getOverviewTop3Categories = async (body: any, userId: string) => {
         WHEN "MC"."parentId" IS NOT NULL THEN "MC"."icon"
         ELSE "SC"."icon"
       END AS "categoryIcon",
-      SUM("t"."amount") AS "amount"
+      SUM("t"."amount" + COALESCE("te"."extraMinus", 0) - COALESCE("te"."extraAdd", 0)) AS "amount"
     FROM "accounting"."transaction" AS "t"
     -- 連接到子類別(SubCategory)
     LEFT OUTER JOIN "accounting"."category" AS "SC"
@@ -154,6 +167,9 @@ const getOverviewTop3Categories = async (body: any, userId: string) => {
     -- 連接到父類別(MainCategory)
     LEFT OUTER JOIN "accounting"."category" AS "MC"
       ON "SC"."parentId" = "MC"."id"
+    -- 連接到額外金額
+    LEFT OUTER JOIN "accounting"."transaction_extra" AS "te"
+      ON "t"."transactionExtraId" = "te"."id"
     WHERE "t"."userId" = :userId
     AND "t"."date" BETWEEN :startDate AND :endDate
     AND "t"."targetAccountId" IS NULL
@@ -218,19 +234,41 @@ const getOverviewTop3Expenses = async (body: any, userId: string) => {
       type: RootType.EXPENSE,
     },
     limit: 3,
-    raw: true,
-    nest: true,
-    attributes: ['categoryId', 'amount', 'id', 'date', 'description'],
+    attributes: [
+      'categoryId',
+      'amount',
+      'id',
+      'date',
+      'description',
+      'type',
+      'transactionExtraId',
+    ],
     include: [
       {
         model: Category,
         attributes: ['name', 'icon', 'id'],
       },
+      {
+        model: TransactionExtra,
+        as: 'transactionExtra',
+      },
     ],
     order: [[sequelize.col('amount'), 'DESC']],
+    raw: true,
+    nest: true,
   });
 
-  return transactions;
+  return transactions.map((t: any) => {
+    const data = t;
+    const amount = Number(data.amount);
+    const extraAdd = Number(data.transactionExtra?.extraAdd || 0);
+    const extraMinus = Number(data.transactionExtra?.extraMinus || 0);
+
+    return {
+      ...data,
+      amount: amount + extraMinus - extraAdd,
+    };
+  });
 };
 
 const getDetailTabData = async (body: any, userId: string) => {
@@ -243,8 +281,6 @@ const getDetailTabData = async (body: any, userId: string) => {
         [Op.between]: [startDate, endDate],
       },
     },
-    raw: true,
-    nest: true,
     attributes: [
       'id',
       'amount',
@@ -253,8 +289,13 @@ const getDetailTabData = async (body: any, userId: string) => {
       'description',
       'type',
       'targetAccountId',
+      'transactionExtraId',
     ],
     include: [
+      {
+        model: TransactionExtra,
+        as: 'transactionExtra',
+      },
       {
         // 需要向上對比
         model: Category,
@@ -281,18 +322,23 @@ const getDetailTabData = async (body: any, userId: string) => {
       [sequelize.col('date'), 'DESC'],
       [sequelize.col('time'), 'DESC'],
     ],
+    raw: true,
+    nest: true,
   });
 
-  return detailData.map((item: any) => ({
-    ...item,
-    category: {
-      id: item.category.id,
-      name: item.category.name,
-      color: item.category.color || item.category.parent.color,
-      icon: item.category.icon || item.category.parent.icon,
-    },
-    targetAccountName: item.targetAccount?.name,
-  }));
+  return detailData.map((item: any) => {
+    const data = item;
+    return {
+      ...data,
+      category: {
+        id: data.category.id,
+        name: data.category.name,
+        color: data.category.color || data.category.parent?.color,
+        icon: data.category.icon || data.category.parent?.icon,
+      },
+      targetAccountName: data.targetAccount?.name,
+    };
+  });
 };
 
 const getCategoryTabData = async (
@@ -325,11 +371,18 @@ const getCategoryTabData = async (
         ELSE false 
       END AS "isTransfer",
       "t"."type",
-      SUM("t"."amount")::integer AS "amount",
+      SUM(
+        CASE
+          WHEN "t"."type" = '支出' THEN ("t"."amount" + COALESCE("te"."extraMinus", 0) - COALESCE("te"."extraAdd", 0))
+          WHEN "t"."type" = '收入' THEN ("t"."amount" - COALESCE("te"."extraMinus", 0) + COALESCE("te"."extraAdd", 0))
+          ELSE "t"."amount"
+        END
+      )::integer AS "amount",
       COUNT("t"."id")::integer AS "count"
     FROM "accounting"."transaction" AS "t"
     LEFT JOIN "accounting"."category" AS "sc" ON "t"."categoryId" = "sc"."id"
     LEFT JOIN "accounting"."category" AS "mc" ON "sc"."parentId" = "mc"."id"
+    LEFT JOIN "accounting"."transaction_extra" AS "te" ON "t"."transactionExtraId" = "te"."id"
     WHERE "t"."userId" = :userId
     AND "t"."date" BETWEEN :startDate AND :endDate
     AND "t"."deletedAt" IS NULL
@@ -388,10 +441,19 @@ const getRankingTabData = async (body: any, userId: string) => {
       },
       userId,
     },
-    raw: true,
-    nest: true,
-    attributes: ['id', 'amount', 'description', 'type', 'targetAccountId'],
+    attributes: [
+      'id',
+      'amount',
+      'description',
+      'type',
+      'targetAccountId',
+      'transactionExtraId',
+    ],
     include: [
+      {
+        model: TransactionExtra,
+        as: 'transactionExtra',
+      },
       {
         model: Category,
         attributes: ['id', 'name', 'icon', 'color'],
@@ -405,19 +467,35 @@ const getRankingTabData = async (body: any, userId: string) => {
       },
     ],
     order: [[sequelize.col('amount'), 'DESC']],
+    raw: true,
+    nest: true,
   });
 
-  return result.map((item: any) => ({
-    id: item.id,
-    amount: Number(item.amount),
-    description: item.description,
-    type: item.type,
-    isTransfer: !!item.targetAccountId,
-    categoryId: item.category.id,
-    categoryName: item.category.name,
-    categoryIcon: item.category.parent?.icon || item.category.icon,
-    categoryColor: item.category.parent?.color || item.category.color,
-  }));
+  return result.map((t: any) => {
+    const data = t;
+    const amount = Number(data.amount);
+    const extraAdd = Number(data.transactionExtra?.extraAdd || 0);
+    const extraMinus = Number(data.transactionExtra?.extraMinus || 0);
+
+    let netAmount = amount;
+    if (data.type === RootType.INCOME) {
+      netAmount = amount - extraMinus + extraAdd;
+    } else if (data.type === RootType.EXPENSE) {
+      netAmount = amount + extraMinus - extraAdd;
+    }
+
+    return {
+      id: data.id,
+      amount: netAmount,
+      description: data.description,
+      type: data.type,
+      isTransfer: !!data.targetAccountId,
+      categoryId: data.category.id,
+      categoryName: data.category.name,
+      categoryIcon: data.category.parent?.icon || data.category.icon,
+      categoryColor: data.category.parent?.color || data.category.color,
+    };
+  });
 };
 
 const getAccountTabData = async (body: any, userId: string) => {
@@ -436,10 +514,17 @@ const getAccountTabData = async (body: any, userId: string) => {
       "a"."icon",
       "a"."id",
       "t"."type",
-      SUM("t"."amount")::integer AS "amount",
+      SUM(
+        CASE
+          WHEN "t"."type" = '支出' THEN ("t"."amount" + COALESCE("te"."extraMinus", 0) - COALESCE("te"."extraAdd", 0))
+          WHEN "t"."type" = '收入' THEN ("t"."amount" - COALESCE("te"."extraMinus", 0) + COALESCE("te"."extraAdd", 0))
+          ELSE "t"."amount"
+        END
+      )::integer AS "amount",
       COUNT("t"."id")::integer AS "count"
     FROM "accounting"."transaction" AS "t"
     LEFT JOIN "accounting"."account" AS "a" ON "t"."accountId" = "a"."id"
+    LEFT JOIN "accounting"."transaction_extra" AS "te" ON "t"."transactionExtraId" = "te"."id"
     WHERE "t"."userId" = :userId
     AND "t"."date" BETWEEN :startDate AND :endDate
     AND "t"."deletedAt" IS NULL
@@ -506,24 +591,25 @@ const getAssetTrend = async (userId: string) => {
         to_char("t"."date", 'MM') AS "month",
         SUM(
           CASE
-            WHEN "t"."type" = '支出' THEN "t"."amount" 
+            WHEN "t"."type" = '支出' THEN ("t"."amount" + COALESCE("te"."extraMinus", 0) - COALESCE("te"."extraAdd", 0))
             ELSE 0
           END
         )::integer as "expense",
         SUM(
           CASE
-            WHEN "t"."type" = '收入' THEN "t"."amount" 
+            WHEN "t"."type" = '收入' THEN ("t"."amount" - COALESCE("te"."extraMinus", 0) + COALESCE("te"."extraAdd", 0))
             ELSE 0
           END
         )::integer as "income",
         SUM(
           CASE
-            WHEN "t"."type" = '收入' THEN "t"."amount"
-            WHEN "t"."type" = '支出' THEN - "t"."amount"
+            WHEN "t"."type" = '收入' THEN ("t"."amount" - COALESCE("te"."extraMinus", 0) + COALESCE("te"."extraAdd", 0))
+            WHEN "t"."type" = '支出' THEN - ("t"."amount" + COALESCE("te"."extraMinus", 0) - COALESCE("te"."extraAdd", 0))
             ELSE 0
           END
         )::integer as net_flow
       FROM accounting."transaction" t 
+      LEFT JOIN accounting."transaction_extra" te ON t."transactionExtraId" = te."id"
       WHERE "t"."userId" = :userId
       AND "t"."date" BETWEEN :startDate AND :endDate
       AND "t"."deletedAt" IS NULL

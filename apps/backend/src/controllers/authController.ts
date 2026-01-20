@@ -22,7 +22,7 @@ const login = (req: Request, res: Response) => {
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return res
-        .status(StatusCodes.NOT_FOUND)
+        .status(StatusCodes.BAD_REQUEST)
         .json(responseHelper(false, null, '該用戶尚未註冊', null));
     }
     const compareResult = await comparePassword(password, user.password);

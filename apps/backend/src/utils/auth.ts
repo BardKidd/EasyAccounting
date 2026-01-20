@@ -3,12 +3,8 @@ import dotenv from 'dotenv';
 import { Request, Response } from 'express';
 dotenv.config();
 
-console.log(
-  'JWT_SECRET env check:',
-  process.env.JWT_SECRET ? 'Exists' : 'Missing'
-);
 const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'default_secret_for_dev_only_do_not_use'
+  process.env.JWT_SECRET || 'default_secret_for_dev_only_do_not_use',
 );
 
 const JWT_ACCESS_IN = '15m';
@@ -20,20 +16,32 @@ interface TokenPayload {
   email: string;
 }
 
-const isPrd = process.env.NODE_ENV === 'production';
-const isCloudTest = process.env.IS_CLOUD_TEST === 'true';
-const whichDomain = (isPrd: boolean) => {
-  if (isCloudTest) return '.dev.riinouo-eaccounting.win';
-  if (isPrd) return '.riinouo-eaccounting.win';
+const isProduction = process.env.NODE_ENV === 'production';
+// 判斷是否為雲端環境 (透過 DB Host 判斷)
+const isCloudHost =
+  !!process.env.PG_HOST &&
+  !process.env.PG_HOST.includes('localhost') &&
+  !process.env.PG_HOST.includes('127.0.0.1') &&
+  !process.env.ORIGIN_URL?.includes('localhost');
+
+const whichDomain = () => {
+  // Local 開發時 (Origin 為 localhost)，不設定 Domain (由瀏覽器自動處理)
+  if (process.env.ORIGIN_URL?.includes('localhost')) return undefined;
+
+  if (isProduction) return '.riinouo-eaccounting.win';
+  if (isCloudHost) return '.dev.riinouo-eaccounting.win';
   return undefined;
 };
 
+// 在雲端環境 (不論是 Prod 還是 Dev) 都應啟用 Secure
+const isSecure = isProduction || isCloudHost;
+
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: isPrd,
-  sameSite: isPrd ? ('none' as const) : ('lax' as const), // 允許跨域，前提是 secure: true
+  secure: isSecure,
+  sameSite: isSecure ? ('none' as const) : ('lax' as const), // Secure 時允許跨域 (None)
   path: '/', //! 會鎖定 cookie 在這個路徑底下
-  domain: whichDomain(isPrd),
+  domain: whichDomain(),
   maxAge: COOKIE_MAX_AGE,
 };
 

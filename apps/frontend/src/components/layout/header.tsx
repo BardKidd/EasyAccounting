@@ -12,10 +12,11 @@ import {
 import { ModeToggle } from '@/components/mode-toggle';
 import { Bell } from 'lucide-react';
 import { simplifyTryCatch } from '@/lib/utils';
-import { apiHandler } from '@/lib/utils';
+import { getReconciliationNotifications } from '@/services/reconciliationService';
+import { logout } from '@/services/authService';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { Progress } from '@/components/ui/progress';
+import { ElegantLoader } from '@/components/ui/elegant-loader';
 import { useMemo, useState, useEffect } from 'react';
 
 function Header() {
@@ -33,10 +34,25 @@ function Header() {
     }
   }, []);
 
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await getReconciliationNotifications();
+        if (res.isSuccess && Array.isArray(res.data)) {
+          setNotificationCount(res.data.length);
+        }
+      } catch (error) {
+        console.error('Failed to fetch notifications', error);
+      }
+    };
+    fetchNotifications();
+  }, []);
+
   const handleLogout = () => {
     simplifyTryCatch(async () => {
-      const url = '/logout';
-      const result = await apiHandler(url, 'post', null);
+      const result = await logout();
       if (result.isSuccess) {
         localStorage.removeItem('user');
         toast.success(result.message);
@@ -50,32 +66,50 @@ function Header() {
   }, [user.name]);
 
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-14 items-center px-4 md:px-6 gap-4">
-        <div className="ml-auto flex items-center gap-4">
+    <header className="sticky top-4 z-50 mx-4 md:mr-8 mt-4 rounded-2xl border border-white/20 bg-background/70 backdrop-blur-xl shadow-lg supports-backdrop-filter:bg-background/40 transition-all duration-300 hover:bg-background/80 hover:shadow-xl">
+      <div className="flex h-16 items-center px-6 gap-4">
+        {/* Breadcrumbs or Page Title could go here in future */}
+        <div className="flex-1">
+          {/* Placeholder for potential breadcrumbs */}
+        </div>
+
+        <div className="flex items-center gap-2 md:gap-4">
           <ModeToggle />
-          {/* 暫時想不到要放什麼內容 */}
-          {/* <Button
+
+          <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 cursor-pointer"
+            className="h-10 w-10 cursor-pointer relative rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            onClick={() => router.push('/reconciliation')}
           >
-            <Bell className="h-4 w-4" />
+            <Bell className="h-5 w-5 text-muted-foreground" />
+            {notificationCount > 0 && (
+              <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-background animate-pulse" />
+            )}
             <span className="sr-only">Toggle notifications</span>
-          </Button> */}
+          </Button>
+
+          <div className="h-8 w-px bg-border/50 mx-1 hidden md:block"></div>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="relative h-10 w-10 rounded-full border-2 border-primary/50 bg-secondary p-0 font-bold hover:bg-secondary/80 hover:text-primary cursor-pointer"
+                className="relative h-10 w-10 rounded-full border border-border/50 bg-secondary/30 p-0 font-bold hover:bg-secondary/50 transition-all cursor-pointer ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 overflow-hidden"
               >
-                {getFirstLetterAsAvatar}
+                <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-indigo-500 to-purple-500 text-white shadow-inner">
+                  {getFirstLetterAsAvatar}
+                </div>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
+            <DropdownMenuContent
+              className="w-60 rounded-xl shadow-2xl border-white/10 bg-background/95 backdrop-blur-md"
+              align="end"
+              forceMount
+            >
+              <DropdownMenuLabel className="font-normal p-4">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">
+                  <p className="text-base font-semibold leading-none font-playfair tracking-wide">
                     {user.name}
                   </p>
                   <p className="text-xs leading-none text-muted-foreground">
@@ -83,16 +117,16 @@ function Header() {
                   </p>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer">
+              <DropdownMenuSeparator className="bg-border/50" />
+              <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent/50 rounded-md m-1">
                 個人檔案
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer">
+              <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent/50 rounded-md m-1">
                 設定
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-border/50" />
               <DropdownMenuItem
-                className="text-red-600 cursor-pointer"
+                className="text-rose-500 cursor-pointer py-2.5 px-3 focus:bg-rose-50 dark:focus:bg-rose-950/30 rounded-md m-1 focus:text-rose-600"
                 onClick={handleLogout}
               >
                 登出
@@ -101,7 +135,7 @@ function Header() {
           </DropdownMenu>
         </div>
       </div>
-      {isLoading && <Progress value={isLoading ? 100 : 0} />}
+      {isLoading && <ElegantLoader message="登出中..." />}
     </header>
   );
 }

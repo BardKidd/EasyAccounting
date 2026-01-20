@@ -62,10 +62,12 @@ const getAllCategories = async (req: Request, res: Response) => {
 const postCategory = async (req: Request, res: Response) => {
   const userId = req.user.userId;
   simplifyTryCatch(req, res, async () => {
-    await Category.create({ ...req.body, userId });
+    const category = await Category.create({ ...req.body, userId });
     res
       .status(StatusCodes.CREATED)
-      .json(responseHelper(true, null, 'Category created successfully', null));
+      .json(
+        responseHelper(true, category, 'Category created successfully', null)
+      );
   });
 };
 

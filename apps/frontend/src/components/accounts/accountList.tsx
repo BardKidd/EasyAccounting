@@ -81,7 +81,7 @@ function CollapsibleAccountGroup({
 
   return (
     <>
-      <Card className="border shadow-sm overflow-hidden">
+      <Card className="border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 overflow-hidden">
         <div
           className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
           onClick={() => setIsOpen(!isOpen)}
@@ -96,7 +96,10 @@ function CollapsibleAccountGroup({
                 ${totalBalance.toLocaleString()}
               </span>
             </div>
-            <Badge variant="secondary" className="ml-2 hidden md:inline-flex">
+            <Badge
+              variant="secondary"
+              className="ml-2 hidden md:inline-flex bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+            >
               {accounts.length}
             </Badge>
           </div>
@@ -124,10 +127,10 @@ function CollapsibleAccountGroup({
         </div>
 
         {accounts.length > 0 && isOpen && (
-          <div className="border-t bg-card">
+          <div className="border-t border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/5">
             {accounts.map((account, index) => (
               <div key={account.id}>
-                <div className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors group">
+                <div className="flex items-center justify-between p-4 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors group border-b border-transparent last:border-0 hover:border-slate-200 dark:hover:border-white/5">
                   <div className="flex items-center gap-4">
                     <div
                       className="w-1.5 h-10 rounded-full"
@@ -148,7 +151,9 @@ function CollapsibleAccountGroup({
                     <span
                       className={cn(
                         'font-bold font-mono tracking-tight',
-                        account.balance < 0 ? 'text-red-500' : 'text-foreground'
+                        account.balance < 0
+                          ? 'text-red-500'
+                          : 'text-foreground',
                       )}
                     >
                       ${account.balance.toLocaleString()}
@@ -191,7 +196,7 @@ function CollapsibleAccountGroup({
                     </DropdownMenu>
                   </div>
                 </div>
-                {index < accounts.length - 1 && <Separator />}
+                {/* {index < accounts.length - 1 && <Separator className="bg-slate-200 dark:bg-white/5" />} */}
               </div>
             ))}
           </div>
@@ -206,7 +211,7 @@ function AccountList({ accounts }: AccountListProps) {
   const [isDeleteConfirmDialogOpen, setIsDeleteConfirmDialogOpen] =
     useState(false);
   const [selectedAccount, setSelectedAccount] = useState<AccountType | null>(
-    null
+    null,
   );
 
   const handleCreate = () => {
@@ -233,25 +238,28 @@ function AccountList({ accounts }: AccountListProps) {
       acc[type].push(account);
       return acc;
     },
-    {} as Record<string, AccountType[]>
+    {} as Record<string, AccountType[]>,
   );
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">帳戶管理</h2>
+    <div className="space-y-4">
+      <div className="flex items-end justify-end space-y-2">
+        {/* <h2 className="text-3xl font-bold tracking-tight">帳戶管理</h2> */}
 
         <div className="flex items-center gap-2">
           {/* <ExcelImportButton type={PageType.ACCOUNTS} />
           <ExcelExportButton type={PageType.ACCOUNTS} /> */}
-          <Button className="cursor-pointer" onClick={handleCreate}>
+          <Button
+            className="cursor-pointer bg-slate-900 dark:bg-slate-50 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 shadow-xl shadow-slate-300/50 dark:shadow-none border-0 transition-all duration-300 transform hover:scale-105 rounded-full px-6 h-11 text-sm font-medium font-playfair tracking-wide"
+            onClick={handleCreate}
+          >
             <Plus className="mr-2 h-4 w-4" />
             新增帳戶
           </Button>
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-3">
         {accountTypeOrder.map((type) => {
           const typeAccounts = groupedAccounts[type] || [];
 
