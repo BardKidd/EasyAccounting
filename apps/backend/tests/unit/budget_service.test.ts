@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getCurrentPeriod, getPreviousPeriod } from '@/services/budgetService';
+import { getCurrentPeriod, getPreviousPeriod } from '@/logic/budgetLogic';
 import { BudgetCycleType } from '@/models/budget';
 
 // Helper to create local date without timezone issues

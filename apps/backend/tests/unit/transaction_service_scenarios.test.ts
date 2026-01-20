@@ -1,80 +1,65 @@
-import transactionServices from '@/services/transactionServices';
-import Transaction from '@/models/transaction';
-import TransactionExtra from '@/models/TransactionExtra';
-import Account from '@/models/account';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RootType } from '@repo/shared';
 
-// Mock Models
-vi.mock('@/models/transaction', () => ({
-  default: {
+// Mock @/models as a whole to avoid models/index.ts executing User.addHook
+// All mock objects MUST be defined inside factory due to vi.mock hoisting
+vi.mock('@/models', () => ({
+  Transaction: {
     create: vi.fn(),
     findOne: vi.fn(),
     belongsTo: vi.fn(),
     hasMany: vi.fn(),
     hasOne: vi.fn(),
   },
-}));
-
-vi.mock('@/models/TransactionExtra', () => ({
-  default: {
+  TransactionExtra: {
     create: vi.fn(),
     findOne: vi.fn(),
     belongsTo: vi.fn(),
     hasMany: vi.fn(),
     hasOne: vi.fn(),
   },
-}));
-
-vi.mock('@/models/account', () => ({
-  default: {
+  Account: {
     findByPk: vi.fn(),
     findOne: vi.fn(),
     belongsTo: vi.fn(),
     hasMany: vi.fn(),
     hasOne: vi.fn(),
   },
-}));
-
-vi.mock('@/models/InstallmentPlan', () => ({
-  default: {
+  InstallmentPlan: {
     create: vi.fn(),
     belongsTo: vi.fn(),
     hasMany: vi.fn(),
     hasOne: vi.fn(),
   },
+  Category: {
+    findByPk: vi.fn(),
+    findOne: vi.fn(),
+    belongsTo: vi.fn(),
+    hasMany: vi.fn(),
+    hasOne: vi.fn(),
+  },
+  TransactionBudget: { create: vi.fn(), destroy: vi.fn() },
 }));
 
 // Mock Sequelize Transaction
-vi.mock('@/utils/postgres', () => {
-  const mTransaction = {
-    commit: vi.fn(),
-    rollback: vi.fn(),
-  };
-  return {
-    default: {
-      transaction: vi.fn((cb) => {
-        if (cb) return cb(mTransaction); // execute callback immediately
-        return mTransaction;
-      }),
-      define: vi.fn(() => ({
-        belongsTo: vi.fn(),
-        hasMany: vi.fn(),
-        hasOne: vi.fn(),
-      })),
-    },
-    TABLE_DEFAULT_SETTING: {},
-  };
-});
-
-vi.mock('@/models/category', () => ({
+vi.mock('@/utils/postgres', () => ({
   default: {
-    findByPk: vi.fn(),
-    findOne: vi.fn(),
-    belongsTo: vi.fn(),
-    hasMany: vi.fn(),
-    hasOne: vi.fn(),
+    transaction: vi.fn((cb) => {
+      const mTransaction = { commit: vi.fn(), rollback: vi.fn() };
+      if (cb) return cb(mTransaction);
+      return mTransaction;
+    }),
+    define: vi.fn(() => ({
+      belongsTo: vi.fn(),
+      hasMany: vi.fn(),
+      hasOne: vi.fn(),
+    })),
   },
+  TABLE_DEFAULT_SETTING: {},
 }));
+
+import transactionServices from '@/services/transactionServices';
+import { Transaction, TransactionExtra, Account } from '@/models';
 
 describe('Transaction Service Scenarios', () => {
   const mockUser = { userId: 'user-1' };
@@ -105,12 +90,12 @@ describe('Transaction Service Scenarios', () => {
           type: RootType.EXPENSE,
           category: 'Food',
         } as any,
-        mockUser.userId
+        mockUser.userId,
       );
 
       expect(Transaction.create).toHaveBeenCalledWith(
         expect.objectContaining({ amount: 0 }),
-        expect.anything()
+        expect.anything(),
       );
       expect(result).toEqual(expect.objectContaining({ amount: 0 }));
     });
@@ -136,12 +121,12 @@ describe('Transaction Service Scenarios', () => {
           extraAdd: 5, // Discount (Good)
           extraMinus: 10, // Fee (Bad)
         } as any,
-        mockUser.userId
+        mockUser.userId,
       );
 
       expect(TransactionExtra.create).toHaveBeenCalledWith(
         expect.objectContaining({ extraAdd: 5, extraMinus: 10 }),
-        expect.anything()
+        expect.anything(),
       );
       // Verify account balance update: 1000 - (100 + 10 - 5) = 895
       expect(mockAccount.balance).toBe(895);
@@ -164,7 +149,7 @@ describe('Transaction Service Scenarios', () => {
           extraAdd: 10, // Bonus/Tip
           extraMinus: 5, // Cost/Fee
         } as any,
-        mockUser.userId
+        mockUser.userId,
       );
 
       // Verify account balance update: 1000 + (100 + 10 - 5) = 1105
@@ -206,7 +191,7 @@ describe('Transaction Service Scenarios', () => {
           type: RootType.OPERATE, // or EXPENSE, but typically handled as OPERATE in service wrapper
           extraMinus: 10, // Fee (Bad) -> extraMinus
         } as any,
-        mockUser.userId
+        mockUser.userId,
       );
 
       // Check Balances
@@ -218,11 +203,11 @@ describe('Transaction Service Scenarios', () => {
       // Check LinkId updates
       expect(mockFromTx.update).toHaveBeenCalledWith(
         expect.objectContaining({ linkId: 'tx-to' }),
-        expect.anything()
+        expect.anything(),
       );
       expect(mockToTx.update).toHaveBeenCalledWith(
         expect.objectContaining({ linkId: 'tx-from' }),
-        expect.anything()
+        expect.anything(),
       );
     });
   });

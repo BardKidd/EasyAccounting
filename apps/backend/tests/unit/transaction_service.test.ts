@@ -63,7 +63,15 @@ vi.mock('@/utils/postgres', () => ({
       commit: vi.fn(),
       rollback: vi.fn(),
     })),
+    define: vi.fn(() => ({
+      belongsTo: vi.fn(),
+      hasMany: vi.fn(),
+      hasOne: vi.fn(),
+      belongsToMany: vi.fn(),
+      addHook: vi.fn(),
+    })),
   },
+  TABLE_DEFAULT_SETTING: {},
 }));
 
 describe('Transaction Service Logic', () => {
@@ -91,7 +99,7 @@ describe('Transaction Service Logic', () => {
           ...data,
           id: 'tx1',
           toJSON: () => ({ ...data, id: 'tx1' }),
-        })
+        }),
       );
       (Account.findByPk as any).mockResolvedValue({
         id: 'acc1',
@@ -106,7 +114,7 @@ describe('Transaction Service Logic', () => {
           amount: 100, // Should be positive
           type: RootType.EXPENSE,
         }),
-        expect.anything()
+        expect.anything(),
       );
     });
 
@@ -153,7 +161,7 @@ describe('Transaction Service Logic', () => {
           extraMinus: 10,
           extraAdd: 5,
         }),
-        expect.anything()
+        expect.anything(),
       );
     });
   });
@@ -196,7 +204,7 @@ describe('Transaction Service Logic', () => {
       await transactionService.updateIncomeExpense(
         'tx1',
         updateInput as any,
-        'user1'
+        'user1',
       );
 
       // Expect Extra Destroy called if Service handles it manually

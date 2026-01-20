@@ -1,80 +1,64 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import transactionServices from '@/services/transactionServices';
-import Transaction from '@/models/transaction';
-import InstallmentPlan from '@/models/InstallmentPlan';
-import Account from '@/models/account';
 import { RootType, CalculationMethod, RemainderPlacement } from '@repo/shared';
 
-// Mock models
-vi.mock('@/models/transaction', () => ({
-  default: {
+// Mock @/models as a whole to avoid models/index.ts executing User.addHook
+// All mock objects MUST be defined inside factory due to vi.mock hoisting
+vi.mock('@/models', () => ({
+  Transaction: {
     create: vi.fn(),
     findOne: vi.fn(),
     belongsTo: vi.fn(),
     hasMany: vi.fn(),
     hasOne: vi.fn(),
   },
-}));
-
-vi.mock('@/models/InstallmentPlan', () => ({
-  default: {
+  InstallmentPlan: {
     create: vi.fn(),
     belongsTo: vi.fn(),
     hasMany: vi.fn(),
     hasOne: vi.fn(),
   },
-}));
-
-vi.mock('@/models/account', () => ({
-  default: {
+  Account: {
     findByPk: vi.fn(),
     belongsTo: vi.fn(),
     hasMany: vi.fn(),
     hasOne: vi.fn(),
   },
+  TransactionExtra: {
+    create: vi.fn(),
+    findOne: vi.fn(),
+    belongsTo: vi.fn(),
+    hasMany: vi.fn(),
+    hasOne: vi.fn(),
+  },
+  Category: {
+    findByPk: vi.fn(),
+    findOne: vi.fn(),
+    belongsTo: vi.fn(),
+    hasMany: vi.fn(),
+    hasOne: vi.fn(),
+  },
+  TransactionBudget: { create: vi.fn(), destroy: vi.fn() },
 }));
 
 // Mock Sequelize Transaction
-vi.mock('@/utils/postgres', () => {
-  const mTransaction = {
-    commit: vi.fn(),
-    rollback: vi.fn(),
-  };
-  return {
-    default: {
-      transaction: vi.fn((cb) => {
-        if (cb) return cb(mTransaction);
-        return mTransaction;
-      }),
-      define: vi.fn(() => ({
-        belongsTo: vi.fn(),
-        hasMany: vi.fn(),
-        hasOne: vi.fn(),
-      })),
-    },
-    TABLE_DEFAULT_SETTING: {},
-  };
-});
-
-vi.mock('@/models/TransactionExtra', () => ({
+vi.mock('@/utils/postgres', () => ({
   default: {
-    create: vi.fn(),
-    findOne: vi.fn(),
-    belongsTo: vi.fn(),
-    hasMany: vi.fn(),
-    hasOne: vi.fn(),
+    transaction: vi.fn((cb) => {
+      const mTransaction = { commit: vi.fn(), rollback: vi.fn() };
+      if (cb) return cb(mTransaction);
+      return mTransaction;
+    }),
+    define: vi.fn(() => ({
+      belongsTo: vi.fn(),
+      hasMany: vi.fn(),
+      hasOne: vi.fn(),
+    })),
   },
+  TABLE_DEFAULT_SETTING: {},
 }));
 
-vi.mock('@/models/category', () => ({
-  default: {
-    findByPk: vi.fn(),
-    findOne: vi.fn(),
-    belongsTo: vi.fn(),
-    hasMany: vi.fn(),
-    hasOne: vi.fn(),
-  },
-}));
+import transactionServices from '@/services/transactionServices';
+import { Transaction, InstallmentPlan, Account } from '@/models';
 
 describe('Installment Service', () => {
   const mockUser = { userId: 'user-1' };
@@ -113,7 +97,7 @@ describe('Installment Service', () => {
             remainderPlacement: RemainderPlacement.FIRST,
           },
         } as any,
-        mockUser.userId
+        mockUser.userId,
       );
 
       expect(InstallmentPlan.create).toHaveBeenCalled();
@@ -129,7 +113,7 @@ describe('Installment Service', () => {
           amount: 34,
           description: expect.stringContaining('(1/3)'),
         }),
-        expect.anything()
+        expect.anything(),
       );
 
       // 2nd
@@ -139,7 +123,7 @@ describe('Installment Service', () => {
           amount: 33,
           description: expect.stringContaining('(2/3)'),
         }),
-        expect.anything()
+        expect.anything(),
       );
 
       // 3rd
@@ -149,7 +133,7 @@ describe('Installment Service', () => {
           amount: 33,
           description: expect.stringContaining('(3/3)'),
         }),
-        expect.anything()
+        expect.anything(),
       );
 
       // Check Account Balance Update (Total Amount)
@@ -175,7 +159,7 @@ describe('Installment Service', () => {
             remainderPlacement: RemainderPlacement.LAST,
           },
         } as any,
-        mockUser.userId
+        mockUser.userId,
       );
 
       // 1st
@@ -184,7 +168,7 @@ describe('Installment Service', () => {
         expect.objectContaining({
           amount: 33,
         }),
-        expect.anything()
+        expect.anything(),
       );
 
       // 3rd
@@ -193,7 +177,7 @@ describe('Installment Service', () => {
         expect.objectContaining({
           amount: 34,
         }),
-        expect.anything()
+        expect.anything(),
       );
     });
   });
