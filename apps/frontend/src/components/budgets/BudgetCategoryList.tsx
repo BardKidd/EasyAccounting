@@ -9,7 +9,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { AddBudgetCategoryDialog } from './AddBudgetCategoryDialog';
 import { useState } from 'react';
-import { budgetService } from '@/services/mock/budgetMock';
+import { budgetService } from '@/services/budget';
 import { toast } from 'sonner';
 
 interface BudgetCategoryListProps {
@@ -33,11 +33,10 @@ export function BudgetCategoryList({
   const handleAddCategory = async (categoryId: number, amount: number) => {
     try {
       // 呼叫 API 新增子預算
-      const res = await budgetService.addBudgetCategory(
-        budget.id,
+      const res = await budgetService.addBudgetCategory(budget.id, {
         categoryId,
         amount,
-      );
+      });
       if (res.isSuccess) {
         toast.success('已新增子預算');
         onUpdate(); // 成功後觸發更新回調

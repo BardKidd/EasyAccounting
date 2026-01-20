@@ -6,7 +6,7 @@ import { Plus } from 'lucide-react';
 import { BudgetCard } from '@/components/budgets/BudgetCard';
 import { BudgetFormModal } from '@/components/budgets/BudgetFormModal';
 import { useEffect, useState } from 'react';
-import { budgetService } from '@/services/mock/budgetMock';
+import { budgetService } from '@/services/budget';
 import { Budget, BudgetDetail } from '@/types/budget';
 import { CategoryType } from '@repo/shared';
 import { getCategories } from '@/services/category';

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
-import { budgetService } from '@/services/mock/budgetMock';
+import { budgetService } from '@/services/budget';
 import { getCategories } from '@/services/category';
 import { BudgetDetail } from '@/types/budget';
 import { CategoryType } from '@repo/shared';

@@ -63,7 +63,7 @@ import { z } from '@repo/shared';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
-import { budgetService } from '@/services/mock/budgetMock';
+import { budgetService } from '@/services/budget';
 import { Budget } from '@/types/budget';
 import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';

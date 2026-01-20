@@ -11,7 +11,7 @@ import { BudgetForm, BudgetFormData } from './BudgetForm';
 import { UpdateConfirmationModal } from './UpdateConfirmationModal';
 import { Budget } from '@/types/budget';
 import { CategoryType } from '@repo/shared';
-import { budgetService } from '@/services/mock/budgetMock';
+import { budgetService } from '@/services/budget';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -40,7 +40,9 @@ export function BudgetFormModal({
       const res = await budgetService.createBudget({
         ...data,
         startDate: new Date(data.startDate).toISOString(),
-        endDate: data.endDate ? new Date(data.endDate).toISOString() : undefined,
+        endDate: data.endDate
+          ? new Date(data.endDate).toISOString()
+          : undefined,
       });
       if (res.isSuccess) {
         toast.success('預算建立成功');
@@ -59,7 +61,7 @@ export function BudgetFormModal({
   const handleUpdate = async (
     id: number,
     data: BudgetFormData,
-    effectiveFrom?: 'immediate' | 'nextPeriod'
+    effectiveFrom?: 'immediate' | 'nextPeriod',
   ) => {
     setIsLoading(true);
     try {
@@ -67,7 +69,9 @@ export function BudgetFormModal({
       const { startDate, ...rest } = data;
       const res = await budgetService.updateBudget(id, {
         ...rest,
-        endDate: data.endDate ? new Date(data.endDate).toISOString() : undefined,
+        endDate: data.endDate
+          ? new Date(data.endDate).toISOString()
+          : undefined,
         effectiveFrom,
       });
       if (res.isSuccess) {
