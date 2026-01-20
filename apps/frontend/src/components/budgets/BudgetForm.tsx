@@ -22,9 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
-import { BudgetCycleType, CreateBudgetRequest, Budget } from '@/types/budget';
-import { CategoryType } from '@repo/shared';
+import { BudgetCycleType, Budget } from '@/types/budget';
 import { useEffect } from 'react';
 
 const formSchema = z
@@ -38,7 +36,6 @@ const formSchema = z
     endDate: z.string().optional(),
     isRecurring: z.boolean(),
     rollover: z.boolean(),
-    categoryIds: z.array(z.number()).optional(),
   })
   .refine(
     (data) => {
@@ -57,14 +54,12 @@ export type BudgetFormData = z.infer<typeof formSchema>;
 
 interface BudgetFormProps {
   initialData?: Budget;
-  categories: CategoryType[];
   onSubmit: (data: BudgetFormData) => void;
   isLoading?: boolean;
 }
 
 export function BudgetForm({
   initialData,
-  categories,
   onSubmit,
   isLoading,
 }: BudgetFormProps) {
@@ -82,12 +77,10 @@ export function BudgetForm({
       endDate: initialData?.endDate ? initialData.endDate.split('T')[0] : '',
       isRecurring: initialData?.isRecurring ?? true,
       rollover: initialData?.rollover ?? true,
-      categoryIds: [], // To be populated if we had budgetCategory data
     },
   });
 
   const isRecurring = form.watch('isRecurring');
-  const cycleType = form.watch('cycleType');
 
   useEffect(() => {
     if (initialData) {
@@ -259,57 +252,6 @@ export function BudgetForm({
             )}
           />
         )}
-
-        <FormField
-          control={form.control}
-          name="categoryIds"
-          render={() => (
-            <FormItem>
-              <div className="mb-4">
-                <FormLabel className="text-base">預設關聯分類</FormLabel>
-                <FormDescription>
-                  交易選擇這些分類時，將自動預選此預算
-                </FormDescription>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {categories.map((item) => (
-                  <FormField
-                    key={item.id}
-                    control={form.control}
-                    name="categoryIds"
-                    render={({ field }) => {
-                      return (
-                        <FormItem
-                          key={item.id}
-                          className="flex flex-row items-start space-x-3 space-y-0"
-                        >
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value?.includes(Number(item.id))}
-                              onCheckedChange={(checked) => {
-                                const current = field.value || [];
-                                const id = Number(item.id);
-                                return checked
-                                  ? field.onChange([...current, id])
-                                  : field.onChange(
-                                      current.filter((value) => value !== id),
-                                    );
-                              }}
-                            />
-                          </FormControl>
-                          <FormLabel className="font-normal">
-                            {item.name}
-                          </FormLabel>
-                        </FormItem>
-                      );
-                    }}
-                  />
-                ))}
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         <Button type="submit" disabled={isLoading}>
           {initialData ? '更新預算' : '建立預算'}

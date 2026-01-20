@@ -10,7 +10,6 @@ import {
 import { BudgetForm, BudgetFormData } from './BudgetForm';
 import { UpdateConfirmationModal } from './UpdateConfirmationModal';
 import { Budget } from '@/types/budget';
-import { CategoryType } from '@repo/shared';
 import { budgetService } from '@/services/mock/budgetMock';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -20,7 +19,6 @@ interface BudgetFormModalProps {
   onClose: () => void;
   onSuccess: () => void;
   initialData?: Budget;
-  categories: CategoryType[];
 }
 
 export function BudgetFormModal({
@@ -28,7 +26,6 @@ export function BudgetFormModal({
   onClose,
   onSuccess,
   initialData,
-  categories,
 }: BudgetFormModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -118,7 +115,6 @@ export function BudgetFormModal({
           </DialogHeader>
           <BudgetForm
             initialData={initialData}
-            categories={categories}
             onSubmit={onSubmit}
             isLoading={isLoading}
           />

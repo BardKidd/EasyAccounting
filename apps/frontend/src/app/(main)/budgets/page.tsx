@@ -8,8 +8,6 @@ import { BudgetFormModal } from '@/components/budgets/BudgetFormModal';
 import { useEffect, useState } from 'react';
 import { budgetService } from '@/services/mock/budgetMock';
 import { Budget, BudgetDetail } from '@/types/budget';
-import { CategoryType } from '@repo/shared';
-import { getCategories } from '@/services/category';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -22,10 +20,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useRouter } from 'next/navigation';
 
 export default function BudgetsPage() {
+  const router = useRouter();
   const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [categories, setCategories] = useState<CategoryType[]>([]);
   const [loading, setLoading] = useState(true);
   const [details, setDetails] = useState<Record<number, BudgetDetail>>({});
 
@@ -52,20 +51,6 @@ export default function BudgetsPage() {
             }
         });
         setDetails(detailsMap);
-      }
-
-      // Fetch Categories
-      try {
-        const catData = await getCategories();
-        setCategories(catData);
-      } catch (e) {
-        console.warn('Failed to fetch categories, using mock', e);
-        // Mock fallback
-        setCategories([
-            { id: 1, name: '餐飲', icon: 'utensils', color: '#ff0000', type: 'EXPENSE', createdAt: '', updatedAt: '' },
-            { id: 2, name: '交通', icon: 'car', color: '#00ff00', type: 'EXPENSE', createdAt: '', updatedAt: '' },
-            { id: 3, name: '娛樂', icon: 'gamepad', color: '#0000ff', type: 'EXPENSE', createdAt: '', updatedAt: '' },
-        ] as any);
       }
 
     } catch (error) {
@@ -134,13 +119,20 @@ export default function BudgetsPage() {
             const usage = detail?.usage || { spent: 0, available: budget.amount, remaining: budget.amount, usageRate: 0 };
             
             return (
-                <BudgetCard
-                    key={budget.id}
-                    budget={budget}
-                    usage={usage}
-                    onEdit={handleEdit}
-                    onDelete={setDeleteId}
-                />
+                <div key={budget.id} onClick={() => router.push(`/budgets/${budget.id}`)} className="cursor-pointer transition-transform hover:scale-[1.01]">
+                    <BudgetCard
+                        budget={budget}
+                        usage={usage}
+                        onEdit={(b) => {
+                           // Stop propagation if we want the card click to go to detail
+                           // But BudgetCard edit button handles its own click.
+                           // We need to pass e.stopPropagation inside BudgetCard or just let it bubble if we want to handle it.
+                           // Actually BudgetCard onEdit is called by button click.
+                           handleEdit(b);
+                        }}
+                        onDelete={(id) => setDeleteId(id)}
+                    />
+                </div>
             );
           })}
         </div>
@@ -151,7 +143,6 @@ export default function BudgetsPage() {
         onClose={handleModalClose}
         onSuccess={fetchData}
         initialData={editingBudget}
-        categories={categories}
       />
 
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>

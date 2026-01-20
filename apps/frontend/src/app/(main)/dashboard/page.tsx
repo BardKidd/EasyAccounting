@@ -7,6 +7,7 @@ import {
 import NewTransactionSheet from '@/components/transactions/newTransactionSheet';
 import { PeriodType } from '@repo/shared';
 import AccountSummaryCard from '@/components/accounts/accountSummaryCard';
+import { BudgetDashboardWidget } from '@/components/budgets/BudgetDashboardWidget';
 import service from '@/services';
 
 export default async function DashboardPage() {
@@ -45,6 +46,10 @@ export default async function DashboardPage() {
       </div>
 
       <SummaryCards accounts={accounts} summaryData={summary.trends} />
+
+      <div className="lg:col-span-7">
+        <BudgetDashboardWidget />
+      </div>
 
       <div className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">

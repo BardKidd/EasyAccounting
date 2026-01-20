@@ -5,6 +5,7 @@ import {
   BudgetUsage,
   CreateBudgetRequest,
   UpdateBudgetRequest,
+  BudgetCategory,
 } from '@/types/budget';
 import { ResponseHelper } from '@repo/shared';
 
@@ -59,6 +60,27 @@ let MOCK_BUDGETS: Budget[] = [
   },
 ];
 
+let MOCK_BUDGET_CATEGORIES: BudgetCategory[] = [
+  {
+      id: 1,
+      budgetId: 1,
+      categoryId: 1, // Food
+      amount: 10000,
+      isExcluded: false,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+  },
+  {
+      id: 2,
+      budgetId: 1,
+      categoryId: 2, // Transport
+      amount: 5000,
+      isExcluded: false,
+      createdAt: '2025-01-01T00:00:00Z',
+      updatedAt: '2025-01-01T00:00:00Z',
+  }
+];
+
 const MOCK_USAGE: Record<number, BudgetUsage> = {
   1: {
     spent: 12500,
@@ -102,12 +124,15 @@ export const budgetService = {
         error: [{ message: 'Budget not found', path: 'id' }],
       };
     }
+    
+    const categories = MOCK_BUDGET_CATEGORIES.filter(bc => bc.budgetId === id);
+
     return {
       isSuccess: true,
       message: 'Success',
       data: {
         ...budget,
-        categories: [], // Mock categories if needed
+        categories: categories,
         usage: MOCK_USAGE[id] || {
           spent: 0,
           available: budget.amount,
@@ -196,6 +221,7 @@ export const budgetService = {
   deleteBudget: async (id: number): Promise<ResponseHelper<void>> => {
     await delay(500);
     MOCK_BUDGETS = MOCK_BUDGETS.filter((b) => b.id !== id);
+    MOCK_BUDGET_CATEGORIES = MOCK_BUDGET_CATEGORIES.filter(bc => bc.budgetId !== id);
     return {
       isSuccess: true,
       message: 'Budget deleted successfully',
@@ -206,12 +232,63 @@ export const budgetService = {
 
   recalculateBudget: async (id: number): Promise<ResponseHelper<void>> => {
     await delay(2000); // Simulate long calculation
-    // Mark as recalculating? The UI handles this state usually.
+    const budget = MOCK_BUDGETS.find(b => b.id === id);
+    if(budget) {
+        budget.isRecalculating = true;
+        setTimeout(() => {
+            budget.isRecalculating = false;
+        }, 3000);
+    }
     return {
       isSuccess: true,
       message: 'Budget recalculation started',
       data: undefined,
       error: null,
     };
+  },
+
+  addBudgetCategory: async (budgetId: number, categoryId: number, amount: number): Promise<ResponseHelper<BudgetCategory>> => {
+      await delay(500);
+      const newBC: BudgetCategory = {
+          id: Math.max(...MOCK_BUDGET_CATEGORIES.map(b => b.id), 0) + 1,
+          budgetId,
+          categoryId,
+          amount,
+          isExcluded: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+      };
+      MOCK_BUDGET_CATEGORIES.push(newBC);
+      return {
+          isSuccess: true,
+          message: 'Sub-budget added',
+          data: newBC,
+          error: null
+      };
+  },
+
+  updateBudgetCategory: async (id: number, amount: number): Promise<ResponseHelper<BudgetCategory>> => {
+      await delay(500);
+      const index = MOCK_BUDGET_CATEGORIES.findIndex(bc => bc.id === id);
+      if (index === -1) return { isSuccess: false, message: 'Not found', data: null as any, error: null};
+      
+      MOCK_BUDGET_CATEGORIES[index] = { ...MOCK_BUDGET_CATEGORIES[index], amount, updatedAt: new Date().toISOString() };
+      return {
+          isSuccess: true,
+          message: 'Sub-budget updated',
+          data: MOCK_BUDGET_CATEGORIES[index],
+          error: null
+      };
+  },
+
+  deleteBudgetCategory: async (id: number): Promise<ResponseHelper<void>> => {
+      await delay(500);
+      MOCK_BUDGET_CATEGORIES = MOCK_BUDGET_CATEGORIES.filter(bc => bc.id !== id);
+      return {
+          isSuccess: true,
+          message: 'Sub-budget deleted',
+          data: undefined,
+          error: null
+      };
   }
 };
