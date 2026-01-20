@@ -17,6 +17,7 @@ import deployHealthRoute from '@/routes/deployHealthRoute';
 import personnelNotificationRoute from '@/routes/personnelNotificationRoute';
 import excelRoute from '@/routes/excelRoute';
 import reconciliationRoute from '@/routes/reconciliationRoute';
+import budgetRoute from '@/routes/budgetRoute';
 import {
   startDailyReminderCronJobs,
   startMonthlyAnalysisNoticeCronJobs,
@@ -62,6 +63,7 @@ app.use('/api', statisticsRoute);
 app.use('/api', personnelNotificationRoute);
 app.use('/api', excelRoute);
 app.use('/api', reconciliationRoute);
+app.use('/api', budgetRoute);
 app.use('/api', deployHealthRoute);
 
 startDailyReminderCronJobs();

@@ -20,6 +20,7 @@ import {
   Account,
   InstallmentPlan,
   TransactionExtra,
+  TransactionBudget,
 } from '@/models';
 import sequelize from '@/utils/postgres';
 import { Op, Transaction as SequelizeTransaction } from 'sequelize';
@@ -36,7 +37,7 @@ import {
 
 const getTransactionsByDate = async (
   query: GetTransactionsByDateSchema,
-  userId: string
+  userId: string,
 ) => {
   const { startDate, endDate, type, page = 1, ...otherFilters } = query;
   const limit = 10;
@@ -117,7 +118,7 @@ const getTransactionsByDate = async (
 
 const getTransactionsDashboardSummary = async (
   params: GetTransactionsDashboardSummarySchema,
-  userId: string
+  userId: string,
 ) => {
   const { startDate, endDate, groupBy = PeriodType.MONTH } = params;
   let dateFilter = {};
@@ -265,7 +266,7 @@ const calcAccountBalance = async (
   type: string,
   amount: number,
   extraAdd: number = 0,
-  extraMinus: number = 0
+  extraMinus: number = 0,
 ) => {
   let netAmount = Number(amount);
 
@@ -286,7 +287,7 @@ const calcAccountBalance = async (
 const getInstallmentDescription = (
   originalDesc: string,
   current: number,
-  total: number
+  total: number,
 ) => {
   return `${originalDesc} (${current}/${total})`;
 };
@@ -298,8 +299,9 @@ export const createTransaction = async (
     extraAddLabel?: string;
     extraMinus?: number;
     extraMinusLabel?: string;
+    budgetIds?: string[];
   },
-  userId: string
+  userId: string,
 ) => {
   const transaction = await sequelize.transaction();
 
@@ -329,7 +331,7 @@ export const createTransaction = async (
           extraMinus,
           extraMinusLabel: data.extraMinusLabel || '手續費',
         },
-        { transaction }
+        { transaction },
       );
       transactionExtraId = extra.id;
     }
@@ -353,7 +355,7 @@ export const createTransaction = async (
           gracePeriod: data.installment.gracePeriod || 0,
           rewardsType: data.installment.rewardsType,
         },
-        { transaction }
+        { transaction },
       );
 
       // 2. 計算每期金額 (分期邏輯)
@@ -411,13 +413,13 @@ export const createTransaction = async (
             description: getInstallmentDescription(
               data.description || '',
               i,
-              count
+              count,
             ),
             date: format(date, 'yyyy-MM-dd'),
             billingDate: format(date, 'yyyy-MM-dd'),
             installmentPlanId: installmentPlan.id,
           },
-          { transaction }
+          { transaction },
         );
       }
     } else {
@@ -431,11 +433,22 @@ export const createTransaction = async (
           billingDate: data.date,
           transactionExtraId,
         },
-        { transaction }
+        { transaction },
       );
 
       await calcAccountBalance(account, type, amount, extraAdd, extraMinus);
       await account.save({ transaction });
+
+      // 寫入 TransactionBudget 關聯
+      if (data.budgetIds?.length) {
+        await TransactionBudget.bulkCreate(
+          data.budgetIds.map((budgetId) => ({
+            transactionId: newTransaction.id!,
+            budgetId,
+          })),
+          { transaction },
+        );
+      }
 
       await transaction.commit();
       return newTransaction.toJSON();
@@ -458,8 +471,9 @@ export const updateIncomeExpense = async (
     extraAddLabel?: string;
     extraMinus?: number;
     extraMinusLabel?: string;
+    budgetIds?: string[];
   },
-  userId: string
+  userId: string,
 ) => {
   return simplifyTransaction(async (t) => {
     const transaction = await Transaction.findOne({
@@ -489,7 +503,7 @@ export const updateIncomeExpense = async (
       revertType,
       Number(transaction.amount),
       oldExtraMinus, // Swap: Use oldExtraMinus as extraAdd for revert
-      oldExtraAdd // Swap: Use oldExtraAdd as extraMinus for revert
+      oldExtraAdd, // Swap: Use oldExtraAdd as extraMinus for revert
     );
     await oldAccount.save({ transaction: t });
 
@@ -510,7 +524,7 @@ export const updateIncomeExpense = async (
       if (transaction.transactionExtraId) {
         const extra = await TransactionExtra.findByPk(
           transaction.transactionExtraId,
-          { transaction: t }
+          { transaction: t },
         );
         if (extra) {
           await extra.update(
@@ -520,7 +534,7 @@ export const updateIncomeExpense = async (
               extraMinus: newExtraMinus,
               extraMinusLabel: data.extraMinusLabel || '手續費',
             },
-            { transaction: t }
+            { transaction: t },
           );
         }
       } else {
@@ -531,7 +545,7 @@ export const updateIncomeExpense = async (
             extraMinus: newExtraMinus,
             extraMinusLabel: data.extraMinusLabel || '手續費',
           },
-          { transaction: t }
+          { transaction: t },
         );
         newTransactionExtraId = extra.id;
       }
@@ -561,7 +575,7 @@ export const updateIncomeExpense = async (
       newType,
       newAmount,
       newExtraAdd,
-      newExtraMinus
+      newExtraMinus,
     );
     await newAccount.save({ transaction: t });
 
@@ -572,8 +586,27 @@ export const updateIncomeExpense = async (
         type: newType,
         transactionExtraId: newTransactionExtraId,
       },
-      { transaction: t }
+      { transaction: t },
     );
+
+    // 同步 TransactionBudget 關聯
+    if (data.budgetIds !== undefined) {
+      // 先刪除舊關聯
+      await TransactionBudget.destroy({
+        where: { transactionId: id },
+        transaction: t,
+      });
+      // 再建立新關聯
+      if (data.budgetIds.length) {
+        await TransactionBudget.bulkCreate(
+          data.budgetIds.map((budgetId) => ({
+            transactionId: id,
+            budgetId,
+          })),
+          { transaction: t },
+        );
+      }
+    }
 
     return transaction.toJSON();
   });
@@ -606,7 +639,7 @@ export const deleteTransaction = async (id: string, userId: string) => {
       revertType,
       Number(transaction.amount),
       oldExtraMinus, // Swap
-      oldExtraAdd // Swap
+      oldExtraAdd, // Swap
     );
     await account.save({ transaction: t });
 
@@ -638,7 +671,7 @@ export const deleteTransaction = async (id: string, userId: string) => {
             linkedRevertType,
             Number(linkedTransaction.amount),
             linkedExtraMinus, // Swap
-            linkedExtraAdd // Swap
+            linkedExtraAdd, // Swap
           );
           await linkedAccount.save({ transaction: t });
         }
@@ -669,7 +702,7 @@ export const deleteTransaction = async (id: string, userId: string) => {
 
 const createTransfer = async (
   data: CreateTransferSchema,
-  userId: string
+  userId: string,
 ): Promise<{
   fromTransaction: TransactionTypeWhenOperate;
   toTransaction: TransactionTypeWhenOperate;
@@ -688,7 +721,7 @@ const createTransfer = async (
           extraMinus,
           extraMinusLabel: data.extraMinusLabel || '手續費',
         },
-        { transaction: t }
+        { transaction: t },
       );
       fromExtraId = extra.id;
     }
@@ -721,12 +754,12 @@ const createTransfer = async (
 
     const fromTransaction = await Transaction.create(
       { ...fromData, userId },
-      { transaction: t }
+      { transaction: t },
     );
 
     const toTransaction = await Transaction.create(
       { ...toData, userId },
-      { transaction: t }
+      { transaction: t },
     );
 
     // 來源帳戶：扣除 (金額 + 手續費 - 折扣)
@@ -735,7 +768,7 @@ const createTransfer = async (
       fromData.type,
       fromData.amount,
       extraAdd,
-      extraMinus
+      extraMinus,
     );
     // 目的帳戶：增加 金額 (無手續費)
     await calcAccountBalance(toAccount, toData.type, toData.amount, 0, 0);
@@ -745,11 +778,11 @@ const createTransfer = async (
 
     await fromTransaction.update(
       { linkId: toTransaction.id },
-      { transaction: t }
+      { transaction: t },
     );
     await toTransaction.update(
       { linkId: fromTransaction.id },
-      { transaction: t }
+      { transaction: t },
     );
 
     return {

@@ -26,27 +26,27 @@
 
 ### 2.1 Budget (預算專案)
 
-| 欄位             | 型別          | 說明                                                    |
-| ---------------- | ------------- | ------------------------------------------------------- |
-| `id`             | INT (PK)      | 主鍵                                                    |
-| `userId`         | INT (FK)      | 所屬使用者                                              |
-| `name`           | VARCHAR(100)  | 預算名稱（如「月薪預算」「旅遊基金」）                  |
-| `description`    | TEXT          | 備註說明 (nullable)                                     |
-| `amount`         | DECIMAL(15,2) | 預算總額                                                |
-| `cycleType`      | ENUM          | `YEAR` / `MONTH` / `WEEK` / `DAY`                       |
-| `cycleStartDay`  | INT           | 週期起始日（MONTH: 1-31, WEEK: 1-7, DAY/YEAR: ignored） |
-| `startDate`      | DATE          | 預算生效起始日（第一個週期從何時開始）                  |
-| `endDate`        | DATE          | 預算結束日 (nullable)                                   |
-| `isRecurring`    | BOOLEAN       | `true`=重複循環, `false`=單次週期                       |
-| `rollover`       | BOOLEAN       | 是否結轉餘額至下期（僅 `isRecurring=true` 時有效）      |
-| `isActive`       | BOOLEAN       | 是否啟用 (default: true)                                |
-| `currencyId`     | INT (FK)      | 幣別 (nullable, Future Enhancement)                     |
-| `createdAt`      | TIMESTAMP     | 建立時間                                                |
-| `updatedAt`      | TIMESTAMP     | 更新時間                                                |
-| `deletedAt`      | TIMESTAMP     | 軟刪除 (nullable)                                       |
-| `pendingAmount`  | DECIMAL(15,2) | 待下期生效的新額度 (nullable)                           |
-| `alert80SentAt`  | TIMESTAMP     | 80% 警示發送時間 (nullable)                             |
-| `alert100SentAt` | TIMESTAMP     | 100% 警示發送時間 (nullable)                            |
+| 欄位             | 型別          | 說明                                                                                          |
+| ---------------- | ------------- | --------------------------------------------------------------------------------------------- |
+| `id`             | INT (PK)      | 主鍵                                                                                          |
+| `userId`         | INT (FK)      | 所屬使用者                                                                                    |
+| `name`           | VARCHAR(100)  | 預算名稱（如「月薪預算」「旅遊基金」）                                                        |
+| `description`    | TEXT          | 備註說明 (nullable)                                                                           |
+| `amount`         | DECIMAL(15,2) | 預算總額                                                                                      |
+| `cycleType`      | ENUM          | `YEAR` / `MONTH` / `WEEK` / `DAY`                                                             |
+| `cycleStartDay`  | INT           | 週期起始日（MONTH: 1-31, WEEK: 1-7 週一=1 週日=7, DAY: ignored, YEAR: 使用 startDate 的月日） |
+| `startDate`      | DATE          | 預算生效起始日（第一個週期從何時開始）                                                        |
+| `endDate`        | DATE          | 預算結束日 (nullable)                                                                         |
+| `isRecurring`    | BOOLEAN       | `true`=重複循環, `false`=單次週期                                                             |
+| `rollover`       | BOOLEAN       | 是否結轉餘額至下期（僅 `isRecurring=true` 時有效）                                            |
+| `isActive`       | BOOLEAN       | 是否啟用 (default: true)                                                                      |
+| `currencyId`     | INT (FK)      | 幣別 (nullable, Future Enhancement)                                                           |
+| `createdAt`      | TIMESTAMP     | 建立時間                                                                                      |
+| `updatedAt`      | TIMESTAMP     | 更新時間                                                                                      |
+| `deletedAt`      | TIMESTAMP     | 軟刪除 (nullable)                                                                             |
+| `pendingAmount`  | DECIMAL(15,2) | 待下期生效的新額度 (nullable)                                                                 |
+| `alert80SentAt`  | TIMESTAMP     | 80% 警示發送時間 (nullable)                                                                   |
+| `alert100SentAt` | TIMESTAMP     | 100% 警示發送時間 (nullable)                                                                  |
 
 > [!IMPORTANT]
 > **修改預算額度時的規則**：變更 `amount` 只影響「當前及未來週期」，不可追溯更動已結束週期的計算結果。實作方式見 [3.4 修改生效時間](#34-修改生效時間)。

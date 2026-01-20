@@ -173,38 +173,58 @@ export function BudgetForm({
             )}
           />
 
-          {/* 只在週期性預算顯示「週期起始日」選項 */}
-          {isRecurring && (
-            <FormField
-              control={form.control}
-              name="cycleStartDay"
-              render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormLabel>週期起始日</FormLabel>
-                  <Select
-                    onValueChange={(val) => field.onChange(Number(val))}
-                    value={field.value?.toString()}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="選擇日期" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map(
-                        (day) => (
-                          <SelectItem key={day} value={day.toString()}>
-                            {day}
-                          </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
+          {/* 只在 MONTH 或 WEEK 時顯示「週期起始日」選項，DAY/YEAR 不需要 */}
+          {isRecurring &&
+            (cycleType === BudgetCycleType.MONTH ||
+              cycleType === BudgetCycleType.WEEK) && (
+              <FormField
+                control={form.control}
+                name="cycleStartDay"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>
+                      {cycleType === BudgetCycleType.WEEK
+                        ? '週期起始(星期)'
+                        : '週期起始日'}
+                    </FormLabel>
+                    <Select
+                      onValueChange={(val) => field.onChange(Number(val))}
+                      value={field.value?.toString()}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="選擇" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {cycleType === BudgetCycleType.WEEK ? (
+                          // WEEK: 顯示星期一～星期日 (1-7)
+                          <>
+                            <SelectItem value="1">星期一</SelectItem>
+                            <SelectItem value="2">星期二</SelectItem>
+                            <SelectItem value="3">星期三</SelectItem>
+                            <SelectItem value="4">星期四</SelectItem>
+                            <SelectItem value="5">星期五</SelectItem>
+                            <SelectItem value="6">星期六</SelectItem>
+                            <SelectItem value="7">星期日</SelectItem>
+                          </>
+                        ) : (
+                          // MONTH: 顯示 1-31
+                          Array.from({ length: 31 }, (_, i) => i + 1).map(
+                            (day) => (
+                              <SelectItem key={day} value={day.toString()}>
+                                {day}
+                              </SelectItem>
+                            ),
+                          )
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
         </div>
 
         <div className="flex gap-4">
