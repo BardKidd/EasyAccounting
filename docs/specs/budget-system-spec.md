@@ -20,8 +20,6 @@
 - 80%/100% 超支提醒
 - 歷史週期保護（Snapshot 不可變）
 
-**參考競品**：Moze 3.0，在此基礎上改善「設定不明確」與「歷史被追溯修改」的痛點。
-
 ---
 
 ## 2. Data Model
@@ -435,16 +433,7 @@ async function getBudgetWithUsage(budgetId: number): Promise<BudgetUsage> {
 └─────────────────────────────────────┘
 ```
 
-### 5.4 Moze 痛點改善
-
-| Moze 問題            | 本系統解法                           |
-| -------------------- | ------------------------------------ |
-| 設定後不知道效果     | 每個欄位旁加 tooltip 說明            |
-| 修改後不確定何時生效 | 明確的「立即/下期」選項 + 確認 modal |
-| 週期設定複雜         | 簡化為「類型 + 起始日」兩欄位        |
-| 歷史紀錄被改         | Snapshot 機制保護歷史不可變          |
-
-### 5.5 交易歸入預算（多選欄位）
+### 5.4 交易歸入預算（多選欄位）
 
 在新增/編輯交易的表單中，新增「歸入預算」多選下拉選單：
 
@@ -474,7 +463,7 @@ async function getBudgetWithUsage(budgetId: number): Promise<BudgetUsage> {
 2. 用戶手動選擇歸入哪些預算
 3. 儲存時寫入 `TransactionBudget` 表
 
-### 5.6 子預算管理（Budget Detail 頁面）
+### 5.5 子預算管理（Budget Detail 頁面）
 
 在「預算詳情」頁面管理子預算（分類配額）：
 

@@ -38,13 +38,13 @@ export default function BudgetsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch Budgets
+      // 1. 取得預算列表
       const budgetRes = await budgetService.getBudgets();
       if (budgetRes.isSuccess) {
         setBudgets(budgetRes.data);
 
-        // Fetch details for each to get usage
-        // In real world we might have a list endpoint with usage, but here we mock getBudgetById
+        // 2. 取得每個預算的詳細資訊 (為了顯示使用量等數據)
+        // 實際專案中通常會有一個包含這些資訊的列表 API，這裡模擬逐一獲取
         const detailPromises = budgetRes.data.map((b) =>
           budgetService.getBudgetById(b.id),
         );
@@ -58,7 +58,7 @@ export default function BudgetsPage() {
         setDetails(detailsMap);
       }
 
-      // Fetch Categories
+      // 3. 取得所有分類列表 (用於建立/編輯預算時的選單)
       try {
         const catData = await getCategories();
         setCategories(catData);
@@ -106,17 +106,19 @@ export default function BudgetsPage() {
     fetchData();
   }, []);
 
+  // 開啟編輯預算 Modal
   const handleEdit = (budget: Budget) => {
     setEditingBudget(budget);
     setIsModalOpen(true);
   };
 
+  // 確認刪除預算
   const confirmDelete = async () => {
     if (deleteId) {
       try {
         await budgetService.deleteBudget(deleteId);
         toast.success('刪除成功');
-        fetchData();
+        fetchData(); // 刪除後重新載入列表
       } catch (error) {
         toast.error('刪除失敗');
       } finally {

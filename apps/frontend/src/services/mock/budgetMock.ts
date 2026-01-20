@@ -102,12 +102,49 @@ export const budgetService = {
         error: [{ message: 'Budget not found', path: 'id' }],
       };
     }
+
+    // Mock categories
+    const mockCategories = [
+      {
+        id: 101,
+        budgetId: id,
+        categoryId: 1,
+        amount: 5000,
+        isExcluded: false,
+        createdAt: '',
+        updatedAt: '',
+        category: {
+          id: 1,
+          name: '餐飲',
+          icon: 'utensils',
+          color: '#ff0000',
+          type: 'EXPENSE',
+        },
+      },
+      {
+        id: 102,
+        budgetId: id,
+        categoryId: 2,
+        amount: 3000,
+        isExcluded: false,
+        createdAt: '',
+        updatedAt: '',
+        category: {
+          id: 2,
+          name: '交通',
+          icon: 'car',
+          color: '#00ff00',
+          type: 'EXPENSE',
+        },
+      },
+    ] as any[];
+
     return {
       isSuccess: true,
       message: 'Success',
       data: {
         ...budget,
-        categories: [], // Mock categories if needed
+        categories: mockCategories,
         usage: MOCK_USAGE[id] || {
           spent: 0,
           available: budget.amount,
@@ -121,7 +158,7 @@ export const budgetService = {
   },
 
   createBudget: async (
-    data: CreateBudgetRequest
+    data: CreateBudgetRequest,
   ): Promise<ResponseHelper<Budget>> => {
     await delay(800);
     const newBudget: Budget = {
@@ -157,7 +194,7 @@ export const budgetService = {
 
   updateBudget: async (
     id: number,
-    data: UpdateBudgetRequest
+    data: UpdateBudgetRequest,
   ): Promise<ResponseHelper<Budget>> => {
     await delay(800);
     const index = MOCK_BUDGETS.findIndex((b) => b.id === id);
@@ -170,17 +207,21 @@ export const budgetService = {
       };
     }
 
-    const updatedBudget = { ...MOCK_BUDGETS[index], ...data, updatedAt: new Date().toISOString() };
-    
+    const updatedBudget = {
+      ...MOCK_BUDGETS[index],
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+
     // Simulate pending amount if effectiveFrom is nextPeriod
     if (data.effectiveFrom === 'nextPeriod' && data.amount !== undefined) {
-       updatedBudget.pendingAmount = data.amount;
-       // Revert amount change for immediate response (it will be applied later)
-       updatedBudget.amount = MOCK_BUDGETS[index].amount; 
+      updatedBudget.pendingAmount = data.amount;
+      // Revert amount change for immediate response (it will be applied later)
+      updatedBudget.amount = MOCK_BUDGETS[index].amount;
     } else if (data.amount !== undefined) {
-       // Immediate update
-       updatedBudget.amount = data.amount;
-       updatedBudget.pendingAmount = undefined;
+      // Immediate update
+      updatedBudget.amount = data.amount;
+      updatedBudget.pendingAmount = undefined;
     }
 
     MOCK_BUDGETS[index] = updatedBudget as Budget;
@@ -213,5 +254,38 @@ export const budgetService = {
       data: undefined,
       error: null,
     };
-  }
+  },
+
+  addBudgetCategory: async (
+    budgetId: number,
+    categoryId: number,
+    amount: number,
+  ): Promise<ResponseHelper<any>> => {
+    await delay(500);
+    return {
+      isSuccess: true,
+      message: 'Category added to budget',
+      data: {
+        id: Math.random(),
+        budgetId,
+        categoryId,
+        amount,
+        isExcluded: false,
+      },
+      error: null,
+    };
+  },
+
+  removeBudgetCategory: async (
+    budgetId: number,
+    categoryId: number,
+  ): Promise<ResponseHelper<void>> => {
+    await delay(500);
+    return {
+      isSuccess: true,
+      message: 'Category removed from budget',
+      data: undefined,
+      error: null,
+    };
+  },
 };

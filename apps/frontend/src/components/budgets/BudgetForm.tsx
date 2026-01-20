@@ -38,8 +38,9 @@ const formSchema = z
     endDate: z.string().optional(),
     isRecurring: z.boolean(),
     rollover: z.boolean(),
-    categoryIds: z.array(z.number()).optional(),
   })
+  // 表單驗證規則：
+  // 1. 如果是非週期性預算 (單次)，必須設定結束日期
   .refine(
     (data) => {
       if (!data.isRecurring && !data.endDate) {
@@ -76,13 +77,13 @@ export function BudgetForm({
       amount: initialData?.amount || 0,
       cycleType: initialData?.cycleType || BudgetCycleType.MONTH,
       cycleStartDay: initialData?.cycleStartDay || 1,
+      // 處理日期格式 (取 YYYY-MM-DD)
       startDate: initialData?.startDate
         ? initialData.startDate.split('T')[0]
         : new Date().toISOString().split('T')[0],
       endDate: initialData?.endDate ? initialData.endDate.split('T')[0] : '',
       isRecurring: initialData?.isRecurring ?? true,
       rollover: initialData?.rollover ?? true,
-      categoryIds: [], // To be populated if we had budgetCategory data
     },
   });
 
@@ -107,6 +108,23 @@ export function BudgetForm({
               <FormLabel>預算名稱</FormLabel>
               <FormControl>
                 <Input placeholder="例如：月薪預算" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>預算專案說明</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="例如：包含餐飲、交通、日常用品..."
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -155,6 +173,7 @@ export function BudgetForm({
             )}
           />
 
+          {/* 只在週期性預算顯示「週期起始日」選項 */}
           {isRecurring && (
             <FormField
               control={form.control}
@@ -239,6 +258,7 @@ export function BudgetForm({
           )}
         />
 
+        {/* 只在週期性預算顯示「餘額結轉」選項 */}
         {isRecurring && (
           <FormField
             control={form.control}
@@ -259,57 +279,6 @@ export function BudgetForm({
             )}
           />
         )}
-
-        <FormField
-          control={form.control}
-          name="categoryIds"
-          render={() => (
-            <FormItem>
-              <div className="mb-4">
-                <FormLabel className="text-base">預設關聯分類</FormLabel>
-                <FormDescription>
-                  交易選擇這些分類時，將自動預選此預算
-                </FormDescription>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {categories.map((item) => (
-                  <FormField
-                    key={item.id}
-                    control={form.control}
-                    name="categoryIds"
-                    render={({ field }) => {
-                      return (
-                        <FormItem
-                          key={item.id}
-                          className="flex flex-row items-start space-x-3 space-y-0"
-                        >
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value?.includes(Number(item.id))}
-                              onCheckedChange={(checked) => {
-                                const current = field.value || [];
-                                const id = Number(item.id);
-                                return checked
-                                  ? field.onChange([...current, id])
-                                  : field.onChange(
-                                      current.filter((value) => value !== id),
-                                    );
-                              }}
-                            />
-                          </FormControl>
-                          <FormLabel className="font-normal">
-                            {item.name}
-                          </FormLabel>
-                        </FormItem>
-                      );
-                    }}
-                  />
-                ))}
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         <Button type="submit" disabled={isLoading}>
           {initialData ? '更新預算' : '建立預算'}
