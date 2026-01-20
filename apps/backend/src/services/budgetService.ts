@@ -16,6 +16,9 @@ import { Op } from 'sequelize';
 import {
   getCurrentPeriod,
   getPreviousPeriod,
+  checkAlertTrigger,
+  calculateRolloverOut,
+  AlertType,
   Period,
 } from '@/logic/budgetLogic';
 
@@ -453,6 +456,189 @@ export async function getBudgetCategories(budgetId: string, userId: string) {
   });
 }
 
+// -----------------------------------------------------------------------------
+// Backtracking & Alerting Logic
+// -----------------------------------------------------------------------------
+
+export interface BudgetImpact {
+  budgetId: string;
+  date: string; // YYYY-MM-DD
+}
+
+/**
+ * 處理交易變更對預算的影響
+ * @param userId 使用者 ID
+ * @param impacts 影響列表（包含預算ID和交易日期）
+ */
+export async function handleBudgetImpact(
+  userId: string,
+  impacts: BudgetImpact[],
+): Promise<void> {
+  // 1. 依 Budget ID 分組以避免重複處理
+  const uniqueBudgets = new Map<string, string[]>(); // budgetId -> 日期列表[]
+
+  impacts.forEach((impact) => {
+    if (!uniqueBudgets.has(impact.budgetId)) {
+      uniqueBudgets.set(impact.budgetId, []);
+    }
+    uniqueBudgets.get(impact.budgetId)?.push(impact.date);
+  });
+
+  // 2. 處理每個預算
+  for (const [budgetId, dates] of uniqueBudgets) {
+    const budget = await Budget.findByPk(budgetId);
+    if (!budget) continue;
+
+    // 排序日期以找出最早的影響
+    dates.sort();
+    const firstDate = dates[0];
+    if (!firstDate) continue; // 根據上述邏輯不應發生
+    const earliestDate = new Date(firstDate);
+    const currentPeriod = getCurrentPeriod(budget, new Date());
+
+    // 3. 檢查是否需要回溯（若最早影響日期在當前週期之前）
+    // 注意：使用當日零時進行比較
+    if (earliestDate < currentPeriod.start && budget.isRecurring) {
+      console.log(
+        `[Budget] Backtracking triggered for budget ${budget.name} from ${dates[0]}`,
+      );
+      await recalculateSnapshots(budget, earliestDate);
+    }
+
+    // 4. 總是檢查當前週期的警示
+    // 該交易或回溯導致的結轉更新可能改變了當前週期的使用率
+    await checkBudgetAlerts(budget);
+  }
+}
+
+/**
+ * 重新計算歷史快照 (Backtracking)
+ */
+async function recalculateSnapshots(
+  budget: BudgetInstance,
+  fromDate: Date,
+): Promise<void> {
+  // 找出所有可能受影響的快照（週期結束日 >= 變動日期）
+  const snapshots = await BudgetPeriodSnapshot.findAll({
+    where: {
+      budgetId: budget.id,
+      periodEnd: {
+        [Op.gte]: fromDate.toISOString().split('T')[0],
+      },
+    },
+    order: [['periodStart', 'ASC']],
+  });
+
+  if (snapshots.length === 0) return;
+
+  // 標記預算為正在重新計算
+  await budget.update({ isRecalculating: true });
+
+  try {
+    // 按時間順序遍歷快照
+    for (const snapshot of snapshots) {
+      const period: Period = {
+        start: new Date(snapshot.periodStart),
+        end: new Date(snapshot.periodEnd),
+      };
+
+      // 1. 重新計算花費金額
+      const transactions = await Transaction.findAll({
+        where: {
+          userId: budget.userId,
+          type: RootType.EXPENSE,
+          date: {
+            [Op.gte]: period.start.toISOString().split('T')[0],
+            [Op.lte]: period.end.toISOString().split('T')[0],
+          },
+        },
+        include: [
+          {
+            model: TransactionBudget,
+            as: 'transactionBudgets',
+            where: { budgetId: budget.id },
+            required: true,
+          },
+        ],
+      });
+
+      const spentAmount = transactions.reduce((sum, tx) => {
+        return sum + Math.abs(Number(tx.amount));
+      }, 0);
+
+      // 2. 重新計算結轉移入
+      // 取得前一期的快照（可能在前一次迭代中已更新）
+      const prevPeriod = getPreviousPeriod(budget, period.start);
+      const prevSnapshot = await BudgetPeriodSnapshot.findOne({
+        where: {
+          budgetId: budget.id,
+          periodEnd: prevPeriod.end.toISOString().split('T')[0],
+        },
+      });
+
+      const rolloverIn = prevSnapshot ? Number(prevSnapshot.rolloverOut) : 0;
+
+      // 3. 重新計算結轉移出
+      const rolloverOut = calculateRolloverOut(
+        Number(snapshot.budgetAmount), // 使用快照當下的預算額度
+        spentAmount,
+        rolloverIn,
+        budget.rollover,
+      );
+
+      // 4. 更新快照
+      await snapshot.update({
+        spentAmount,
+        rolloverIn,
+        rolloverOut,
+        lastRecalculatedAt: new Date(),
+      });
+    }
+  } finally {
+    // 重置重新計算狀態
+    await budget.update({
+      isRecalculating: false,
+      lastRecalculatedAt: new Date(),
+    });
+  }
+}
+
+/**
+ * 檢查並觸發預算警示
+ */
+async function checkBudgetAlerts(budget: BudgetInstance): Promise<void> {
+  const currentPeriod = getCurrentPeriod(budget, new Date());
+  const usageInfo = await calculateUsage(
+    budget.id,
+    budget.userId,
+    currentPeriod,
+  );
+
+  const alerts = checkAlertTrigger(
+    usageInfo.usageRate,
+    budget.alert80SentAt,
+    budget.alert100SentAt,
+    currentPeriod.start,
+  );
+
+  for (const alert of alerts) {
+    if (alert.shouldTrigger) {
+      const now = new Date();
+      if (alert.type === AlertType.USAGE_80) {
+        console.log(
+          `[Budget Alert] 80% threshold reached for ${budget.name}: ${usageInfo.usageRate}%`,
+        );
+        await budget.update({ alert80SentAt: now });
+      } else if (alert.type === AlertType.USAGE_100) {
+        console.log(
+          `[Budget Alert] 100% threshold reached for ${budget.name}: ${usageInfo.usageRate}%`,
+        );
+        await budget.update({ alert100SentAt: now });
+      }
+    }
+  }
+}
+
 /**
  * 新增子預算
  */
@@ -541,4 +727,8 @@ export default {
   createBudgetCategory,
   updateBudgetCategory,
   deleteBudgetCategory,
+  // Advanced
+  handleBudgetImpact,
+  recalculateSnapshots,
+  checkBudgetAlerts,
 };

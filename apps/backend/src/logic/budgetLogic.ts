@@ -5,6 +5,10 @@ export interface Period {
   end: Date;
 }
 
+// -----------------------------------------------------------------------------
+// Period Calculation
+// -----------------------------------------------------------------------------
+
 /**
  * 取得指定日期所屬的週期
  */
@@ -142,4 +146,81 @@ function getYearPeriod(ref: Date, startDate: string): Period {
   }
 
   return { start: periodStart, end: periodEnd };
+}
+
+// -----------------------------------------------------------------------------
+// Alert Logic
+// -----------------------------------------------------------------------------
+
+export enum AlertType {
+  USAGE_80 = 'USAGE_80',
+  USAGE_100 = 'USAGE_100',
+}
+
+interface AlertCheckResult {
+  shouldTrigger: boolean;
+  type?: AlertType;
+}
+
+/**
+ * 檢查是否應觸發警示
+ * @param usageRate 當前使用率 (%)
+ * @param alert80SentAt 80% 警示上次發送時間
+ * @param alert100SentAt 100% 警示上次發送時間
+ * @param currentPeriodStart 當前週期開始時間 (用來判斷警示是否屬於本週期)
+ */
+export function checkAlertTrigger(
+  usageRate: number,
+  alert80SentAt: Date | undefined | null,
+  alert100SentAt: Date | undefined | null,
+  currentPeriodStart: Date,
+): AlertCheckResult[] {
+  const results: AlertCheckResult[] = [];
+
+  // Check 80% Threshold
+  if (usageRate >= 80) {
+    // 如果從未發送過，或上次發送是在本週期之前 -> 觸發
+    const isSentInCurrentPeriod =
+      alert80SentAt && new Date(alert80SentAt) >= currentPeriodStart;
+
+    if (!isSentInCurrentPeriod) {
+      results.push({ shouldTrigger: true, type: AlertType.USAGE_80 });
+    }
+  }
+
+  // Check 100% Threshold
+  if (usageRate >= 100) {
+    const isSentInCurrentPeriod =
+      alert100SentAt && new Date(alert100SentAt) >= currentPeriodStart;
+
+    if (!isSentInCurrentPeriod) {
+      results.push({ shouldTrigger: true, type: AlertType.USAGE_100 });
+    }
+  }
+
+  return results;
+}
+
+// -----------------------------------------------------------------------------
+// Rollover Logic
+// -----------------------------------------------------------------------------
+
+/**
+ * 計算 Rollover Out (結轉至下期金額)
+ * @param amount 預算額度
+ * @param spent 已花費
+ * @param rolloverIn 上期結轉進來
+ * @param rolloverEnabled 是否啟用結轉
+ */
+export function calculateRolloverOut(
+  amount: number,
+  spent: number,
+  rolloverIn: number,
+  rolloverEnabled: boolean,
+): number {
+  if (!rolloverEnabled) {
+    return 0;
+  }
+  const available = amount + rolloverIn;
+  return Math.max(0, available - spent);
 }

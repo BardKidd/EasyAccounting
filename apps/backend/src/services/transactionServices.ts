@@ -22,6 +22,7 @@ import {
   TransactionExtra,
   TransactionBudget,
 } from '@/models';
+import { handleBudgetImpact, BudgetImpact } from './budgetService';
 import sequelize from '@/utils/postgres';
 import { Op, Transaction as SequelizeTransaction } from 'sequelize';
 import {
@@ -451,6 +452,17 @@ export const createTransaction = async (
       }
 
       await transaction.commit();
+
+      // 觸發預算檢查
+      if (data.budgetIds?.length) {
+        await handleBudgetImpact(
+          userId,
+          data.budgetIds
+            .map((bid) => ({ bid, date: newTransaction.date }))
+            .map((x) => ({ budgetId: x.bid, date: x.date as string })),
+        );
+      }
+
       return newTransaction.toJSON();
     }
 
@@ -475,7 +487,7 @@ export const updateIncomeExpense = async (
   },
   userId: string,
 ) => {
-  return simplifyTransaction(async (t) => {
+  const responseData = await simplifyTransaction(async (t) => {
     const transaction = await Transaction.findOne({
       where: { id, userId },
       include: [{ model: TransactionExtra, as: 'transactionExtra' }],
@@ -608,12 +620,46 @@ export const updateIncomeExpense = async (
       }
     }
 
-    return transaction.toJSON();
+    const result = transaction.toJSON();
+    // 捕捉影響
+    const impacts: BudgetImpact[] = [];
+    // 舊的影響（如果有的話）
+    const oldTransactionBudgets = await TransactionBudget.findAll({
+      where: { transactionId: id },
+      transaction: t,
+    });
+    oldTransactionBudgets.forEach((tb) => {
+      impacts.push({ budgetId: tb.budgetId, date: transaction.date });
+    });
+
+    // 新的影響
+    if (data.budgetIds) {
+      data.budgetIds.forEach((bid) => {
+        impacts.push({ budgetId: bid, date: data.date || transaction.date });
+      });
+    } else {
+      // 如果 update 中未提供 budgetIds，通常表示不變更關聯。
+      // 但若日期變更，我們需要重新評估現有預算的影響！
+      if (data.date && data.date !== transaction.date) {
+        oldTransactionBudgets.forEach((tb) => {
+          impacts.push({ budgetId: tb.budgetId, date: data.date as string });
+        });
+      }
+    }
+
+    return { result, impacts };
   });
+
+  // 在交易完成後執行影響評估
+  if (responseData?.impacts?.length) {
+    await handleBudgetImpact(userId, responseData.impacts);
+  }
+
+  return responseData.result;
 };
 
 export const deleteTransaction = async (id: string, userId: string) => {
-  return simplifyTransaction(async (t) => {
+  const responseData = await simplifyTransaction(async (t) => {
     const transaction = await Transaction.findOne({
       where: { id, userId },
       include: [{ model: TransactionExtra, as: 'transactionExtra' }],
@@ -696,8 +742,25 @@ export const deleteTransaction = async (id: string, userId: string) => {
       });
     }
 
-    return transaction.toJSON();
+    // 在刪除前捕捉影響
+    const impacts: BudgetImpact[] = [];
+    const transactionBudgets = await TransactionBudget.findAll({
+      where: { transactionId: id },
+      transaction: t,
+    });
+    transactionBudgets.forEach((tb) => {
+      impacts.push({ budgetId: tb.budgetId, date: transaction.date });
+    });
+
+    return { result: transaction.toJSON(), impacts };
   });
+
+  // 執行影響評估
+  if (responseData?.impacts?.length) {
+    await handleBudgetImpact(userId, responseData.impacts);
+  }
+
+  return responseData.result;
 };
 
 const createTransfer = async (
