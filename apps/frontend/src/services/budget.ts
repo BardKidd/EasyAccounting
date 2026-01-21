@@ -22,7 +22,7 @@ export const getBudgets = async (): Promise<ResponseHelper<Budget[]>> => {
  * 取得單一預算詳情（含使用率、子預算）
  */
 export const getBudgetById = async (
-  id: number,
+  id: string,
 ): Promise<ResponseHelper<BudgetDetail>> => {
   return apiHandler(`/budgets/${id}`, 'GET', null);
 };
@@ -40,7 +40,7 @@ export const createBudget = async (
  * 更新預算
  */
 export const updateBudget = async (
-  id: number,
+  id: string,
   data: UpdateBudgetRequest,
 ): Promise<ResponseHelper<Budget>> => {
   return apiHandler(`/budgets/${id}`, 'PUT', data);
@@ -50,7 +50,7 @@ export const updateBudget = async (
  * 刪除預算（軟刪除）
  */
 export const deleteBudget = async (
-  id: number,
+  id: string,
 ): Promise<ResponseHelper<void>> => {
   return apiHandler(`/budgets/${id}`, 'DELETE', null);
 };
@@ -60,7 +60,7 @@ export const deleteBudget = async (
 // -----------------------------------------------------------------------------
 
 interface CreateBudgetCategoryRequest {
-  categoryId: number;
+  categoryId: string;
   amount: number;
   isExcluded?: boolean;
 }
@@ -69,7 +69,7 @@ interface CreateBudgetCategoryRequest {
  * 新增子預算（BudgetCategory）
  */
 export const addBudgetCategory = async (
-  budgetId: number,
+  budgetId: string,
   data: CreateBudgetCategoryRequest,
 ): Promise<ResponseHelper<any>> => {
   return apiHandler(`/budgets/${budgetId}/categories`, 'POST', data);
@@ -79,8 +79,8 @@ export const addBudgetCategory = async (
  * 刪除子預算（BudgetCategory）
  */
 export const removeBudgetCategory = async (
-  budgetId: number,
-  categoryId: number,
+  budgetId: string,
+  categoryId: string,
 ): Promise<ResponseHelper<void>> => {
   return apiHandler(
     `/budgets/${budgetId}/categories/${categoryId}`,

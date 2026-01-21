@@ -12,13 +12,14 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Budget, BudgetUsage, BudgetCycleType } from '@/types/budget';
 import { formatCurrency, cn } from '@/lib/utils';
+import { getDaysRemaining } from '@/lib/budget-utils';
 import { Edit, Trash2, AlertTriangle } from 'lucide-react';
 
 interface BudgetCardProps {
   budget: Budget;
   usage: BudgetUsage;
   onEdit: (budget: Budget) => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
 }
 
 export function BudgetCard({
@@ -147,7 +148,11 @@ export function BudgetCard({
             />
           </div>
           <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-            <span>剩餘 {formatCurrency(remaining)}</span>
+            <div className="flex gap-2">
+              <span>剩餘 {formatCurrency(remaining)}</span>
+              <span>•</span>
+              <span>還有 {getDaysRemaining(budget)} 天</span>
+            </div>
             {budget.pendingAmount && (
               <span className="flex items-center text-amber-600">
                 <AlertTriangle className="mr-1 h-3 w-3" />

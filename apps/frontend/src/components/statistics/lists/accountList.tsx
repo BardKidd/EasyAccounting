@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { getIcon } from '@/lib/icon-mapping';
+import { CategoryIcon } from '@/components/ui/category-icon';
 import { StatisticsType, STATISTICS_CONFIG } from '../constants';
 import { AccountTabDataType, RootType } from '@repo/shared';
 
@@ -34,7 +34,6 @@ export function AccountList({ items, totalAmount, type }: AccountListProps) {
           {/* List Items */}
           <div className="max-h-[400px] overflow-y-auto px-6 py-4 space-y-3 custom-scrollbar">
             {items.map((item) => {
-              const IconComponent = getIcon(item.icon) || getIcon('Wallet');
               return (
                 <div
                   key={`${item.id}${item.type}${item.isTransfer}`}
@@ -47,7 +46,8 @@ export function AccountList({ items, totalAmount, type }: AccountListProps) {
                       backgroundColor: `${item.color}20`,
                     }}
                   >
-                    <IconComponent
+                    <CategoryIcon
+                      iconName={item.icon || 'Wallet'}
                       className="h-5 w-5"
                       style={{ color: item.color }}
                     />

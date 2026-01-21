@@ -337,6 +337,9 @@ export const createTransaction = async (
       transactionExtraId = extra.id;
     }
 
+    const createdTransactions: { id: string; date: string }[] = [];
+    let result = null;
+
     // Handle Installment Plan
     if (data.installment && data.installment.totalInstallments > 1) {
       // 1. 建立分期付款主計畫 InstallmentPlan
@@ -404,7 +407,7 @@ export const createTransaction = async (
 
         const date = addMonths(new Date(data.date), i - 1);
 
-        await Transaction.create(
+        const newInstallmentTransaction = await Transaction.create(
           {
             ...data,
             userId,
@@ -422,7 +425,17 @@ export const createTransaction = async (
           },
           { transaction },
         );
+
+        createdTransactions.push({
+          id: newInstallmentTransaction.id!,
+          date: newInstallmentTransaction.date as string,
+        });
       }
+
+      await calcAccountBalance(account, type, amount, extraAdd, extraMinus);
+      await account.save({ transaction });
+
+      result = { success: true };
     } else {
       // Normal transaction
       const newTransaction = await Transaction.create(
@@ -440,36 +453,39 @@ export const createTransaction = async (
       await calcAccountBalance(account, type, amount, extraAdd, extraMinus);
       await account.save({ transaction });
 
-      // 寫入 TransactionBudget 關聯
-      if (data.budgetIds?.length) {
-        await TransactionBudget.bulkCreate(
-          data.budgetIds.map((budgetId) => ({
-            transactionId: newTransaction.id!,
-            budgetId,
-          })),
-          { transaction },
-        );
-      }
+      createdTransactions.push({
+        id: newTransaction.id!,
+        date: newTransaction.date as string,
+      });
 
-      await transaction.commit();
-
-      // 觸發預算檢查
-      if (data.budgetIds?.length) {
-        await handleBudgetImpact(
-          userId,
-          data.budgetIds
-            .map((bid) => ({ bid, date: newTransaction.date }))
-            .map((x) => ({ budgetId: x.bid, date: x.date as string })),
-        );
-      }
-
-      return newTransaction.toJSON();
+      result = newTransaction.toJSON();
     }
 
-    await calcAccountBalance(account, type, amount, extraAdd, extraMinus);
-    await account.save({ transaction });
+    // 統一寫入 TransactionBudget 關聯
+    if (data.budgetIds?.length && createdTransactions.length > 0) {
+      const budgetAssociations = createdTransactions.flatMap((tx) =>
+        data.budgetIds!.map((budgetId) => ({
+          transactionId: tx.id,
+          budgetId,
+        })),
+      );
+      await TransactionBudget.bulkCreate(budgetAssociations, { transaction });
+    }
 
     await transaction.commit();
+
+    // 統一觸發預算檢查 (Impact)
+    if (data.budgetIds?.length && createdTransactions.length > 0) {
+      const impacts: BudgetImpact[] = createdTransactions.flatMap((tx) =>
+        data.budgetIds!.map((budgetId) => ({
+          budgetId,
+          date: tx.date,
+        })),
+      );
+      await handleBudgetImpact(userId, impacts);
+    }
+
+    return result;
   } catch (error) {
     await transaction.rollback();
     throw error;

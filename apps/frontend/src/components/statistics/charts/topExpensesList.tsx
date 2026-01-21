@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { ShoppingBag, Coffee, Utensils } from 'lucide-react'; // Example icons
 import { formatCurrency } from '@/lib/utils';
 import { OverviewTop3ExpensesType } from '@repo/shared';
-import { getIcon } from '@/lib/icon-mapping';
+import { CategoryIcon } from '@/components/ui/category-icon';
 
 export function TopExpensesList({
   items,
@@ -22,7 +22,6 @@ export function TopExpensesList({
       <CardContent className="pt-4">
         <div className="space-y-3">
           {items.map((item, index) => {
-            const Icon = getIcon(item.category.icon);
             const rankConfig =
               index === 0
                 ? { bg: 'bg-yellow-500', shadow: 'shadow-yellow-500/50' }
@@ -43,7 +42,7 @@ export function TopExpensesList({
                   </div>
 
                   <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 group-hover/item:bg-white dark:group-hover/item:bg-slate-700 text-slate-500 dark:text-slate-400 group-hover/item:text-indigo-500 dark:group-hover/item:text-indigo-400 transition-colors duration-200">
-                    <Icon size={18} />
+                    <CategoryIcon iconName={item.category.icon} size={18} />
                   </div>
 
                   <div className="flex flex-col space-y-0.5">

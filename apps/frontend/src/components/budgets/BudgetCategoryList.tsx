@@ -11,6 +11,7 @@ import { AddBudgetCategoryDialog } from './AddBudgetCategoryDialog';
 import { useState } from 'react';
 import { budgetService } from '@/services/budget';
 import { toast } from 'sonner';
+import { CategoryIcon } from '@/components/ui/category-icon';
 
 interface BudgetCategoryListProps {
   budget: BudgetDetail;
@@ -26,11 +27,11 @@ export function BudgetCategoryList({
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   // 輔助函式：根據 ID 獲取分類詳細資訊 (名稱、圖示等)
-  const getCategoryDetails = (categoryId: number) => {
-    return allCategories.find((c) => Number(c.id) === categoryId);
+  const getCategoryDetails = (categoryId: string) => {
+    return allCategories.find((c) => c.id === categoryId);
   };
 
-  const handleAddCategory = async (categoryId: number, amount: number) => {
+  const handleAddCategory = async (categoryId: string, amount: number) => {
     try {
       // 呼叫 API 新增子預算
       const res = await budgetService.addBudgetCategory(budget.id, {
@@ -48,7 +49,7 @@ export function BudgetCategoryList({
     }
   };
 
-  const handleRemoveCategory = async (categoryId: number) => {
+  const handleRemoveCategory = async (categoryId: string) => {
     try {
       // 呼叫 API 移除子預算
       const res = await budgetService.removeBudgetCategory(
@@ -66,13 +67,6 @@ export function BudgetCategoryList({
     }
   };
 
-  // 獲取子預算的使用量數據
-  // 目前後端可能尚未完全實作子預算統計，此處暫時返回 0 或模擬數據
-  const getUsage = (amount: number) => {
-    // 實際應用中這裡應該來自後端的計算結果
-    return { spent: 0, percentage: 0 };
-  };
-
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -87,50 +81,71 @@ export function BudgetCategoryList({
         </Button>
       </CardHeader>
       <CardContent className="space-y-6">
-        {budget.categories.length === 0 ? (
+        {budget.budgetCategories.length === 0 ? (
           <div className="text-center text-sm text-muted-foreground py-8">
             尚無子預算設定
           </div>
         ) : (
           <div className="space-y-6">
-            {budget.categories.map((bc) => {
+            {budget.budgetCategories.map((bc) => {
               const category = getCategoryDetails(bc.categoryId);
               if (!category) return null;
 
-              const { spent, percentage } = getUsage(bc.amount);
+              if (!category) return null;
+
+              const { spent, percentage } = bc.usage || {
+                spent: 0,
+                percentage: 0,
+              };
 
               return (
-                <div key={bc.id} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {/* If icon is available */}
-                      {category.icon && (
-                        <span className="text-muted-foreground">
-                          {category.icon}
-                        </span>
-                      )}
-                      <span className="font-medium">{category.name}</span>
+                <div
+                  key={bc.id}
+                  className="group relative flex items-center justify-between p-4 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition-all duration-300 backdrop-blur-md"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+                      <CategoryIcon
+                        iconName={category.icon}
+                        className="h-5 w-5"
+                      />
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="text-sm font-medium">
-                          {formatCurrency(bc.amount)}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {percentage}%
-                        </div>
+                    <div>
+                      <div className="font-medium text-foreground">
+                        {category.name}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleRemoveCategory(bc.categoryId)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="text-sm text-muted-foreground">
+                        {percentage}% Used
+                      </div>
                     </div>
                   </div>
-                  <Progress value={percentage} className="h-2" />
+
+                  <div className="flex items-center gap-6">
+                    <div className="text-right">
+                      <div className="text-base font-semibold text-foreground">
+                        {formatCurrency(bc.amount)}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
+                      onClick={() => handleRemoveCategory(bc.categoryId)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Progress Bar Background */}
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/5 rounded-b-xl overflow-hidden">
+                    <div
+                      className={cn(
+                        'h-full transition-all duration-500',
+                        percentage > 100 ? 'bg-destructive' : 'bg-primary',
+                      )}
+                      style={{ width: `${Math.min(percentage, 100)}%` }}
+                    />
+                  </div>
                 </div>
               );
             })}
@@ -143,7 +158,15 @@ export function BudgetCategoryList({
         onClose={() => setIsAddDialogOpen(false)}
         onConfirm={handleAddCategory}
         categories={allCategories}
-        existingCategoryIds={budget.categories.map((c) => c.categoryId)}
+        existingCategoryIds={budget.budgetCategories.map((c) => c.categoryId)}
+        maxAmount={Math.max(
+          0,
+          budget.amount -
+            budget.budgetCategories.reduce(
+              (sum, c) => sum + Number(c.amount),
+              0,
+            ),
+        )}
       />
     </Card>
   );

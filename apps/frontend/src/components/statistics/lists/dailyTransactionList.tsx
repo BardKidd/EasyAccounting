@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, calculateNetAmount } from '@/lib/utils';
-import { getIcon } from '@/lib/icon-mapping';
+import { CategoryIcon } from '@/components/ui/category-icon';
 import { DetailsTransaction, RootType } from '@repo/shared';
 
 interface DailyTransactionListProps {
@@ -41,7 +41,6 @@ export function DailyTransactionList({
         <div className="space-y-4">
           {transactions.map((item) => {
             const { color, prefix, amount } = getAmountStyle(item);
-            const IconComponent = getIcon(item.categoryIcon);
 
             return (
               <div
@@ -55,7 +54,8 @@ export function DailyTransactionList({
                     backgroundColor: `${item.categoryColor}20`,
                   }}
                 >
-                  <IconComponent
+                  <CategoryIcon
+                    iconName={item.categoryIcon}
                     className="h-5 w-5"
                     style={{ color: item.categoryColor }}
                   />
