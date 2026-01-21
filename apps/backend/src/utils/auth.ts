@@ -91,6 +91,13 @@ export const setRefreshCookie = (res: Response, token: string) => {
 };
 
 export const clearAuthCookie = (req: Request, res: Response) => {
-  res.clearCookie('accessToken');
-  res.clearCookie('refreshToken');
+  const clearOptions = {
+    httpOnly: COOKIE_OPTIONS.httpOnly,
+    secure: COOKIE_OPTIONS.secure,
+    sameSite: COOKIE_OPTIONS.sameSite,
+    path: COOKIE_OPTIONS.path,
+    domain: COOKIE_OPTIONS.domain,
+  };
+  res.clearCookie('accessToken', clearOptions);
+  res.clearCookie('refreshToken', clearOptions);
 };
