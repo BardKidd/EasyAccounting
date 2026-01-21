@@ -548,7 +548,7 @@ function NewTransactionSheet({
               {/* Budget Selection */}
               {watchedType === RootType.EXPENSE && (
                 <div className="space-y-2">
-                  <FormLabel>歸入預算 (Mock Data)</FormLabel>
+                  <FormLabel>歸入預算</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
