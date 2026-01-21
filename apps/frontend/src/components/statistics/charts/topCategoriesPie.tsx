@@ -102,7 +102,7 @@ export function TopCategoriesPie({
           支出類別 Top 3
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-6">
+      <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {categories.slice(0, 3).map((cat, index) => (
             <div

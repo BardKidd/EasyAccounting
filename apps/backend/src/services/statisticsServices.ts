@@ -54,7 +54,7 @@ const getOverviewTrend = async (body: any, userId: string) => {
       transferIn: 0,
       transferOut: 0,
       balance: 0,
-    }
+    },
   );
 
   result.balance =
@@ -204,7 +204,7 @@ const getOverviewTop3Categories = async (body: any, userId: string) => {
         type: RootType.EXPENSE,
       },
       type: QueryTypes.SELECT, // 沒寫這個的話會需要改成 const [result]，因為除了 result 外還會有其他資料。
-    }
+    },
   );
 
   return result.map((t: any) => ({
@@ -247,6 +247,7 @@ const getOverviewTop3Expenses = async (body: any, userId: string) => {
       {
         model: Category,
         attributes: ['name', 'icon', 'id'],
+        as: 'category',
       },
       {
         model: TransactionExtra,
@@ -343,7 +344,7 @@ const getDetailTabData = async (body: any, userId: string) => {
 
 const getCategoryTabData = async (
   body: any,
-  userId: string
+  userId: string,
 ): Promise<CategoryTabDataType[]> => {
   const { startDate, endDate } = body;
 
@@ -416,7 +417,7 @@ const getCategoryTabData = async (
         endDate,
       },
       type: QueryTypes.SELECT,
-    }
+    },
   );
 
   return result.map((item: any) => ({
@@ -548,7 +549,7 @@ const getAccountTabData = async (body: any, userId: string) => {
         endDate,
       },
       type: QueryTypes.SELECT,
-    }
+    },
   );
 
   return result.map((item: any) => ({
@@ -577,7 +578,7 @@ const getAssetTrend = async (userId: string) => {
           userId,
         },
         type: QueryTypes.SELECT,
-      }
+      },
     );
 
   if (userDateRange.length > 0 && userDateRange[0]?.startDate) {
@@ -627,7 +628,7 @@ const getAssetTrend = async (userId: string) => {
           startDate,
           endDate,
         },
-      }
+      },
     );
     const sortedResult: EachMonthNetFlow[] = result.map((item) => ({
       ...item,
@@ -640,7 +641,7 @@ const getAssetTrend = async (userId: string) => {
     let currentBalance = Number(balance) || 0;
 
     const monthMap = new Map(
-      sortedResult.map((item) => [`${item.year}-${item.month}`, item])
+      sortedResult.map((item) => [`${item.year}-${item.month}`, item]),
     );
     const timeRange = eachMonthOfInterval({
       start: new Date(startDate),
