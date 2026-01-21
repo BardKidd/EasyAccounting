@@ -300,6 +300,7 @@ const getDetailTabData = async (body: any, userId: string) => {
       {
         // 需要向上對比
         model: Category,
+        as: 'category',
         attributes: ['name', 'icon', 'id', 'color'],
         include: [
           {
@@ -311,6 +312,7 @@ const getDetailTabData = async (body: any, userId: string) => {
       },
       {
         model: Account,
+        as: 'account',
         attributes: ['name'],
       },
       {
@@ -457,6 +459,7 @@ const getRankingTabData = async (body: any, userId: string) => {
       },
       {
         model: Category,
+        as: 'category',
         attributes: ['id', 'name', 'icon', 'color'],
         include: [
           {
