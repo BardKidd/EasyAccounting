@@ -12,7 +12,7 @@ import { ArrowRight } from 'lucide-react';
 
 export function BudgetWidget() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [details, setDetails] = useState<Record<number, BudgetDetail>>({});
+  const [details, setDetails] = useState<Record<string, BudgetDetail>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export function BudgetWidget() {
             budgetService.getBudgetById(b.id),
           );
           const detailsRes = await Promise.all(detailPromises);
-          const detailsMap: Record<number, BudgetDetail> = {};
+          const detailsMap: Record<string, BudgetDetail> = {};
           detailsRes.forEach((d) => {
             if (d.isSuccess) {
               detailsMap[d.data.id] = d.data;
