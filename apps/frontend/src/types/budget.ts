@@ -6,8 +6,8 @@ export enum BudgetCycleType {
 }
 
 export interface Budget {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   name: string;
   description?: string;
   amount: number;
@@ -30,18 +30,22 @@ export interface Budget {
 }
 
 export interface BudgetCategory {
-  id: number;
-  budgetId: number;
-  categoryId: number;
+  id: string;
+  budgetId: string;
+  categoryId: string;
   amount: number;
   isExcluded: boolean;
   createdAt: string;
   updatedAt: string;
+  usage?: {
+    spent: number;
+    percentage: number;
+  };
 }
 
 export interface BudgetPeriodSnapshot {
-  id: number;
-  budgetId: number;
+  id: string;
+  budgetId: string;
   periodStart: string;
   periodEnd: string;
   budgetAmount: number;
@@ -69,7 +73,7 @@ export interface CreateBudgetRequest {
   endDate?: string;
   isRecurring: boolean;
   rollover: boolean;
-  categoryIds?: number[]; // IDs of categories to associate
+  categoryIds?: string[]; // IDs of categories to associate
 }
 
 export interface UpdateBudgetRequest {
@@ -85,7 +89,7 @@ export interface UpdateBudgetRequest {
 }
 
 export interface BudgetDetail extends Budget {
-  categories: BudgetCategory[];
+  budgetCategories: BudgetCategory[];
   usage: BudgetUsage;
   snapshots: BudgetPeriodSnapshot[];
 }

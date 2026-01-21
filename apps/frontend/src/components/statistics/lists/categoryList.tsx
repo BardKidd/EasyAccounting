@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { getIcon } from '@/lib/icon-mapping';
+import { CategoryIcon } from '@/components/ui/category-icon';
 import { StatisticsType, STATISTICS_CONFIG } from '../constants';
 import { CategoryTabDataType } from '@repo/shared';
 import { useEffect } from 'react';
@@ -39,8 +39,6 @@ export function CategoryList({ items, totalAmount, type }: CategoryListProps) {
           {/* List Items */}
           <div className="max-h-[400px] overflow-y-auto px-6 py-4 space-y-3 custom-scrollbar">
             {items.map((item) => {
-              const IconComponent = getIcon(item.icon);
-
               return (
                 <div
                   key={`${item.id}-${item.name}`}
@@ -53,7 +51,8 @@ export function CategoryList({ items, totalAmount, type }: CategoryListProps) {
                       backgroundColor: `${item.color}20`,
                     }}
                   >
-                    <IconComponent
+                    <CategoryIcon
+                      iconName={item.icon}
                       className="h-5 w-5"
                       style={{ color: item.color }}
                     />

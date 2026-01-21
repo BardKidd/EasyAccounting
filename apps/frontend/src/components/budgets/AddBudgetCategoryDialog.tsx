@@ -18,15 +18,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CategoryType } from '@repo/shared';
+import { Slider } from '@/components/ui/slider';
+import { CategoryType, RootType } from '@repo/shared';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/lib/utils';
 
 interface AddBudgetCategoryDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (categoryId: number, amount: number) => Promise<void>;
+  onConfirm: (categoryId: string, amount: number) => Promise<void>;
   categories: CategoryType[];
-  existingCategoryIds: number[];
+  existingCategoryIds: string[];
+  maxAmount: number;
 }
 
 export function AddBudgetCategoryDialog({
@@ -35,24 +38,28 @@ export function AddBudgetCategoryDialog({
   onConfirm,
   categories,
   existingCategoryIds,
+  maxAmount,
 }: AddBudgetCategoryDialogProps) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
-  // 過濾可用的分類：
-  // 1. 排除已經添加到預算中的分類 (防止重複)
-  // 2. 僅顯示主分類 (目前假設沒有 parentId 的為主分類，具體需視資料結構而定)
-  const availableCategories = categories.filter(
-    (c) => !existingCategoryIds.includes(Number(c.id)) && !c.parentId, // Only show main categories
+  const expenseRoot = categories.find(
+    (c) => c.name === RootType.EXPENSE && !c.parentId,
   );
+
+  const availableCategories = categories.filter((c) => {
+    const isExpenseMain = expenseRoot && c.parentId === expenseRoot.id;
+    const isNotAdded = !existingCategoryIds.includes(c.id);
+    return isExpenseMain && isNotAdded;
+  });
 
   const handleConfirm = async () => {
     if (!selectedCategoryId || !amount) return;
 
     setLoading(true);
     try {
-      await onConfirm(Number(selectedCategoryId), Number(amount));
+      await onConfirm(selectedCategoryId, Number(amount));
       onClose();
       setSelectedCategoryId('');
       setAmount('');
@@ -88,8 +95,6 @@ export function AddBudgetCategoryDialog({
                   availableCategories.map((cat) => (
                     <SelectItem key={cat.id} value={cat.id.toString()}>
                       <div className="flex items-center gap-2">
-                        <span>{cat.icon}</span>{' '}
-                        {/* Render icon properly if it's a component or string */}
                         <span>{cat.name}</span>
                       </div>
                     </SelectItem>
@@ -99,13 +104,28 @@ export function AddBudgetCategoryDialog({
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label>配額金額</Label>
-            <Input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="輸入金額"
-            />
+            <Label>配額金額 (剩餘可用: {formatCurrency(maxAmount)})</Label>
+            <div className="flex gap-4 items-center">
+              <Slider
+                max={maxAmount}
+                step={100}
+                value={[Number(amount) || 0]}
+                onValueChange={(val) => setAmount(val[0].toString())}
+                className="flex-1"
+              />
+              <Input
+                type="number"
+                value={amount}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  if (val > maxAmount) return; // Prevent exceeding max
+                  setAmount(e.target.value);
+                }}
+                className="w-24 text-right"
+                placeholder="0"
+                max={maxAmount}
+              />
+            </div>
           </div>
         </div>
         <DialogFooter>

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { getIcon } from '@/lib/icon-mapping';
+import { CategoryIcon } from '@/components/ui/category-icon';
 import { RootType, RankingTabDataType } from '@repo/shared';
 
 interface RankingListProps {
@@ -32,7 +32,6 @@ export function RankingList({ transactions }: RankingListProps) {
         <div className="max-h-[600px] overflow-y-auto px-6 py-4 space-y-3 custom-scrollbar">
           {transactions.map((item, index) => {
             const { color, prefix } = getAmountStyle(item);
-            const IconComponent = getIcon(item.categoryIcon);
 
             return (
               <div
@@ -46,7 +45,8 @@ export function RankingList({ transactions }: RankingListProps) {
                     backgroundColor: `${item.categoryColor}20`,
                   }}
                 >
-                  <IconComponent
+                  <CategoryIcon
+                    iconName={item.categoryIcon}
                     className="h-5 w-5"
                     style={{ color: item.categoryColor }}
                   />

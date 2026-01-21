@@ -22,6 +22,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { formatCurrency, cn } from '@/lib/utils';
 import { BudgetFormModal } from '@/components/budgets/BudgetFormModal';
+import { getDaysRemaining } from '@/lib/budget-utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,9 +58,8 @@ export default function BudgetDetailPage({
 import { useParams } from 'next/navigation';
 
 function BudgetDetailContent() {
-  // 使用 useParams 獲取動態路由參數 (id)
   const params = useParams();
-  const id = Number(params.id);
+  const id = params.id as string;
   const router = useRouter();
 
   const [budget, setBudget] = useState<BudgetDetail | null>(null);
@@ -76,29 +76,12 @@ function BudgetDetailContent() {
         budgetService.getBudgetById(id),
         getCategories().catch((e) => {
           console.warn('Failed to fetch categories', e);
-          return [
-            {
-              id: 1,
-              name: '餐飲',
-              icon: 'utensils',
-              color: '#ff0000',
-              type: 'EXPENSE',
-              createdAt: '',
-              updatedAt: '',
-            },
-            {
-              id: 2,
-              name: '交通',
-              icon: 'car',
-              color: '#00ff00',
-              type: 'EXPENSE',
-              createdAt: '',
-              updatedAt: '',
-            },
-          ] as any;
+          toast.error('載入分類失敗');
+          return [] as any;
         }),
       ]);
 
+      console.log('budgetRes', budgetRes);
       if (budgetRes.isSuccess) {
         setBudget(budgetRes.data);
       } else {
@@ -106,7 +89,17 @@ function BudgetDetailContent() {
         router.push('/budgets');
       }
 
-      setCategories(catData);
+      const flatCategories: CategoryType[] = [];
+      const traverse = (cats: CategoryType[]) => {
+        cats.forEach((c) => {
+          flatCategories.push(c);
+          if (c.children && c.children.length > 0) {
+            traverse(c.children);
+          }
+        });
+      };
+      traverse(catData);
+      setCategories(flatCategories);
     } catch (error) {
       toast.error('載入失敗');
     } finally {
@@ -117,6 +110,8 @@ function BudgetDetailContent() {
   useEffect(() => {
     if (id) {
       fetchData();
+    } else {
+      setLoading(false);
     }
   }, [id]);
 
@@ -241,7 +236,7 @@ function BudgetDetailContent() {
                 <div className="text-sm text-muted-foreground">週期結束</div>
                 <div className="text-xl font-bold text-slate-700 dark:text-slate-200">
                   {/* Add logic to calculate remaining days if needed */}
-                  -- 天
+                  {getDaysRemaining(budget)} 天
                 </div>
               </div>
             </div>

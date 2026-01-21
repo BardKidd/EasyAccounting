@@ -18,7 +18,8 @@ import {
 import CustomPagination from '@/components/customPagination';
 import { format } from 'date-fns';
 import { ArrowRightLeft } from 'lucide-react';
-import { ACCOUNT_ICONS, IconName, getIcon } from '@/lib/icon-mapping';
+import { ACCOUNT_ICONS, IconName } from '@/lib/icon-mapping';
+import { CategoryIcon } from '@/components/ui/category-icon';
 import { calculateNetAmount, formatCurrency } from '@/lib/utils'; // Added formatCurrency
 
 interface TransactionTableProps {
@@ -147,7 +148,6 @@ function TransactionTable({
                   transaction.categoryId,
                   categories,
                 );
-                const IconComponent = getIcon(category?.icon);
 
                 return (
                   <TableRow
@@ -191,7 +191,8 @@ function TransactionTable({
                               : undefined,
                           }}
                         >
-                          <IconComponent
+                          <CategoryIcon
+                            iconName={category?.icon}
                             className="h-4 w-4"
                             style={{ color: category?.color || '#94a3b8' }}
                           />

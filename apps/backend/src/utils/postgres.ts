@@ -30,7 +30,7 @@ const sequelize = new Sequelize(
     host: process.env.PG_HOST,
     port: parseInt(process.env.PG_PORT || '5432', 10),
     logging: false, // 測試時減少 log
-  }
+  },
 );
 
 export const TABLE_DEFAULT_SETTING: ModelOptions = {

@@ -6,6 +6,7 @@ import {
   TransactionBudget,
   Category,
 } from '@/models';
+import { TransactionInstance } from '@/models/transaction';
 import {
   BudgetCycleType,
   BudgetAttributes,
@@ -100,6 +101,99 @@ export async function calculateUsage(
     remaining: available - spent,
     usageRate,
   };
+}
+
+/**
+ * 取得指定週期內的使用者所有交易 (用於子預算計算，不需綁定主預算)
+ */
+async function getUserPeriodTransactions(
+  userId: string,
+  period: Period,
+  budgetId: string,
+) {
+  return Transaction.findAll({
+    where: {
+      userId,
+      type: RootType.EXPENSE,
+      date: {
+        [Op.gte]: period.start.toISOString().split('T')[0],
+        [Op.lte]: period.end.toISOString().split('T')[0],
+      },
+    },
+    include: [
+      {
+        model: TransactionBudget,
+        as: 'transactionBudgets',
+        where: { budgetId },
+        required: true,
+      },
+    ],
+  });
+}
+
+/**
+ * 建立「父分類 ID -> 子分類 ID 列表」的 map
+ * 包含預設分類（userId: null）與使用者自建分類
+ */
+async function buildCategoryChildrenMap(
+  userId: string,
+): Promise<Map<string, string[]>> {
+  const allCategories = await Category.findAll({
+    where: {
+      [Op.or]: [{ userId }, { userId: null }],
+    },
+    attributes: ['id', 'parentId'],
+  });
+
+  const childrenMap = new Map<string, string[]>();
+  allCategories.forEach((c) => {
+    if (c.parentId) {
+      const list = childrenMap.get(c.parentId) || [];
+      list.push(c.id);
+      childrenMap.set(c.parentId, list);
+    }
+  });
+
+  return childrenMap;
+}
+
+/**
+ * 計算子預算列表的使用量
+ * @param childrenMap 父分類 ID -> 子分類 ID 列表（由呼叫端傳入以避免重複查詢）
+ */
+function calculateBudgetCategoriesUsage(
+  budgetCategories: any[],
+  transactions: TransactionInstance[],
+  childrenMap: Map<string, string[]>,
+) {
+  // 計算每個子預算的使用量
+  return budgetCategories.map((bc) => {
+    const parentId = bc.categoryId;
+    const childIds = childrenMap.get(parentId) || [];
+    const targetCategoryIds = new Set([parentId, ...childIds]);
+
+    const spent = transactions.reduce((sum, tx) => {
+      // 檢查交易分類是否屬於該子預算 (或是其子分類)
+      const isMatch = targetCategoryIds.has(tx.categoryId);
+      if (isMatch) {
+        return sum + Math.abs(Number(tx.amount));
+      }
+      return sum;
+    }, 0);
+
+    const amount = Number(bc.amount);
+    const percentage =
+      amount > 0 ? Math.round((spent / amount) * 10000) / 100 : 0;
+
+    // 將 usage 附加到原始物件上 (需要轉成 plain object)
+    return {
+      ...(bc.toJSON ? bc.toJSON() : bc),
+      usage: {
+        spent,
+        percentage,
+      },
+    };
+  });
 }
 
 /**
@@ -269,12 +363,29 @@ export async function getBudgetWithUsage(budgetId: string, userId: string) {
     new Date(),
   );
   const usage = await calculateUsage(budgetId, userId, currentPeriod);
-
   // 惰性建立上期 Snapshot（如果需要）
   await ensurePreviousSnapshot(budget, currentPeriod);
 
+  // 取得該週期的所有交易與分類資訊，以計算子預算使用量
+  const transactions = await getUserPeriodTransactions(
+    userId,
+    currentPeriod,
+    budgetId,
+  );
+
+  // 建立分類階層 map
+  const childrenMap = await buildCategoryChildrenMap(userId);
+
+  // 計算並覆蓋 budgetCategories
+  const budgetCategoriesWithUsage = calculateBudgetCategoriesUsage(
+    (budget as any).budgetCategories || [],
+    transactions,
+    childrenMap,
+  );
+
   return {
     ...budget.toJSON(),
+    budgetCategories: budgetCategoriesWithUsage,
     currentPeriod: {
       start: currentPeriod.start.toISOString().split('T')[0],
       end: currentPeriod.end.toISOString().split('T')[0],

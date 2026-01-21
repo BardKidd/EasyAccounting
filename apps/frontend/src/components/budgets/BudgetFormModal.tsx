@@ -59,7 +59,7 @@ export function BudgetFormModal({
   };
 
   const handleUpdate = async (
-    id: number,
+    id: string,
     data: BudgetFormData,
     effectiveFrom?: 'immediate' | 'nextPeriod',
   ) => {

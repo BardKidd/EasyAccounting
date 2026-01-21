@@ -27,13 +27,13 @@ export default function BudgetsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [categories, setCategories] = useState<CategoryType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [details, setDetails] = useState<Record<number, BudgetDetail>>({});
+  const [details, setDetails] = useState<Record<string, BudgetDetail>>({});
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | undefined>(
     undefined,
   );
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -49,7 +49,7 @@ export default function BudgetsPage() {
           budgetService.getBudgetById(b.id),
         );
         const detailsRes = await Promise.all(detailPromises);
-        const detailsMap: Record<number, BudgetDetail> = {};
+        const detailsMap: Record<string, BudgetDetail> = {};
         detailsRes.forEach((d) => {
           if (d.isSuccess) {
             detailsMap[d.data.id] = d.data;

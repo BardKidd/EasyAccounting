@@ -56,14 +56,15 @@ export const createTransactionSchema = baseSchema.and(
           .default(RewardsType.EVERY),
       })
       .optional(),
-  })
+    budgetIds: z.array(z.string().uuid()).optional(),
+  }),
 );
 
 export const createTransferSchema = baseSchema.and(
   z.object({
     targetAccountId: z.string().uuid(),
     type: z.enum([RootType.OPERATE]), // 前端只能傳 OPERATE 進來，後端會判斷哪個是支出哪個是收入
-  })
+  }),
 );
 
 export const updateTransactionSchema = createTransactionSchema;
@@ -137,5 +138,6 @@ export const transactionFormSchema = z.object({
         .default(RewardsType.EVERY),
     })
     .optional(),
+  budgetIds: z.array(z.string().uuid()).optional(),
 });
 export type TransactionFormSchema = z.input<typeof transactionFormSchema>;

@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ExtendedCategoryType } from './types';
-import { getIcon } from '@/lib/icon-mapping';
+import { CategoryIcon } from '@/components/ui/category-icon';
 
 interface CategoryTreeItemProps {
   node: ExtendedCategoryType;
@@ -34,7 +34,6 @@ export function CategoryTreeItem({
   const hasChildren = node.children && node.children.length > 0;
   const isMain = node.isMainCategory;
   const hasUser = !!node.userId;
-  const IconComponent = getIcon(node.icon);
 
   return (
     <div className="select-none group relative">
@@ -71,12 +70,14 @@ export function CategoryTreeItem({
             )}
           >
             {isMain ? (
-              <IconComponent
+              <CategoryIcon
+                iconName={node.icon}
                 className="h-4 w-4"
                 style={{ color: node.color || '#3b82f6' }}
               />
             ) : (
-              <IconComponent
+              <CategoryIcon
+                iconName={node.icon}
                 className="h-4 w-4"
                 style={{ color: node.color || '#10b981' }}
               />

@@ -80,7 +80,7 @@ function NewTransactionSheet({
   const [isLoading, setIsLoading] = useState(false);
   const [showExtra, setShowExtra] = useState(false);
   const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [selectedBudgetIds, setSelectedBudgetIds] = useState<number[]>([]);
+  const [selectedBudgetIds, setSelectedBudgetIds] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchBudgets = async () => {
@@ -292,7 +292,7 @@ function NewTransactionSheet({
     };
 
     // Mock: Include selected budgets
-    (payload as any).budgetIds = selectedBudgetIds;
+    payload.budgetIds = selectedBudgetIds;
 
     try {
       setIsLoading(true);

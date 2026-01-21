@@ -5,7 +5,7 @@ import {
   AccountType,
   RootType,
 } from '@repo/shared';
-import { getIcon } from '@/lib/icon-mapping';
+import { CategoryIcon } from '@/components/ui/category-icon';
 import { formatCurrency, calculateNetAmount } from '@/lib/utils';
 
 function RecentTransactions({
@@ -90,7 +90,6 @@ function RecentTransactions({
               const category = findCategory(item.categoryId, categories);
               const account = accounts.find((a) => a.id === item.accountId);
               const { color, prefix, amount } = getAmountStyle(item);
-              const IconComponent = getIcon(category?.icon);
 
               return (
                 <div
@@ -110,7 +109,8 @@ function RecentTransactions({
                         : 'none',
                     }}
                   >
-                    <IconComponent
+                    <CategoryIcon
+                      iconName={category?.icon}
                       className="h-5 w-5 transition-transform group-hover:scale-110 duration-300"
                       style={{ color: category?.color || '#94a3b8' }}
                     />
