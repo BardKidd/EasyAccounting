@@ -36,15 +36,25 @@ export default function AuthLayout({
           <div className="flex items-center text-2xl font-semibold tracking-wide">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
+              viewBox="0 0 32 32"
               fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="mr-3 h-8 w-8 text-white"
+              className="mr-3 h-10 w-10"
             >
-              <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
+              <rect
+                width="32"
+                height="32"
+                rx="10"
+                fill="white"
+                className="fill-white"
+              />
+              <path
+                d="M26 22L22 10L18 22H14V10H7M7 16H12M7 22H14M20 17H24"
+                stroke="#0F172A"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle cx="27" cy="9" r="2" fill="#38BDF8" />
             </svg>
             EasyAccounting
           </div>

@@ -77,8 +77,29 @@ function SidebarContent({
           href="/dashboard"
           className="flex items-center gap-3 hover:opacity-90 transition-all cursor-pointer group"
         >
-          <div className="p-2 rounded-xl bg-white/10 group-hover:bg-white/20 transition-colors">
-            <Command className="h-6 w-6 text-white" />
+          <div className="group-hover:opacity-80 transition-opacity">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 32 32"
+              fill="none"
+              className="h-8 w-8"
+            >
+              <rect
+                width="32"
+                height="32"
+                rx="10"
+                fill="#0F172A"
+                className="fill-white/10"
+              />
+              <path
+                d="M26 22L22 10L18 22H14V10H7M7 16H12M7 22H14M20 17H24"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle cx="27" cy="9" r="2" fill="#38BDF8" />
+            </svg>
           </div>
           <h2 className="text-xl font-bold tracking-wide text-white font-playfair">
             EasyAccounting
@@ -98,7 +119,7 @@ function SidebarContent({
                   'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ease-in-out',
                   isActive
                     ? 'bg-white/10 text-white shadow-lg shadow-black/5 ring-1 ring-white/10 backdrop-blur-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5',
                 )}
               >
                 <item.icon
@@ -106,7 +127,7 @@ function SidebarContent({
                     'h-5 w-5',
                     isActive
                       ? 'text-white'
-                      : 'text-slate-400 group-hover:text-white'
+                      : 'text-slate-400 group-hover:text-white',
                   )}
                 />
                 <span className="tracking-wide">{item.title}</span>
@@ -158,7 +179,7 @@ function Sidebar({ className }: SidebarProps) {
       <div
         className={cn(
           'hidden md:flex h-screen w-72 flex-col border-r border-white/5 bg-slate-950 text-slate-50 shadow-2xl z-50',
-          className
+          className,
         )}
       >
         <SidebarContent pathname={pathname} />

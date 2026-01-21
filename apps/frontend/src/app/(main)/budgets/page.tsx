@@ -158,7 +158,7 @@ export default function BudgetsPage() {
             <Skeleton key={i} className="h-[200px] w-full rounded-xl" />
           ))}
         </div>
-      ) : (
+      ) : budgets.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {budgets.map((budget) => {
             const detail = details[budget.id];
@@ -180,6 +180,33 @@ export default function BudgetsPage() {
               />
             );
           })}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
+          <div className="relative">
+            <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full" />
+            <div className="relative bg-linear-to-br from-slate-100 to-white dark:from-slate-800 dark:to-slate-900 p-6 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 transform transition-transform hover:scale-105 duration-500">
+              <div className="w-16 h-16 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <div className="w-10 h-6 rounded-md border-2 border-slate-300 dark:border-slate-600 relative overflow-hidden">
+                  <div className="absolute top-1 left-0 right-0 h-1 bg-slate-300 dark:bg-slate-600"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2 max-w-md">
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 font-playfair">
+              尚未建立預算專案
+            </h3>
+            <p className="text-slate-500 dark:text-slate-400">
+              目前沒有任何進行中的預算專案。建立您的第一個預算，開始追蹤並有效管理您的財務狀況。
+            </p>
+          </div>
+          <Button
+            onClick={() => setIsModalOpen(true)}
+            className="cursor-pointer bg-slate-900 dark:bg-slate-50 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 shadow-lg shadow-blue-500/20 rounded-full px-8 h-12 font-medium tracking-wide transition-all hover:translate-y-[-2px]"
+          >
+            立即建立預算
+          </Button>
         </div>
       )}
 
