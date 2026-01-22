@@ -207,7 +207,7 @@ function BudgetDetailContent() {
                 {formatCurrency(usage.spent)}
               </div>
               <div className="text-sm text-muted-foreground">
-                已支出 / 預算 {formatCurrency(usage.available)}
+                已支出 / 累積預算 {formatCurrency(usage.available)}
               </div>
             </div>
 

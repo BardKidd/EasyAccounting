@@ -89,6 +89,26 @@ export const removeBudgetCategory = async (
   );
 };
 
+interface UpdateBudgetCategoryRequest {
+  amount?: number;
+  isExcluded?: boolean;
+}
+
+/**
+ * 更新子預算
+ */
+export const updateBudgetCategory = async (
+  budgetId: string,
+  budgetCategoryId: string,
+  data: UpdateBudgetCategoryRequest,
+): Promise<ResponseHelper<any>> => {
+  return apiHandler(
+    `/budgets/${budgetId}/categories/${budgetCategoryId}`,
+    'PUT',
+    data,
+  );
+};
+
 // -----------------------------------------------------------------------------
 // 匯出為 budgetService 物件（相容現有使用方式）
 // -----------------------------------------------------------------------------
@@ -101,4 +121,5 @@ export const budgetService = {
   deleteBudget,
   addBudgetCategory,
   removeBudgetCategory,
+  updateBudgetCategory,
 };
