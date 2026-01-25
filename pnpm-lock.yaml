@@ -151,6 +151,9 @@ importers:
       morgan:
         specifier: ^1.10.1
         version: 1.10.1
+      pm2:
+        specifier: ^6.0.14
+        version: 6.0.14
       react-email:
         specifier: ^5.1.0
         version: 5.1.0

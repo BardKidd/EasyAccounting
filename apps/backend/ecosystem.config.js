@@ -3,6 +3,7 @@ module.exports = {
     {
       name: 'easy-accounting-api',
       script: './src/app.ts',
+      cwd: __dirname,
       interpreter: 'node',
       interpreter_args: '--import tsx',
       instances: -2,
@@ -17,6 +18,7 @@ module.exports = {
     {
       name: 'easy-accounting-cron',
       script: './src/app.ts',
+      cwd: __dirname,
       interpreter: 'node',
       interpreter_args: '--import tsx',
       instances: 1,
