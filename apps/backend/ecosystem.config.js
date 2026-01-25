@@ -5,7 +5,7 @@ module.exports = {
       script: './src/app.ts',
       cwd: __dirname,
       interpreter: 'tsx',
-      instances: -2,
+      instances: 2,
       exec_mode: 'cluster',
       max_memory_restart: '1G',
       env: {
