@@ -15,7 +15,11 @@
     "email": "email dev --dir src/emails --port 3001",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "start:local": "pm2 start ecosystem.config.js",
+    "start:prod": "pm2-runtime start ecosystem.config.js",
+    "stop:pm2": "pm2 stop all",
+    "monit:pm2": "pm2 monit"
   },
   "keywords": [],
   "author": "",

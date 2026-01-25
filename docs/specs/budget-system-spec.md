@@ -65,6 +65,7 @@
 
 > [!NOTE]
 > `BudgetCategory` 現為**預設關聯**，用於在交易表單中預選預算。實際歸屬由 `TransactionBudget` 決定。
+> 子預算 `amount` 欄位的計算邏輯詳見 [3.8 子預算計算邏輯](#38-子預算計算邏輯-sub-budget-calculation)。
 
 ### 2.3 TransactionBudget (交易-預算關聯)
 
@@ -227,6 +228,46 @@ function calculateUsage(
 
 - UI 僅顯示已設定的子預算使用情形。
 - 不顯示「未分配」或「其他」類別的使用量。
+
+**子預算額度上限公式 (Amount Limit Formulas)**:
+
+子預算的 `amount` 欄位有上限限制，確保所有子預算加總不超過主預算可用額度。
+
+| 變數名稱                 | 定義                                      | 說明                                   |
+| ------------------------ | ----------------------------------------- | -------------------------------------- |
+| `available`              | `budget.amount + rolloverIn`              | 本期可用總額（基礎額度 + 結轉）        |
+| `totalAllocated`         | `Σ budgetCategories.amount`               | 所有子預算已分配額度加總               |
+| `currentCategory.amount` | 正在編輯的 `BudgetCategory.amount`        | 該子預算目前已設定的額度               |
+| `otherAllocated`         | `totalAllocated - currentCategory.amount` | 其他子預算已分配額度（不含正在編輯的） |
+
+```typescript
+// 新增子預算時
+const maxAmount = available - totalAllocated;
+
+// 編輯子預算時
+const maxAmount = available - otherAllocated;
+// 等同於：(available - totalAllocated) + currentCategory.amount
+```
+
+> [!IMPORTANT]
+> **約束條件**：`totalAllocated <= available`
+>
+> 子預算的分配是「計劃」性質，不受已花費 (`spent`) 影響。即使本期已花費超過子預算額度（負餘額），子預算的上限仍以 `available` 為準。
+
+**設計哲學 (Design Philosophy)**:
+
+本系統採用 **Mint 派 + 主預算累積** 的混合設計：
+
+| 項目                        | 行為           | 說明                                                          |
+| --------------------------- | -------------- | ------------------------------------------------------------- |
+| **主預算 (Budget)**         | ✅ 有 Rollover | 未花完的餘額會結轉到下一期，`available = amount + rolloverIn` |
+| **子預算 (BudgetCategory)** | ❌ 無 Rollover | 每期固定為設定的 `amount`，不會因上期未花完而增加             |
+
+**為何這樣設計？**
+
+- **簡化管理**：子預算不累積，使用者不需追蹤每個分類的歷史餘額
+- **彈性總額**：主預算累積讓總可用額度更靈活，使用者可手動調整子預算分配
+- **符合直覺**：「飲食每月 10,000」比「飲食累積餘額 23,456」更易理解
 
 ### 3.4 修改生效時間
 

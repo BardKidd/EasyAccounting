@@ -3,11 +3,11 @@
 import { BudgetDetail, BudgetCategory } from '@/types/budget';
 import { CategoryType } from '@repo/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { AddBudgetCategoryDialog } from './AddBudgetCategoryDialog';
+import { EditBudgetCategoryDialog } from './EditBudgetCategoryDialog';
 import { useState } from 'react';
 import { budgetService } from '@/services/budget';
 import { toast } from 'sonner';
@@ -25,6 +25,9 @@ export function BudgetCategoryList({
   onUpdate,
 }: BudgetCategoryListProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<BudgetCategory | null>(
+    null,
+  );
 
   // 輔助函式：根據 ID 獲取分類詳細資訊 (名稱、圖示等)
   const getCategoryDetails = (categoryId: string) => {
@@ -65,6 +68,48 @@ export function BudgetCategoryList({
     } catch (e) {
       toast.error('移除失敗');
     }
+  };
+
+  const handleEditClick = (category: BudgetCategory) => {
+    setEditingCategory(category);
+  };
+
+  const handleUpdateConfirm = async (amount: number, isExcluded: boolean) => {
+    if (!editingCategory) return;
+
+    try {
+      const res = await budgetService.updateBudgetCategory(
+        budget.id,
+        editingCategory.id,
+        {
+          amount,
+          isExcluded,
+        },
+      );
+      if (res.isSuccess) {
+        toast.success('已更新子預算');
+        onUpdate();
+        setEditingCategory(null);
+      } else {
+        toast.error('更新失敗');
+      }
+    } catch (e) {
+      toast.error('更新失敗');
+    }
+  };
+
+  const calculateMaxAmountForEdit = () => {
+    if (!editingCategory) return 0;
+    console.log('budget', budget);
+    console.log('budget.budgetCategories', budget.budgetCategories);
+    const totalAllocated = budget.budgetCategories.reduce(
+      (sum, c) => sum + Number(c.amount),
+      0,
+    );
+    // 使用 available (累積預算: 基礎 + Rollover) 作為上限
+    const maxBudget = budget.usage?.available ?? budget.amount;
+    const unallocated = Math.max(0, maxBudget - totalAllocated);
+    return unallocated + Number(editingCategory.amount);
   };
 
   return (
@@ -116,6 +161,11 @@ export function BudgetCategoryList({
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {percentage}% Used
+                        {bc.isExcluded && (
+                          <span className="ml-2 text-xs bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded">
+                            Hidden
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -126,14 +176,24 @@ export function BudgetCategoryList({
                         {formatCurrency(bc.amount)}
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
-                      onClick={() => handleRemoveCategory(bc.categoryId)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground/50 hover:text-primary hover:bg-primary/10"
+                        onClick={() => handleEditClick(bc)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleRemoveCategory(bc.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Progress Bar Background */}
@@ -161,12 +221,26 @@ export function BudgetCategoryList({
         existingCategoryIds={budget.budgetCategories.map((c) => c.categoryId)}
         maxAmount={Math.max(
           0,
-          budget.amount -
+          (budget.usage?.available ?? budget.amount) -
             budget.budgetCategories.reduce(
               (sum, c) => sum + Number(c.amount),
               0,
             ),
         )}
+      />
+
+      <EditBudgetCategoryDialog
+        isOpen={!!editingCategory}
+        onClose={() => setEditingCategory(null)}
+        onConfirm={handleUpdateConfirm}
+        category={
+          editingCategory
+            ? getCategoryDetails(editingCategory.categoryId)
+            : undefined
+        }
+        currentAmount={editingCategory ? Number(editingCategory.amount) : 0}
+        currentIsExcluded={editingCategory?.isExcluded ?? false}
+        maxAmount={calculateMaxAmountForEdit()}
       />
     </Card>
   );
