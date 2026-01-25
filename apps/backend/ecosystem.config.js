@@ -13,6 +13,8 @@ module.exports = {
         ENABLE_API: 'true',
         ENABLE_CRON: 'false',
         PORT: 3000,
+        TS_NODE_TRANSPILE_ONLY: 'true',
+        TS_NODE_IGNORE_DIAGNOSTICS: 'true',
       },
     },
     {
@@ -27,6 +29,8 @@ module.exports = {
       env: {
         ENABLE_API: 'false',
         ENABLE_CRON: 'true',
+        TS_NODE_TRANSPILE_ONLY: 'true',
+        TS_NODE_IGNORE_DIAGNOSTICS: 'true',
       },
     },
   ],
