@@ -87,11 +87,13 @@ const startServer = async () => {
 
     // 只有非測試環境才啟動 Server
     // Supertest 會自動找空的 port 啟動 Server，所以測試環境不需要啟動
-    if (process.env.NODE_ENV !== 'test' && shouldStartApi) {
-      const port = parseInt(process.env.PORT || '3000', 10);
-      app.listen(port, '0.0.0.0', () => {
-        console.log(`Server running on port ${port}`);
-      });
+    if (process.env.NODE_ENV !== 'test') {
+      if (shouldStartApi || shouldStartCron) {
+        const port = parseInt(process.env.PORT || '3000', 10);
+        app.listen(port, '0.0.0.0', () => {
+          console.log(`Server running on port ${port}`);
+        });
+      }
     }
   } catch (error) {
     console.error('Failed to start server:', error);
