@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Container } from '@/components/ui/container';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
@@ -40,22 +40,9 @@ export default function BudgetDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
-  // Unwrap params using React.use() or await if explicit.
-  // Since this is a client component, Next.js passes the promise.
-  // Actually, for client components in App Router, params is a Promise in newer versions.
-  // We can use the 'use' hook if we were using it in a way that suspends,
-  // but a simpler way for standard fetching is useEffect.
-  // However, extracting id from params needs handling.
-
-  // A safe way in client components is to use `useParams` hook from `next/navigation`
-  // instead of props if we want to avoid async props issues in client components.
-  // Let's use `useParams`.
-  // Wait, I can just use useParams() hook.
 
   return <BudgetDetailContent />;
 }
-
-import { useParams } from 'next/navigation';
 
 function BudgetDetailContent() {
   const params = useParams();
