@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { isOperateTransaction, isIncomingTransfer } from '@repo/shared';
 import { updateTransaction } from '@/services/transaction';
 
-// Setup Localizer
+// 設定日期格式化工具
 const locales = {
   'zh-TW': zhTW,
 };
@@ -62,7 +62,7 @@ export default function TransactionCalendar({
   
   const [view, setView] = useState<View>(Views.MONTH);
   
-  // Sync internal date with URL
+  // 與 URL 同步內部日期
   const dateParam = searchParams.get('date');
   const [date, setDate] = useState(dateParam ? new Date(dateParam) : new Date());
 
@@ -72,22 +72,22 @@ export default function TransactionCalendar({
     }
   }, [dateParam]);
 
-  // Modal State
+  // Modal 狀態
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayTransactions, setDayTransactions] = useState<TransactionType[]>([]);
 
-  // 1. Transform Transactions to Calendar Events
+  // 1. 將交易資料轉換為日曆事件
   const events = useMemo(() => {
     return transactions
       .filter((tx) => {
-        // Filter out incoming transfers (only show outgoing side of transfer)
+        // 篩選掉轉帳的收款方（只顯示扣款方）
         // Spec 3.2: WHERE NOT (targetAccountId IS NOT NULL AND type = 'INCOME')
         if (isIncomingTransfer(tx)) return false;
         return true;
       })
       .map((tx): CalendarEventType => {
-        // Spec 3.1: Force UTC to avoid timezone issues
+        // Spec 3.1: 強制使用 UTC 解析，避免時區問題
         // format: YYYY-MM-DD THH:mm:ss Z
         const dateTimeStr = `${tx.date}T${tx.time}Z`;
         const dateTime = new Date(dateTimeStr);
@@ -97,7 +97,7 @@ export default function TransactionCalendar({
           title: tx.description || 'Transaction',
           start: dateTime,
           end: dateTime,
-          allDay: false, // Transactions are point-in-time
+          allDay: false, // 交易是時間點，非全天事件
           resource: tx,
           type: tx.type,
           amount: tx.amount,
@@ -106,7 +106,7 @@ export default function TransactionCalendar({
       });
   }, [transactions]);
 
-  // Handle Navigation
+  // 處理日曆導航
   const onNavigate = useCallback((newDate: Date) => {
     setDate(newDate);
     const newDateStr = format(newDate, 'yyyy-MM-dd');
@@ -115,7 +115,7 @@ export default function TransactionCalendar({
     router.push(`${pathname}?${params.toString()}`);
   }, [pathname, router, searchParams]);
 
-  // 2. Drag & Drop Handler
+  // 2. 拖放處理
   const onEventDrop = useCallback(
     async ({ event, start }: { event: CalendarEventType; start: string | Date }) => {
       const newDate = format(new Date(start), 'yyyy-MM-dd');
@@ -132,7 +132,7 @@ export default function TransactionCalendar({
         const payload = {
             ...event.resource,
             date: newDate,
-        } as any; // Cast to any to avoid strict type mismatch with UpdateTransactionSchema (which might differ slightly from TransactionType)
+        } as any; // 轉型為 any 以避免與 UpdateTransactionSchema 的嚴格型別不符（可能與 TransactionType 略有差異）
 
         const result = await updateTransaction(event.id, payload);
 
@@ -155,10 +155,10 @@ export default function TransactionCalendar({
     [toast, router],
   );
 
-  // 3. Slot Select (Click Day -> Open Modal)
+  // 3. 點擊日期格子（開啟 Modal）
   const onSelectSlot = useCallback(
     ({ start }: { start: Date }) => {
-      // Find transactions for this day
+      // 找出當日的交易
       const dateStr = format(start, 'yyyy-MM-dd');
       const txsForDay = transactions.filter((tx) => tx.date === dateStr);
       
@@ -169,7 +169,7 @@ export default function TransactionCalendar({
     [transactions],
   );
 
-  // 4. Event Click -> Open Edit Sheet
+  // 4. 點擊事件（開啟編輯 Sheet）
   const onSelectEvent = useCallback(
     (event: CalendarEventType) => {
       onEditTransaction(event.id);
@@ -177,7 +177,7 @@ export default function TransactionCalendar({
     [onEditTransaction],
   );
 
-  // 5. Custom Event Component
+  // 5. 自訂事件元件
   const components = useMemo(
     () => ({
       event: ({ event }: { event: CalendarEventType }) => (

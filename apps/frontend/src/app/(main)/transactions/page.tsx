@@ -171,14 +171,14 @@ async function TransactionsPage(props: PageProps) {
                 categories={categories}
                 accounts={accounts}
                 onEditTransaction={() => {
-                    // Logic to open edit sheet - currently TransactionTable handles this internally or NewTransactionSheet?
-                    // TransactionTable doesn't seem to pass onEdit.
-                    // The spec says "開啟該筆交易的編輯 Sheet（複用 newTransactionSheet）"
-                    // NewTransactionSheet is currently a generic sheet for NEW. 
-                    // I might need a way to open it with existing data.
-                    // For now, I'll pass an empty function or implement if NewTransactionSheet supports editing.
-                    // Looking at imports, there is no "EditTransactionSheet".
-                    console.log("Edit not implemented yet in this iteration");
+                    // 開啟編輯 Sheet 的邏輯 - 目前尚不確定 TransactionTable 是內部處理還是複用 NewTransactionSheet。
+                    // TransactionTable 似乎沒有傳遞 onEdit。
+                    // 規格書提到「開啟該筆交易的編輯 Sheet（複用 newTransactionSheet）」。
+                    // 但 NewTransactionSheet 目前主要用於「新增」。
+                    // 需確認如何帶入現有資料進行編輯。
+                    // 此次迭代暫未實作編輯功能，待後續任務整合。
+                    // 查看 import，目前沒有 "EditTransactionSheet"。
+                    console.log("此迭代尚未實作編輯功能");
                 }}
             />
         )}
