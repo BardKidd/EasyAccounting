@@ -15,10 +15,13 @@ export function Hero() {
       <div className="container relative z-10 mx-auto px-6 md:px-12">
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto space-y-12">
           {/* Status Badge - Minimal & Refined */}
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out flex flex-col items-center gap-3">
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-slate-300 dark:border-slate-800 bg-white/60 dark:bg-slate-900/50 backdrop-blur-sm text-xs font-medium tracking-widest uppercase text-slate-600 dark:text-slate-400">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
               Running Preview
+            </span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-light tracking-wide">
+              Beta 預覽階段｜致力於打造極致體驗，功能持續優化中
             </span>
           </div>
 

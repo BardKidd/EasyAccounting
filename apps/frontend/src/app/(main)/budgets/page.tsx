@@ -23,6 +23,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+import { MajorRefactorNotice } from '@/components/majorRefactorNotice';
+
 export default function BudgetsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [categories, setCategories] = useState<CategoryType[]>([]);
@@ -134,6 +136,7 @@ export default function BudgetsPage() {
 
   return (
     <Container className="py-8 space-y-8 max-w-[1600px] px-4 md:px-8">
+      <MajorRefactorNotice />
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h2 className="text-3xl font-bold tracking-tight bg-linear-to-r from-slate-900 to-slate-700 dark:from-white dark:to-white/60 bg-clip-text text-transparent font-playfair">
