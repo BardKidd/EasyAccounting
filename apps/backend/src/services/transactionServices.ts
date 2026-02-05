@@ -617,6 +617,17 @@ export const updateIncomeExpense = async (
       { transaction: t },
     );
 
+    // Linked Transaction Update Logic
+    if (transaction.linkId && data.date) {
+      const linkedTransaction = await Transaction.findOne({
+        where: { id: transaction.linkId, userId },
+        transaction: t,
+      });
+      if (linkedTransaction) {
+        await linkedTransaction.update({ date: data.date }, { transaction: t });
+      }
+    }
+
     // 同步 TransactionBudget 關聯
     if (data.budgetIds !== undefined) {
       // 先刪除舊關聯

@@ -39,11 +39,18 @@ vi.mock('@/models', () => {
     create: vi.fn(),
   };
 
+  const TransactionBudgetMock = {
+    bulkCreate: vi.fn(),
+    destroy: vi.fn(),
+    findAll: vi.fn().mockResolvedValue([]),
+  };
+
   return {
     Transaction: TransactionMock,
     TransactionExtra: TransactionExtraMock,
     Account: AccountMock,
     InstallmentPlan: InstallmentPlanMock,
+    TransactionBudget: TransactionBudgetMock,
     // Add other models if needed
   };
 });
@@ -53,16 +60,23 @@ import {
   TransactionExtra,
   Account,
   InstallmentPlan,
+  TransactionBudget,
 } from '@/models';
 import sequelize from '@/utils/postgres';
 
 // Mock sequelize transaction
 vi.mock('@/utils/postgres', () => ({
   default: {
-    transaction: vi.fn(() => ({
-      commit: vi.fn(),
-      rollback: vi.fn(),
-    })),
+    transaction: vi.fn((cb) => {
+       const t = {
+        commit: vi.fn(),
+        rollback: vi.fn(),
+      };
+      if (typeof cb === 'function') {
+        return cb(t);
+      }
+      return Promise.resolve(t);
+    }),
     define: vi.fn(() => ({
       belongsTo: vi.fn(),
       hasMany: vi.fn(),
@@ -176,6 +190,8 @@ describe('Transaction Service Logic', () => {
         transactionExtraId: 'extra1',
         save: vi.fn(),
         reload: vi.fn(), // Hook might verify
+        update: vi.fn(),
+        toJSON: () => ({ id: 'tx1' }),
       };
 
       // Mock finding transaction
@@ -219,6 +235,65 @@ describe('Transaction Service Logic', () => {
 
       // If the user code has explicit cleanup in Service:
       // expect(TransactionExtra.destroy).toHaveBeenCalledWith({ where: { id: 'extra1' }, ... });
+    });
+  });
+
+  describe('Update Transaction - LinkId Sync', () => {
+    it('should update linked transaction date when updating source transaction', async () => {
+      const sourceTx = {
+        id: 'tx1',
+        amount: 100,
+        type: RootType.EXPENSE,
+        date: '2026-02-01',
+        linkId: 'tx2',
+        accountId: 'acc1',
+        userId: 'user1',
+        transactionExtraId: null,
+        toJSON: () => ({ id: 'tx1', linkId: 'tx2' }),
+        update: vi.fn(),
+      };
+
+      const linkedTx = {
+        id: 'tx2',
+        amount: 100,
+        type: RootType.INCOME,
+        date: '2026-02-01',
+        linkId: 'tx1',
+        accountId: 'acc2',
+        userId: 'user1',
+        toJSON: () => ({ id: 'tx2', linkId: 'tx1' }),
+        update: vi.fn(),
+      };
+
+      (Transaction.findOne as any)
+        .mockResolvedValueOnce(sourceTx) // 1. Find source
+        .mockResolvedValueOnce(linkedTx); // 2. Find linked
+
+      (Account.findOne as any).mockResolvedValue({
+        id: 'acc1',
+        balance: 1000,
+        save: vi.fn(),
+      });
+
+      const updateData = {
+        date: '2026-02-10',
+      };
+
+      await transactionService.updateIncomeExpense(
+        'tx1',
+        updateData as any,
+        'user1',
+      );
+
+      expect(sourceTx.update).toHaveBeenCalledWith(
+        expect.objectContaining({ date: '2026-02-10' }),
+        expect.anything(),
+      );
+
+      expect(linkedTx.update).toHaveBeenCalledWith(
+        expect.objectContaining({ date: '2026-02-10' }),
+        expect.anything(),
+      );
     });
   });
 });
