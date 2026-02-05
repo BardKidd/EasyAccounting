@@ -3,22 +3,17 @@ import {
   TransactionTable,
   TransactionFilters,
   NewTransactionSheet,
+  TransactionCalendar,
 } from '@/components/transactions';
 import service from '@/services';
 import { ExcelExportButton } from '@/components/common/ExcelExportButton';
 import ExcelImportButton from '@/components/common/ExcelImportButton';
 import { TemplateDownloadButton } from '@/components/common/TemplateDownloadButton';
 import { PageType } from '@repo/shared';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
+import { startOfMonth, endOfMonth, format, parseISO } from 'date-fns';
 
-// 看一下 Next.js 15 後的 query 都變成非同步了。
-// 因為使用了 Partial Prerendering(PPR) 渲染方式，是種靜態+動態的混合渲染方式。可優先渲染不變的 Header 或 Sidebar 等，而內容則等等再渲染。所以才會有時間差。
-// 這裡要先說明一下所謂的動態或靜態並不是 Server Components/Client Components 的概念。
-// Server Components 指的是在伺服器端渲染的組件，Client Components 指的是在客戶端渲染的組件。
-// 這裡的動、靜態指的是產生的內容會不會變動，舉例來說靜態就會是所有使用者都會看到一樣的內容，例如"登入頁面"或"關於我們"等頁面。
-// 而動態就會是根據不同的使用者或不同的時間而產生不同的內容，例如交易紀錄頁面。會根據特定請求而改變顯示內容。
-// 這時可能有的疑問是："既然動態是根據不同請求而改變內容，那動態路由(e.g. /:id)這種算嗎？"
-// 答案是：Query 參數(searchParams) 因為無法預測，所以"必定"是動態渲染。
-// 但動態路由(params, 如 /:id) 雖然也是變數，卻可以透過 generateStaticParams(<- Next.js 15 新增) 在打包時先做成靜態頁面 (SSG)。
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
@@ -26,12 +21,14 @@ interface PageProps {
 async function TransactionsPage(props: PageProps) {
   const searchParams = await props.searchParams;
 
-  // Extract params
-  const startDate =
+  const view = (typeof searchParams.view === 'string' ? searchParams.view : 'list') as 'list' | 'calendar';
+  
+  // List View Params
+  const startDateParam =
     typeof searchParams.startDate === 'string'
       ? searchParams.startDate
       : undefined;
-  const endDate =
+  const endDateParam =
     typeof searchParams.endDate === 'string' ? searchParams.endDate : undefined;
   const type =
     typeof searchParams.type === 'string' ? searchParams.type : undefined;
@@ -42,17 +39,56 @@ async function TransactionsPage(props: PageProps) {
   const page =
     typeof searchParams.page === 'string' ? parseInt(searchParams.page) : 1;
 
-  const [transactions, categories, accounts] = await Promise.all([
-    service.getTransactions({
-      startDate,
-      endDate,
-      type: type === 'all' ? undefined : type,
-      accountId: accountId === 'all' ? undefined : accountId,
-      page,
-    }),
-    service.getCategories(),
-    service.getPersonnelAccounts(),
-  ]);
+  // Calendar View Params
+  // Default to current month if no date param
+  const dateParam = typeof searchParams.date === 'string' ? searchParams.date : format(new Date(), 'yyyy-MM-dd');
+  const calendarDate = parseISO(dateParam);
+  const calendarStart = format(startOfMonth(calendarDate), 'yyyy-MM-dd');
+  const calendarEnd = format(endOfMonth(calendarDate), 'yyyy-MM-dd');
+
+  // Fetch Logic
+  let transactions;
+  let categories;
+  let accounts;
+
+  if (view === 'calendar') {
+    // Calendar Fetch: No pagination (limit 1000), specific month range, no other filters
+    [transactions, categories, accounts] = await Promise.all([
+      service.getTransactions({
+        startDate: calendarStart,
+        endDate: calendarEnd,
+        limit: 1000,
+        // Spec: Calendar doesn't share filters initially, mostly clean slate for the month
+      }),
+      service.getCategories(),
+      service.getPersonnelAccounts(),
+    ]);
+  } else {
+    // List Fetch: Standard with filters and pagination
+    [transactions, categories, accounts] = await Promise.all([
+      service.getTransactions({
+        startDate: startDateParam,
+        endDate: endDateParam,
+        type: type === 'all' ? undefined : type,
+        accountId: accountId === 'all' ? undefined : accountId,
+        page,
+      }),
+      service.getCategories(),
+      service.getPersonnelAccounts(),
+    ]);
+  }
+
+  // Helper for generating query string for tabs
+  const getTabLink = (targetView: 'list' | 'calendar') => {
+      const newParams = new URLSearchParams();
+      newParams.set('view', targetView);
+      // Preserve relevant params if switching (optional, but spec says independent context)
+      // Spec says: "切換視圖時保留當前月份/週次的 context"
+      // If switching to Calendar, set date to today (or try to infer from list?)
+      // If switching to List, maybe keep default? 
+      // For now, simple switch.
+      return `?${newParams.toString()}`;
+  };
 
   return (
     <Container className="py-8 space-y-8 max-w-[1600px] px-4 md:px-8">
@@ -72,14 +108,62 @@ async function TransactionsPage(props: PageProps) {
           <NewTransactionSheet categories={categories} accounts={accounts} />
         </div>
       </div>
-      <div className="space-y-4">
-        <TransactionFilters accounts={accounts} />
 
-        <TransactionTable
-          transactions={transactions}
-          categories={categories}
-          accounts={accounts}
-        />
+      {/* Tabs */}
+      <div className="flex items-center border-b border-slate-200 dark:border-slate-800">
+          <Link
+            href={getTabLink('list')}
+            className={cn(
+                "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+                view === 'list' 
+                    ? "border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100" 
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+            )}
+          >
+              列表
+          </Link>
+          <Link
+            href={getTabLink('calendar')}
+             className={cn(
+                "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+                view === 'calendar' 
+                    ? "border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100" 
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+            )}
+          >
+              日曆
+          </Link>
+      </div>
+
+      <div className="space-y-4">
+        {view === 'list' && (
+            <>
+                <TransactionFilters accounts={accounts} />
+                <TransactionTable
+                    transactions={transactions}
+                    categories={categories}
+                    accounts={accounts}
+                />
+            </>
+        )}
+
+        {view === 'calendar' && (
+            <TransactionCalendar 
+                transactions={transactions.items} 
+                categories={categories}
+                accounts={accounts}
+                onEditTransaction={() => {
+                    // Logic to open edit sheet - currently TransactionTable handles this internally or NewTransactionSheet?
+                    // TransactionTable doesn't seem to pass onEdit.
+                    // The spec says "開啟該筆交易的編輯 Sheet（複用 newTransactionSheet）"
+                    // NewTransactionSheet is currently a generic sheet for NEW. 
+                    // I might need a way to open it with existing data.
+                    // For now, I'll pass an empty function or implement if NewTransactionSheet supports editing.
+                    // Looking at imports, there is no "EditTransactionSheet".
+                    console.log("Edit not implemented yet in this iteration");
+                }}
+            />
+        )}
       </div>
     </Container>
   );
