@@ -1,5 +1,4 @@
-import { TransactionType } from '../types/transactionTypes';
-import { RootType } from '../constants';
+import { TransactionType, RootType } from '..';
 
 /**
  * 判斷是否為操作類交易（有 targetAccountId）
