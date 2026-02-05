@@ -14,6 +14,7 @@ import { CalendarEvent } from './calendarEvent';
 import { CalendarDayModal } from './calendarDayModal';
 import { toast } from 'sonner';
 import { isOperateTransaction, isIncomingTransfer } from '@repo/shared';
+import { updateTransaction } from '@/services/transaction';
 
 // Setup Localizer
 const locales = {
@@ -119,38 +120,35 @@ export default function TransactionCalendar({
     async ({ event, start }: { event: CalendarEventType; start: string | Date }) => {
       const newDate = format(new Date(start), 'yyyy-MM-dd');
       
-      // Optimistic Update (UI will update when parent fetches new data, but we can show loading)
-      toast.info('Updating Transaction...', {
-        description: `Moving to ${newDate}`,
+      // 樂觀更新 (UI 會在父組件重新抓取資料時更新，但我們可以先顯示 Loading)
+      toast.info('更新交易中...', {
+        description: `移動至 ${newDate}`,
       });
 
       try {
-        // Call Mock API
-        const res = await fetch(`http://localhost:3000/api/transactions/${event.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ date: newDate }),
-        });
+        // 呼叫 API 更新日期
+        // 使用 service 封裝的 apiHandler
+        // 需補齊 UpdateTransactionSchema 所需欄位，使用 spread 原始資料
+        const payload = {
+            ...event.resource,
+            date: newDate,
+        } as any; // Cast to any to avoid strict type mismatch with UpdateTransactionSchema (which might differ slightly from TransactionType)
 
-        if (!res.ok) throw new Error('Failed to update');
+        const result = await updateTransaction(event.id, payload);
 
-        const updatedTx = await res.json();
+        if (!result) throw new Error('Failed to update');
         
-        toast.success('Success', {
-          description: 'Transaction date updated.',
+        toast.success('更新成功', {
+          description: '交易日期已更新',
         });
 
-        // Trigger Refresh (In real app, we would invalidate query)
-        // For now, assume page reload or parent re-fetch will happen.
-        // Since this is MSW task, we might rely on SWR/React Query invalidation, 
-        // but since we receive props, we assume parent updates.
-        // For prototype, we can't force parent update easily without a callback.
-        // We'll leave it as toast for now.
-        router.refresh(); // Refresh server components
+        // 觸發重新整理 (在真實 App 中會 invalidate query)
+        // 因為這是 Server Component 架構，我們使用 router.refresh() 來重新抓取資料
+        router.refresh(); 
         
       } catch (error) {
-        toast.error('Error', {
-          description: 'Failed to move transaction.',
+        toast.error('更新失敗', {
+          description: '無法移動交易',
         });
       }
     },

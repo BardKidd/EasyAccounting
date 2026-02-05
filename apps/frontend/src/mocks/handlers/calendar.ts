@@ -95,8 +95,8 @@ const generateMockTransactions = () => {
 let mockTransactions = generateMockTransactions();
 
 export const calendarHandlers = [
-  // GET /transactions
-  http.get(`${BASE_URL}/transactions`, ({ request }) => {
+  // GET /transaction/date
+  http.get(`${BASE_URL}/transaction/date`, ({ request }) => {
     const url = new URL(request.url);
     const startDate = url.searchParams.get('startDate');
     const endDate = url.searchParams.get('endDate');
@@ -107,25 +107,30 @@ export const calendarHandlers = [
         filtered = mockTransactions.filter(t => t.date >= startDate && t.date <= endDate);
     }
     
-    // API response structure
+    // API response structure (ResponseHelper)
     return HttpResponse.json({
-      items: filtered,
-      pagination: {
-        total: filtered.length,
-        page: 1,
-        limit: filtered.length,
-        totalPages: 1,
+      data: {
+          items: filtered,
+          pagination: {
+            total: filtered.length,
+            page: 1,
+            limit: filtered.length,
+            totalPages: 1,
+          },
+          summary: {
+            income: 0,
+            expense: 0,
+            balance: 0,
+          }
       },
-      summary: {
-        income: 0,
-        expense: 0,
-        balance: 0,
-      }
+      isSuccess: true,
+      message: 'Success',
+      error: null
     });
   }),
 
-  // PUT /transactions/:id
-  http.put(`${BASE_URL}/transactions/:id`, async ({ params, request }) => {
+  // PUT /transaction/:id
+  http.put(`${BASE_URL}/transaction/:id`, async ({ params, request }) => {
     const { id } = params;
     const body = await request.json() as { date: string };
     
@@ -153,6 +158,11 @@ export const calendarHandlers = [
          }
     }
 
-    return HttpResponse.json(updatedTransaction);
+    return HttpResponse.json({
+        data: updatedTransaction,
+        isSuccess: true,
+        message: 'Success',
+        error: null
+    });
   }),
 ];

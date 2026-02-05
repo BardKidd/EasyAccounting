@@ -21,7 +21,8 @@ interface PageProps {
 async function TransactionsPage(props: PageProps) {
   const searchParams = await props.searchParams;
 
-  const view = (typeof searchParams.view === 'string' ? searchParams.view : 'list') as 'list' | 'calendar';
+  // 預設視圖改為日曆 (Calendar)
+  const view = (typeof searchParams.view === 'string' ? searchParams.view : 'calendar') as 'list' | 'calendar';
   
   // List View Params
   const startDateParam =
@@ -79,14 +80,22 @@ async function TransactionsPage(props: PageProps) {
   }
 
   // Helper for generating query string for tabs
+  // 保留現有的 searchParams，只更新 view 參數
   const getTabLink = (targetView: 'list' | 'calendar') => {
       const newParams = new URLSearchParams();
+      
+      // Copy existing params
+      Object.entries(searchParams).forEach(([key, value]) => {
+        if (value !== undefined) {
+           if (Array.isArray(value)) {
+             value.forEach(v => newParams.append(key, v));
+           } else {
+             newParams.set(key, value);
+           }
+        }
+      });
+
       newParams.set('view', targetView);
-      // Preserve relevant params if switching (optional, but spec says independent context)
-      // Spec says: "切換視圖時保留當前月份/週次的 context"
-      // If switching to Calendar, set date to today (or try to infer from list?)
-      // If switching to List, maybe keep default? 
-      // For now, simple switch.
       return `?${newParams.toString()}`;
   };
 
