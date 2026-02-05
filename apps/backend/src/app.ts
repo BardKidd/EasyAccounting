@@ -67,17 +67,10 @@ app.use('/api', budgetRoute);
 app.use('/api', deployHealthRoute);
 
 // env 沒設定預設直接通過。這樣 PRD DEV 都不用去改了。
-const shouldStartCron = process.env.ENABLE_CRON !== 'false';
-const shouldStartApi = process.env.ENABLE_API !== 'false';
-
-if (shouldStartCron) {
-  console.log('[App] Starting Cron Jobs...');
-  startDailyReminderCronJobs();
-  startWeeklySummaryNoticeCronJobs();
-  startMonthlyAnalysisNoticeCronJobs();
-} else {
-  console.log('[App] Cron Jobs disabled for this instance.');
-}
+console.log('[App] Starting Cron Jobs...');
+startDailyReminderCronJobs();
+startWeeklySummaryNoticeCronJobs();
+startMonthlyAnalysisNoticeCronJobs();
 
 export { app };
 
@@ -88,12 +81,10 @@ const startServer = async () => {
     // 只有非測試環境才啟動 Server
     // Supertest 會自動找空的 port 啟動 Server，所以測試環境不需要啟動
     if (process.env.NODE_ENV !== 'test') {
-      if (shouldStartApi || shouldStartCron) {
-        const port = parseInt(process.env.PORT || '3000', 10);
-        app.listen(port, '0.0.0.0', () => {
-          console.log(`Server running on port ${port}`);
-        });
-      }
+      const port = parseInt(process.env.PORT || '3000', 10);
+      app.listen(port, '0.0.0.0', () => {
+        console.log(`Server running on port ${port}`);
+      });
     }
   } catch (error) {
     console.error('Failed to start server:', error);
