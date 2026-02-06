@@ -1,5 +1,6 @@
 import { TransactionType, RootType } from '@repo/shared';
 import { isOperateTransaction, isIncomingTransfer } from '@repo/shared';
+import { TRANSACTION_COLORS } from './transactionColors';
 
 export interface CalendarEventType {
   id: string;
@@ -46,17 +47,17 @@ export function filterForCalendar(
 }
 
 /**
- * 根據交易類型取得顏色 class
+ * 根據交易類型取得顏色 class（使用統一常數）
  */
 export function getEventColor(type: RootType, isTransfer = false): string {
   if (isTransfer) {
-    return 'bg-cyan-100';
+    return TRANSACTION_COLORS.transfer.bg;
   }
   if (type === RootType.INCOME) {
-    return 'bg-teal-100';
+    return TRANSACTION_COLORS.income.bg;
   }
   if (type === RootType.EXPENSE) {
-    return 'bg-rose-100';
+    return TRANSACTION_COLORS.expense.bg;
   }
-  return 'bg-slate-100';
+  return TRANSACTION_COLORS.default.bg;
 }

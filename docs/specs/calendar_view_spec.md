@@ -106,20 +106,20 @@
 
 ### 2.5 顏色區分 (Color Coding)
 
-使用現有 `transactionTable.tsx` 的顏色定義（Tailwind Classes）：
+使用統一的顏色常數定義（參考 `lib/transactionColors.ts`）：
 
-| 交易類型           | Text Color | Background       |
-| ------------------ | ---------- | ---------------- |
-| **收入 (INCOME)**  | 綠色       | `bg-emerald-500` |
-| **支出 (EXPENSE)** | 紅色       | `bg-rose-500`    |
-| **操作 (OPERATE)** | 橙黃色     | `bg-amber-500`   |
+| 交易類型           | Text Color | Background    |
+| ------------------ | ---------- | ------------- |
+| **收入 (INCOME)**  | 青綠色     | `bg-teal-100` |
+| **支出 (EXPENSE)** | 玫瑰色     | `bg-rose-100` |
+| **操作 (OPERATE)** | 青色       | `bg-cyan-100` |
 
 **操作類交易特殊處理**：
 
 - 操作 (OPERATE) 是主類別，轉帳只是其中一個子分類
 - 日曆上**只顯示扣款方**（`targetAccountId` 不為 null 且 `type` 為 EXPENSE）
 - 收款方不顯示，避免重複
-- 樣式與一般支出有明顯區別（使用橙黃色 `amber` + 操作 icon）
+- 樣式與一般支出有明顯區別（使用青色 `cyan` + 操作 icon）
 
 ---
 

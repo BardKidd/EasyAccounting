@@ -5,6 +5,10 @@ import { isOutgoingTransfer } from '@repo/shared';
 import { calculateNetAmount, formatCurrency } from '@/lib/utils';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { CategoryType } from '@repo/shared';
+import {
+  TRANSACTION_COLORS,
+  getTransactionContainerClass,
+} from '@/lib/transactionColors';
 
 interface CalendarEventProps {
   event: {
@@ -37,20 +41,15 @@ export function CalendarEvent({ event, categories }: CalendarEventProps) {
 
   const category = findCategory(resource.categoryId, categories);
 
-  let containerClass =
-    'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
-  let amountClass = 'font-semibold';
+  // 使用統一顏色常數
+  const getColorType = (): 'income' | 'expense' | 'transfer' | 'default' => {
+    if (isTransfer) return 'transfer';
+    if (type === RootType.EXPENSE) return 'expense';
+    if (type === RootType.INCOME) return 'income';
+    return 'default';
+  };
 
-  if (isTransfer) {
-    containerClass =
-      'bg-cyan-100 text-cyan-900 dark:bg-cyan-900/40 dark:text-cyan-100';
-  } else if (type === RootType.EXPENSE) {
-    containerClass =
-      'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200';
-  } else if (type === RootType.INCOME) {
-    containerClass =
-      'bg-teal-100 text-teal-800 dark:bg-teal-950/50 dark:text-teal-200';
-  }
+  const containerClass = getTransactionContainerClass(getColorType());
 
   return (
     <div
@@ -63,7 +62,7 @@ export function CalendarEvent({ event, categories }: CalendarEventProps) {
       </div>
       <span className="truncate font-medium flex-1">{event.title}</span>
       <span
-        className={`font-mono tabular-nums text-[10px] opacity-90 ${amountClass}`}
+        className={`font-mono tabular-nums text-[10px] opacity-90 font-semibold`}
       >
         {formatCurrency(Math.abs(amount))}
       </span>

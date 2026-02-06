@@ -20,6 +20,7 @@ import { formatCurrency } from '@/lib/utils';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { isOperateTransaction } from '@repo/shared';
 import { ACCOUNT_ICONS, IconName } from '@/lib/icon-mapping';
+import { TRANSACTION_COLORS } from '@/lib/transactionColors';
 
 interface CalendarDayModalProps {
   isOpen: boolean;
@@ -54,15 +55,31 @@ export function CalendarDayModal({
     overscan: 5,
   });
 
-  const getCategory = (id: string) => categories.find((c) => c.id === id);
+  // 遞迴搜尋分類
+  const findCategory = (
+    id: string,
+    categoryList: CategoryType[],
+  ): CategoryType | undefined => {
+    for (const cat of categoryList) {
+      if (cat.id === id) return cat;
+      if (cat.children && cat.children.length > 0) {
+        const found = findCategory(id, cat.children);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+
+  const getCategory = (id: string) => findCategory(id, categories);
   const getAccount = (id: string) => accounts.find((a) => a.id === id);
 
-  // Calculate Summary
+  // Calculate Summary（確保 amount 是數字）
   const summary = sortedTransactions.reduce(
     (acc, tx) => {
       if (isOperateTransaction(tx)) return acc;
-      if (tx.type === RootType.INCOME) acc.income += tx.amount;
-      if (tx.type === RootType.EXPENSE) acc.expense += tx.amount;
+      const amount = Number(tx.amount) || 0;
+      if (tx.type === RootType.INCOME) acc.income += amount;
+      if (tx.type === RootType.EXPENSE) acc.expense += amount;
       return acc;
     },
     { income: 0, expense: 0 },
@@ -88,110 +105,197 @@ export function CalendarDayModal({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Transaction List (Virtual Scroll) */}
+        {/* Transaction List */}
         <div
           ref={parentRef}
           className="flex-1 overflow-y-auto min-h-0 px-6 py-2"
         >
-          <div
-            style={{
-              height: `${rowVirtualizer.getTotalSize()}px`,
-              width: '100%',
-              position: 'relative',
-            }}
-          >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const tx = sortedTransactions[virtualRow.index];
-              const category = getCategory(tx.categoryId);
-              const account = getAccount(tx.accountId);
-              const isTransfer = isOperateTransaction(tx);
+          {sortedTransactions.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-600">
+              無交易紀錄
+            </div>
+          ) : sortedTransactions.length <= 50 ? (
+            // 少於 50 筆直接渲染，避免 virtual scroll 在動畫期間計算錯誤
+            <div className="space-y-1">
+              {sortedTransactions.map((tx) => {
+                const category = getCategory(tx.categoryId);
+                const account = getAccount(tx.accountId);
+                const isTransfer = isOperateTransaction(tx);
 
-              return (
-                <div
-                  key={tx.id}
-                  onClick={() => tx.id && onEdit(tx.id)}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                  className="flex items-center gap-3 py-3 border-b border-slate-100 dark:border-slate-800/50 last:border-0 cursor-pointer hover:bg-teal-50/50 dark:hover:bg-teal-900/20 rounded-lg px-2 transition-colors"
-                >
-                  {/* Category Icon */}
+                return (
                   <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                      isTransfer
-                        ? 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400'
-                        : tx.type === RootType.INCOME
-                          ? 'bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-400'
-                          : 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400'
-                    }`}
+                    key={tx.id}
+                    onClick={() => tx.id && onEdit(tx.id)}
+                    className="flex items-center gap-3 py-3 border-b border-slate-100 dark:border-slate-800/50 last:border-0 cursor-pointer hover:bg-teal-50/50 dark:hover:bg-teal-900/20 rounded-lg px-2 transition-colors"
                   >
-                    <CategoryIcon
-                      iconName={category?.icon}
-                      className="h-5 w-5"
-                    />
-                  </div>
+                    {/* Category Icon */}
+                    {(() => {
+                      const colors = isTransfer
+                        ? TRANSACTION_COLORS.transfer
+                        : tx.type === RootType.INCOME
+                          ? TRANSACTION_COLORS.income
+                          : TRANSACTION_COLORS.expense;
+                      return (
+                        <div
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${colors.bg} ${colors.icon} ${colors.bgDark} ${colors.iconDark}`}
+                        >
+                          <CategoryIcon
+                            iconName={category?.icon}
+                            className="h-5 w-5"
+                          />
+                        </div>
+                      );
+                    })()}
 
-                  {/* Details */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="font-medium truncate text-slate-800 dark:text-slate-100">
-                        {category?.name || '未分類'}
-                      </span>
-                      <span
-                        className={`font-mono font-semibold ${
-                          isTransfer
-                            ? 'text-cyan-600 dark:text-cyan-400'
-                            : tx.type === RootType.INCOME
-                              ? 'text-teal-600 dark:text-teal-400'
-                              : 'text-rose-600 dark:text-rose-400'
-                        }`}
-                      >
-                        {tx.type === RootType.EXPENSE ? '-' : '+'}
-                        {formatCurrency(tx.amount)}
-                      </span>
-                    </div>
-                    <div className="flex items-center text-xs text-slate-500 dark:text-slate-500 gap-2">
-                      <span className="font-mono">
-                        {tx.time.substring(0, 5)}
-                      </span>
-                      <span className="text-slate-300 dark:text-slate-700">
-                        •
-                      </span>
-                      <div className="flex items-center gap-1">
-                        {account &&
-                          ACCOUNT_ICONS[account.icon as IconName] &&
-                          (() => {
-                            const Icon =
-                              ACCOUNT_ICONS[account.icon as IconName];
-                            return <Icon className="h-3 w-3" />;
-                          })()}
-                        <span>{account?.name}</span>
+                    {/* Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="font-medium truncate text-slate-800 dark:text-slate-100">
+                          {category?.name || '未分類'}
+                        </span>
+                        <span
+                          className={`font-mono font-semibold ${
+                            isTransfer
+                              ? `${TRANSACTION_COLORS.transfer.icon} ${TRANSACTION_COLORS.transfer.iconDark}`
+                              : tx.type === RootType.INCOME
+                                ? `${TRANSACTION_COLORS.income.icon} ${TRANSACTION_COLORS.income.iconDark}`
+                                : `${TRANSACTION_COLORS.expense.icon} ${TRANSACTION_COLORS.expense.iconDark}`
+                          }`}
+                        >
+                          {tx.type === RootType.EXPENSE ? '-' : '+'}
+                          {formatCurrency(tx.amount)}
+                        </span>
                       </div>
-                      {tx.description && (
-                        <>
-                          <span className="text-slate-300 dark:text-slate-700">
-                            •
-                          </span>
-                          <span className="truncate">{tx.description}</span>
-                        </>
-                      )}
+                      <div className="flex items-center text-xs text-slate-500 dark:text-slate-500 gap-2">
+                        <span className="font-mono">
+                          {tx.time.substring(0, 5)}
+                        </span>
+                        <span className="text-slate-300 dark:text-slate-700">
+                          •
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {account &&
+                            ACCOUNT_ICONS[account.icon as IconName] &&
+                            (() => {
+                              const Icon =
+                                ACCOUNT_ICONS[account.icon as IconName];
+                              return <Icon className="h-3 w-3" />;
+                            })()}
+                          <span>{account?.name}</span>
+                        </div>
+                        {tx.description && (
+                          <>
+                            <span className="text-slate-300 dark:text-slate-700">
+                              •
+                            </span>
+                            <span className="truncate">{tx.description}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+          ) : (
+            // 超過 50 筆使用 Virtual Scroll
+            <div
+              style={{
+                height: `${rowVirtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const tx = sortedTransactions[virtualRow.index];
+                const category = getCategory(tx.categoryId);
+                const account = getAccount(tx.accountId);
+                const isTransfer = isOperateTransaction(tx);
 
-            {sortedTransactions.length === 0 && (
-              <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-600">
-                無交易紀錄
-              </div>
-            )}
-          </div>
+                return (
+                  <div
+                    key={tx.id}
+                    onClick={() => tx.id && onEdit(tx.id)}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: `${virtualRow.size}px`,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                    className="flex items-center gap-3 py-3 border-b border-slate-100 dark:border-slate-800/50 last:border-0 cursor-pointer hover:bg-teal-50/50 dark:hover:bg-teal-900/20 rounded-lg px-2 transition-colors"
+                  >
+                    {/* Category Icon */}
+                    {(() => {
+                      const colors = isTransfer
+                        ? TRANSACTION_COLORS.transfer
+                        : tx.type === RootType.INCOME
+                          ? TRANSACTION_COLORS.income
+                          : TRANSACTION_COLORS.expense;
+                      return (
+                        <div
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${colors.bg} ${colors.icon} ${colors.bgDark} ${colors.iconDark}`}
+                        >
+                          <CategoryIcon
+                            iconName={category?.icon}
+                            className="h-5 w-5"
+                          />
+                        </div>
+                      );
+                    })()}
+
+                    {/* Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="font-medium truncate text-slate-800 dark:text-slate-100">
+                          {category?.name || '未分類'}
+                        </span>
+                        <span
+                          className={`font-mono font-semibold ${
+                            isTransfer
+                              ? `${TRANSACTION_COLORS.transfer.icon} ${TRANSACTION_COLORS.transfer.iconDark}`
+                              : tx.type === RootType.INCOME
+                                ? `${TRANSACTION_COLORS.income.icon} ${TRANSACTION_COLORS.income.iconDark}`
+                                : `${TRANSACTION_COLORS.expense.icon} ${TRANSACTION_COLORS.expense.iconDark}`
+                          }`}
+                        >
+                          {tx.type === RootType.EXPENSE ? '-' : '+'}
+                          {formatCurrency(tx.amount)}
+                        </span>
+                      </div>
+                      <div className="flex items-center text-xs text-slate-500 dark:text-slate-500 gap-2">
+                        <span className="font-mono">
+                          {tx.time.substring(0, 5)}
+                        </span>
+                        <span className="text-slate-300 dark:text-slate-700">
+                          •
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {account &&
+                            ACCOUNT_ICONS[account.icon as IconName] &&
+                            (() => {
+                              const Icon =
+                                ACCOUNT_ICONS[account.icon as IconName];
+                              return <Icon className="h-3 w-3" />;
+                            })()}
+                          <span>{account?.name}</span>
+                        </div>
+                        {tx.description && (
+                          <>
+                            <span className="text-slate-300 dark:text-slate-700">
+                              •
+                            </span>
+                            <span className="truncate">{tx.description}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Summary Footer */}

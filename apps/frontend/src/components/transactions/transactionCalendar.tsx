@@ -24,6 +24,7 @@ import {
 } from '@repo/shared';
 import { CalendarEvent } from './calendarEvent';
 import { CalendarDayModal } from './calendarDayModal';
+import { EditTransactionSheet } from './editTransactionSheet';
 import { toast } from 'sonner';
 import { isOperateTransaction } from '@repo/shared';
 import { updateTransaction } from '@/services/transaction';
@@ -123,6 +124,11 @@ export default function TransactionCalendar({
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayTransactions, setDayTransactions] = useState<TransactionType[]>([]);
 
+  // 編輯 Sheet 狀態
+  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<TransactionType | null>(null);
+
   // 1. 將交易資料轉換為日曆事件
   const events = useMemo(() => {
     return filterForCalendar(transactions).map(transactionToCalendarEvent);
@@ -156,8 +162,6 @@ export default function TransactionCalendar({
       });
 
       try {
-        // 拖放只需更新 date，不需要送完整 payload
-        // 後端 updateIncomeExpense 支援部分更新
         const transactionId = event.resource.id;
         if (!transactionId) {
           throw new Error('交易 ID 不存在');
@@ -190,6 +194,13 @@ export default function TransactionCalendar({
       const dateStr = format(start, 'yyyy-MM-dd');
       const txsForDay = transactions.filter((tx) => tx.date === dateStr);
 
+      // DEBUG: 幫助診斷為何 Modal 是空的
+      console.log('[Calendar Debug]', {
+        clickedDate: dateStr,
+        matchedCount: txsForDay.length,
+        allDates: [...new Set(transactions.map((tx) => tx.date))].slice(0, 10),
+      });
+
       setSelectedDate(start);
       setDayTransactions(txsForDay);
       setIsModalOpen(true);
@@ -197,10 +208,17 @@ export default function TransactionCalendar({
     [transactions],
   );
 
-  // 4. 點擊事件（開啟編輯 Sheet） - 目前先用 console.log
-  const handleEditTransaction = useCallback((id: string) => {
-    console.log('編輯交易:', id);
-  }, []);
+  // 4. 點擊事件（開啟編輯 Sheet）
+  const handleEditTransaction = useCallback(
+    (id: string) => {
+      const tx = transactions.find((t) => t.id === id);
+      if (tx) {
+        setSelectedTransaction(tx);
+        setIsEditSheetOpen(true);
+      }
+    },
+    [transactions],
+  );
 
   const onSelectEvent = useCallback(
     (event: CalendarEventType) => {
@@ -234,6 +252,7 @@ export default function TransactionCalendar({
           date={date}
           onNavigate={onNavigate}
           selectable
+          resizable={false}
           onSelectSlot={onSelectSlot}
           onSelectEvent={onSelectEvent}
           onEventDrop={onEventDrop}
@@ -264,6 +283,17 @@ export default function TransactionCalendar({
           setIsModalOpen(false);
           handleEditTransaction(id);
         }}
+      />
+
+      <EditTransactionSheet
+        isOpen={isEditSheetOpen}
+        onClose={() => {
+          setIsEditSheetOpen(false);
+          setSelectedTransaction(null);
+        }}
+        transaction={selectedTransaction}
+        categories={categories}
+        accounts={accounts}
       />
     </div>
   );
