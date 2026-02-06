@@ -1,12 +1,21 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { CalendarIcon, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  CalendarIcon,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+  Trash2,
+  X,
+  Check,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import {
   CategoryType,
   AccountType,
   CreateTransactionSchema,
+  TransactionType,
 } from '@repo/shared';
 import {
   RootType,
@@ -26,11 +35,9 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from '@/components/ui/sheet';
 import {
   Select,
@@ -56,6 +63,17 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import services from '@/services';
@@ -66,21 +84,30 @@ import { useRouter } from 'next/navigation';
 import { budgetService } from '@/services/budget';
 import { Budget } from '@/types/budget';
 import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
+import { TRANSACTION_COLORS } from '@/lib/transactionColors';
 
-function NewTransactionSheet({
-  categories,
-  accounts,
-}: {
+interface TransactionSheetProps {
+  isOpen: boolean;
+  onClose: () => void;
   categories: CategoryType[];
   accounts: AccountType[];
-}) {
+  transaction?: TransactionType | null; // If provided, Edit Mode
+}
+
+export function TransactionSheet({
+  isOpen,
+  onClose,
+  categories,
+  accounts,
+  transaction,
+}: TransactionSheetProps) {
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showExtra, setShowExtra] = useState(false);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [selectedBudgetIds, setSelectedBudgetIds] = useState<string[]>([]);
+  const isEditMode = !!transaction;
 
   useEffect(() => {
     const fetchBudgets = async () => {
@@ -90,22 +117,41 @@ function NewTransactionSheet({
     fetchBudgets();
   }, []);
 
-  // 因為 subCategory 還沒選擇，所以只能在這裡判斷
+  const findCategoryPath = (
+    categoryId: string,
+    categoryList: CategoryType[],
+  ): { mainCategory: string; subCategory: string } => {
+    for (const root of categoryList) {
+      if (root.children) {
+        for (const main of root.children) {
+          if (main.id === categoryId) {
+            return { mainCategory: main.id, subCategory: '' };
+          }
+          if (main.children) {
+            for (const sub of main.children) {
+              if (sub.id === categoryId) {
+                return { mainCategory: main.id, subCategory: sub.id };
+              }
+            }
+          }
+        }
+      }
+    }
+    return { mainCategory: '', subCategory: '' };
+  };
+
   const formSchema = useMemo(() => {
     return transactionFormSchema.superRefine((data, ctx) => {
       if (data.type === RootType.OPERATE) return;
 
-      // 找出對應的 Root Category
       const root = categories.find((c) => c.type === data.type);
       if (!root?.children) return;
 
-      // 找出選中的 Main Category
       const mainCategory = root.children.find(
         (c) => c.id === data.mainCategory,
       );
       if (!mainCategory) return;
 
-      // 如果該 Main Category 下有子分類，則 subCategory 必填
       if (mainCategory.children && mainCategory.children.length > 0) {
         if (!data.subCategory) {
           ctx.addIssue({
@@ -116,7 +162,6 @@ function NewTransactionSheet({
         }
       }
 
-      // 分期判斷
       if (
         data.paymentFrequency === PaymentFrequency.INSTALLMENT &&
         data.installment
@@ -130,7 +175,6 @@ function NewTransactionSheet({
         }
       }
 
-      // 額外金額驗證
       if (data.extraAdd && data.extraAdd < 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -155,7 +199,6 @@ function NewTransactionSheet({
       amount: 0,
       type: RootType.EXPENSE,
       description: '',
-      // 解決 Hydration Mismatch: 初始值給 undefined/空字串，在 useEffect 補上
       date: undefined,
       time: '',
       mainCategory: '',
@@ -178,7 +221,6 @@ function NewTransactionSheet({
     },
   });
 
-  // 使用 watch 來監聽表單值的變化
   const watchedType = form.watch('type');
   const watchedMainCategory = form.watch('mainCategory');
   const watchedAccountId = form.watch('accountId');
@@ -191,71 +233,103 @@ function NewTransactionSheet({
 
   const isCreditCard = selectedAccount?.type === Account.CREDIT_CARD;
 
-  // 解決 Hydration Mismatch: 在 Client 端才設定預設時間。
-  // 根本原因：SSR 的時候宣告 new Date() 會和 CSR 渲染時的結果不一樣，兩份 HTML 不一樣造成 React 警告。
+  // Initialize form
   useEffect(() => {
-    const now = new Date();
-    form.reset({
-      ...form.getValues(),
-      date: now,
-      time: format(now, 'HH:mm:ss'),
-    });
-  }, [form]);
+    if (isOpen) {
+      if (isEditMode && transaction) {
+        // Edit Mode Initialization
+        const { mainCategory, subCategory } = findCategoryPath(
+          transaction.categoryId,
+          categories,
+        );
+
+        form.reset({
+          accountId: transaction.accountId,
+          amount: transaction.amount,
+          type: transaction.targetAccountId
+            ? RootType.OPERATE
+            : transaction.type,
+          description: transaction.description || '',
+          date: new Date(transaction.date), // Ensure Date object
+          time: transaction.time,
+          mainCategory,
+          subCategory,
+          receipt: transaction.receipt || '',
+          targetAccountId: transaction.targetAccountId || '',
+          paymentFrequency:
+            transaction.paymentFrequency || PaymentFrequency.ONE_TIME,
+          extraAdd: (transaction as any).extraAdd || 0,
+          extraAddLabel: (transaction as any).extraAddLabel || '折扣',
+          extraMinus: (transaction as any).extraMinus || 0,
+          extraMinusLabel: (transaction as any).extraMinusLabel || '手續費',
+          installment: {
+            totalInstallments: 3,
+            interestType: InterestType.NONE,
+            calculationMethod: CalculationMethod.ROUND,
+            remainderPlacement: RemainderPlacement.FIRST,
+            gracePeriod: 0,
+            rewardsType: RewardsType.EVERY,
+            ...((transaction as any).installment || {}),
+          },
+        });
+
+        if ((transaction as any).extraAdd || (transaction as any).extraMinus) {
+          setShowExtra(true);
+        }
+      } else {
+        // Create Mode Initialization
+        const now = new Date();
+        form.reset({
+          accountId: '',
+          amount: 0,
+          type: RootType.EXPENSE,
+          description: '',
+          date: now,
+          time: format(now, 'HH:mm:ss'),
+          mainCategory: '',
+          subCategory: '',
+          receipt: '',
+          targetAccountId: '',
+          paymentFrequency: PaymentFrequency.ONE_TIME,
+          extraAdd: 0,
+          extraAddLabel: '折扣',
+          extraMinus: 0,
+          extraMinusLabel: '手續費',
+          installment: {
+            totalInstallments: 3,
+            interestType: InterestType.NONE,
+            calculationMethod: CalculationMethod.ROUND,
+            remainderPlacement: RemainderPlacement.FIRST,
+            gracePeriod: 0,
+            rewardsType: RewardsType.EVERY,
+          },
+        });
+        setSelectedBudgetIds([]);
+        setShowExtra(false);
+      }
+    }
+  }, [isOpen, isEditMode, transaction, categories, form]);
 
   const currentMainCategory = useMemo(() => {
     if (!categories) return [];
-
     const roots = categories.filter(
       (root) => root.type === (watchedType as RootType),
     );
-
-    // flatMap 比較少用記錄一下：先 map 後 flat，少一步驟。e.g. [{children: []}, {children: []}] -> map: [ [], [] ] -> flat: []
-    const mainCategories = roots.flatMap((root) => root.children || []);
-
-    return mainCategories;
+    return roots.flatMap((root) => root.children || []);
   }, [watchedType, categories]);
 
   const currentSubCategory = useMemo(() => {
     if (!watchedMainCategory || !currentMainCategory) return [];
-
     const subCategoryMap = new Map<string, CategoryType>();
-    currentMainCategory.forEach((cat) => {
-      subCategoryMap.set(cat.id, cat);
-    });
-
+    currentMainCategory.forEach((cat) => subCategoryMap.set(cat.id, cat));
     const selectedMain = subCategoryMap.get(watchedMainCategory);
-
-    if (!selectedMain || !selectedMain.children) return [];
-
-    return selectedMain.children;
+    return selectedMain?.children || [];
   }, [watchedMainCategory, currentMainCategory]);
 
-  useEffect(() => {
-    if (watchedMainCategory || form.getValues('subCategory')) {
-      // Mock auto-selection: if no budget selected, pick first one if available
-      // In real app, we would check BudgetCategory map
-      if (
-        budgets.length > 0 &&
-        selectedBudgetIds.length === 0 &&
-        watchedType === RootType.EXPENSE
-      ) {
-        // Just a mock behavior
-        // setSelectedBudgetIds([budgets[0].id]);
-      }
-    }
-  }, [
-    watchedMainCategory,
-    form.watch('subCategory'),
-    budgets,
-    watchedType,
-    selectedBudgetIds.length,
-  ]);
-
-  const handleExpenseAndIncomeChange = async (data: TransactionFormSchema) => {
+  const handleCreate = async (data: TransactionFormSchema) => {
     // Mock Backdating check
     const transactionDate = new Date(data.date);
     const today = new Date();
-    // Simple check: if month is different (earlier)
     const isBackdated =
       transactionDate < new Date(today.getFullYear(), today.getMonth(), 1);
 
@@ -269,76 +343,121 @@ function NewTransactionSheet({
       }
     }
 
-    // 整理成 API 需要的格式
-    const payload: CreateTransactionSchema = {
-      accountId: data.accountId,
-      categoryId: data.subCategory || data.mainCategory,
-      amount: Number(data.amount),
-      type: data.type as RootType.EXPENSE | RootType.INCOME,
-      description: data.description,
-      // User 選什麼時間就存什麼。存當地時間，不需要轉為 +0
-      date: format(data.date, 'yyyy-MM-dd'),
-      time: data.time,
-      receipt: data.receipt,
-      paymentFrequency: data.paymentFrequency,
-      installment:
-        data.paymentFrequency === PaymentFrequency.INSTALLMENT
-          ? (data.installment as CreateTransactionSchema['installment'])
-          : undefined,
-      extraAdd: data.extraAdd,
-      extraAddLabel: data.extraAddLabel,
-      extraMinus: data.extraMinus,
-      extraMinusLabel: data.extraMinusLabel,
-    };
-
-    // Mock: Include selected budgets
-    payload.budgetIds = selectedBudgetIds;
-
-    try {
-      setIsLoading(true);
+    if (data.type === RootType.OPERATE) {
+      const payload = {
+        accountId: data.accountId,
+        categoryId: data.subCategory || data.mainCategory,
+        amount: Number(data.amount),
+        type: RootType.OPERATE as RootType.OPERATE,
+        description: data.description,
+        date: format(data.date, 'yyyy-MM-dd'),
+        time: data.time,
+        receipt: data.receipt,
+        paymentFrequency: data.paymentFrequency,
+        targetAccountId: data.targetAccountId as string,
+        extraAdd: data.extraAdd,
+        extraAddLabel: data.extraAddLabel,
+        extraMinus: data.extraMinus,
+        extraMinusLabel: data.extraMinusLabel,
+      };
+      const result = await services.addTransfer(payload);
+      if (result?.isSuccess) {
+        toast.success(result.message);
+        onClose();
+        router.refresh();
+      }
+    } else {
+      const payload: CreateTransactionSchema = {
+        accountId: data.accountId,
+        categoryId: data.subCategory || data.mainCategory,
+        amount: Number(data.amount),
+        type: data.type as RootType.EXPENSE | RootType.INCOME,
+        description: data.description,
+        date: format(data.date, 'yyyy-MM-dd'),
+        time: data.time,
+        receipt: data.receipt,
+        paymentFrequency: data.paymentFrequency,
+        installment:
+          data.paymentFrequency === PaymentFrequency.INSTALLMENT
+            ? (data.installment as CreateTransactionSchema['installment'])
+            : undefined,
+        extraAdd: data.extraAdd,
+        extraAddLabel: data.extraAddLabel,
+        extraMinus: data.extraMinus,
+        extraMinusLabel: data.extraMinusLabel,
+        budgetIds: selectedBudgetIds,
+      };
       const result = await services.addTransaction(payload);
       if (result?.isSuccess) {
-        setIsOpen(false);
         toast.success(result.message);
+        onClose();
         router.refresh();
-        form.reset();
-        setShowExtra(false);
       }
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const handleOperateChange = async (data: TransactionFormSchema) => {
+  const handleUpdate = async (data: TransactionFormSchema) => {
+    if (!transaction?.id) return;
+
     const payload = {
       accountId: data.accountId,
       categoryId: data.subCategory || data.mainCategory,
       amount: Number(data.amount),
-      type: RootType.OPERATE as RootType.OPERATE,
+      // If type is OPERATE, it's actually an EXPENSE with a target account in the backend
+      type: data.type === RootType.OPERATE ? RootType.EXPENSE : data.type,
       description: data.description,
-      // User 選什麼時間就存什麼。存當地時間，不需要轉為 +0
       date: format(data.date, 'yyyy-MM-dd'),
       time: data.time,
       receipt: data.receipt,
-      paymentFrequency: data.paymentFrequency,
-      targetAccountId: data.targetAccountId as string,
+      // Pass targetAccountId if it's OPERATE (Transfer), otherwise it might need to be cleared (handle logic if needed)
+      // For now, if switching to Expense, we assume targetAccountId should be ignored or cleared.
+      // But we can only send a value if we have one.
+      targetAccountId:
+        data.type === RootType.OPERATE ? data.targetAccountId : undefined,
+      budgetIds: selectedBudgetIds, // Supported now
+      // Update other fields as supported by schema
+      paymentFrequency: data.paymentFrequency, // Ensure Schema supports
       extraAdd: data.extraAdd,
       extraAddLabel: data.extraAddLabel,
       extraMinus: data.extraMinus,
       extraMinusLabel: data.extraMinusLabel,
     };
 
+    // Note: updateTransaction schema usually allows partials.
+    // However, if we change type, we need to be careful.
+    // For now assuming full update payload is fine or backend ignores extras.
+
+    const result = await services.updateTransaction(transaction.id, payload);
+    if (result) {
+      toast.success('更新成功');
+      onClose();
+      router.refresh();
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!transaction?.id) return;
+
+    try {
+      setIsDeleting(true);
+      await services.deleteTransaction(transaction.id);
+      toast.success('刪除成功');
+      onClose();
+      router.refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const onSubmit = async (data: TransactionFormSchema) => {
     try {
       setIsLoading(true);
-      const result = await services.addTransfer(payload);
-      if (result?.isSuccess) {
-        setIsOpen(false);
-        toast.success(result.message);
-        router.refresh();
-        form.reset();
-        setShowExtra(false);
+      if (isEditMode) {
+        await handleUpdate(data);
+      } else {
+        await handleCreate(data);
       }
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -347,26 +466,18 @@ function NewTransactionSheet({
     }
   };
 
-  const onSubmit = async (data: TransactionFormSchema) => {
-    if (data.type === RootType.EXPENSE || data.type === RootType.INCOME) {
-      await handleExpenseAndIncomeChange(data);
-    } else {
-      // 轉帳類
-      await handleOperateChange(data);
-    }
+  const typeColors = {
+    [RootType.EXPENSE]: TRANSACTION_COLORS.expense,
+    [RootType.INCOME]: TRANSACTION_COLORS.income,
+    [RootType.OPERATE]: TRANSACTION_COLORS.transfer,
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetTrigger asChild>
-        <Button className="cursor-pointer bg-slate-900 dark:bg-slate-50 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 shadow-xl shadow-slate-300/50 dark:shadow-none border-0 transition-all duration-300 transform hover:scale-105 rounded-full px-6 h-11 text-sm font-medium font-playfair tracking-wide">
-          <Plus className="mr-2 h-4 w-4" /> 新增交易
-        </Button>
-      </SheetTrigger>
+    <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-[540px] p-0 flex flex-col h-dvh bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-2xl border-l border-slate-200 dark:border-white/10 shadow-2xl">
         <SheetHeader className="px-6 py-6 border-b border-slate-200/50 dark:border-white/5 bg-white/50 dark:bg-white/2">
           <SheetTitle className="text-2xl font-bold font-playfair text-slate-900 dark:text-slate-50">
-            新增交易
+            {isEditMode ? '編輯交易' : '新增交易'}
           </SheetTitle>
         </SheetHeader>
 
@@ -376,41 +487,62 @@ function NewTransactionSheet({
             className="flex flex-col flex-1 overflow-hidden"
           >
             <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+              {/* Type Selection */}
               <FormField
                 control={form.control}
                 name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="bg-slate-200/50 dark:bg-white/5 p-1 rounded-2xl flex gap-1">
-                      {[
-                        RootType.EXPENSE,
-                        RootType.INCOME,
-                        RootType.OPERATE,
-                      ].map((type) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => {
-                            field.onChange(type);
-                            form.setValue('mainCategory', '');
-                            form.setValue('subCategory', '');
-                            form.clearErrors();
-                          }}
-                          className={cn(
-                            'flex-1 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 shadow-sm',
-                            field.value === type
-                              ? type === RootType.EXPENSE
-                                ? 'bg-rose-500 text-white shadow-rose-200 dark:shadow-rose-900/30'
-                                : type === RootType.INCOME
-                                  ? 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-emerald-900/30'
-                                  : 'bg-amber-500 text-white shadow-amber-200 dark:shadow-amber-900/30'
-                              : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-white/5 shadow-none',
-                          )}
-                        >
-                          {type}
-                        </button>
-                      ))}
-                    </div>
+                    {isEditMode ? (
+                      // Read-only Type Display for Edit Mode
+                      <div
+                        className={cn(
+                          'py-3 px-4 rounded-xl text-center font-medium text-lg shadow-sm',
+                          typeColors[field.value as keyof typeof typeColors]
+                            ?.bg,
+                          typeColors[field.value as keyof typeof typeColors]
+                            ?.text,
+                          typeColors[field.value as keyof typeof typeColors]
+                            ?.bgDark,
+                          typeColors[field.value as keyof typeof typeColors]
+                            ?.textDark,
+                        )}
+                      >
+                        {field.value}
+                      </div>
+                    ) : (
+                      // Interactive Type Selector for Create Mode
+                      <div className="bg-slate-200/50 dark:bg-white/5 p-1 rounded-2xl flex gap-1">
+                        {[
+                          RootType.EXPENSE,
+                          RootType.INCOME,
+                          RootType.OPERATE,
+                        ].map((type) => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => {
+                              field.onChange(type);
+                              form.setValue('mainCategory', '');
+                              form.setValue('subCategory', '');
+                              form.clearErrors();
+                            }}
+                            className={cn(
+                              'flex-1 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 shadow-sm',
+                              field.value === type
+                                ? type === RootType.EXPENSE
+                                  ? 'bg-rose-500 text-white shadow-rose-200 dark:shadow-rose-900/30'
+                                  : type === RootType.INCOME
+                                    ? 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-emerald-900/30'
+                                    : 'bg-amber-500 text-white shadow-amber-200 dark:shadow-amber-900/30'
+                                : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-white/5 shadow-none',
+                            )}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -545,7 +677,7 @@ function NewTransactionSheet({
                 )}
               </div>
 
-              {/* Budget Selection */}
+              {/* Budget Selection - Available for Expense in both modes */}
               {watchedType === RootType.EXPENSE && (
                 <div className="space-y-2">
                   <FormLabel>歸入預算</FormLabel>
@@ -608,19 +740,7 @@ function NewTransactionSheet({
                               )}
                             >
                               {selectedBudgetIds.includes(b.id) && (
-                                <svg
-                                  className="h-3 w-3 text-primary-foreground"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                  strokeWidth={3}
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M5 13l4 4L19 7"
-                                  />
-                                </svg>
+                                <Check className="h-3 w-3 text-primary-foreground" />
                               )}
                             </div>
                             <span className="text-sm">{b.name}</span>
@@ -671,7 +791,11 @@ function NewTransactionSheet({
                                   ? 'focus-visible:ring-emerald-500/30'
                                   : 'focus-visible:ring-amber-500/30',
                             )}
-                            value={field.value || ''}
+                            value={
+                              field.value !== undefined && field.value !== null
+                                ? Number(field.value).toString()
+                                : ''
+                            }
                             onChange={(e) =>
                               field.onChange(e.target.valueAsNumber || 0)
                             }
@@ -690,117 +814,6 @@ function NewTransactionSheet({
                   )}
                 />
               </div>
-
-              {isCreditCard && watchedType !== RootType.OPERATE && (
-                <div className="rounded-2xl p-6 bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <FormLabel className="text-base font-medium">
-                      啟用分期付款
-                    </FormLabel>
-                    <Switch
-                      checked={
-                        watchedPaymentFrequency === PaymentFrequency.INSTALLMENT
-                      }
-                      onCheckedChange={(checked) => {
-                        form.setValue(
-                          'paymentFrequency',
-                          checked
-                            ? PaymentFrequency.INSTALLMENT
-                            : PaymentFrequency.ONE_TIME,
-                        );
-                      }}
-                    />
-                  </div>
-
-                  {watchedPaymentFrequency === PaymentFrequency.INSTALLMENT && (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <FormField
-                        control={form.control}
-                        name="installment.totalInstallments"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>分期期數 (月)</FormLabel>
-                            <FormControl>
-                              <div className="relative group">
-                                <Input
-                                  type="number"
-                                  {...field}
-                                  className="h-12 text-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-slate-400"
-                                  placeholder="0"
-                                  onChange={(e) =>
-                                    field.onChange(Number(e.target.value))
-                                  }
-                                  min={2}
-                                />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="installment.calculationMethod"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>計算方式</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className="h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value={CalculationMethod.ROUND}>
-                                    四捨五入
-                                  </SelectItem>
-                                  <SelectItem value={CalculationMethod.FLOOR}>
-                                    無條件捨去
-                                  </SelectItem>
-                                  <SelectItem value={CalculationMethod.CEIL}>
-                                    無條件進位
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="installment.remainderPlacement"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>餘數分配</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className="h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value={RemainderPlacement.FIRST}>
-                                    首期調整
-                                  </SelectItem>
-                                  <SelectItem value={RemainderPlacement.LAST}>
-                                    末期調整
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Extra Amount Section */}
               <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-white/5">
@@ -948,6 +961,118 @@ function NewTransactionSheet({
                 )}
               </div>
 
+              {/* Installment Section */}
+              {isCreditCard && watchedType !== RootType.OPERATE && (
+                <div className="rounded-2xl p-6 bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <FormLabel className="text-base font-medium">
+                      啟用分期付款
+                    </FormLabel>
+                    <Switch
+                      checked={
+                        watchedPaymentFrequency === PaymentFrequency.INSTALLMENT
+                      }
+                      onCheckedChange={(checked) => {
+                        form.setValue(
+                          'paymentFrequency',
+                          checked
+                            ? PaymentFrequency.INSTALLMENT
+                            : PaymentFrequency.ONE_TIME,
+                        );
+                      }}
+                    />
+                  </div>
+
+                  {watchedPaymentFrequency === PaymentFrequency.INSTALLMENT && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <FormField
+                        control={form.control}
+                        name="installment.totalInstallments"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>分期期數 (月)</FormLabel>
+                            <FormControl>
+                              <div className="relative group">
+                                <Input
+                                  type="number"
+                                  {...field}
+                                  className="h-12 text-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-slate-400"
+                                  placeholder="0"
+                                  onChange={(e) =>
+                                    field.onChange(Number(e.target.value))
+                                  }
+                                  min={2}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="installment.calculationMethod"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>計算方式</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value={CalculationMethod.ROUND}>
+                                    四捨五入
+                                  </SelectItem>
+                                  <SelectItem value={CalculationMethod.FLOOR}>
+                                    無條件捨去
+                                  </SelectItem>
+                                  <SelectItem value={CalculationMethod.CEIL}>
+                                    無條件進位
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="installment.remainderPlacement"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>餘數分配</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value={RemainderPlacement.FIRST}>
+                                    首期調整
+                                  </SelectItem>
+                                  <SelectItem value={RemainderPlacement.LAST}>
+                                    末期調整
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Date / Time */}
               <div className="grid gap-4 grid-cols-2">
                 <FormField
@@ -1090,20 +1215,61 @@ function NewTransactionSheet({
               />
             </div>
 
-            <div className="p-6 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 mt-auto">
+            <SheetFooter className="px-6 py-4 border-t border-slate-200/50 dark:border-white/5 bg-white/50 dark:bg-white/2 flex flex-row! items-center gap-3">
+              {isEditMode && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="flex-1"
+                      disabled={isDeleting}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      刪除
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        確定要刪除這筆交易嗎？
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        此操作無法復原。
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>取消</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        className="bg-red-600 hover:bg-red-700 text-white focus:ring-red-600"
+                      >
+                        刪除
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="flex-1"
+              >
+                取消
+              </Button>
               <Button
                 type="submit"
-                className="cursor-pointer w-full h-12 text-lg font-medium rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 shadow-xl shadow-slate-300/50 dark:shadow-none transition-all duration-300 hover:scale-[1.02]"
+                className="cursor-pointer flex-1"
                 disabled={isLoading}
               >
-                {isLoading ? '儲存中...' : '儲存交易'}
+                {isLoading ? '儲存中...' : isEditMode ? '儲存' : '儲存交易'}
               </Button>
-            </div>
+            </SheetFooter>
           </form>
         </Form>
       </SheetContent>
     </Sheet>
   );
 }
-
-export default NewTransactionSheet;

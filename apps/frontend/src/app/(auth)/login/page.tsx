@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { ElegantLoader } from '@/components/ui/elegant-loader';
 import { apiHandler, simplifyTryCatch } from '@/lib/utils';
 import { toast } from 'sonner';
+import { BetaDesignOverlay } from '@/components/auth/betaDesignOverlay';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -47,6 +48,7 @@ export default function LoginPage() {
 
   return (
     <>
+      <BetaDesignOverlay />
       {isLoading && <ElegantLoader message="驗證中..." />}
       <div className="w-full bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl rounded-2xl p-8 md:p-10 space-y-6">
         <div className="flex flex-col space-y-2 text-center text-white">

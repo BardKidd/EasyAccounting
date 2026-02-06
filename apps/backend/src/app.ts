@@ -66,6 +66,8 @@ app.use('/api', reconciliationRoute);
 app.use('/api', budgetRoute);
 app.use('/api', deployHealthRoute);
 
+// env 沒設定預設直接通過。這樣 PRD DEV 都不用去改了。
+console.log('[App] Starting Cron Jobs...');
 startDailyReminderCronJobs();
 startWeeklySummaryNoticeCronJobs();
 startMonthlyAnalysisNoticeCronJobs();

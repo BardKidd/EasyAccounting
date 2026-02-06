@@ -133,6 +133,7 @@ function CollapsibleAccountGroup({
                 <div className="flex items-center justify-between p-4 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors group border-b border-transparent last:border-0 hover:border-slate-200 dark:hover:border-white/5">
                   <div className="flex items-center gap-4">
                     <div
+                      data-testid="account-color"
                       className="w-1.5 h-10 rounded-full"
                       style={{ backgroundColor: account.color || 'gray' }}
                     />
@@ -149,6 +150,7 @@ function CollapsibleAccountGroup({
 
                   <div className="flex items-center gap-4">
                     <span
+                      data-testid="account-balance"
                       className={cn(
                         'font-bold font-mono tracking-tight',
                         account.balance < 0
