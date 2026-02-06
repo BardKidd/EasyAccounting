@@ -4,7 +4,7 @@ import {
   SummaryCards,
   AssetTrendChart,
 } from '@/components/dashboard';
-import NewTransactionSheet from '@/components/transactions/newTransactionSheet';
+import { CreateTransactionButton } from '@/components/transactions/createTransactionButton';
 import { PeriodType } from '@repo/shared';
 import AccountSummaryCard from '@/components/accounts/accountSummaryCard';
 import service from '@/services';
@@ -41,16 +41,16 @@ export default async function DashboardPage() {
             歡迎回來，掌握您的財務狀況
           </p>
         </div>
-        <NewTransactionSheet categories={categories} accounts={accounts} />
+        <CreateTransactionButton categories={categories} accounts={accounts} />
       </div>
 
       <SummaryCards accounts={accounts} summaryData={summary.trends} />
 
       <div className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-             <div className="lg:col-span-7">
-                 <AssetTrendChart data={assetTrend} />
-             </div>
+          <div className="lg:col-span-7">
+            <AssetTrendChart data={assetTrend} />
+          </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7 h-auto">

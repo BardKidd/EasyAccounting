@@ -1,22 +1,37 @@
 # Budget System Technical Specification
 
-> **文件狀態**: ✅ Approved  
-> **作者**: Riin with co-authoring skill
-> **最後更新**: 2026-01-19 13:24
+> **文件狀態**: 🔄 Revising (YNAB Model)  
+> **作者**: Riin with co-authoring skill  
+> **最後更新**: 2026-01-22
+
+---
+
+## 0. Glossary（名詞表）
+
+| 英文                | 中文     | 說明                                             |
+| ------------------- | -------- | ------------------------------------------------ |
+| **Budget**          | 預算專案 | 一個預算計劃（如「月薪預算」）                   |
+| **Budget category** | 子預算   | 預算專案底下的分類配額                           |
+| **Assigned**        | 分配額度 | 本期分配給該分類的金額 = `budgetCategory.amount` |
+| **Activity**        | 交易活動 | 該分類本期的交易淨額（即時計算，不儲存）         |
+| **Available**       | 可用餘額 | `rolloverIn + assigned + activity`               |
+| **Ready to assign** | 待分配   | 主預算還沒分配給子預算的餘額                     |
+| **Rollover in**     | 結轉進入 | 從上期帶入的餘額                                 |
+| **Rollover out**    | 結轉移出 | 帶到下期的餘額 = `max(0, available)`             |
 
 ---
 
 ## 1. Overview & Goals
 
-**目標**：建立彈性預算管理系統，讓用戶能有效控制支出並追蹤預算執行狀況。
+**目標**：建立 YNAB 風格的 Zero-based budgeting 系統，讓用戶主動分配資金並追蹤預算執行狀況。
 
 **核心功能**：
 
 - 支援年/月/週/日週期，可自訂起始日
 - 重複循環 vs 單次預算
-- 總預算 + 子預算（分類級）
-- 餘額結轉至下期
-- 隱藏分類（不納入計算）
+- 總預算 + 子預算（分類級），皆支援餘額結轉
+- 交易透過分類自動歸入對應預算（無需手動選擇）
+- Ready to assign 顯示待分配餘額
 - 80%/100% 超支提醒
 - 歷史週期保護（Snapshot 不可變）
 
@@ -51,57 +66,65 @@
 > [!IMPORTANT]
 > **修改預算額度時的規則**：變更 `amount` 只影響「當前及未來週期」，不可追溯更動已結束週期的計算結果。實作方式見 [3.4 修改生效時間](#34-修改生效時間)。
 
-### 2.2 BudgetCategory (子預算 / 預設關聯)
+### 2.2 BudgetCategory (子預算)
 
-| 欄位         | 型別          | 說明                           |
-| ------------ | ------------- | ------------------------------ |
-| `id`         | INT (PK)      | 主鍵                           |
-| `budgetId`   | INT (FK)      | 所屬預算專案                   |
-| `categoryId` | INT (FK)      | 關聯分類（現有 Category 系統） |
-| `amount`     | DECIMAL(15,2) | 該分類的預算額度               |
-| `isExcluded` | BOOLEAN       | 是否排除計算（隱藏預算）       |
-| `createdAt`  | TIMESTAMP     | 建立時間                       |
-| `updatedAt`  | TIMESTAMP     | 更新時間                       |
+| 欄位         | 型別          | 說明                                       |
+| ------------ | ------------- | ------------------------------------------ |
+| `id`         | UUID (PK)     | 主鍵                                       |
+| `budgetId`   | UUID (FK)     | 所屬預算專案                               |
+| `categoryId` | UUID (FK)     | 關聯分類（現有 Category 系統）             |
+| `amount`     | DECIMAL(15,2) | 該分類的分配額度 (Assigned)                |
+| `rollover`   | BOOLEAN       | 是否結轉餘額至下期 (default: true, 不顯示) |
+| `createdAt`  | TIMESTAMP     | 建立時間                                   |
+| `updatedAt`  | TIMESTAMP     | 更新時間                                   |
 
 > [!NOTE]
-> `BudgetCategory` 現為**預設關聯**，用於在交易表單中預選預算。實際歸屬由 `TransactionBudget` 決定。
-> 子預算 `amount` 欄位的計算邏輯詳見 [3.8 子預算計算邏輯](#38-子預算計算邏輯-sub-budget-calculation)。
-
-### 2.3 TransactionBudget (交易-預算關聯)
-
-**新增表**：記錄每筆交易歸屬於哪些預算（多對多）。
-
-| 欄位            | 型別      | 說明     |
-| --------------- | --------- | -------- |
-| `id`            | INT (PK)  | 主鍵     |
-| `transactionId` | INT (FK)  | 關聯交易 |
-| `budgetId`      | INT (FK)  | 關聯預算 |
-| `createdAt`     | TIMESTAMP | 建立時間 |
-
-> [!IMPORTANT]
-> **交易歸入預算的方式改為「手動選擇」**：
+> **交易歸入邏輯**：交易透過 `Transaction.categoryId` → `Category.parentId` (MainCategory) → `BudgetCategory` 自動歸入對應的預算。
 >
-> - 新增/編輯交易時，UI 提供多選欄位讓用戶選擇歸入哪些預算
-> - `BudgetCategory` 設定的分類作為「預設選項」，用戶可取消或新增
+> **修改額度**：變更 `amount` 時，UI 彈出選項讓用戶選擇「立即生效」或「下期生效」，預設為下期生效。
 
-### 2.4 BudgetPeriodSnapshot (週期快照)
+### 2.3 BudgetCategoryPeriodSnapshot (子預算週期快照) [NEW]
 
-記錄每個「已結束週期」的最終結果。**此表的目的是保護歷史資料**：即使用戶事後修改預算額度，過去週期的記錄不會被追溯更動。
+記錄每個「已結束週期」的子預算最終結果。
+
+| 欄位                 | 型別          | 說明                         |
+| -------------------- | ------------- | ---------------------------- |
+| `id`                 | UUID (PK)     | 主鍵                         |
+| `budgetCategoryId`   | UUID (FK)     | 所屬子預算                   |
+| `periodStart`        | DATE          | 週期起始日                   |
+| `periodEnd`          | DATE          | 週期結束日                   |
+| `assignedAmount`     | DECIMAL(15,2) | 該週期的分配額度（Assigned） |
+| `activityAmount`     | DECIMAL(15,2) | 該週期的交易活動（Activity） |
+| `rolloverIn`         | DECIMAL(15,2) | 從上期結轉進來的金額         |
+| `rolloverOut`        | DECIMAL(15,2) | 結轉至下期的金額             |
+| `createdAt`          | TIMESTAMP     | 快照建立時間                 |
+| `lastRecalculatedAt` | TIMESTAMP     | 最後重算時間 (nullable)      |
+
+### ~~2.4 TransactionBudget~~ [DEPRECATED]
+
+> [!WARNING]
+> **此表已棄用**。交易改為透過 Category 自動歸入預算，不再需要手動關聯。
+>
+> 舊資料保留供相容性使用，新功能不再寫入此表。
+
+### 2.4 BudgetPeriodSnapshot (主預算週期快照)
+
+記錄每個「已結束週期」的主預算最終結果。**此表的目的是保護歷史資料**：即使用戶事後修改預算額度，過去週期的記錄不會被追溯更動。
 
 **何時建立**：每個週期結束時由 Cron Job 自動產生。
 
-| 欄位                 | 型別          | 說明                     |
-| -------------------- | ------------- | ------------------------ |
-| `id`                 | INT (PK)      | 主鍵                     |
-| `budgetId`           | INT (FK)      | 所屬預算專案             |
-| `periodStart`        | DATE          | 週期起始日               |
-| `periodEnd`          | DATE          | 週期結束日               |
-| `budgetAmount`       | DECIMAL(15,2) | 該週期的預算額度（快照） |
-| `spentAmount`        | DECIMAL(15,2) | 該週期實際支出           |
-| `rolloverIn`         | DECIMAL(15,2) | 從上期結轉進來的金額     |
-| `rolloverOut`        | DECIMAL(15,2) | 結轉至下期的金額         |
-| `createdAt`          | TIMESTAMP     | 快照建立時間             |
-| `lastRecalculatedAt` | TIMESTAMP     | 最後重算時間 (nullable)  |
+| 欄位                 | 型別          | 說明                           |
+| -------------------- | ------------- | ------------------------------ |
+| `id`                 | UUID (PK)     | 主鍵                           |
+| `budgetId`           | UUID (FK)     | 所屬預算專案                   |
+| `periodStart`        | DATE          | 週期起始日                     |
+| `periodEnd`          | DATE          | 週期結束日                     |
+| `budgetAmount`       | DECIMAL(15,2) | 該週期的預算額度（快照）       |
+| `totalActivity`      | DECIMAL(15,2) | 該週期所有子預算 Activity 總和 |
+| `rolloverIn`         | DECIMAL(15,2) | 從上期結轉進來的金額           |
+| `rolloverOut`        | DECIMAL(15,2) | 結轉至下期的金額               |
+| `createdAt`          | TIMESTAMP     | 快照建立時間                   |
+| `lastRecalculatedAt` | TIMESTAMP     | 最後重算時間 (nullable)        |
 
 > [!TIP]
 > 此表在週期結束時自動建立，但回溯補帳時會觸發重算，詳見 [3.6 回溯補帳](#36-回溯補帳-backdating)。
@@ -111,22 +134,22 @@
 ```mermaid
 erDiagram
     User ||--o{ Budget : has
-    Budget ||--o{ BudgetCategory : "has defaults"
+    Budget ||--o{ BudgetCategory : contains
     Budget ||--o{ BudgetPeriodSnapshot : generates
+    BudgetCategory ||--o{ BudgetCategoryPeriodSnapshot : generates
     BudgetCategory }o--|| Category : references
+    Transaction }o--|| Category : belongs_to
     Budget }o--o| Currency : uses
-    Transaction ||--o{ TransactionBudget : "belongs to"
-    Budget ||--o{ TransactionBudget : "receives"
 ```
 
 **關聯說明**：
 
 - 一個 User 可有多個 Budget
-- 一個 Budget 可有多個 BudgetCategory（作為預設選項）
-- **一筆 Transaction 可歸屬於多個 Budget**（透過 TransactionBudget）
-- 一個 Budget 可接收多筆 Transaction
+- 一個 Budget 可有多個 BudgetCategory
+- 交易透過 Category 自動關聯到 BudgetCategory，進而歸入 Budget
+- 一個分類可被多個預算使用（同一分類可在多個預算專案中設定子預算）
 - Budget 可選擇性關聯 Currency（多幣別 Future）
-- 每個結束的週期產生一筆 BudgetPeriodSnapshot
+- 每個結束的週期產生 BudgetPeriodSnapshot（主預算）和 BudgetCategoryPeriodSnapshot（子預算）
 
 ---
 
@@ -165,109 +188,167 @@ function getCurrentPeriod(budget: Budget, referenceDate: Date): { start: Date; e
 - 預算 `startDate` 晚於今天 → 尚未開始，不計算
 - **時區處理**：週期計算必須使用 User 設定的時區（如 `Asia/Taipei`），不可依賴 Server 本地時間
 
-### 3.2 餘額 Rollover
+### 3.2 餘額 Rollover (YNAB 風格)
 
-當 `rollover = true` 且 `isRecurring = true` 時：
+主預算和子預算**皆支援** Rollover：
 
-```
-本期可用額度 = 本期預算額度 + 上期結轉金額
-本期結轉金額 = 本期可用額度 - 本期已花費（若為負則結轉 0）
-```
-
-**Rollover 來源**：
-
-- 若上期 Snapshot 存在 → 使用 `rolloverOut`
-- 若上期 Snapshot 不存在（首期）→ `rolloverIn = 0`
-
-### 3.3 預算使用率計算
+**子預算 Rollover 計算**：
 
 ```typescript
-function calculateUsage(
-  budget: Budget,
-  period: { start: Date; end: Date },
-): UsageInfo {
-  // 1. 透過 TransactionBudget 取得歸屬於此預算的交易
-  const transactions = getTransactions({
-    userId: budget.userId,
-    dateRange: period,
-    budgetId: budget.id, // 透過 TransactionBudget 關聯
-    type: 'EXPENSE',
+// 子預算 Available = 上期結轉 + 本期分配 + 本期交易活動
+available = rolloverIn + assigned + activity;
+
+// 子預算結轉至下期 = 正餘額結轉，負餘額不結轉
+rolloverOut = Math.max(0, available);
+```
+
+**主預算 Rollover 計算**：
+
+```typescript
+// 主預算 Available = 預算額度 + 上期結轉
+available = budget.amount + rolloverIn;
+
+// Ready to Assign = 主預算 Available - 所有子預算已分配額度
+readyToAssign = available - totalAssigned;
+
+// 主預算結轉至下期
+rolloverOut = budget.rollover ? Math.max(0, readyToAssign) : 0;
+```
+
+> [!NOTE]
+> **Rollover 來源**：
+>
+> - 若上期 Snapshot 存在 → 使用上期 `rolloverOut`
+> - 若上期 Snapshot 不存在（首期）→ `rolloverIn = 0`
+
+### 3.3 預算使用率計算 (YNAB 風格)
+
+#### 3.3.1 子預算計算
+
+```typescript
+interface CategoryUsage {
+  assigned: number; // = budgetCategory.amount
+  activity: number; // Σ 該分類交易金額（負值）
+  available: number; // rolloverIn + assigned + activity
+  rolloverIn: number; // 從上期帶入
+}
+
+function calculateCategoryUsage(
+  budgetCategory: BudgetCategory,
+  period: Period,
+  userId: string,
+): CategoryUsage {
+  // 1. 取得分配額度
+  const assigned = budgetCategory.amount;
+
+  // 2. 計算本期交易活動（包含子分類）
+  const categoryIds = [
+    budgetCategory.categoryId,
+    ...getChildCategoryIds(budgetCategory.categoryId, userId),
+  ];
+  const transactions = await Transaction.findAll({
+    where: {
+      userId,
+      categoryId: { [Op.in]: categoryIds },
+      type: RootType.EXPENSE,
+      date: { [Op.between]: [period.start, period.end] },
+    },
   });
+  const activity = -1 * sum(transactions.map((t) => Math.abs(t.amount)));
 
-  // 2. 計算已花費
-  const spent = sum(transactions.map((t) => t.netAmount));
+  // 3. 取得上期結轉
+  const rolloverIn = getCategoryRolloverIn(budgetCategory.id, period);
 
-  // 3. 計算可用額度 (含 rollover)
-  const available = budget.amount + getRolloverIn(budget, period);
+  // 4. 計算可用餘額
+  const available = rolloverIn + assigned + activity;
 
-  // 4. 計算使用率（小數第二位）
-  const usageRate = Math.round((spent / available) * 10000) / 100;
-
-  return { spent, available, remaining: available - spent, usageRate };
+  return { assigned, activity, available, rolloverIn };
 }
 ```
 
-> 目前預算的使用率計算是基於 `TransactionBudget` 關聯，而非分類。使用者需手動選擇哪些交易屬於該預算。
->
-> 然而，對於 **子預算 (BudgetCategory)**，邏輯則是嚴格基於 **分類 (Category-based)**：
+#### 3.3.2 主預算計算
 
-### 3.8 子預算計算邏輯 (Sub-budget Calculation)
+```typescript
+interface BudgetUsage {
+  totalAssigned: number; // Σ 所有子預算 assigned
+  totalActivity: number; // Σ 所有子預算 activity
+  available: number; // budget.amount + rolloverIn
+  readyToAssign: number; // available - totalAssigned
+  rolloverIn: number;
+}
+
+function calculateBudgetUsage(budget: Budget, period: Period): BudgetUsage {
+  const categories = await BudgetCategory.findAll({
+    where: { budgetId: budget.id },
+  });
+
+  const categoryUsages = await Promise.all(
+    categories.map((cat) => calculateCategoryUsage(cat, period, budget.userId)),
+  );
+
+  const totalAssigned = sum(categoryUsages.map((u) => u.assigned));
+  const totalActivity = sum(categoryUsages.map((u) => u.activity));
+  const rolloverIn = getBudgetRolloverIn(budget.id, period);
+  const available = budget.amount + rolloverIn;
+  const readyToAssign = available - totalAssigned;
+
+  return { totalAssigned, totalActivity, available, readyToAssign, rolloverIn };
+}
+```
+
+### 3.8 子預算計算邏輯 (YNAB 風格)
 
 **範圍 (Scope)**:
 
-- 包含所選分類及其所有**子分類**的交易。
-- 例如：子預算設為「飲食」（主分類），則歸屬於「早餐」、「午餐」（飲食的子分類）的交易皆納入計算。
-- 實作時需遞迴查詢或預先取得所有子分類 ID。
+- 包含所選 MainCategory 及其所有**子分類**的交易
+- 例如：子預算設為「飲食」（MainCategory），則「早餐」、「午餐」等子分類的交易皆納入計算
+- 需遞迴取得所有子分類 ID（包含用戶自訂分類）
 
-**計算方式**:
+**新增交易時的行為**：
 
-- **即時計算 (On-the-fly)**：呼叫 API 取得預算詳情時，即時聚合計算各子預算的使用量。
-- 不與主預算互斥：一筆交易若屬於子預算分類，既扣除子預算額度，也扣除主預算總額。
+當用戶新增交易，該交易的分類沒有對應的 BudgetCategory 時：
 
-**未歸類交易 (Uncategorized in Budget)**:
-
-- UI 僅顯示已設定的子預算使用情形。
-- 不顯示「未分配」或「其他」類別的使用量。
+1. **自動建立** BudgetCategory，`amount = 0`
+2. **顯示 Toast**：「已在『月薪預算』中建立『餐飲』子預算，請記得設定分配額度」
+3. **新增通知**：在 Notification Center 顯示待處理項目
 
 **子預算額度上限公式 (Amount Limit Formulas)**:
 
-子預算的 `amount` 欄位有上限限制，確保所有子預算加總不超過主預算可用額度。
-
-| 變數名稱                 | 定義                                      | 說明                                   |
-| ------------------------ | ----------------------------------------- | -------------------------------------- |
-| `available`              | `budget.amount + rolloverIn`              | 本期可用總額（基礎額度 + 結轉）        |
-| `totalAllocated`         | `Σ budgetCategories.amount`               | 所有子預算已分配額度加總               |
-| `currentCategory.amount` | 正在編輯的 `BudgetCategory.amount`        | 該子預算目前已設定的額度               |
-| `otherAllocated`         | `totalAllocated - currentCategory.amount` | 其他子預算已分配額度（不含正在編輯的） |
+| 變數名稱        | 定義                             | 說明                                   |
+| --------------- | -------------------------------- | -------------------------------------- |
+| `available`     | `budget.amount + rolloverIn`     | 主預算本期可用總額                     |
+| `totalAssigned` | `Σ budgetCategories.amount`      | 所有子預算已分配額度加總               |
+| `readyToAssign` | `available - totalAssigned`      | 尚未分配的餘額                         |
+| `otherAssigned` | `totalAssigned - current.amount` | 其他子預算已分配額度（不含正在編輯的） |
 
 ```typescript
 // 新增子預算時
-const maxAmount = available - totalAllocated;
+const maxAmount = available - totalAssigned; // = readyToAssign
 
 // 編輯子預算時
-const maxAmount = available - otherAllocated;
-// 等同於：(available - totalAllocated) + currentCategory.amount
+const maxAmount = available - otherAssigned;
 ```
 
 > [!IMPORTANT]
-> **約束條件**：`totalAllocated <= available`
+> **約束條件**：`totalAssigned <= available`
 >
-> 子預算的分配是「計劃」性質，不受已花費 (`spent`) 影響。即使本期已花費超過子預算額度（負餘額），子預算的上限仍以 `available` 為準。
+> 子預算的分配是「計劃」性質，不受 Activity 影響。即使本期 Available 已為負，新增子預算的上限仍以 `readyToAssign` 為準。
 
 **設計哲學 (Design Philosophy)**:
 
-本系統採用 **Mint 派 + 主預算累積** 的混合設計：
+本系統採用 **YNAB 零基預算** 設計：
 
-| 項目                        | 行為           | 說明                                                          |
-| --------------------------- | -------------- | ------------------------------------------------------------- |
-| **主預算 (Budget)**         | ✅ 有 Rollover | 未花完的餘額會結轉到下一期，`available = amount + rolloverIn` |
-| **子預算 (BudgetCategory)** | ❌ 無 Rollover | 每期固定為設定的 `amount`，不會因上期未花完而增加             |
+| 項目                        | 行為           | 說明                                                                     |
+| --------------------------- | -------------- | ------------------------------------------------------------------------ |
+| **主預算 (Budget)**         | ✅ 有 Rollover | `available = amount + rolloverIn`，可結轉至下期                          |
+| **子預算 (BudgetCategory)** | ✅ 有 Rollover | `available = rolloverIn + assigned + activity`，正餘額結轉，負餘額不結轉 |
 
-**為何這樣設計？**
+**YNAB 風格特點**：
 
-- **簡化管理**：子預算不累積，使用者不需追蹤每個分類的歷史餘額
-- **彈性總額**：主預算累積讓總可用額度更靈活，使用者可手動調整子預算分配
-- **符合直覺**：「飲食每月 10,000」比「飲食累積餘額 23,456」更易理解
+- **主動分配**：用戶需分配資金到各子預算（Assigned）
+- **Ready to Assign**：顯示尚未分配的餘額，鼓勵用戶分配到 0
+- **超支處理**：子預算 Available 為負時顯示紅色，但不自動從其他分類扣除
+- **結轉行為**：正餘額自動結轉，負餘額重置為 0（鼓勵下期補足）
 
 ### 3.4 修改生效時間
 
@@ -493,35 +574,26 @@ async function getBudgetWithUsage(budgetId: number): Promise<BudgetUsage> {
 └─────────────────────────────────────┘
 ```
 
-### 5.4 交易歸入預算（多選欄位）
+### ~~5.4 交易歸入預算（多選欄位）~~ [DEPRECATED]
 
-在新增/編輯交易的表單中，新增「歸入預算」多選下拉選單：
+> [!WARNING]
+> **此功能已棄用**。交易改為透過 Category 自動歸入預算，不再需要手動選擇。
 
-**UI 設計**：
+**新行為**：
 
-- 位置：在「分類」欄位下方
-- 樣式：多選 Dropdown / Chip 選擇器
-- **無預設選項**：用戶完全手動選擇（不根據分類自動預選）
+交易透過分類自動歸入對應的預算：
 
 ```
-┌─────────────────────────────────────┐
-│  分類： [餐飲 > 午餐]               │
-│                                       │
-│  歸入預算（可多選）：                 │
-│  [選擇預算專案...             ▼]   │
-│    ☐ 月薪預算                          │
-│    ☐ 旅遊預算                          │
-│    ☐ 專案A                             │
-│                                       │
-│  已選：[月薪預算] [+1]                  │
-└─────────────────────────────────────┘
+Transaction.categoryId → Category.parentId (MainCategory) → BudgetCategory → Budget
 ```
 
-**邏輯**：
+**自動建立 BudgetCategory**：
 
-1. 列出用戶的所有第一層預算專案
-2. 用戶手動選擇歸入哪些預算
-3. 儲存時寫入 `TransactionBudget` 表
+當交易的 MainCategory 在某預算中不存在對應的 BudgetCategory 時，系統會：
+
+1. 自動建立 `BudgetCategory`，`amount = 0`
+2. 顯示 Toast：「已在『月薪預算』中建立『餐飲』子預算，請記得設定分配額度」
+3. 在 Notification Center 新增待處理項目
 
 ### 5.5 子預算管理（Budget Detail 頁面）
 

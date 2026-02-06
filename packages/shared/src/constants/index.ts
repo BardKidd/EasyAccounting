@@ -174,3 +174,8 @@ export enum RewardsType {
   EVERY = 'EVERY',
   FIRST = 'FIRST', // Future expansion
 }
+
+export enum TransactionViewMode {
+  LIST = 'list',
+  CALENDAR = 'calendar',
+}

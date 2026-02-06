@@ -40,8 +40,15 @@ const getTransactionsByDate = async (
   query: GetTransactionsByDateSchema,
   userId: string,
 ) => {
-  const { startDate, endDate, type, page = 1, ...otherFilters } = query;
-  const limit = 10;
+  const {
+    startDate,
+    endDate,
+    type,
+    page = 1,
+    limit: queryLimit,
+    ...otherFilters
+  } = query;
+  const limit = queryLimit ?? 10;
 
   let dateFilter = {};
   if (startDate && endDate) {
@@ -536,8 +543,9 @@ export const updateIncomeExpense = async (
     await oldAccount.save({ transaction: t });
 
     // 處理新資料的負數與計算 (Sign Conversion for New Data)
-    let newAmount = Number(data.amount);
-    let newType = data.type;
+    // 支援部分更新：若未提供 amount/type，使用現有值
+    let newAmount = Number(data.amount ?? transaction.amount);
+    let newType = data.type ?? transaction.type;
     if (newAmount < 0) {
       newAmount = Math.abs(newAmount);
     }
@@ -589,7 +597,8 @@ export const updateIncomeExpense = async (
     }
 
     let newAccount = oldAccount;
-    if (data.accountId !== transaction.accountId) {
+    // 支援部分更新：只有當 accountId 有提供且與現有不同時才切換帳戶
+    if (data.accountId && data.accountId !== transaction.accountId) {
       const account = await Account.findOne({
         where: { id: data.accountId, userId },
         transaction: t,
@@ -616,6 +625,17 @@ export const updateIncomeExpense = async (
       },
       { transaction: t },
     );
+
+    // Linked Transaction Update Logic
+    if (transaction.linkId && data.date) {
+      const linkedTransaction = await Transaction.findOne({
+        where: { id: transaction.linkId, userId },
+        transaction: t,
+      });
+      if (linkedTransaction) {
+        await linkedTransaction.update({ date: data.date }, { transaction: t });
+      }
+    }
 
     // 同步 TransactionBudget 關聯
     if (data.budgetIds !== undefined) {
