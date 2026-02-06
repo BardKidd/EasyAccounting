@@ -119,7 +119,7 @@ function TransactionTable({
     <div className="space-y-4">
       <Card className="border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 overflow-hidden">
         <div className="rounded-md">
-          <Table>
+          <Table data-testid="transaction-table">
             <TableHeader className="bg-slate-50/50 dark:bg-white/5">
               <TableRow className="border-b border-slate-200 dark:border-white/5 hover:bg-transparent">
                 <TableHead className="w-[120px] text-slate-500 font-medium">

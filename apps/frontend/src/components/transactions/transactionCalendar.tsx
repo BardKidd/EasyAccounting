@@ -1,20 +1,40 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Calendar, dateFnsLocalizer, View, Views } from 'react-big-calendar';
+import {
+  Calendar,
+  dateFnsLocalizer,
+  View,
+  Views,
+  ToolbarProps,
+} from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
+import './calendar-custom.css';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
-import { TransactionType, CategoryType, AccountType, RootType } from '@repo/shared';
+import {
+  TransactionType,
+  CategoryType,
+  AccountType,
+  RootType,
+} from '@repo/shared';
 import { CalendarEvent } from './calendarEvent';
 import { CalendarDayModal } from './calendarDayModal';
 import { toast } from 'sonner';
-import { isOperateTransaction, isIncomingTransfer } from '@repo/shared';
+import { isOperateTransaction } from '@repo/shared';
 import { updateTransaction } from '@/services/transaction';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn, getErrorMessage } from '@/lib/utils';
+import {
+  filterForCalendar,
+  transactionToCalendarEvent,
+  CalendarEventType,
+} from '@/lib/calendarUtils';
 
 // 設定日期格式化工具
 const locales = {
@@ -29,42 +49,68 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-interface CalendarEventType {
-  id: string;
-  title: string;
-  start: Date;
-  end: Date;
-  allDay: boolean;
-  resource: TransactionType;
-  type: RootType;
-  amount: number;
-  isTransfer: boolean;
-}
-
 const DnDCalendar = withDragAndDrop<CalendarEventType>(Calendar);
 
 interface TransactionCalendarProps {
   transactions: TransactionType[];
   categories: CategoryType[];
   accounts: AccountType[];
-  onEditTransaction: (id: string) => void;
 }
+
+const CustomToolbar = ({ date, onNavigate, label }: ToolbarProps) => {
+  return (
+    <div className="flex items-center justify-between p-4 px-6 mb-2 bg-linear-to-r from-teal-50/50 to-transparent dark:from-teal-950/20">
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-full text-teal-600 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-200 hover:bg-teal-100 dark:hover:bg-teal-900/40"
+          onClick={() => onNavigate('PREV')}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 min-w-[120px] text-center font-display tracking-tight">
+          {label}
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-full text-teal-600 hover:text-teal-800 dark:text-teal-400 dark:hover:text-teal-200 hover:bg-teal-100 dark:hover:bg-teal-900/40"
+          onClick={() => onNavigate('NEXT')}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-8 px-4 text-xs font-medium rounded-full border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-900/30 hover:text-teal-800 dark:hover:text-teal-200 hover:border-teal-300 dark:hover:border-teal-700"
+        onClick={() => onNavigate('TODAY')}
+      >
+        今天
+      </Button>
+    </div>
+  );
+};
 
 export default function TransactionCalendar({
   transactions,
   categories,
   accounts,
-  onEditTransaction,
 }: TransactionCalendarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  
-  const [view, setView] = useState<View>(Views.MONTH);
-  
+
+  // 強制鎖定在 Month View
+  const view = Views.MONTH;
+
   // 與 URL 同步內部日期
   const dateParam = searchParams.get('date');
-  const [date, setDate] = useState(dateParam ? new Date(dateParam) : new Date());
+  const [date, setDate] = useState(
+    dateParam ? new Date(dateParam) : new Date(),
+  );
 
   useEffect(() => {
     if (dateParam) {
@@ -79,89 +125,71 @@ export default function TransactionCalendar({
 
   // 1. 將交易資料轉換為日曆事件
   const events = useMemo(() => {
-    return transactions
-      .filter((tx) => {
-        // 篩選掉轉帳的收款方（只顯示扣款方）
-        // Spec 3.2: WHERE NOT (targetAccountId IS NOT NULL AND type = 'INCOME')
-        if (isIncomingTransfer(tx)) return false;
-        return true;
-      })
-      .map((tx): CalendarEventType => {
-        // Spec 3.1: 強制使用 UTC 解析，避免時區問題
-        // format: YYYY-MM-DD THH:mm:ss Z
-        const dateTimeStr = `${tx.date}T${tx.time}Z`;
-        const dateTime = new Date(dateTimeStr);
-        
-        return {
-          id: tx.id || '',
-          title: tx.description || 'Transaction',
-          start: dateTime,
-          end: dateTime,
-          allDay: false, // 交易是時間點，非全天事件
-          resource: tx,
-          type: tx.type,
-          amount: tx.amount,
-          isTransfer: isOperateTransaction(tx),
-        };
-      });
+    return filterForCalendar(transactions).map(transactionToCalendarEvent);
   }, [transactions]);
 
   // 處理日曆導航
-  const onNavigate = useCallback((newDate: Date) => {
-    setDate(newDate);
-    const newDateStr = format(newDate, 'yyyy-MM-dd');
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('date', newDateStr);
-    router.push(`${pathname}?${params.toString()}`);
-  }, [pathname, router, searchParams]);
+  const onNavigate = useCallback(
+    (newDate: Date) => {
+      setDate(newDate);
+      const newDateStr = format(newDate, 'yyyy-MM-dd');
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('date', newDateStr);
+      router.push(`${pathname}?${params.toString()}`);
+    },
+    [pathname, router, searchParams],
+  );
 
   // 2. 拖放處理
   const onEventDrop = useCallback(
-    async ({ event, start }: { event: CalendarEventType; start: string | Date }) => {
+    async ({
+      event,
+      start,
+    }: {
+      event: CalendarEventType;
+      start: string | Date;
+    }) => {
       const newDate = format(new Date(start), 'yyyy-MM-dd');
-      
-      // 樂觀更新 (UI 會在父組件重新抓取資料時更新，但我們可以先顯示 Loading)
+
       toast.info('更新交易中...', {
         description: `移動至 ${newDate}`,
       });
 
       try {
-        // 呼叫 API 更新日期
-        // 使用 service 封裝的 apiHandler
-        // 需補齊 UpdateTransactionSchema 所需欄位，使用 spread 原始資料
-        const payload = {
-            ...event.resource,
-            date: newDate,
-        } as any; // 轉型為 any 以避免與 UpdateTransactionSchema 的嚴格型別不符（可能與 TransactionType 略有差異）
+        // 拖放只需更新 date，不需要送完整 payload
+        // 後端 updateIncomeExpense 支援部分更新
+        const transactionId = event.resource.id;
+        if (!transactionId) {
+          throw new Error('交易 ID 不存在');
+        }
+        const payload = { date: newDate };
 
-        const result = await updateTransaction(event.id, payload);
+        const result = await updateTransaction(
+          transactionId,
+          payload as Parameters<typeof updateTransaction>[1],
+        );
 
         if (!result) throw new Error('Failed to update');
-        
+
         toast.success('更新成功', {
           description: '交易日期已更新',
         });
-
-        // 觸發重新整理 (在真實 App 中會 invalidate query)
-        // 因為這是 Server Component 架構，我們使用 router.refresh() 來重新抓取資料
-        router.refresh(); 
-        
+        router.refresh();
       } catch (error) {
         toast.error('更新失敗', {
-          description: '無法移動交易',
+          description: getErrorMessage(error),
         });
       }
     },
-    [toast, router],
+    [router],
   );
 
   // 3. 點擊日期格子（開啟 Modal）
   const onSelectSlot = useCallback(
     ({ start }: { start: Date }) => {
-      // 找出當日的交易
       const dateStr = format(start, 'yyyy-MM-dd');
       const txsForDay = transactions.filter((tx) => tx.date === dateStr);
-      
+
       setSelectedDate(start);
       setDayTransactions(txsForDay);
       setIsModalOpen(true);
@@ -169,17 +197,22 @@ export default function TransactionCalendar({
     [transactions],
   );
 
-  // 4. 點擊事件（開啟編輯 Sheet）
+  // 4. 點擊事件（開啟編輯 Sheet） - 目前先用 console.log
+  const handleEditTransaction = useCallback((id: string) => {
+    console.log('編輯交易:', id);
+  }, []);
+
   const onSelectEvent = useCallback(
     (event: CalendarEventType) => {
-      onEditTransaction(event.id);
+      handleEditTransaction(event.id);
     },
-    [onEditTransaction],
+    [handleEditTransaction],
   );
 
-  // 5. 自訂事件元件
+  // 5. 自訂事件元件與 Toolbar
   const components = useMemo(
     () => ({
+      toolbar: CustomToolbar,
       event: ({ event }: { event: CalendarEventType }) => (
         <CalendarEvent event={event} categories={categories} />
       ),
@@ -188,34 +221,37 @@ export default function TransactionCalendar({
   );
 
   return (
-    <div className="h-[calc(100vh-250px)] min-h-[600px] bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 p-4">
-      <DnDCalendar
-        localizer={localizer}
-        events={events}
-        startAccessor="start"
-        endAccessor="end"
-        style={{ height: '100%' }}
-        view={view}
-        onView={setView}
-        date={date}
-        onNavigate={onNavigate}
-        selectable
-        onSelectSlot={onSelectSlot}
-        onSelectEvent={onSelectEvent}
-        onEventDrop={onEventDrop}
-        components={components}
-        popup // Show +N more
-        messages={{
-            next: '下個月',
-            previous: '上個月',
+    <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 overflow-hidden ring-1 ring-slate-100 dark:ring-slate-900">
+      <div className="h-[calc(100vh-200px)] min-h-[600px] p-0">
+        <DnDCalendar
+          localizer={localizer}
+          events={events}
+          startAccessor="start"
+          endAccessor="end"
+          style={{ height: '100%' }}
+          view={view}
+          onView={() => {}} // Disable view switching
+          date={date}
+          onNavigate={onNavigate}
+          selectable
+          onSelectSlot={onSelectSlot}
+          onSelectEvent={onSelectEvent}
+          onEventDrop={onEventDrop}
+          components={components as any}
+          popup
+          messages={{
+            next: '下',
+            previous: '上',
             today: '今天',
             month: '月',
             week: '週',
             day: '日',
             showMore: (total) => `+${total} 更多`,
-        }}
-        culture="zh-TW"
-      />
+          }}
+          culture="zh-TW"
+          className="rounded-b-2xl border-none"
+        />
+      </div>
 
       <CalendarDayModal
         isOpen={isModalOpen}
@@ -225,8 +261,8 @@ export default function TransactionCalendar({
         categories={categories}
         accounts={accounts}
         onEdit={(id) => {
-            setIsModalOpen(false);
-            onEditTransaction(id);
+          setIsModalOpen(false);
+          handleEditTransaction(id);
         }}
       />
     </div>

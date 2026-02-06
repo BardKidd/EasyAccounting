@@ -31,8 +31,10 @@ async function TransactionsPage(props: PageProps) {
   const searchParams = await props.searchParams;
 
   // 預設視圖改為日曆 (Calendar)
-  const view = (typeof searchParams.view === 'string' ? searchParams.view : 'calendar') as 'list' | 'calendar';
-  
+  const view = (
+    typeof searchParams.view === 'string' ? searchParams.view : 'calendar'
+  ) as 'list' | 'calendar';
+
   // List View Params
   const startDateParam =
     typeof searchParams.startDate === 'string'
@@ -51,7 +53,10 @@ async function TransactionsPage(props: PageProps) {
 
   // Calendar View Params
   // Default to current month if no date param
-  const dateParam = typeof searchParams.date === 'string' ? searchParams.date : format(new Date(), 'yyyy-MM-dd');
+  const dateParam =
+    typeof searchParams.date === 'string'
+      ? searchParams.date
+      : format(new Date(), 'yyyy-MM-dd');
   const calendarDate = parseISO(dateParam);
   const calendarStart = format(startOfMonth(calendarDate), 'yyyy-MM-dd');
   const calendarEnd = format(endOfMonth(calendarDate), 'yyyy-MM-dd');
@@ -91,21 +96,21 @@ async function TransactionsPage(props: PageProps) {
   // Helper for generating query string for tabs
   // 保留現有的 searchParams，只更新 view 參數
   const getTabLink = (targetView: 'list' | 'calendar') => {
-      const newParams = new URLSearchParams();
-      
-      // Copy existing params
-      Object.entries(searchParams).forEach(([key, value]) => {
-        if (value !== undefined) {
-           if (Array.isArray(value)) {
-             value.forEach(v => newParams.append(key, v));
-           } else {
-             newParams.set(key, value);
-           }
-        }
-      });
+    const newParams = new URLSearchParams();
 
-      newParams.set('view', targetView);
-      return `?${newParams.toString()}`;
+    // Copy existing params
+    Object.entries(searchParams).forEach(([key, value]) => {
+      if (value !== undefined) {
+        if (Array.isArray(value)) {
+          value.forEach((v) => newParams.append(key, v));
+        } else {
+          newParams.set(key, value);
+        }
+      }
+    });
+
+    newParams.set('view', targetView);
+    return `?${newParams.toString()}`;
   };
 
   return (
@@ -129,58 +134,50 @@ async function TransactionsPage(props: PageProps) {
 
       {/* Tabs */}
       <div className="flex items-center border-b border-slate-200 dark:border-slate-800">
-          <Link
-            href={getTabLink('list')}
-            className={cn(
-                "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
-                view === 'list' 
-                    ? "border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100" 
-                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
-            )}
-          >
-              列表
-          </Link>
-          <Link
-            href={getTabLink('calendar')}
-             className={cn(
-                "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
-                view === 'calendar' 
-                    ? "border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100" 
-                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
-            )}
-          >
-              日曆
-          </Link>
+        <Link
+          href={getTabLink('calendar')}
+          data-testid="tab-calendar"
+          className={cn(
+            'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+            view === 'calendar'
+              ? 'border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300',
+          )}
+        >
+          日曆
+        </Link>
+        <Link
+          href={getTabLink('list')}
+          data-testid="tab-list"
+          className={cn(
+            'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+            view === 'list'
+              ? 'border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300',
+          )}
+        >
+          列表
+        </Link>
       </div>
 
       <div className="space-y-4">
         {view === 'list' && (
-            <>
-                <TransactionFilters accounts={accounts} />
-                <TransactionTable
-                    transactions={transactions}
-                    categories={categories}
-                    accounts={accounts}
-                />
-            </>
+          <>
+            <TransactionFilters accounts={accounts} />
+            <TransactionTable
+              transactions={transactions}
+              categories={categories}
+              accounts={accounts}
+            />
+          </>
         )}
 
         {view === 'calendar' && (
-            <TransactionCalendar 
-                transactions={transactions.items} 
-                categories={categories}
-                accounts={accounts}
-                onEditTransaction={() => {
-                    // 開啟編輯 Sheet 的邏輯 - 目前尚不確定 TransactionTable 是內部處理還是複用 NewTransactionSheet。
-                    // TransactionTable 似乎沒有傳遞 onEdit。
-                    // 規格書提到「開啟該筆交易的編輯 Sheet（複用 newTransactionSheet）」。
-                    // 但 NewTransactionSheet 目前主要用於「新增」。
-                    // 需確認如何帶入現有資料進行編輯。
-                    // 此次迭代暫未實作編輯功能，待後續任務整合。
-                    // 查看 import，目前沒有 "EditTransactionSheet"。
-                    console.log("此迭代尚未實作編輯功能");
-                }}
-            />
+          <TransactionCalendar
+            transactions={transactions.items}
+            categories={categories}
+            accounts={accounts}
+          />
         )}
       </div>
     </Container>

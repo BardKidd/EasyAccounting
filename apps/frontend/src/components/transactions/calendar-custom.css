@@ -1,0 +1,104 @@
+@import 'tailwindcss';
+
+/* Global Overrides for React Big Calendar - Teal Theme */
+
+.rbc-calendar {
+  @apply font-sans text-slate-600 dark:text-slate-400;
+}
+
+/* Header */
+.rbc-header {
+  @apply py-4 text-[13px] font-semibold text-teal-700 dark:text-teal-400 border-b border-teal-100 dark:border-teal-900/40 bg-linear-to-b from-teal-50/50 to-transparent dark:from-teal-950/20 uppercase tracking-wider;
+}
+
+.rbc-header + .rbc-header {
+  @apply border-l border-teal-100 dark:border-teal-900/40;
+}
+
+/* Month View Grid */
+.rbc-month-view {
+  @apply bg-white dark:bg-slate-950 border-none rounded-none;
+}
+
+.rbc-month-row {
+  @apply border-slate-200 dark:border-slate-800;
+}
+
+.rbc-day-bg {
+  @apply bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800/60 transition-all duration-200;
+}
+
+.rbc-day-bg:hover {
+  @apply bg-teal-50/30 dark:bg-teal-900/10;
+}
+
+.rbc-day-bg + .rbc-day-bg {
+  @apply border-l border-slate-200 dark:border-slate-800/60;
+}
+
+/* Date Cell Content */
+.rbc-date-cell {
+  @apply p-3 text-[13px] font-medium text-slate-500 dark:text-slate-500;
+}
+
+.rbc-off-range-bg {
+  @apply bg-slate-50/60 dark:bg-slate-900/50;
+}
+
+/* Today Highlight */
+.rbc-today {
+  @apply bg-teal-50/50 dark:bg-teal-950/30;
+}
+
+.rbc-today .rbc-date-cell {
+  @apply text-teal-600 dark:text-teal-400 font-bold;
+}
+
+.rbc-today .rbc-button-link {
+  @apply relative inline-flex items-center justify-center w-7 h-7 rounded-full bg-teal-600 text-white font-bold;
+}
+
+/* Events Container in Month View */
+.rbc-row-segment {
+  @apply px-1 py-0.5;
+}
+
+/* Event Base Styles - Resetting defaults */
+.rbc-event {
+  @apply bg-transparent p-0 border-none rounded-none shadow-none focus:outline-none;
+}
+
+.rbc-event.rbc-selected {
+  @apply bg-transparent opacity-100 ring-2 ring-teal-500 ring-offset-1 rounded-md;
+}
+
+.rbc-event:focus {
+  @apply outline-none ring-2 ring-teal-400/50 rounded-md;
+}
+
+/* Show More Overlay (Popup) */
+.rbc-overlay {
+  @apply bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl p-4 z-50;
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.12),
+    0 8px 16px rgba(0, 0, 0, 0.08);
+}
+
+.rbc-overlay-header {
+  @apply border-b border-slate-100 dark:border-slate-800 pb-3 mb-3 text-sm font-bold text-slate-800 dark:text-slate-100;
+}
+
+/* Show More Link */
+.rbc-show-more {
+  @apply text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:underline bg-teal-50 dark:bg-teal-900/30 px-2 py-0.5 rounded-full transition-colors cursor-pointer;
+}
+
+/* Row content alignment */
+.rbc-row-content {
+  @apply z-10;
+}
+
+/* Off-range text dimming */
+.rbc-off-range {
+  @apply text-slate-300 dark:text-slate-700;
+}

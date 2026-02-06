@@ -37,36 +37,34 @@ export function CalendarEvent({ event, categories }: CalendarEventProps) {
 
   const category = findCategory(resource.categoryId, categories);
 
-  let bgColor = 'bg-slate-100';
-  let textColor = 'text-slate-700';
-  let borderColor = 'border-slate-200';
+  let containerClass =
+    'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+  let amountClass = 'font-semibold';
 
   if (isTransfer) {
-    // Operate / Transfer
-    bgColor = 'bg-amber-100 dark:bg-amber-500/10';
-    textColor = 'text-amber-700 dark:text-amber-400';
-    borderColor = 'border-amber-200 dark:border-amber-500/20';
+    containerClass =
+      'bg-cyan-100 text-cyan-900 dark:bg-cyan-900/40 dark:text-cyan-100';
   } else if (type === RootType.EXPENSE) {
-    // Expense
-    bgColor = 'bg-rose-100 dark:bg-rose-500/10';
-    textColor = 'text-rose-700 dark:text-rose-400';
-    borderColor = 'border-rose-200 dark:border-rose-500/20';
+    containerClass =
+      'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200';
   } else if (type === RootType.INCOME) {
-    // Income
-    bgColor = 'bg-emerald-100 dark:bg-emerald-500/10';
-    textColor = 'text-emerald-700 dark:text-emerald-400';
-    borderColor = 'border-emerald-200 dark:border-emerald-500/20';
+    containerClass =
+      'bg-teal-100 text-teal-800 dark:bg-teal-950/50 dark:text-teal-200';
   }
 
   return (
     <div
-      className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded-sm text-xs border-l-2 truncate ${bgColor} ${textColor} ${borderColor}`}
+      className={`group flex items-center gap-1.5 px-2 py-1 mx-0.5 my-0.5 rounded-md text-xs ${containerClass} transition-all duration-200 hover:brightness-95 dark:hover:brightness-110 cursor-pointer`}
     >
-        <div className="shrink-0">
-             <CategoryIcon iconName={category?.icon} className="h-3 w-3" />
-        </div>
-      <span className="truncate font-medium">{event.title}</span>
-      <span className="font-mono ml-auto tabular-nums opacity-90">
+      <div
+        className={`shrink-0 opacity-75 group-hover:opacity-100 transition-opacity`}
+      >
+        <CategoryIcon iconName={category?.icon} className="h-3 w-3" />
+      </div>
+      <span className="truncate font-medium flex-1">{event.title}</span>
+      <span
+        className={`font-mono tabular-nums text-[10px] opacity-90 ${amountClass}`}
+      >
         {formatCurrency(Math.abs(amount))}
       </span>
     </div>

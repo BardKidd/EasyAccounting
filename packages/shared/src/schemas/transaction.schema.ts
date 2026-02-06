@@ -67,7 +67,15 @@ export const createTransferSchema = baseSchema.and(
   }),
 );
 
-export const updateTransactionSchema = createTransactionSchema;
+// 更新 schema：允許部分更新（如拖放只更新 date）
+// ZodIntersection 不支援 .partial()，改用 z.object 包裝並設所有欄位為 optional
+export const updateTransactionSchema = baseSchema
+  .extend({
+    type: z.enum([RootType.INCOME, RootType.EXPENSE]).optional(),
+    billingDate: z.string().optional(),
+    budgetIds: z.array(z.string().uuid()).optional(),
+  })
+  .partial();
 
 export const getTransactionsByDateSchema = z.object({
   accountId: z.string().uuid().optional(),
@@ -77,6 +85,7 @@ export const getTransactionsByDateSchema = z.object({
   endDate: z.string().optional(),
   date: z.string().optional(),
   page: z.coerce.number().optional(),
+  limit: z.coerce.number().optional(),
 });
 
 export const getTransactionsDashboardSummarySchema = z.object({
