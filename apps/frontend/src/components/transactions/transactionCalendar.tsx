@@ -9,28 +9,30 @@ import {
   ToolbarProps,
 } from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
-import { format, parse, startOfWeek, getDay } from 'date-fns';
+import {
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  startOfMonth,
+  endOfMonth,
+} from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import './calendar-custom.css';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import useSWR from 'swr';
 
-import {
-  TransactionType,
-  CategoryType,
-  AccountType,
-  RootType,
-} from '@repo/shared';
+import { TransactionType, CategoryType, AccountType } from '@repo/shared';
 import { CalendarEvent } from './calendarEvent';
 import { CalendarDayModal } from './calendarDayModal';
 import { TransactionSheet } from './transactionSheet';
 import { toast } from 'sonner';
-import { isOperateTransaction } from '@repo/shared';
-import { updateTransaction } from '@/services/transaction';
+import { getTransactions, updateTransaction } from '@/services/transaction';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn, getErrorMessage } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/utils';
 import {
   filterForCalendar,
   transactionToCalendarEvent,
@@ -51,6 +53,16 @@ const localizer = dateFnsLocalizer({
 });
 
 const DnDCalendar = withDragAndDrop<CalendarEventType>(Calendar);
+
+// SWR Fetcher
+const transactionFetcher = async ([, dateStr]: [string, string]) => {
+  const date = new Date(dateStr);
+  const start = format(startOfMonth(date), 'yyyy-MM-dd');
+  const end = format(endOfMonth(date), 'yyyy-MM-dd');
+
+  // Limit 1000 for calendar view
+  return await getTransactions({ startDate: start, endDate: end, limit: 1000 });
+};
 
 interface TransactionCalendarProps {
   transactions: TransactionType[];
@@ -96,7 +108,7 @@ const CustomToolbar = ({ date, onNavigate, label }: ToolbarProps) => {
 };
 
 export default function TransactionCalendar({
-  transactions,
+  transactions: initialTransactions,
   categories,
   accounts,
 }: TransactionCalendarProps) {
@@ -108,10 +120,32 @@ export default function TransactionCalendar({
   const view = Views.MONTH;
 
   // 與 URL 同步內部日期
+  // 如果 URL 只有 ?view=calendar 沒有 date，我們就用今日
   const dateParam = searchParams.get('date');
   const [date, setDate] = useState(
     dateParam ? new Date(dateParam) : new Date(),
   );
+
+  // SWR: Client-side fetching with caching
+  // Key 包含 date 資訊，這樣切換月份就會自動換 key -> 抓新資料
+  const currentKey = format(date, 'yyyy-MM-dd');
+
+  const { data: transactionsData, mutate } = useSWR(
+    ['/transaction/date', currentKey],
+    transactionFetcher,
+    {
+      fallbackData: {
+        items: initialTransactions,
+        pagination: { total: 0, page: 1, limit: 1000, totalPages: 1 },
+      },
+      revalidateOnFocus: false, // 視窗切換回來不用每次都重抓，根據個人喜好
+      dedupingInterval: 60000, // 1分鐘內重複的 key 不發請求 (Cache 有效期)
+      keepPreviousData: true, // 載入新月份時保留舊月份畫面，體驗更好 (不會白屏)
+    },
+  );
+
+  // 如果 SWR 有資料就用 data.items，沒有就用 initialProps (SWR fallbackData 其實已經處理了，這裡只是雙保險)
+  const transactions = transactionsData?.items || initialTransactions;
 
   useEffect(() => {
     if (dateParam) {
@@ -134,33 +168,23 @@ export default function TransactionCalendar({
     return filterForCalendar(transactions).map(transactionToCalendarEvent);
   }, [transactions]);
 
-  // 處理日曆導航 with debounce
-  const navigateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
+  // 處理日曆導航 (使用 shallow routing)
   const onNavigate = useCallback(
     (newDate: Date) => {
-      // 清除先前的 timeout（debounce）
-      if (navigateTimeoutRef.current) {
-        clearTimeout(navigateTimeoutRef.current);
-      }
-      // 取消先前的請求
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
       setDate(newDate);
 
-      // Debounce 300ms 後才觸發 URL 更新
-      navigateTimeoutRef.current = setTimeout(() => {
-        abortControllerRef.current = new AbortController();
-        const newDateStr = format(newDate, 'yyyy-MM-dd');
-        const params = new URLSearchParams(searchParams.toString());
-        params.set('date', newDateStr);
-        router.push(`${pathname}?${params.toString()}`);
-      }, 300);
+      const newDateStr = format(newDate, 'yyyy-MM-dd');
+
+      // 更新 URL 但不觸發 Server Component Refresh (Shallow)
+      // 使用 window.history.pushState 來更新網址列，這樣重新整理時會停在該月份
+      // 但不會觸發 Next.js 的 router.pushServer-side fetch
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('date', newDateStr);
+
+      // 更新 URL
+      window.history.pushState(null, '', `?${params.toString()}`);
     },
-    [pathname, router, searchParams],
+    [searchParams],
   );
 
   // 2. 拖放處理
@@ -195,14 +219,16 @@ export default function TransactionCalendar({
         toast.success('更新成功', {
           description: '交易日期已更新',
         });
-        router.refresh();
+
+        // 成功後讓 SWR 重新抓取資料
+        mutate();
       } catch (error) {
         toast.error('更新失敗', {
           description: getErrorMessage(error),
         });
       }
     },
-    [router],
+    [mutate],
   );
 
   // 3. 點擊日期格子（開啟 Modal，無交易則不顯示）
@@ -303,6 +329,7 @@ export default function TransactionCalendar({
         onClose={() => {
           setIsEditSheetOpen(false);
           setSelectedTransaction(null);
+          mutate(); // 關閉 Sheet 時也重新整理 SWR (如果有修改)
         }}
         transaction={selectedTransaction}
         categories={categories}
