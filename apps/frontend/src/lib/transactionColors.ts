@@ -21,12 +21,12 @@ export const TRANSACTION_COLORS = {
     iconDark: 'dark:text-rose-400',
   },
   transfer: {
-    bg: 'bg-cyan-100',
-    bgDark: 'dark:bg-cyan-900/40',
-    text: 'text-cyan-900',
-    textDark: 'dark:text-cyan-100',
-    icon: 'text-cyan-600',
-    iconDark: 'dark:text-cyan-400',
+    bg: 'bg-amber-100',
+    bgDark: 'dark:bg-amber-900/40',
+    text: 'text-amber-900',
+    textDark: 'dark:text-amber-100',
+    icon: 'text-amber-600',
+    iconDark: 'dark:text-amber-400',
   },
   default: {
     bg: 'bg-slate-100',

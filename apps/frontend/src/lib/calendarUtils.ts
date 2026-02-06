@@ -26,7 +26,7 @@ export function transactionToCalendarEvent(
 
   return {
     id: tx.id || '',
-    title: tx.description || 'Transaction',
+    title: tx.description || '',
     start: dateTime,
     end: dateTime,
     allDay: false,

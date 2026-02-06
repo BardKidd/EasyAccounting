@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   Calendar,
   dateFnsLocalizer,
@@ -24,7 +24,7 @@ import {
 } from '@repo/shared';
 import { CalendarEvent } from './calendarEvent';
 import { CalendarDayModal } from './calendarDayModal';
-import { EditTransactionSheet } from './editTransactionSheet';
+import { TransactionSheet } from './transactionSheet';
 import { toast } from 'sonner';
 import { isOperateTransaction } from '@repo/shared';
 import { updateTransaction } from '@/services/transaction';
@@ -134,14 +134,31 @@ export default function TransactionCalendar({
     return filterForCalendar(transactions).map(transactionToCalendarEvent);
   }, [transactions]);
 
-  // 處理日曆導航
+  // 處理日曆導航 with debounce
+  const navigateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const onNavigate = useCallback(
     (newDate: Date) => {
+      // 清除先前的 timeout（debounce）
+      if (navigateTimeoutRef.current) {
+        clearTimeout(navigateTimeoutRef.current);
+      }
+      // 取消先前的請求
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
       setDate(newDate);
-      const newDateStr = format(newDate, 'yyyy-MM-dd');
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('date', newDateStr);
-      router.push(`${pathname}?${params.toString()}`);
+
+      // Debounce 300ms 後才觸發 URL 更新
+      navigateTimeoutRef.current = setTimeout(() => {
+        abortControllerRef.current = new AbortController();
+        const newDateStr = format(newDate, 'yyyy-MM-dd');
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('date', newDateStr);
+        router.push(`${pathname}?${params.toString()}`);
+      }, 300);
     },
     [pathname, router, searchParams],
   );
@@ -188,18 +205,14 @@ export default function TransactionCalendar({
     [router],
   );
 
-  // 3. 點擊日期格子（開啟 Modal）
+  // 3. 點擊日期格子（開啟 Modal，無交易則不顯示）
   const onSelectSlot = useCallback(
     ({ start }: { start: Date }) => {
       const dateStr = format(start, 'yyyy-MM-dd');
       const txsForDay = transactions.filter((tx) => tx.date === dateStr);
 
-      // DEBUG: 幫助診斷為何 Modal 是空的
-      console.log('[Calendar Debug]', {
-        clickedDate: dateStr,
-        matchedCount: txsForDay.length,
-        allDates: [...new Set(transactions.map((tx) => tx.date))].slice(0, 10),
-      });
+      // 無交易時不開啟 modal
+      if (txsForDay.length === 0) return;
 
       setSelectedDate(start);
       setDayTransactions(txsForDay);
@@ -285,7 +298,7 @@ export default function TransactionCalendar({
         }}
       />
 
-      <EditTransactionSheet
+      <TransactionSheet
         isOpen={isEditSheetOpen}
         onClose={() => {
           setIsEditSheetOpen(false);

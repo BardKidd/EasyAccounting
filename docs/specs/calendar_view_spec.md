@@ -18,7 +18,7 @@
 
 | 包含              | 不包含       |
 | ----------------- | ------------ |
-| 月/週/日視圖      | 定期交易預覽 |
+| 月視圖            | 定期交易預覽 |
 | 格子內交易摘要    | 帳單提醒通知 |
 | 點擊展開 Modal    | 跨裝置同步   |
 | 拖放調整日期      | -            |
@@ -34,13 +34,13 @@
 
 | Tab      | 說明                   |
 | -------- | ---------------------- |
-| **列表** | 現有的表格式交易列表   |
 | **日曆** | 新增的日曆視圖（預設） |
+| **列表** | 現有的表格式交易列表   |
 
 **規則**：
 
 - 兩個視圖**不共用篩選器**，各自獨立操作
-- 日曆視圖使用 React Big Calendar 原生的月/週/日切換與導航
+- 日曆視圖僅使用月視圖
 - 切換視圖時保留當前月份/週次的 context
 
 ### 2.2 日曆格子顯示 (Cell Display)
@@ -75,10 +75,13 @@
 
 ### 2.3 點擊互動 (Click Interaction)
 
-| 操作             | 行為                                                       |
-| ---------------- | ---------------------------------------------------------- |
-| **點擊日期格子** | 開啟 Modal，顯示該日所有交易明細                           |
-| **點擊單筆交易** | 開啟該筆交易的編輯 **Sheet**（複用 `newTransactionSheet`） |
+| 操作             | 行為                                                                  |
+| ---------------- | --------------------------------------------------------------------- |
+| **點擊日期格子** | 開啟 Modal，顯示該日所有交易明細                                      |
+| **點擊單筆交易** | 開啟該筆交易的編輯 **Sheet**（使用 `TransactionSheet`，支援刪除功能） |
+
+> [!NOTE]
+> **無交易時不顯示 Modal**：若點擊的日期沒有任何交易紀錄，不開啟 Modal，直接忽略點擊動作。
 
 **Modal 內容**：
 
@@ -108,11 +111,11 @@
 
 使用統一的顏色常數定義（參考 `lib/transactionColors.ts`）：
 
-| 交易類型           | Text Color | Background    |
-| ------------------ | ---------- | ------------- |
-| **收入 (INCOME)**  | 青綠色     | `bg-teal-100` |
-| **支出 (EXPENSE)** | 玫瑰色     | `bg-rose-100` |
-| **操作 (OPERATE)** | 青色       | `bg-cyan-100` |
+| 交易類型           | Text Color | Background     |
+| ------------------ | ---------- | -------------- |
+| **收入 (INCOME)**  | 青綠色     | `bg-teal-100`  |
+| **支出 (EXPENSE)** | 玫瑰色     | `bg-rose-100`  |
+| **操作 (OPERATE)** | 橙黃色     | `bg-amber-100` |
 
 **操作類交易特殊處理**：
 
@@ -264,7 +267,37 @@ export function isIncomingTransfer(tx: TransactionType): boolean {
 - **初版做法**：先全部撈回來試試，未來用 Seeder 塞入完整假資料測試效能
 - **未來優化**：若有效能問題，可新增 `?noPagination=true` 參數或專用 endpoint
 
-### 4.2 拖放更新 API
+### 4.2 月份切換優化 (Navigation Debounce)
+
+為避免使用者快速連點月份切換按鈕造成多次 API 呼叫或資源浪費：
+
+| 機制                | 說明                                                 |
+| ------------------- | ---------------------------------------------------- |
+| **Debounce**        | 使用 300ms debounce，連續點擊只觸發最後一次 URL 更新 |
+| **AbortController** | 取消先前尚未完成的請求，確保只有最新請求被處理       |
+
+**實作方式**：
+
+```typescript
+const navigateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+const abortControllerRef = useRef<AbortController | null>(null);
+
+const onNavigate = useCallback((newDate: Date) => {
+  // 清除先前的 timeout
+  if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
+  // 取消先前的請求
+  if (abortControllerRef.current) abortControllerRef.current.abort();
+
+  setDate(newDate);
+
+  navigateTimeoutRef.current = setTimeout(() => {
+    abortControllerRef.current = new AbortController();
+    // 觸發 URL 更新和 API 呼叫
+  }, 300);
+}, []);
+```
+
+### 4.3 拖放更新 API
 
 **Request**：
 

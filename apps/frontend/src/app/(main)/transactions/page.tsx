@@ -2,14 +2,14 @@ import { Container } from '@/components/ui/container';
 import {
   TransactionTable,
   TransactionFilters,
-  NewTransactionSheet,
+  CreateTransactionButton,
   TransactionCalendar,
 } from '@/components/transactions';
 import service from '@/services';
 import { ExcelExportButton } from '@/components/common/ExcelExportButton';
 import ExcelImportButton from '@/components/common/ExcelImportButton';
 import { TemplateDownloadButton } from '@/components/common/TemplateDownloadButton';
-import { PageType } from '@repo/shared';
+import { PageType, TransactionViewMode } from '@repo/shared';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { startOfMonth, endOfMonth, format, parseISO } from 'date-fns';
@@ -32,8 +32,10 @@ async function TransactionsPage(props: PageProps) {
 
   // 預設視圖改為日曆 (Calendar)
   const view = (
-    typeof searchParams.view === 'string' ? searchParams.view : 'calendar'
-  ) as 'list' | 'calendar';
+    typeof searchParams.view === 'string'
+      ? searchParams.view
+      : TransactionViewMode.CALENDAR
+  ) as TransactionViewMode;
 
   // List View Params
   const startDateParam =
@@ -66,7 +68,7 @@ async function TransactionsPage(props: PageProps) {
   let categories;
   let accounts;
 
-  if (view === 'calendar') {
+  if (view === TransactionViewMode.CALENDAR) {
     // Calendar Fetch: No pagination (limit 1000), specific month range, no other filters
     [transactions, categories, accounts] = await Promise.all([
       service.getTransactions({
@@ -95,7 +97,7 @@ async function TransactionsPage(props: PageProps) {
 
   // Helper for generating query string for tabs
   // 保留現有的 searchParams，只更新 view 參數
-  const getTabLink = (targetView: 'list' | 'calendar') => {
+  const getTabLink = (targetView: TransactionViewMode) => {
     const newParams = new URLSearchParams();
 
     // Copy existing params
@@ -128,18 +130,21 @@ async function TransactionsPage(props: PageProps) {
           <TemplateDownloadButton />
           <ExcelImportButton shouldRefresh={true} />
           <ExcelExportButton type={PageType.TRANSACTIONS} />
-          <NewTransactionSheet categories={categories} accounts={accounts} />
+          <CreateTransactionButton
+            categories={categories}
+            accounts={accounts}
+          />
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex items-center border-b border-slate-200 dark:border-slate-800">
         <Link
-          href={getTabLink('calendar')}
+          href={getTabLink(TransactionViewMode.CALENDAR)}
           data-testid="tab-calendar"
           className={cn(
             'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
-            view === 'calendar'
+            view === TransactionViewMode.CALENDAR
               ? 'border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100'
               : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300',
           )}
@@ -147,11 +152,11 @@ async function TransactionsPage(props: PageProps) {
           日曆
         </Link>
         <Link
-          href={getTabLink('list')}
+          href={getTabLink(TransactionViewMode.LIST)}
           data-testid="tab-list"
           className={cn(
             'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
-            view === 'list'
+            view === TransactionViewMode.LIST
               ? 'border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100'
               : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300',
           )}
@@ -161,7 +166,7 @@ async function TransactionsPage(props: PageProps) {
       </div>
 
       <div className="space-y-4">
-        {view === 'list' && (
+        {view === TransactionViewMode.LIST && (
           <>
             <TransactionFilters accounts={accounts} />
             <TransactionTable
@@ -172,7 +177,7 @@ async function TransactionsPage(props: PageProps) {
           </>
         )}
 
-        {view === 'calendar' && (
+        {view === TransactionViewMode.CALENDAR && (
           <TransactionCalendar
             transactions={transactions.items}
             categories={categories}

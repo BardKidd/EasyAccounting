@@ -71,9 +71,12 @@ export const createTransferSchema = baseSchema.and(
 // ZodIntersection 不支援 .partial()，改用 z.object 包裝並設所有欄位為 optional
 export const updateTransactionSchema = baseSchema
   .extend({
-    type: z.enum([RootType.INCOME, RootType.EXPENSE]).optional(),
+    type: z
+      .enum([RootType.INCOME, RootType.EXPENSE, RootType.OPERATE])
+      .optional(),
     billingDate: z.string().optional(),
     budgetIds: z.array(z.string().uuid()).optional(),
+    targetAccountId: z.string().uuid().optional(),
   })
   .partial();
 
