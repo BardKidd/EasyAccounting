@@ -24,8 +24,17 @@
 .rbc-month-row {
   @apply border-slate-200 dark:border-slate-800;
   min-height: 100px;
+  /* Laptop/Small Screen: Constrain height to force "+More" popup style and compactness */
   max-height: 140px;
   overflow: hidden;
+}
+
+/* Large Screen (approx 24" PC, >900px height): Expand rows to fill empty space */
+@media (min-height: 900px) {
+  .rbc-month-row {
+    flex: 1 0 0;
+    max-height: none;
+  }
 }
 
 .rbc-day-bg {
