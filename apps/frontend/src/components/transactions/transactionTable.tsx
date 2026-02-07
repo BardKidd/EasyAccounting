@@ -72,7 +72,7 @@ function TransactionTable({
 
     if (netAmount === 0) {
       return (
-        <span className="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)] font-bold font-mono tracking-tight">
+        <span className="text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.3)] font-bold font-mono tracking-tight">
           {formatted}
         </span>
       );
@@ -87,7 +87,7 @@ function TransactionTable({
     }
     if (item.type === RootType.INCOME) {
       return (
-        <span className="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)] font-bold font-mono tracking-tight">
+        <span className="text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.3)] font-bold font-mono tracking-tight">
           +{formatted}
         </span>
       );
@@ -101,14 +101,14 @@ function TransactionTable({
 
   if (transactions?.items?.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-center border-0 rounded-2xl bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm h-80 ring-1 ring-slate-200 dark:ring-white/10">
-        <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-4">
-          <ArrowRightLeft className="h-8 w-8 text-slate-400" />
+      <div className="flex flex-col items-center justify-center p-12 text-center border border-border rounded-2xl bg-card backdrop-blur-sm h-80 shadow-sm">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+          <ArrowRightLeft className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200">
+        <h3 className="text-lg font-bold text-foreground">
           尚無交易紀錄
         </h3>
-        <p className="text-sm text-slate-500 mt-2">
+        <p className="text-sm text-muted-foreground mt-2">
           試著新增一筆交易或調整篩選條件
         </p>
       </div>
@@ -117,27 +117,27 @@ function TransactionTable({
 
   return (
     <div className="space-y-4">
-      <Card className="border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 overflow-hidden">
+      <Card className="border-border bg-card shadow-sm overflow-hidden">
         <div className="rounded-md">
           <Table data-testid="transaction-table">
-            <TableHeader className="bg-slate-50/50 dark:bg-white/5">
-              <TableRow className="border-b border-slate-200 dark:border-white/5 hover:bg-transparent">
-                <TableHead className="w-[120px] text-slate-500 font-medium">
+            <TableHeader className="bg-muted/50">
+              <TableRow className="border-b border-border hover:bg-transparent">
+                <TableHead className="w-[120px] text-muted-foreground font-medium">
                   日期
                 </TableHead>
-                <TableHead className="w-[100px] text-slate-500 font-medium">
+                <TableHead className="w-[100px] text-muted-foreground font-medium">
                   類型
                 </TableHead>
-                <TableHead className="w-[200px] text-slate-500 font-medium">
+                <TableHead className="w-[200px] text-muted-foreground font-medium">
                   分類
                 </TableHead>
-                <TableHead className="w-[200px] text-slate-500 font-medium">
+                <TableHead className="w-[200px] text-muted-foreground font-medium">
                   帳戶
                 </TableHead>
-                <TableHead className="text-slate-500 font-medium">
+                <TableHead className="text-muted-foreground font-medium">
                   備註
                 </TableHead>
-                <TableHead className="text-right w-[150px] text-slate-500 font-medium">
+                <TableHead className="text-right w-[150px] text-muted-foreground font-medium">
                   金額
                 </TableHead>
               </TableRow>
@@ -152,13 +152,13 @@ function TransactionTable({
                 return (
                   <TableRow
                     key={transaction.id}
-                    className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50/80 dark:hover:bg-white/5 transition-colors"
+                    className="border-b border-border hover:bg-muted/50 transition-colors"
                   >
-                    <TableCell className="font-mono text-sm text-slate-600 dark:text-slate-300">
+                    <TableCell className="font-mono text-sm text-foreground">
                       <div>
                         {format(new Date(transaction.date), 'yyyy-MM-dd')}
                       </div>
-                      <div className="text-xs text-slate-400">
+                      <div className="text-xs text-muted-foreground">
                         {transaction.time}
                       </div>
                     </TableCell>
@@ -169,7 +169,7 @@ function TransactionTable({
                             ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'
                             : transaction.type === RootType.EXPENSE
                               ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'
-                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
+                              : 'bg-teal-100 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400'
                         }`}
                       >
                         {isTransfer(transaction)
@@ -182,7 +182,7 @@ function TransactionTable({
                         <div
                           className={`flex h-9 w-9 items-center justify-center rounded-lg shadow-sm ${
                             !category?.color
-                              ? 'bg-slate-100 dark:bg-slate-800'
+                              ? 'bg-muted'
                               : ''
                           }`}
                           style={{
@@ -194,10 +194,10 @@ function TransactionTable({
                           <CategoryIcon
                             iconName={category?.icon}
                             className="h-4 w-4"
-                            style={{ color: category?.color || '#94a3b8' }}
+                            style={{ color: category?.color || 'currentColor' }}
                           />
                         </div>
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                        <span className="text-sm font-medium text-foreground">
                           {category?.name || '未分類'}
                         </span>
                       </div>
@@ -210,16 +210,16 @@ function TransactionTable({
                             const account = getAccount(transaction.accountId);
                             if (!account)
                               return (
-                                <span className="text-slate-400">未知帳戶</span>
+                                <span className="text-muted-foreground">未知帳戶</span>
                               );
                             const Icon =
                               ACCOUNT_ICONS[account.icon as IconName];
                             return (
                               <>
                                 {Icon && (
-                                  <Icon className="h-4 w-4 text-slate-400" />
+                                  <Icon className="h-4 w-4 text-muted-foreground" />
                                 )}
-                                <span className="text-sm text-slate-600 dark:text-slate-300">
+                                <span className="text-sm text-foreground">
                                   {account.name}
                                 </span>
                               </>
@@ -229,7 +229,7 @@ function TransactionTable({
 
                         {/* Target Account */}
                         {transaction.targetAccountId && (
-                          <div className="flex items-center gap-2 text-slate-400 pl-2 border-l-2 border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center gap-2 text-muted-foreground pl-2 border-l-2 border-border">
                             {(() => {
                               const targetAccount = getAccount(
                                 transaction.targetAccountId!,
@@ -254,7 +254,7 @@ function TransactionTable({
                     </TableCell>
                     <TableCell className="max-w-[200px]">
                       <span
-                        className="text-sm text-slate-600 dark:text-slate-400 truncate block"
+                        className="text-sm text-muted-foreground truncate block"
                         title={transaction.description || ''}
                       >
                         {transaction.description || '-'}

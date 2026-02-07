@@ -66,7 +66,7 @@ function Header() {
   }, [user.name]);
 
   return (
-    <header className="sticky top-4 z-50 mx-4 md:mr-8 mt-4 rounded-2xl border border-white/20 bg-background/70 backdrop-blur-xl shadow-lg supports-backdrop-filter:bg-background/40 transition-all duration-300 hover:bg-background/80 hover:shadow-xl">
+    <header className="sticky top-4 z-50 mx-4 md:mr-8 mt-4 rounded-2xl border border-border bg-background/80 backdrop-blur-xl shadow-sm transition-all duration-300 hover:shadow-md">
       <div className="flex h-16 items-center px-6 gap-4">
         {/* Breadcrumbs or Page Title could go here in future */}
         <div className="flex-1">
@@ -79,37 +79,37 @@ function Header() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 cursor-pointer relative rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            className="h-10 w-10 cursor-pointer relative rounded-full hover:bg-accent hover:text-accent-foreground transition-colors"
             onClick={() => router.push('/reconciliation')}
           >
             <Bell className="h-5 w-5 text-muted-foreground" />
             {notificationCount > 0 && (
-              <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-background animate-pulse" />
+              <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background animate-pulse" />
             )}
             <span className="sr-only">Toggle notifications</span>
           </Button>
 
-          <div className="h-8 w-px bg-border/50 mx-1 hidden md:block"></div>
+          <div className="h-8 w-px bg-border mx-1 hidden md:block"></div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="relative h-10 w-10 rounded-full border border-border/50 bg-secondary/30 p-0 font-bold hover:bg-secondary/50 transition-all cursor-pointer ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 overflow-hidden"
+                className="relative h-10 w-10 rounded-full border border-border bg-secondary/30 p-0 font-bold hover:bg-secondary/50 transition-all cursor-pointer ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 overflow-hidden"
               >
-                <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-indigo-500 to-purple-500 text-white shadow-inner">
+                <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-primary to-secondary text-primary-foreground shadow-inner">
                   {getFirstLetterAsAvatar}
                 </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="w-60 rounded-xl shadow-2xl border-white/10 bg-background/95 backdrop-blur-md"
+              className="w-60 rounded-xl shadow-xl border-border bg-popover/95 backdrop-blur-md"
               align="end"
               forceMount
             >
               <DropdownMenuLabel className="font-normal p-4">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-base font-semibold leading-none font-playfair tracking-wide">
+                  <p className="text-base font-semibold leading-none tracking-wide text-foreground">
                     {user.name}
                   </p>
                   <p className="text-xs leading-none text-muted-foreground">
@@ -117,16 +117,16 @@ function Header() {
                   </p>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-border/50" />
-              <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent/50 rounded-md m-1">
+              <DropdownMenuSeparator className="bg-border" />
+              <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent focus:text-accent-foreground rounded-md m-1">
                 個人檔案
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent/50 rounded-md m-1">
+              <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent focus:text-accent-foreground rounded-md m-1">
                 設定
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-border/50" />
+              <DropdownMenuSeparator className="bg-border" />
               <DropdownMenuItem
-                className="text-rose-500 cursor-pointer py-2.5 px-3 focus:bg-rose-50 dark:focus:bg-rose-950/30 rounded-md m-1 focus:text-rose-600"
+                className="text-destructive cursor-pointer py-2.5 px-3 focus:bg-destructive/10 rounded-md m-1 focus:text-destructive"
                 onClick={handleLogout}
               >
                 登出

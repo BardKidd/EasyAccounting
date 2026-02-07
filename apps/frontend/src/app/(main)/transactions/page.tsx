@@ -119,10 +119,10 @@ async function TransactionsPage(props: PageProps) {
     <Container className="py-8 space-y-8 max-w-[1600px] px-4 md:px-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-3xl font-bold tracking-tight bg-linear-to-r from-slate-900 to-slate-700 dark:from-white dark:to-white/60 bg-clip-text text-transparent font-playfair">
+          <h2 className="text-3xl font-bold tracking-tight text-foreground">
             交易紀錄
           </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-muted-foreground">
             管理與檢視您的每一筆收支
           </p>
         </div>
@@ -138,15 +138,15 @@ async function TransactionsPage(props: PageProps) {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center border-b border-slate-200 dark:border-slate-800">
+      <div className="flex items-center border-b border-border">
         <Link
           href={getTabLink(TransactionViewMode.CALENDAR)}
           data-testid="tab-calendar"
           className={cn(
             'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
             view === TransactionViewMode.CALENDAR
-              ? 'border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100'
-              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300',
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground',
           )}
         >
           日曆
@@ -157,8 +157,8 @@ async function TransactionsPage(props: PageProps) {
           className={cn(
             'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
             view === TransactionViewMode.LIST
-              ? 'border-slate-900 text-slate-900 dark:border-slate-100 dark:text-slate-100'
-              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300',
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground',
           )}
         >
           列表
