@@ -14,6 +14,7 @@ import { Budget, BudgetUsage, BudgetCycleType } from '@/types/budget';
 import { formatCurrency, cn } from '@/lib/utils';
 import { getDaysRemaining } from '@/lib/budget-utils';
 import { Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface BudgetCardProps {
   budget: Budget;
@@ -28,21 +29,22 @@ export function BudgetCard({
   onEdit,
   onDelete,
 }: BudgetCardProps) {
+  const router = useRouter();
   const { usageRate, spent, remaining, available } = usage;
 
-  let statusColor = 'bg-green-500';
-  let textColor = 'text-green-600';
+  let statusColor = 'bg-emerald-500';
+  let textColor = 'text-emerald-600 dark:text-emerald-400';
 
   // 計算使用率顏色邏輯：
   // >= 100% : 紅色 (警告)
   // >= 80%  : 橘色 (注意)
   // 其他    : 綠色 (正常)
   if (usageRate >= 100) {
-    statusColor = 'bg-red-500';
-    textColor = 'text-red-600';
+    statusColor = 'bg-destructive';
+    textColor = 'text-destructive';
   } else if (usageRate >= 80) {
-    statusColor = 'bg-orange-500';
-    textColor = 'text-orange-600';
+    statusColor = 'bg-amber-500';
+    textColor = 'text-amber-600 dark:text-amber-400';
   }
 
   // 根據週期類型顯示對應的文字描述
@@ -68,13 +70,13 @@ export function BudgetCard({
       <Card className="w-full opacity-80">
         <CardHeader className="pb-2">
           <div className="space-y-2">
-            <div className="h-5 w-1/3 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-            <div className="h-4 w-1/4 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="h-5 w-1/3 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-1/4 animate-pulse rounded bg-muted" />
           </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-6 text-sm text-muted-foreground">
-            <AlertTriangle className="mb-2 h-8 w-8 animate-bounce text-amber-500" />
+            <AlertTriangle className="mb-2 h-8 w-8 animate-bounce text-primary" />
             正在重新計算歷史資料...
           </div>
         </CardContent>
@@ -82,12 +84,15 @@ export function BudgetCard({
     );
   }
 
+  const handleCardClick = () => {
+    router.push(`/budgets/${budget.id}`);
+  };
+
   return (
     <div className="group relative w-full rounded-xl transition-all hover:shadow-lg">
       <Card
         className="w-full cursor-pointer transition-colors group-hover:border-primary/50"
-        // 點擊卡片跳轉到詳情頁
-        onClick={() => (window.location.href = `/budgets/${budget.id}`)}
+        onClick={handleCardClick}
       >
         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
           <div className="space-y-1">
@@ -166,10 +171,10 @@ export function BudgetCard({
 
       {/* Hover Hint Overlay */}
       <div
-        className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-slate-900/5 opacity-0 backdrop-blur-[1px] transition-all duration-300 group-hover:opacity-100 dark:bg-slate-100/5 cursor-pointer"
-        onClick={() => (window.location.href = `/budgets/${budget.id}`)}
+        className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/5 opacity-0 backdrop-blur-[1px] transition-all duration-300 group-hover:opacity-100 cursor-pointer"
+        onClick={handleCardClick}
       >
-        <span className="rounded-full bg-white/90 px-4 py-2 text-sm font-medium text-slate-900 shadow-sm dark:bg-slate-950/90 dark:text-slate-100">
+        <span className="rounded-full bg-background/90 px-4 py-2 text-sm font-medium text-foreground shadow-sm ring-1 ring-border">
           管理子預算
         </span>
       </div>

@@ -64,23 +64,23 @@ function RecentTransactions({
   };
 
   return (
-    <Card className="col-span-3 border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 h-full flex flex-col">
-      <CardHeader className="border-b border-slate-200 dark:border-white/5 pb-4">
-        <CardTitle className="text-lg font-bold font-playfair text-slate-900 dark:text-white">
+    <Card className="col-span-3 border-border bg-card shadow-sm h-full flex flex-col hover:shadow-md transition-shadow">
+      <CardHeader className="border-b border-border pb-4">
+        <CardTitle className="text-lg font-bold text-foreground">
           近期交易
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 overflow-hidden pt-4 px-2">
         {transactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center h-full">
-            <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
               {/* Use a placeholder icon or consistent empty state */}
-              <div className="w-8 h-8 rounded-md border-2 border-dashed border-slate-300 dark:border-slate-600" />
+              <div className="w-8 h-8 rounded-md border-2 border-dashed border-muted-foreground/30" />
             </div>
-            <p className="text-slate-500 dark:text-slate-400 font-medium">
+            <p className="text-muted-foreground font-medium">
               尚無交易記錄
             </p>
-            <p className="text-sm text-slate-500 mt-2">
+            <p className="text-sm text-muted-foreground/80 mt-2">
               點擊右上角「新增交易」按鈕開始記帳
             </p>
           </div>
@@ -94,11 +94,11 @@ function RecentTransactions({
               return (
                 <div
                   key={item.id}
-                  className="flex items-center p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all duration-200 group border border-transparent hover:border-slate-200 dark:hover:border-white/5"
+                  className="flex items-center p-3 rounded-xl hover:bg-accent/50 transition-all duration-200 group border border-transparent hover:border-border"
                 >
                   <div
                     className={`flex h-10 w-10 items-center justify-center rounded-xl shadow-inner ${
-                      !category?.color ? 'bg-slate-100 dark:bg-slate-800' : ''
+                      !category?.color ? 'bg-muted' : ''
                     }`}
                     style={{
                       backgroundColor: category?.color
@@ -112,20 +112,20 @@ function RecentTransactions({
                     <CategoryIcon
                       iconName={category?.icon}
                       className="h-5 w-5 transition-transform group-hover:scale-110 duration-300"
-                      style={{ color: category?.color || '#94a3b8' }}
+                      style={{ color: category?.color || 'currentColor' }}
                     />
                   </div>
                   <div className="ml-4 space-y-1 flex-1">
-                    <p className="text-sm font-medium leading-none text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                    <p className="text-sm font-medium leading-none text-foreground group-hover:text-primary transition-colors">
                       {category?.name}
                     </p>
                     <div className="flex items-center gap-2">
                       {item.description && (
-                        <span className="text-xs text-slate-500 max-w-[150px] truncate">
+                        <span className="text-xs text-muted-foreground max-w-[150px] truncate">
                           {item.description}
                         </span>
                       )}
-                      <span className="text-xs text-slate-600">
+                      <span className="text-xs text-muted-foreground/80">
                         {account?.name} • {item.date}
                       </span>
                     </div>

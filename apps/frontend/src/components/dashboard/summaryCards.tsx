@@ -88,10 +88,10 @@ function SummaryCards({
       {summary.map((item) => (
         <Card
           key={item.title}
-          className="border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 hover:bg-white dark:hover:bg-slate-900/70 transition-all duration-300 group"
+          className="border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 group hover:border-primary/50"
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
+            <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
               {item.title}
             </CardTitle>
             <div
@@ -101,7 +101,7 @@ function SummaryCards({
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900 dark:text-slate-50 font-playfair tracking-wide">
+            <div className="text-2xl font-bold text-foreground tracking-wide">
               {item.value}
             </div>
           </CardContent>
