@@ -179,8 +179,8 @@ export default function AssetTrendChart({
         barMaxWidth: 12,
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#10b981' }, // Emerald-500
-            { offset: 1, color: 'rgba(16, 185, 129, 0.1)' },
+            { offset: 0, color: '#0d9488' }, // Teal-600
+            { offset: 1, color: 'rgba(13, 148, 136, 0.1)' },
           ]),
           borderRadius: [4, 4, 0, 0],
         },
@@ -192,8 +192,8 @@ export default function AssetTrendChart({
         barMaxWidth: 12,
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#f43f5e' }, // Rose-500
-            { offset: 1, color: 'rgba(244, 63, 94, 0.1)' },
+            { offset: 0, color: '#e11d48' }, // Rose-600
+            { offset: 1, color: 'rgba(225, 29, 72, 0.1)' },
           ]),
           borderRadius: [4, 4, 0, 0],
         },
@@ -207,8 +207,8 @@ export default function AssetTrendChart({
         showSymbol: false,
         lineStyle: {
           width: 3,
-          color: '#8b5cf6', // Violet-500
-          shadowColor: 'rgba(139, 92, 246, 0.5)',
+          color: '#3b82f6', // Blue-500 (kept distinct but professional)
+          shadowColor: 'rgba(59, 130, 246, 0.5)',
           shadowBlur: 10,
         },
         areaStyle: {
