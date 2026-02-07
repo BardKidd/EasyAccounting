@@ -72,7 +72,7 @@ function TransactionTable({
 
     if (netAmount === 0) {
       return (
-        <span className="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)] font-bold font-mono tracking-tight">
+        <span className="text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.3)] font-bold font-mono tracking-tight">
           {formatted}
         </span>
       );
@@ -87,7 +87,7 @@ function TransactionTable({
     }
     if (item.type === RootType.INCOME) {
       return (
-        <span className="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)] font-bold font-mono tracking-tight">
+        <span className="text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.3)] font-bold font-mono tracking-tight">
           +{formatted}
         </span>
       );
@@ -169,7 +169,7 @@ function TransactionTable({
                             ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'
                             : transaction.type === RootType.EXPENSE
                               ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'
-                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
+                              : 'bg-teal-100 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400'
                         }`}
                       >
                         {isTransfer(transaction)

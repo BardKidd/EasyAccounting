@@ -71,13 +71,13 @@ function SidebarContent({
   setOpen?: (open: boolean) => void;
 }) {
   return (
-    <div className="flex flex-col h-full py-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
-      <div className="px-6 py-4 flex items-center justify-center border-b border-sidebar-border mb-2">
+    <div className="flex flex-col h-full py-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border overflow-hidden">
+      <div className="px-6 md:px-2 lg:px-6 py-4 flex items-center justify-center border-b border-sidebar-border mb-2 transition-all duration-300">
         <Link
           href="/dashboard"
-          className="flex items-center gap-3 hover:opacity-90 transition-all cursor-pointer group"
+          className="flex items-center gap-3 hover:opacity-90 transition-all cursor-pointer group justify-center lg:justify-start w-full"
         >
-          <div className="group-hover:opacity-80 transition-opacity">
+          <div className="group-hover:opacity-80 transition-opacity shrink-0">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 32 32"
@@ -101,12 +101,12 @@ function SidebarContent({
               <circle cx="27" cy="9" r="2" className="fill-white" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold tracking-wide text-sidebar-foreground">
+          <h2 className="text-xl font-bold tracking-wide text-sidebar-foreground block md:hidden lg:block whitespace-nowrap">
             EasyAccounting
           </h2>
         </Link>
       </div>
-      <div className="flex-1 py-4 px-3 overflow-y-auto">
+      <div className="flex-1 py-4 px-3 md:px-2 lg:px-3 overflow-y-auto overflow-x-hidden">
         <nav className="grid gap-1.5">
           {sidebarItems.map((item, index) => {
             const isActive = pathname === item.href;
@@ -116,27 +116,29 @@ function SidebarContent({
                 href={item.href}
                 onClick={() => setOpen?.(false)}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ease-in-out cursor-pointer',
+                  'flex items-center gap-3 rounded-lg px-4 py-3 md:px-2 lg:px-4 text-sm font-medium transition-all duration-200 ease-in-out cursor-pointer',
+                  'md:justify-center lg:justify-start',
                   isActive
                     ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50',
                 )}
+                title={item.title} // Add tooltip for collapsed view
               >
                 <item.icon
                   className={cn(
-                    'h-5 w-5',
+                    'h-5 w-5 shrink-0',
                     isActive
                       ? 'text-sidebar-primary'
                       : 'text-muted-foreground group-hover:text-sidebar-foreground',
                   )}
                 />
-                <span className="tracking-wide">{item.title}</span>
+                <span className="tracking-wide block md:hidden lg:block whitespace-nowrap">{item.title}</span>
               </Link>
             );
           })}
         </nav>
       </div>
-      <div className="px-6 py-4 border-t border-sidebar-border mt-auto bg-sidebar-accent/20">
+      <div className="px-6 md:px-2 lg:px-6 py-4 border-t border-sidebar-border mt-auto bg-sidebar-accent/20 block md:hidden lg:block">
         <div className="flex items-center gap-3">
           <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
           <p className="text-xs text-muted-foreground font-medium">System Online</p>
@@ -178,7 +180,8 @@ function Sidebar({ className }: SidebarProps) {
       {/* Desktop Sidebar */}
       <div
         className={cn(
-          'hidden md:flex h-screen w-72 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm z-50',
+          'hidden md:flex h-screen flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm z-50 transition-all duration-300',
+          'w-[64px] lg:w-[250px]',
           className,
         )}
       >

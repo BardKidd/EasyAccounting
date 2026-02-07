@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
-import { Plus_Jakarta_Sans } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+const inter = Inter({
   variable: '--font-sans',
   subsets: ['latin'],
 });
@@ -26,7 +26,7 @@ export default function RootLayout({
       {/* antialiased 防止字體模糊 */}
       <body
         suppressHydrationWarning
-        className={`${plusJakartaSans.variable} font-sans antialiased`}
+        className={`${inter.variable} font-sans antialiased`}
       >
         <ThemeProvider
           attribute="class"

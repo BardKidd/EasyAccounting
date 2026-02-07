@@ -16,8 +16,8 @@ const summaryCardsData = (values = [0, 0, 0, 0] as number[]) => {
       title: '本月收入',
       value: formatCurrency(values[1]),
       icon: TrendingUp,
-      color: 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]',
-      bg: 'bg-emerald-500/10',
+      color: 'text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]',
+      bg: 'bg-teal-500/10',
     },
     {
       title: '本月支出',
@@ -30,8 +30,8 @@ const summaryCardsData = (values = [0, 0, 0, 0] as number[]) => {
       title: '本月損益',
       value: formatCurrency(values[3]),
       icon: PiggyBank,
-      color: 'text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]',
-      bg: 'bg-sky-500/10',
+      color: 'text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]',
+      bg: 'bg-teal-500/10',
     },
   ];
 };

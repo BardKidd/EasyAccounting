@@ -44,7 +44,7 @@ function RecentTransactions({
 
     if (netAmount === 0) {
       return {
-        color: 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]',
+        color: 'text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.3)]',
         prefix: '',
         amount: netAmount,
       };
@@ -52,7 +52,7 @@ function RecentTransactions({
 
     return item.type === RootType.INCOME
       ? {
-          color: 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]',
+          color: 'text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.3)]',
           prefix: '+',
           amount: netAmount,
         }
