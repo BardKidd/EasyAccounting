@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@reference "tailwindcss";
 
 /* Global Overrides for React Big Calendar - Teal Theme */
 
@@ -8,28 +8,28 @@
 
 /* Header */
 .rbc-header {
-  @apply py-4 text-[13px] font-semibold text-teal-700 dark:text-teal-400 border-b border-teal-100 dark:border-teal-900/40 bg-linear-to-b from-teal-50/50 to-transparent dark:from-teal-950/20 uppercase tracking-wider;
+  @apply py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 uppercase tracking-wider;
 }
 
 .rbc-header + .rbc-header {
-  @apply border-l border-teal-100 dark:border-teal-900/40;
+  @apply border-l border-slate-200 dark:border-slate-700;
 }
 
 /* Month View Grid */
 .rbc-month-view {
-  @apply bg-white dark:bg-slate-950 border-none rounded-none;
+  @apply bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden;
 }
 
-/* 設定固定 row 高度，讓 rbc 自動顯示 +N more */
+/* Row Styling */
 .rbc-month-row {
-  @apply border-slate-200 dark:border-slate-800;
+  @apply border-slate-200 dark:border-slate-700;
   min-height: 100px;
-  /* Laptop/Small Screen: Constrain height to force "+More" popup style and compactness */
+  /* Laptop/Small Screen: Constrain height to force "+More" popup style */
   max-height: 140px;
   overflow: hidden;
 }
 
-/* Large Screen (approx 24" PC, >900px height): Expand rows to fill empty space */
+/* Large Screen: Expand rows */
 @media (min-height: 900px) {
   .rbc-month-row {
     flex: 1 0 0;
@@ -38,80 +38,71 @@
 }
 
 .rbc-day-bg {
-  @apply bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800/60 transition-all duration-200;
+  @apply bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 transition-colors duration-200;
 }
 
 .rbc-day-bg:hover {
-  @apply bg-teal-50/30 dark:bg-teal-900/10;
+  @apply bg-slate-50 dark:bg-slate-700/50;
 }
 
 .rbc-day-bg + .rbc-day-bg {
-  @apply border-l border-slate-200 dark:border-slate-800/60;
+  @apply border-l border-slate-200 dark:border-slate-700;
 }
 
-/* Date Cell Content - 縮小間距 */
+/* Date Cell Content */
 .rbc-date-cell {
-  @apply p-1.5 text-[13px] font-medium text-slate-500 dark:text-slate-500;
+  @apply p-2 text-xs font-medium text-slate-500 dark:text-slate-400;
 }
 
 .rbc-off-range-bg {
-  @apply bg-slate-50/60 dark:bg-slate-900/50;
+  @apply bg-slate-50/50 dark:bg-slate-900/50;
 }
 
 /* Today Highlight */
 .rbc-today {
-  @apply bg-teal-50/50 dark:bg-teal-950/30;
+  @apply bg-teal-50 dark:bg-teal-900/10;
 }
 
 .rbc-today .rbc-date-cell {
   @apply text-teal-600 dark:text-teal-400 font-bold;
 }
 
-.rbc-today .rbc-button-link {
-  @apply relative inline-flex items-center justify-center w-7 h-7 rounded-full bg-teal-600 text-white font-bold;
-}
-
-/* Events Container in Month View */
+/* Events Container */
 .rbc-row-segment {
   @apply px-1 py-0.5;
 }
 
-/* Event Base Styles - Resetting defaults */
+/* Event Base Styles */
 .rbc-event {
   @apply bg-transparent p-0 border-none rounded-none shadow-none focus:outline-none;
 }
 
 .rbc-event.rbc-selected {
-  @apply bg-transparent opacity-100 ring-2 ring-teal-500 ring-offset-1 rounded-md;
+  @apply bg-transparent opacity-100 ring-2 ring-teal-500 ring-offset-1 rounded-sm;
 }
 
 .rbc-event:focus {
-  @apply outline-none ring-2 ring-teal-400/50 rounded-md;
+  @apply outline-none ring-2 ring-teal-400/50 rounded-sm;
 }
 
 /* Show More Overlay (Popup) */
 .rbc-overlay {
-  @apply bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl p-4 z-50;
+  @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-4 z-50;
   box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.12),
-    0 8px 16px rgba(0, 0, 0, 0.08);
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 .rbc-overlay-header {
-  @apply border-b border-slate-100 dark:border-slate-800 pb-3 mb-3 text-sm font-bold text-slate-800 dark:text-slate-100;
+  @apply border-b border-slate-100 dark:border-slate-800 pb-2 mb-2 text-sm font-bold text-slate-800 dark:text-slate-100;
 }
 
-/* Show More Link - 確保可見並可點擊 */
+/* Show More Link */
 .rbc-show-more {
-  @apply text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:underline bg-teal-50 dark:bg-teal-900/30 px-2 py-0.5 rounded-full transition-colors cursor-pointer block mt-1;
+  @apply text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:underline bg-transparent px-1 py-0.5 rounded-sm transition-colors cursor-pointer block mt-1;
 }
 
-/* Row content alignment */
-.rbc-row-content {
-  @apply z-10;
-}
-
-/* Off-range text dimming */
+/* Off-range text */
 .rbc-off-range {
   @apply text-slate-300 dark:text-slate-700;
 }

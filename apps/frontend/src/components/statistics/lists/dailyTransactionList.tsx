@@ -15,25 +15,41 @@ export function DailyTransactionList({
   const getAmountStyle = (item: DetailsTransaction) => {
     const netAmount = calculateNetAmount(item);
     if (item.targetAccountName) {
-      return { color: 'text-orange-500', prefix: '', amount: netAmount };
+      return { color: 'text-amber-500', prefix: '', amount: netAmount };
     }
 
     if (netAmount === 0) {
-      return { color: 'text-emerald-500', prefix: '', amount: netAmount };
+      return {
+        color: 'text-teal-600 dark:text-teal-400',
+        prefix: '',
+        amount: netAmount,
+      };
     }
 
     if (item.type === RootType.INCOME)
-      return { color: 'text-green-600', prefix: '+', amount: netAmount };
+      return {
+        color: 'text-teal-600 dark:text-teal-400',
+        prefix: '+',
+        amount: netAmount,
+      };
     if (item.type === RootType.EXPENSE)
-      return { color: 'text-red-600', prefix: '-', amount: netAmount };
+      return {
+        color: 'text-rose-600 dark:text-rose-400',
+        prefix: '-',
+        amount: netAmount,
+      };
 
-    return { color: 'text-gray-600', prefix: '', amount: netAmount };
+    return {
+      color: 'text-slate-600 dark:text-slate-400',
+      prefix: '',
+      amount: netAmount,
+    };
   };
 
   return (
-    <Card className="border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 hover:bg-white dark:hover:bg-slate-900/70 transition-all duration-300 group">
-      <CardHeader className="border-b border-slate-200 dark:border-white/5 pb-4">
-        <CardTitle className="text-xl font-bold font-playfair text-slate-900 dark:text-white">
+    <Card className="border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 hover:shadow-md transition-all duration-300 group">
+      <CardHeader className="border-b border-slate-100 dark:border-slate-700 pb-4">
+        <CardTitle className="text-xl font-bold font-playfair text-slate-800 dark:text-slate-100">
           明細列表
         </CardTitle>
       </CardHeader>

@@ -34,7 +34,7 @@ export function DonutChart({ data, totalAmount }: CategoryPieChartProps) {
       finalData.push({
         name: '其他',
         value: otherAmount,
-        color: isDark ? '#374151' : '#cbd5e1',
+        color: isDark ? '#475569' : '#cbd5e1',
         type: '其他',
       });
     }

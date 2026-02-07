@@ -224,7 +224,7 @@ export default function AssetTrendChart({
   };
 
   return (
-    <Card className="h-[450px] border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 group">
+    <Card className="h-[450px] border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 group dark:shadow-teal-glow">
       <CardHeader className="pb-2 border-b border-slate-200 dark:border-white/5 flex flex-row items-center justify-between">
         <div className="space-y-1">
           <CardTitle className="text-xl font-bold font-playfair text-slate-900 dark:text-white">

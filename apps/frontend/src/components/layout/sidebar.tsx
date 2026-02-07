@@ -71,13 +71,13 @@ function SidebarContent({
   setOpen?: (open: boolean) => void;
 }) {
   return (
-    <div className="flex flex-col h-full py-4 bg-slate-950 text-slate-50 md:bg-slate-950/95 md:backdrop-blur-md">
-      <div className="px-6 py-4 flex items-center justify-center border-b border-white/5 mb-2">
+    <div className="flex flex-col h-full py-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border overflow-hidden">
+      <div className="px-6 md:px-2 lg:px-6 py-4 flex items-center justify-center border-b border-sidebar-border mb-2 transition-all duration-300">
         <Link
           href="/dashboard"
-          className="flex items-center gap-3 hover:opacity-90 transition-all cursor-pointer group"
+          className="flex items-center gap-3 hover:opacity-90 transition-all cursor-pointer group justify-center lg:justify-start w-full"
         >
-          <div className="group-hover:opacity-80 transition-opacity">
+          <div className="group-hover:opacity-80 transition-opacity shrink-0">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 32 32"
@@ -88,25 +88,25 @@ function SidebarContent({
                 width="32"
                 height="32"
                 rx="10"
-                fill="#0F172A"
-                className="fill-white/10"
+                className="fill-primary"
               />
               <path
                 d="M26 22L22 10L18 22H14V10H7M7 16H12M7 22H14M20 17H24"
-                stroke="white"
+                stroke="currentColor"
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                className="stroke-primary-foreground"
               />
-              <circle cx="27" cy="9" r="2" fill="#38BDF8" />
+              <circle cx="27" cy="9" r="2" className="fill-white" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold tracking-wide text-white font-playfair">
+          <h2 className="text-xl font-bold tracking-wide text-sidebar-foreground block md:hidden lg:block whitespace-nowrap">
             EasyAccounting
           </h2>
         </Link>
       </div>
-      <div className="flex-1 py-4 px-3 overflow-y-auto">
+      <div className="flex-1 py-4 px-3 md:px-2 lg:px-3 overflow-y-auto overflow-x-hidden">
         <nav className="grid gap-1.5">
           {sidebarItems.map((item, index) => {
             const isActive = pathname === item.href;
@@ -116,32 +116,34 @@ function SidebarContent({
                 href={item.href}
                 onClick={() => setOpen?.(false)}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ease-in-out',
+                  'flex items-center gap-3 rounded-lg px-4 py-3 md:px-2 lg:px-4 text-sm font-medium transition-all duration-200 ease-in-out cursor-pointer',
+                  'md:justify-center lg:justify-start',
                   isActive
-                    ? 'bg-white/10 text-white shadow-lg shadow-black/5 ring-1 ring-white/10 backdrop-blur-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5',
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50',
                 )}
+                title={item.title} // Add tooltip for collapsed view
               >
                 <item.icon
                   className={cn(
-                    'h-5 w-5',
+                    'h-5 w-5 shrink-0',
                     isActive
-                      ? 'text-white'
-                      : 'text-slate-400 group-hover:text-white',
+                      ? 'text-sidebar-primary'
+                      : 'text-muted-foreground group-hover:text-sidebar-foreground',
                   )}
                 />
-                <span className="tracking-wide">{item.title}</span>
+                <span className="tracking-wide block md:hidden lg:block whitespace-nowrap">{item.title}</span>
               </Link>
             );
           })}
         </nav>
       </div>
-      <div className="px-6 py-4 border-t border-white/5 mt-auto bg-black/20">
+      <div className="px-6 md:px-2 lg:px-6 py-4 border-t border-sidebar-border mt-auto bg-sidebar-accent/20 block md:hidden lg:block">
         <div className="flex items-center gap-3">
           <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
-          <p className="text-xs text-slate-400 font-medium">System Online</p>
+          <p className="text-xs text-muted-foreground font-medium">System Online</p>
         </div>
-        <p className="text-[10px] text-slate-600 mt-2">© 2025 EasyAccount</p>
+        <p className="text-[10px] text-muted-foreground/60 mt-2">© 2025 EasyAccount</p>
       </div>
     </div>
   );
@@ -159,7 +161,7 @@ function Sidebar({ className }: SidebarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden fixed top-4 left-4 z-40 bg-slate-950/80 backdrop-blur-md text-white hover:bg-slate-900 border border-white/10 shadow-lg rounded-lg"
+            className="md:hidden fixed top-4 left-4 z-40 bg-sidebar/80 backdrop-blur-md text-sidebar-foreground hover:bg-sidebar/90 border border-sidebar-border shadow-lg rounded-lg cursor-pointer"
           >
             <Menu className="h-5 w-5" />
             <span className="sr-only">Toggle Menu</span>
@@ -167,7 +169,7 @@ function Sidebar({ className }: SidebarProps) {
         </SheetTrigger>
         <SheetContent
           side="left"
-          className="w-[280px] p-0 border-r-0 bg-slate-950 text-white"
+          className="w-[280px] p-0 border-r-0 bg-sidebar text-sidebar-foreground"
         >
           <SheetTitle className="sr-only">Navigation Menu</SheetTitle>{' '}
           {/* Accessibility */}
@@ -178,7 +180,8 @@ function Sidebar({ className }: SidebarProps) {
       {/* Desktop Sidebar */}
       <div
         className={cn(
-          'hidden md:flex h-screen w-72 flex-col border-r border-white/5 bg-slate-950 text-slate-50 shadow-2xl z-50',
+          'hidden md:flex h-screen flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm z-50 transition-all duration-300',
+          'w-[64px] lg:w-[250px]',
           className,
         )}
       >

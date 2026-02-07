@@ -1,13 +1,19 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
+import {
+  Calendar as CalendarIcon,
+  Check,
+  ChevronsUpDown,
+  Search,
+} from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import { Input } from '@/components/ui/input';
 import {
   Popover,
   PopoverContent,
@@ -115,9 +121,9 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
             variant={'outline'}
             disabled={isPending}
             className={cn(
-              'w-full sm:w-[260px] justify-start text-left font-normal cursor-pointer h-11',
-              'bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
-              !date && 'text-muted-foreground',
+              'w-full sm:w-[260px] justify-start text-left font-normal cursor-pointer h-10',
+              'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+              !date && 'text-slate-500 dark:text-slate-400',
             )} // updated classes
           >
             <CalendarIcon className="mr-2 h-4 w-4 text-slate-500" />
@@ -151,7 +157,7 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
         onValueChange={handleTypeChange}
         disabled={isPending}
       >
-        <SelectTrigger className="w-full sm:w-[180px] cursor-pointer !h-11 bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+        <SelectTrigger className="w-full sm:w-[180px] cursor-pointer h-10! bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
           <SelectValue placeholder="交易類型" />
         </SelectTrigger>
         <SelectContent>
@@ -167,7 +173,7 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
         onValueChange={handleAccountChange}
         disabled={isPending}
       >
-        <SelectTrigger className="w-full sm:w-[180px] cursor-pointer !h-11 bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+        <SelectTrigger className="w-full sm:w-[180px] cursor-pointer h-10! bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
           <SelectValue placeholder="選擇帳戶" />
         </SelectTrigger>
         <SelectContent>
