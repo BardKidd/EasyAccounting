@@ -32,8 +32,8 @@ export function BudgetCard({
   const router = useRouter();
   const { usageRate, spent, remaining, available } = usage;
 
-  let statusColor = 'bg-emerald-500';
-  let textColor = 'text-emerald-600 dark:text-emerald-400';
+  let statusColor = 'bg-primary';
+  let textColor = 'text-primary';
 
   // 計算使用率顏色邏輯：
   // >= 100% : 紅色 (警告)
