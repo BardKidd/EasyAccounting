@@ -135,7 +135,7 @@ function AccountSummaryCard({ accounts }: AccountSummaryCardProps) {
   ];
 
   return (
-    <Card className="h-full flex flex-col border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10">
+    <Card className="h-full flex flex-col border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 dark:shadow-teal-glow">
       <CardHeader className="pb-4 border-b border-slate-200 dark:border-white/5">
         <CardTitle className="text-lg font-medium flex justify-between items-center text-slate-700 dark:text-slate-200">
           <span>帳戶概覽</span>

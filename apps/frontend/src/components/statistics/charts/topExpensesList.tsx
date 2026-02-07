@@ -13,7 +13,7 @@ export function TopExpensesList({
   items: OverviewTop3ExpensesType[];
 }) {
   return (
-    <Card className="h-full border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 hover:bg-white dark:hover:bg-slate-900/70 transition-all duration-300 group">
+    <Card className="h-full border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 hover:bg-white dark:hover:bg-slate-900/70 transition-all duration-300 group dark:shadow-teal-glow">
       <CardHeader className="border-b border-slate-200 dark:border-white/5 pb-4">
         <CardTitle className="text-lg font-bold font-playfair text-slate-900 dark:text-white">
           單筆支出 Top 3

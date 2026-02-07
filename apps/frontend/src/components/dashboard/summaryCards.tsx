@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AccountType } from '@repo/shared';
 import { Wallet, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 
 const summaryCardsData = (values = [0, 0, 0, 0] as number[]) => {
   return [
@@ -85,10 +85,13 @@ function SummaryCards({
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {summary.map((item) => (
+      {summary.map((item, index) => (
         <Card
           key={item.title}
-          className="border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 group hover:border-primary/50"
+          className={cn(
+            "border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 group hover:border-primary/50",
+            index !== 2 && "dark:shadow-teal-glow" // Don't glow for Expense card (index 2)
+          )}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">

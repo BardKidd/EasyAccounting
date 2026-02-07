@@ -50,6 +50,8 @@ export function CalendarEvent({ event, categories }: CalendarEventProps) {
   };
 
   const containerClass = getTransactionContainerClass(getColorType());
+  const netAmount = calculateNetAmount(resource);
+  const formattedAmount = formatCurrency(Math.abs(netAmount));
 
   return (
     <div
@@ -58,13 +60,13 @@ export function CalendarEvent({ event, categories }: CalendarEventProps) {
       <div
         className={`shrink-0 opacity-75 group-hover:opacity-100 transition-opacity`}
       >
-        <CategoryIcon iconName={category?.icon} className="h-3 w-3" />
+        <CategoryIcon iconName={category?.icon} className="h-3.5 w-3.5" />
       </div>
       <span className="truncate font-medium flex-1">{event.title}</span>
       <span
-        className={`font-mono tabular-nums text-[10px] opacity-90 font-semibold`}
+        className={`font-mono tabular-nums text-[10px] opacity-90 font-bold`}
       >
-        {formatCurrency(Math.abs(amount))}
+        {isTransfer ? '' : type === RootType.EXPENSE ? '-' : '+'}{formattedAmount}
       </span>
     </div>
   );

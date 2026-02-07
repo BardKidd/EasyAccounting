@@ -25,9 +25,9 @@ export function SummaryBarChart({ data }: { data: SummaryData }) {
   const isDark = useDark();
 
   const getColors = () => ({
-    [SummaryType.INCOME]: '#10b981', // emerald-500
-    [SummaryType.EXPENSE]: '#ef4444', // red-500
-    [SummaryType.TRANSFER_IN]: '#3b82f6', // blue-500
+    [SummaryType.INCOME]: '#14b8a6', // teal-500
+    [SummaryType.EXPENSE]: '#f43f5e', // rose-500
+    [SummaryType.TRANSFER_IN]: '#0ea5e9', // sky-500
     [SummaryType.TRANSFER_OUT]: '#f59e0b', // amber-500
     [SummaryType.BALANCE]: '#8b5cf6', // violet-500
   });
@@ -186,7 +186,7 @@ export function SummaryBarChart({ data }: { data: SummaryData }) {
           itemStyle: {
             ...item.itemStyle,
             color:
-              item.itemStyle.color === '#10b981'
+              item.itemStyle.color === '#14b8a6'
                 ? {
                     type: 'linear',
                     x: 0,
@@ -194,11 +194,11 @@ export function SummaryBarChart({ data }: { data: SummaryData }) {
                     x2: 1,
                     y2: 0,
                     colorStops: [
-                      { offset: 0, color: '#10b981' },
-                      { offset: 1, color: '#34d399' },
+                      { offset: 0, color: '#14b8a6' },
+                      { offset: 1, color: '#2dd4bf' },
                     ],
                   }
-                : item.itemStyle.color === '#ef4444'
+                : item.itemStyle.color === '#f43f5e'
                   ? {
                       type: 'linear',
                       x: 0,
@@ -206,8 +206,8 @@ export function SummaryBarChart({ data }: { data: SummaryData }) {
                       x2: 1,
                       y2: 0,
                       colorStops: [
-                        { offset: 0, color: '#ef4444' },
-                        { offset: 1, color: '#f87171' },
+                        { offset: 0, color: '#f43f5e' },
+                        { offset: 1, color: '#fb7185' },
                       ],
                     }
                   : item.itemStyle.color,
@@ -224,7 +224,7 @@ export function SummaryBarChart({ data }: { data: SummaryData }) {
   };
 
   return (
-    <Card className="border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 hover:bg-white dark:hover:bg-slate-900/70 transition-all duration-300 group">
+    <Card className="border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 hover:bg-white dark:hover:bg-slate-900/70 transition-all duration-300 group dark:shadow-teal-glow">
       <CardHeader className="pb-2 border-b border-slate-200 dark:border-white/5">
         <CardTitle className="text-xl font-bold font-playfair text-slate-900 dark:text-white">
           收支概況
