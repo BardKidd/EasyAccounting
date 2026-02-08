@@ -35,38 +35,40 @@
 ```mermaid
 flowchart LR
     subgraph Frontend
-        A[上傳 PDF] --> B[Polling 狀態]
-        B --> C[Web Notification]
-        C --> D[確認 UI]
+        A[上傳 PDF] --> B[pdfjs-dist Worker 轉圖片]
+        B --> C[上傳圖片]
+        C --> D[Polling 狀態]
+        D --> E[Web Notification]
+        E --> F[確認 UI]
     end
 
     subgraph Backend
-        E[接收 PDF] --> F[Azure Blob 暫存]
-        F --> G[pdf.js 轉圖片]
-        G --> H[Groq API]
-        H --> I[結構化 JSON]
-        I --> J[pending_transaction]
+        G[接收圖片] --> H[Azure Blob 暫存]
+        H --> I[Groq API]
+        I --> J[結構化 JSON]
+        J --> K[pending_transaction]
+        K --> L[刪除 Blob 暫存]
     end
 
     subgraph Database
-        J --> K[用戶確認]
-        K --> L[transaction]
-        K --> M[merchant_mapping]
+        K --> M[用戶確認]
+        M --> N[transaction]
+        M --> O[merchant_mapping]
     end
 
-    A --> E
-    D --> K
+    C --> G
+    F --> M
 ```
 
 ### 2.2 元件關係
 
-| 元件     | 技術                    | 說明                            |
-| -------- | ----------------------- | ------------------------------- |
-| 前端     | Next.js                 | 上傳、確認 UI、Web Notification |
-| 後端     | Node.js                 | API、pdf.js、LLM 串接           |
-| 檔案暫存 | Azure Blob              | PDF 臨時存放                    |
-| AI       | Groq (Llama 3.2 Vision) | 圖片 → 結構化資料               |
-| 資料庫   | PostgreSQL (Neon)       | 交易、暫存資料                  |
+| 元件     | 技術                             | 說明                            |
+| -------- | -------------------------------- | ------------------------------- |
+| 前端     | Next.js + pdfjs-dist             | PDF 轉圖片、上傳、確認 UI、通知 |
+| 後端     | Node.js                          | API、LLM 串接                   |
+| 檔案暫存 | Azure Blob                       | 圖片臨時存放                    |
+| AI       | Groq (Llama-4-Maverick-17B-128E) | 圖片 → 結構化資料               |
+| 資料庫   | PostgreSQL (Neon)                | 交易、暫存資料                  |
 
 ---
 
@@ -75,32 +77,110 @@ flowchart LR
 ### 3.1 整體流程
 
 ```
-PDF 上傳 → pdf.js 轉圖片 → Multimodal LLM 分析 → 結構化 JSON → 用戶確認 → 寫入 DB
+[前端] PDF 上傳 → pdfjs-dist Worker 轉圖片 → 上傳圖片
+[後端] 接收圖片 → Multimodal LLM 分析 → 結構化 JSON → 用戶確認 → 寫入 DB
 ```
 
-### 3.2 PDF 轉圖片
+### 3.2 PDF 轉圖片（前端處理）
 
-| 方案          | 語言       | 優點                                 | 缺點             |
-| ------------- | ---------- | ------------------------------------ | ---------------- |
-| **pdf.js** ✅ | JavaScript | 純 JS、可在 Node.js 跑、Mozilla 維護 | 需要 canvas 依賴 |
+| 方案              | 語言       | 優點                                | 缺點             |
+| ----------------- | ---------- | ----------------------------------- | ---------------- |
+| **pdfjs-dist** ✅ | JavaScript | 純 JS、瀏覽器原生支援、Mozilla 維護 | 低階裝置可能較慢 |
 
-**選擇理由**：與現有 Node.js 後端技術棧一致，不需額外 Python 環境。
+**選擇理由**：
+
+1. **分散運算負擔**：PDF 轉圖片在用戶裝置執行，後端只需處理 LLM 請求
+2. **避免並發瓶頸**：10,000+ 用戶同時使用時，不會因 PDF 轉換阻塞伺服器
+3. **無 canvas 依賴問題**：不需在 Vercel Serverless 處理 Native Dependencies
+
+#### 套件說明
+
+- **pdf.js**：Mozilla 的原始 repo（`mozilla/pdf.js`），是開發用 source code
+- **pdfjs-dist**：官方發布的**預編譯版本**，從 npm 安裝即可使用
+
+```bash
+pnpm add pdfjs-dist
+```
+
+#### Web Worker 配置
+
+pdfjs-dist 使用 Web Worker 在背景執行 PDF 解析，避免阻塞主線程：
+
+```typescript
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Webpack 5 / Vite 皆支援此語法
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
+```
+
+> [!NOTE]
+> `new URL(..., import.meta.url)` 是 Webpack 5 Asset Modules 語法，會自動處理檔案複製與路徑解析。
+
+#### 前端轉圖片流程
+
+```typescript
+async function pdfToImages(file: File): Promise<Blob[]> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const images: Blob[] = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 2.0 }); // 2x for clarity
+
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    await page.render({
+      canvasContext: canvas.getContext('2d')!,
+      viewport,
+    }).promise;
+
+    // 轉成 JPEG 品質 85% 減少上傳量
+    const blob = await new Promise<Blob>((resolve) =>
+      canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85),
+    );
+    images.push(blob);
+  }
+
+  return images;
+}
+```
+
+> [!NOTE]
+> Web Worker 是獨立的執行環境，透過 `postMessage` 與主線程通訊。
+> 頁面關閉時 Worker 會終止，轉換中途關閉瀏覽器會中斷處理。
+
+> [!TIP]
+> 建議加上 Loading 進度顯示，避免用戶以為當機。低階裝置可考慮提供「上傳原始 PDF 改由後端處理」的 fallback 選項。
 
 ### 3.3 Multimodal LLM API
 
 > [!IMPORTANT]
 > 以下服務皆 **明確承諾不使用用戶資料進行模型訓練**
+> Groq 的 API 使用由 [Groq Services Agreement](https://console.groq.com/docs/legal/services-agreement) 管轄，明確聲明不會用 Customer Data 訓練模型。
 
-| 服務                      | Model            | 免費額度                   | 隱私政策                                                           |
-| ------------------------- | ---------------- | -------------------------- | ------------------------------------------------------------------ |
-| **Groq**                  | Llama 3.2 Vision | 30 req/min, 14,400 req/day | ✅ [不訓練](https://groq.com/privacy-policy/)                      |
-| **Together AI**           | Llama 3.2 Vision | $1 credit (~1M tokens)     | ✅ [不訓練](https://www.together.ai/privacy)                       |
-| **Cloudflare Workers AI** | Llama 3.2 Vision | 10,000 req/day             | ✅ [不訓練](https://developers.cloudflare.com/workers-ai/privacy/) |
+| 服務                      | Model                     | 免費額度                  | 隱私政策                                                           |
+| ------------------------- | ------------------------- | ------------------------- | ------------------------------------------------------------------ |
+| **Groq** ✅               | Llama-4-Maverick-17B-128E | 30 req/min, 1,000 req/day | ✅ [不訓練](https://groq.com/privacy-policy/)                      |
+| **Together AI**           | Llama-4-Maverick          | $1 credit (~1M tokens)    | ✅ [不訓練](https://www.together.ai/privacy)                       |
+| **Cloudflare Workers AI** | Llama 3.2 Vision          | 10,000 req/day            | ✅ [不訓練](https://developers.cloudflare.com/workers-ai/privacy/) |
+
+**Llama-4-Maverick 特性**：
+
+- **架構**：Mixture of Experts (MoE)，17B active params / 400B total
+- **多模態**：支援文字 + 圖片輸入
+- **Context Window**：128K tokens（未來擴展至 1M）
+- **知識截止**：2024 年 8 月
 
 **建議策略**：
 
-1. **主力**：Groq（速度最快、額度大）
-2. **備援**：Together AI 或 Cloudflare（當 Groq 達到限制時切換）
+1. **主力**：Groq（速度最快）
+2. **備援**：Together AI（當 Groq 達到限制時切換）
 
 ### 3.4 為什麼不選其他方案
 
@@ -201,21 +281,23 @@ flowchart TD
 sequenceDiagram
     participant U as 前端
     participant B as 後端
-    participant AI as LLM API
+    participant Blob as Azure Blob
+    participant AI as Groq API
     participant DB as Database
 
-    U->>B: POST /bill/upload (PDF)
-    B->>B: 存到 Azure Blob (temp)
+    U->>U: pdfjs-dist Worker 轉圖片
+    U->>B: POST /bill/upload (images[])
+    B->>Blob: 暫存圖片
     B-->>U: { uploadId }
 
     U->>B: POST /bill/parse/:uploadId
     B-->>U: { status: "processing" }
 
-    B->>B: pdf.js 轉圖片
+    B->>Blob: 讀取圖片
     B->>AI: 送圖片給 LLM
     AI-->>B: JSON 結構化資料
     B->>DB: 存入 pending_transaction
-    B->>B: 刪除 Azure Blob temp 檔案
+    B->>Blob: 刪除暫存圖片
 
     loop Polling (每 5 秒)
         U->>B: GET /bill/status/:uploadId
@@ -516,15 +598,15 @@ Llama 3.2 處理長列表時可能產生格式錯誤或幻覺
 - 清洗規則：讓 LLM 提取「品牌名」而非原始敘述
 - Fuzzy Match：`merchant_mapping` 查詢使用模糊搜尋而非完全匹配
 
-#### 4. pdf.js 部署限制
+#### 4. 前端轉圖片的限制
 
-pdf.js 依賴 `canvas`，Vercel Serverless 可能有 Native Dependencies 問題
+低階裝置（舊手機、低階筆電）轉換大型 PDF 時可能卡頓
 
 **解決方案**：
 
-- 確認 Vercel 對 canvas 支援度
-- 備選：pdf-lib + pdf2pic（需系統依賴）
-- 或改為 Railway 處理 PDF 轉換
+- 顯示轉換進度，讓用戶知道處理中
+- 提供「上傳原始 PDF」的 fallback 選項（後端處理）
+- 限制單次上傳最大頁數（如 50 頁）
 
 #### 5. 大量資料前端效能
 
@@ -537,11 +619,11 @@ pdf.js 依賴 `canvas`，Vercel Serverless 可能有 Native Dependencies 問題
 
 ### 9.3 待驗證項目
 
-- [ ] Llama 3.2 Vision 對繁體中文帳單的識別準確率
+- [ ] Llama-4-Maverick 對繁體中文帳單的識別準確率
 - [ ] 複雜分期交易（如循環利息）的處理
 - [ ] 單張帳單 100+ 筆交易的處理效能
 - [ ] 跨頁表格的 Header Injection 效果
-- [ ] Vercel 對 canvas 依賴的支援度
+- [ ] 前端轉圖片在低階裝置的效能表現
 
 ### 9.4 未來優化方向
 
