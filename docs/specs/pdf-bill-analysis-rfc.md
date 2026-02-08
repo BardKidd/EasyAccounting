@@ -35,40 +35,55 @@
 ```mermaid
 flowchart LR
     subgraph Frontend
-        A[上傳 PDF] --> B[pdfjs-dist Worker 轉圖片]
-        B --> C[上傳圖片]
-        C --> D[Polling 狀態]
-        D --> E[Web Notification]
-        E --> F[確認 UI]
+        A[上傳 PDF] --> B{選擇模式}
+        B -->|本地解析| C[pdfjs-dist Worker 轉圖片]
+        B -->|雲端解析| D[直接上傳 PDF]
+        C --> E[上傳圖片]
+        D --> F[上傳 PDF]
     end
 
     subgraph Backend
-        G[接收圖片] --> H[Azure Blob 暫存]
-        H --> I[Groq API]
-        I --> J[結構化 JSON]
-        J --> K[pending_transaction]
-        K --> L[刪除 Blob 暫存]
+        G[接收圖片/PDF] --> H{類型判斷}
+        H -->|圖片| I[Azure Blob 暫存]
+        H -->|PDF| J[pdf.js 轉圖片]
+        J --> I
+        I --> K[Azure Service Bus Queue]
+    end
+
+    subgraph Worker[Backend Worker]
+        W[Service Bus Consumer] --> X[Groq API]
+        X --> Y[結構化 JSON]
+        Y --> Z[pending_transaction]
+        Z --> ZZ[刪除 Blob 暫存]
+    end
+
+    subgraph Frontend_After[Frontend - 處理完成後]
+        O[SSE 即時通知] --> P[Web Notification]
+        P --> Q[確認 UI]
     end
 
     subgraph Database
-        K --> M[用戶確認]
-        M --> N[transaction]
-        M --> O[merchant_mapping]
+        R[用戶確認] --> S[transaction]
+        R --> T[merchant_mapping]
+        R --> U[bill_parse_telemetry]
     end
 
-    C --> G
-    F --> M
+    K --> W
+    ZZ -.->|狀態: completed| O
+    Q --> R
 ```
 
 ### 2.2 元件關係
 
-| 元件     | 技術                             | 說明                            |
-| -------- | -------------------------------- | ------------------------------- |
-| 前端     | Next.js + pdfjs-dist             | PDF 轉圖片、上傳、確認 UI、通知 |
-| 後端     | Node.js                          | API、LLM 串接                   |
-| 檔案暫存 | Azure Blob                       | 圖片臨時存放                    |
-| AI       | Groq (Llama-4-Maverick-17B-128E) | 圖片 → 結構化資料               |
-| 資料庫   | PostgreSQL (Neon)                | 交易、暫存資料                  |
+| 元件     | 技術                             | 說明                                  |
+| -------- | -------------------------------- | ------------------------------------- |
+| 前端     | Next.js + pdfjs-dist             | PDF 轉圖片（本地模式）、上傳、確認 UI |
+| 後端     | Node.js + pdfjs-dist             | API、PDF 轉圖片（雲端模式）、SSE 推送 |
+| 訊息佇列 | Azure Service Bus                | 解析任務排隊，避免 rate limit         |
+| 定時任務 | Azure Functions Timer Trigger    | 垃圾資料定期清理                      |
+| 檔案暫存 | Azure Blob                       | 圖片/PDF 臨時存放                     |
+| AI       | Groq (Llama-4-Maverick-17B-128E) | 圖片 → 結構化資料                     |
+| 資料庫   | PostgreSQL (Neon)                | 交易、暫存資料、Telemetry             |
 
 ---
 
@@ -76,9 +91,16 @@ flowchart LR
 
 ### 3.1 整體流程
 
+**本地解析模式**：
+
 ```
-[前端] PDF 上傳 → pdfjs-dist Worker 轉圖片 → 上傳圖片
-[後端] 接收圖片 → Multimodal LLM 分析 → 結構化 JSON → 用戶確認 → 寫入 DB
+[前端] PDF → pdfjs-dist Worker 轉圖片 → 上傳圖片 → [後端] LLM 分析 → 用戶確認 → 寫入 DB
+```
+
+**雲端解析模式**：
+
+```
+[前端] PDF → 直接上傳 → [後端] pdf.js 轉圖片 → LLM 分析 → 用戶確認 → 寫入 DB
 ```
 
 ### 3.2 PDF 轉圖片（前端處理）
@@ -164,11 +186,10 @@ async function pdfToImages(file: File): Promise<Blob[]> {
 > 以下服務皆 **明確承諾不使用用戶資料進行模型訓練**
 > Groq 的 API 使用由 [Groq Services Agreement](https://console.groq.com/docs/legal/services-agreement) 管轄，明確聲明不會用 Customer Data 訓練模型。
 
-| 服務                      | Model                     | 免費額度                  | 隱私政策                                                           |
-| ------------------------- | ------------------------- | ------------------------- | ------------------------------------------------------------------ |
-| **Groq** ✅               | Llama-4-Maverick-17B-128E | 30 req/min, 1,000 req/day | ✅ [不訓練](https://groq.com/privacy-policy/)                      |
-| **Together AI**           | Llama-4-Maverick          | $1 credit (~1M tokens)    | ✅ [不訓練](https://www.together.ai/privacy)                       |
-| **Cloudflare Workers AI** | Llama 3.2 Vision          | 10,000 req/day            | ✅ [不訓練](https://developers.cloudflare.com/workers-ai/privacy/) |
+| 服務            | Model                     | 免費額度                  | 隱私政策                                      |
+| --------------- | ------------------------- | ------------------------- | --------------------------------------------- |
+| **Groq** ✅     | Llama-4-Maverick-17B-128E | 30 req/min, 1,000 req/day | ✅ [不訓練](https://groq.com/privacy-policy/) |
+| **Together AI** | Llama-4-Maverick          | $1 credit (~1M tokens)    | ✅ [不訓練](https://www.together.ai/privacy)  |
 
 **Llama-4-Maverick 特性**：
 
@@ -208,6 +229,29 @@ async function pdfToImages(file: File): Promise<Blob[]> {
 | matchCount   | INT          | 被使用次數（用於未來優化 AI 猜測） |
 | createdAt    | TIMESTAMPTZ  |                                    |
 | updatedAt    | TIMESTAMPTZ  |                                    |
+
+**Unique Constraint**: `UNIQUE(merchantName, categoryId)`
+
+> [!NOTE]
+> 同一個 `merchantName` 可以對應多個 `categoryId`，形成一對多關係。
+> 查詢建議類別時，取 `matchCount` 最高者。
+>
+> 例如：
+> | merchantName | categoryId | matchCount |
+> |--------------|------------|------------|
+> | 蝦皮購物 | 購物 | 100 |
+> | 蝦皮購物 | 副業成本 | 1 |
+>
+> 此時建議類別會選擇「購物」（matchCount=100）。
+>
+> **更新時機**：在 `/pdf/confirm` 確認交易時，使用 upsert 更新 matchCount：
+>
+> ```sql
+> INSERT INTO merchant_mapping (merchantName, categoryId, matchCount)
+> VALUES ($1, $2, 1)
+> ON CONFLICT (merchantName, categoryId)
+> DO UPDATE SET matchCount = merchant_mapping.matchCount + 1;
+> ```
 
 #### `pending_transaction`（待確認交易暫存）
 
@@ -254,7 +298,28 @@ flowchart TD
     D --> F[顯示給用戶：需手動處理]
 ```
 
-### 4.3 現有表不需修改
+### 4.3 新增表：`bill_parse_telemetry`（解析準確率統計）
+
+| Column               | Type         | Description                         |
+| -------------------- | ------------ | ----------------------------------- |
+| id                   | UUID         | PK                                  |
+| uploadBatchId        | UUID         | 同一次上傳的 batch ID               |
+| totalTransactions    | INT          | 總共識別幾筆                        |
+| modifiedTransactions | INT          | 用戶修改過幾筆                      |
+| skippedTransactions  | INT          | 用戶略過幾筆                        |
+| accuracyRate         | DECIMAL(5,4) | 準確率 = (total - modified) / total |
+| parseTimeMs          | INT          | LLM 解析耗時 (ms)                   |
+| processingMode       | VARCHAR(10)  | `local` / `cloud`                   |
+| llmProvider          | VARCHAR(50)  | `groq` / `together`                 |
+| llmModel             | VARCHAR(100) | 使用的模型名稱                      |
+| pageCount            | INT          | PDF 頁數                            |
+| createdAt            | TIMESTAMPTZ  |                                     |
+
+> [!NOTE]  
+> 此表不儲存 `userId`，僅用於系統層級準確率統計與宣傳用途。  
+> Transaction-level 準確率：一筆交易只要有任一欄位被修改，即計入 `modifiedTransactions`。
+
+### 4.4 現有表不需修改
 
 - `transaction` - 結構不變
 - `transaction_extra` - 結構不變
@@ -266,57 +331,76 @@ flowchart TD
 
 ### 5.1 Endpoints 總覽
 
-| Method | Endpoint                 | Description                 |
-| ------ | ------------------------ | --------------------------- |
-| POST   | `/bill/upload`           | 上傳 PDF                    |
-| POST   | `/bill/parse/:uploadId`  | 觸發解析                    |
-| GET    | `/bill/status/:uploadId` | 查詢解析狀態（for polling） |
-| GET    | `/bill/pending`          | 取得待確認交易列表          |
-| PATCH  | `/bill/pending/:id`      | 更新單筆狀態                |
-| POST   | `/bill/confirm`          | 批次確認寫入 DB             |
+| Method | Endpoint                | Description                            |
+| ------ | ----------------------- | -------------------------------------- |
+| POST   | `/pdf/upload`           | 上傳圖片（本地模式）或 PDF（雲端模式） |
+| POST   | `/pdf/parse/:uploadId`  | 觸發解析                               |
+| GET    | `/pdf/stream/:uploadId` | SSE 即時狀態推送                       |
+| GET    | `/pdf/pending`          | 取得待確認交易列表                     |
+| PATCH  | `/pdf/pending/:id`      | 更新單筆狀態                           |
+| POST   | `/pdf/confirm`          | 批次確認寫入 DB                        |
 
 ### 5.2 流程圖
 
 ```mermaid
 sequenceDiagram
-    participant U as 前端
-    participant B as 後端
-    participant Blob as Azure Blob
+    box rgba(59, 130, 246, 0.1) Frontend
+        participant U as 前端 UI
+        participant FW as 前端 Web Worker<br/>(pdfjs-dist)
+    end
+
+    box rgba(34, 197, 94, 0.1) Backend
+        participant B as 後端 API
+        participant BW as 後端 Worker<br/>(Service Bus Consumer)
+    end
+
+    box rgba(249, 115, 22, 0.1) Azure Services
+        participant Q as Service Bus Queue
+        participant Blob as Blob Storage
+    end
+
     participant AI as Groq API
     participant DB as Database
 
-    U->>U: pdfjs-dist Worker 轉圖片
-    U->>B: POST /bill/upload (images[])
+    Note over U,FW: 本地解析模式
+    U->>FW: PDF 檔案
+    FW->>FW: 轉換為圖片
+    FW-->>U: images[]
+
+    U->>B: POST /pdf/upload (images[])
     B->>Blob: 暫存圖片
     B-->>U: { uploadId }
 
-    U->>B: POST /bill/parse/:uploadId
-    B-->>U: { status: "processing" }
+    U->>B: POST /pdf/parse/:uploadId
+    B->>Q: 放入 Queue
+    B-->>U: { status: "queued" }
 
-    B->>Blob: 讀取圖片
-    B->>AI: 送圖片給 LLM
-    AI-->>B: JSON 結構化資料
-    B->>DB: 存入 pending_transaction
-    B->>Blob: 刪除暫存圖片
+    U->>B: GET /pdf/stream/:uploadId
+    Note over U,B: SSE 長連線
 
-    loop Polling (每 5 秒)
-        U->>B: GET /bill/status/:uploadId
-        B-->>U: { status: "completed" }
-    end
+    Q->>BW: 取出任務
+    BW->>Blob: 讀取圖片
+    BW->>AI: 送圖片
+    AI-->>BW: JSON
+    BW->>DB: 存入 pending_transaction
+    BW->>Blob: 刪除暫存
+    BW->>DB: 更新狀態 completed
 
-    Note over U: 觸發 Web Notification
+    B-->>U: SSE: { status: "completed" }
+    Note over U: Web Notification
 
-    U->>B: GET /bill/pending
+    U->>B: GET /pdf/pending
     B-->>U: [pending transactions...]
 
-    U->>B: POST /bill/confirm
-    B->>DB: 寫入 transaction 表
-    B->>DB: 硬刪除 pending_transaction
+    U->>B: POST /pdf/confirm
+    B->>DB: 寫入 transaction
+    B->>DB: 寫入 telemetry
+    B->>DB: 刪除 pending
 ```
 
 ### 5.3 Request/Response 範例
 
-#### POST `/bill/upload`
+#### POST `/pdf/upload`
 
 ```json
 // Request: multipart/form-data
@@ -326,20 +410,29 @@ sequenceDiagram
 { "uploadId": "abc-123", "filename": "玉山銀行帳單.pdf" }
 ```
 
-#### GET `/bill/status/:uploadId`
+#### GET `/pdf/stream/:uploadId` (SSE)
 
-```json
-// Response (處理中)
-{ "status": "processing", "progress": 60 }
+```
+// SSE Event Stream
+event: status
+data: { "status": "queued", "position": 3 }
 
-// Response (完成)
-{ "status": "completed", "pendingCount": 15 }
+event: status
+data: { "status": "processing", "progress": 60 }
 
-// Response (失敗)
-{ "status": "failed", "error": "PDF 無法解析" }
+event: status
+data: { "status": "completed", "pendingCount": 15 }
+
+// 加密 PDF 情況
+event: status
+data: { "status": "password_required", "uploadId": "abc-123" }
+
+// 失敗情況
+event: error
+data: { "status": "failed", "error": "PDF 無法解析" }
 ```
 
-#### POST `/bill/confirm`
+#### POST `/pdf/confirm`
 
 ```json
 // Request
@@ -354,25 +447,50 @@ sequenceDiagram
 
 ### 5.4 前端通知機制
 
-使用 **Web Notifications API** + Polling：
+使用 **SSE (Server-Sent Events)** + **Web Notifications API**：
 
-```javascript
+```typescript
+// SSE 連線
+const connectSSE = (uploadId: string) => {
+  const eventSource = new EventSource(`/api/pdf/stream/${uploadId}`);
+
+  eventSource.addEventListener('status', (e) => {
+    const data = JSON.parse(e.data);
+
+    switch (data.status) {
+      case 'completed':
+        new Notification('帳單解析完成', {
+          body: `已識別 ${data.pendingCount} 筆交易，點擊確認`,
+          icon: '/icon.png',
+        });
+        eventSource.close();
+        break;
+      case 'password_required':
+        // 顯示密碼輸入 dialog
+        showPasswordDialog(uploadId);
+        eventSource.close();
+        break;
+      case 'failed':
+        toast.error(data.error);
+        eventSource.close();
+        break;
+    }
+  });
+
+  eventSource.onerror = () => {
+    // SSE 斷線，fallback 到 polling
+    eventSource.close();
+    fallbackToPolling(uploadId);
+  };
+};
+
 // 請求通知權限（首次使用時）
 Notification.requestPermission();
-
-// Polling 檢查狀態
-const checkStatus = async (uploadId) => {
-  const res = await fetch(`/bill/status/${uploadId}`);
-  const data = await res.json();
-
-  if (data.status === 'completed') {
-    new Notification('帳單解析完成', {
-      body: `已識別 ${data.pendingCount} 筆交易，點擊確認`,
-      icon: '/icon.png',
-    });
-  }
-};
 ```
+
+> [!NOTE]
+> SSE 需要後端支援長連線，Railway 完全支援。
+> 如果 SSE 斷線，則 fallback 到 polling 機制。
 
 ---
 
@@ -388,7 +506,10 @@ const checkStatus = async (uploadId) => {
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  帳單匯入                                    [上傳 PDF]     │
+│  帳單匯入                      [本地解析 💻] [雲端解析 ☁️]   │
+├─────────────────────────────────────────────────────────────┤
+│  💡 本地解析：在你的裝置處理，速度較快                       │
+│     雲端解析：適合大型 PDF                         │
 ├─────────────────────────────────────────────────────────────┤
 │  狀態: 已識別 15 筆交易，待確認 12 筆                        │
 ├─────────────────────────────────────────────────────────────┤
@@ -404,20 +525,20 @@ const checkStatus = async (uploadId) => {
 
 ### 6.3 表格欄位
 
-| 欄位                | 來源    | 可編輯    | 必填 |
-| ------------------- | ------- | --------- | ---- |
-| 勾選狀態            | -       | ☑/☐/✕    | -    |
-| 日期                | LLM     | ✅        | ✅   |
-| 時間                | LLM     | ✅        | ❌   |
-| 商家/描述           | LLM     | ✅        | ✅   |
-| 金額                | LLM     | ✅        | ✅   |
-| 類別                | AI 建議 | ✅ (下拉) | ✅   |
-| 帳戶                | 用戶選  | ✅ (下拉) | ✅   |
-| 分期 (第N期/總期)   | LLM     | ✅        | ❌   |
-| 折扣 (extraAdd)     | LLM     | ✅        | ❌   |
-| 手續費 (extraMinus) | LLM     | ✅        | ❌   |
-| 幣別                | LLM     | ✅ (下拉) | ❌   |
-| 備註                | 空白    | ✅        | ❌   |
+| 欄位                   | 來源    | 可編輯    | 必填 |
+| ---------------------- | ------- | --------- | ---- |
+| 勾選狀態               | -       | ☑/☐/✕    | -    |
+| 日期                   | LLM     | ✅        | ✅   |
+| 時間                   | LLM     | ✅        | ❌   |
+| 商家/描述              | LLM     | ✅        | ✅   |
+| 金額                   | LLM     | ✅        | ✅   |
+| 類別(SubCategory Only) | AI 建議 | ✅ (下拉) | ✅   |
+| 帳戶                   | 用戶選  | ✅ (下拉) | ✅   |
+| 分期 (第N期/總期)      | LLM     | ✅        | ❌   |
+| 折扣 (extraAdd)        | LLM     | ✅        | ❌   |
+| 手續費 (extraMinus)    | LLM     | ✅        | ❌   |
+| 幣別                   | LLM     | ✅ (下拉) | ❌   |
+| 備註                   | 空白    | ✅        | ❌   |
 
 ### 6.4 操作狀態
 
@@ -468,22 +589,60 @@ flowchart TD
 
 ### 7.2 檔案上傳驗證
 
-```javascript
-// 前端驗證
-const allowedTypes = ['application/pdf'];
-const maxSize = 10 * 1024 * 1024; // 10MB
+**共用驗證函數**（前後端共用）：
 
-if (!allowedTypes.includes(file.type)) {
-  throw new Error('只允許上傳 PDF 檔案');
-}
-if (file.size > maxSize) {
-  throw new Error('檔案大小不可超過 10MB');
-}
+```typescript
+// shared/validation/fileValidation.ts
+export const PDF_VALIDATION = {
+  allowedTypes: ['application/pdf'],
+  allowedImageTypes: ['image/jpeg', 'image/png'],
+  maxPdfSize: 10 * 1024 * 1024, // 10MB
+  maxImageSize: 5 * 1024 * 1024, // 5MB per image
+  maxImageCount: 50, // 最多 50 頁
+  imageFormat: 'image/jpeg', // PDF 轉圖片統一用 JPEG
+  imageQuality: 0.85,
+};
 
-// 後端驗證（雙重檢查）
-// 1. MIME type 檢查
-// 2. Magic number 檢查（PDF 開頭為 %PDF-）
+export const validatePdfFile = (
+  file: File | Buffer,
+): { valid: boolean; error?: string } => {
+  // MIME type 檢查
+  const mimeType = file instanceof File ? file.type : 'application/pdf';
+  if (!PDF_VALIDATION.allowedTypes.includes(mimeType)) {
+    return { valid: false, error: '只允許上傳 PDF 檔案' };
+  }
+
+  // 大小檢查
+  const size = file instanceof File ? file.size : file.length;
+  if (size > PDF_VALIDATION.maxPdfSize) {
+    return { valid: false, error: '檔案大小不可超過 10MB' };
+  }
+
+  return { valid: true };
+};
+
+export const validateImageFiles = (
+  images: Blob[],
+): { valid: boolean; error?: string } => {
+  if (images.length > PDF_VALIDATION.maxImageCount) {
+    return {
+      valid: false,
+      error: `最多僅支援 ${PDF_VALIDATION.maxImageCount} 頁`,
+    };
+  }
+
+  for (const img of images) {
+    if (img.size > PDF_VALIDATION.maxImageSize) {
+      return { valid: false, error: '單頁圖片不可超過 5MB' };
+    }
+  }
+
+  return { valid: true };
+};
 ```
+
+> [!NOTE]
+> 前端轉出的圖片統一使用 **JPEG 格式**，品質 85%，平衡清晰度與檔案大小。
 
 ### 7.3 大量資料處理
 
@@ -499,7 +658,7 @@ if (file.size > maxSize) {
 **API 分頁設計**：
 
 ```json
-// GET /bill/pending?page=1&limit=50
+// GET /pdf/pending?page=1&limit=50
 {
   "data": [...],
   "pagination": {
@@ -513,11 +672,11 @@ if (file.size > maxSize) {
 
 ### 7.4 資料隱私
 
-| 項目                | 處理方式                                            |
-| ------------------- | --------------------------------------------------- |
-| PDF 暫存            | 解析完成後立即刪除                                  |
-| LLM API             | 使用不訓練資料的服務（Groq/Together AI/Cloudflare） |
-| pending_transaction | 用戶確認後硬刪除                                    |
+| 項目                | 處理方式                                   |
+| ------------------- | ------------------------------------------ |
+| PDF 暫存            | 解析完成後立即刪除                         |
+| LLM API             | 使用不訓練資料的服務（Groq / Together AI） |
+| pending_transaction | 用戶確認後硬刪除                           |
 
 ---
 
@@ -527,31 +686,35 @@ if (file.size > maxSize) {
 
 - [ ] 建立 `merchant_mapping` 表
 - [ ] 建立 `pending_transaction` 表
-- [ ] 實作 `/bill/upload` API（上傳至 Azure Blob temp）
+- [ ] 建立 `bill_parse_telemetry` 表
+- [ ] 實作 `/pdf/upload` API（上傳至 Azure Blob temp）
 - [ ] 實作 pdf.js 轉圖片功能
-- [ ] 實作 `/bill/status` API（polling 用）
+- [ ] 設定 Azure Service Bus Queue
+- [ ] 實作 SSE `/pdf/stream` API
 
 ### Phase 2: AI 整合（1-2 週）
 
-- [ ] 串接 Groq API（Llama 3.2 Vision）
+- [ ] 建立 Worker 從 Service Bus 消費任務
+- [ ] 串接 Groq API（Llama-4-Maverick）
 - [ ] 設計 LLM Prompt（結構化輸出）
-- [ ] 實作 `/bill/parse` API
 - [ ] 實作分期交易比對邏輯
 - [ ] 實作 merchant_mapping 查詢/新增
 
 ### Phase 3: 前端介面（1-2 週）
 
 - [ ] 新增 Sidebar 選項「帳單匯入」
-- [ ] 實作上傳 + polling + Web Notification
+- [ ] 實作上傳 + SSE + Web Notification
 - [ ] 實作全頁表格 UI
 - [ ] 實作編輯/勾選/略過功能
-- [ ] 實作 `/bill/confirm` 批次寫入
+- [ ] 實作加密 PDF 密碼輸入 UI
+- [ ] 實作 `/pdf/confirm` 批次寫入 + telemetry
 
 ### Phase 4: 優化與測試（1 週）
 
 - [ ] 大量資料分頁處理
 - [ ] 錯誤處理與 retry 機制
-- [ ] 備援 LLM（Groq → Together AI → Cloudflare）
+- [ ] 備援 LLM（Groq → Together AI）
+- [ ] Azure Functions 垃圾清理 Job
 - [ ] 端對端測試
 
 ---
@@ -631,3 +794,461 @@ Llama 3.2 處理長列表時可能產生格式錯誤或幻覺
 - 支援更多帳單類型（電信、水電、發票）
 - 支援多張 PDF 批次上傳
 - 建立常見銀行帳單的專屬 prompt template
+
+---
+
+## 附錄 A：Azure Service Bus 設定與使用
+
+### A.1 建立 Service Bus Namespace
+
+```bash
+# 使用 Azure CLI
+az servicebus namespace create \
+  --resource-group EasyAccounting \
+  --name easyaccounting-bus \
+  --location eastasia \
+  --sku Basic  # Basic tier 免費額度：每月 100 萬次操作
+```
+
+### A.2 建立 Queue
+
+```bash
+az servicebus queue create \
+  --resource-group EasyAccounting \
+  --namespace-name easyaccounting-bus \
+  --name bill-parse-queue \
+  --max-size 1024  # 1GB
+```
+
+### A.3 取得連線字串
+
+```bash
+az servicebus namespace authorization-rule keys list \
+  --resource-group EasyAccounting \
+  --namespace-name easyaccounting-bus \
+  --name RootManageSharedAccessKey \
+  --query primaryConnectionString \
+  --output tsv
+```
+
+將連線字串加入 `.env`：
+
+```
+AZURE_SERVICE_BUS_CONNECTION_STRING=Endpoint=sb://easyaccounting-bus.servicebus.windows.net/;SharedAccessKeyName=...
+```
+
+### A.4 後端 Producer（發送訊息）
+
+```typescript
+import { ServiceBusClient } from '@azure/service-bus';
+
+const sbClient = new ServiceBusClient(
+  process.env.AZURE_SERVICE_BUS_CONNECTION_STRING!,
+);
+const sender = sbClient.createSender('bill-parse-queue');
+
+// 在 /pdf/parse API 中
+await sender.sendMessages({
+  body: {
+    uploadId,
+    userId,
+    blobUrls: ['https://...page1.jpg', 'https://...page2.jpg'],
+  },
+  messageId: uploadId,
+});
+```
+
+### A.5 後端 Worker（消費訊息）
+
+```typescript
+import { ServiceBusClient } from '@azure/service-bus';
+
+const sbClient = new ServiceBusClient(
+  process.env.AZURE_SERVICE_BUS_CONNECTION_STRING!,
+);
+const receiver = sbClient.createReceiver('bill-parse-queue');
+
+// 持續監聽
+receiver.subscribe({
+  processMessage: async (message) => {
+    const { uploadId, blobUrls } = message.body;
+
+    try {
+      // 1. 更新狀態為 processing
+      await updateParseStatus(uploadId, 'processing');
+
+      // 2. 呼叫 Groq API 解析圖片
+      const result = await parseWithGroq(blobUrls);
+
+      // 3. 寫入 pending_transaction
+      await savePendingTransactions(uploadId, result);
+
+      // 4. 刪除 Blob 暫存
+      await deleteTempBlobs(blobUrls);
+
+      // 5. 更新狀態為 completed
+      await updateParseStatus(uploadId, 'completed');
+    } catch (error) {
+      await updateParseStatus(uploadId, 'failed', error.message);
+    }
+  },
+  processError: async (error) => {
+    console.error('Service Bus error:', error);
+  },
+});
+```
+
+### A.6 Railway 部署 Worker
+
+在 `railway.json` 中新增 Worker 服務：
+
+```json
+{
+  "services": {
+    "api": { ... },
+    "worker": {
+      "build": { "builder": "NIXPACKS" },
+      "deploy": {
+        "startCommand": "node dist/worker.js",
+        "restartPolicyType": "ALWAYS"
+      }
+    }
+  }
+}
+```
+
+---
+
+## 附錄 B：垃圾資料清理 Job
+
+### B.1 使用 Azure Functions Timer Trigger
+
+```bash
+# 建立 Function App
+az functionapp create \
+  --resource-group EasyAccounting \
+  --name easyaccounting-cleanup \
+  --storage-account easyaccountingstorage \
+  --consumption-plan-location eastasia \
+  --runtime node \
+  --runtime-version 20 \
+  --functions-version 4
+```
+
+### B.2 Timer Trigger 程式碼
+
+```typescript
+// cleanupFunction/index.ts
+import { app } from '@azure/functions';
+import { Pool } from 'pg';
+import { BlobServiceClient } from '@azure/storage-blob';
+
+app.timer('cleanupStaleData', {
+  schedule: '0 0 3 * * *', // 每天凌晨 3 點執行
+  handler: async (myTimer, context) => {
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    const blobClient = BlobServiceClient.fromConnectionString(
+      process.env.AZURE_BLOB_CONNECTION_STRING!,
+    );
+
+    // 1. 清理 7 天前的 pending_transaction（非 completed 狀態）
+    const dbResult = await pool.query(`
+      DELETE FROM pending_transaction 
+      WHERE status IN ('pending', 'processing', 'queued') 
+        AND "createdAt" < NOW() - INTERVAL '7 days'
+      RETURNING id
+    `);
+    context.log(`Deleted ${dbResult.rowCount} stale pending_transactions`);
+
+    // 2. 清理 7 天前的 Blob 暫存圖片
+    const containerClient = blobClient.getContainerClient('bill-temp');
+    const blobs = containerClient.listBlobsFlat();
+    let deletedBlobs = 0;
+
+    for await (const blob of blobs) {
+      const createdOn = blob.properties.createdOn;
+      if (
+        createdOn &&
+        Date.now() - createdOn.getTime() > 7 * 24 * 60 * 60 * 1000
+      ) {
+        await containerClient.deleteBlob(blob.name);
+        deletedBlobs++;
+      }
+    }
+    context.log(`Deleted ${deletedBlobs} stale blobs`);
+  },
+});
+```
+
+### B.3 免費額度說明
+
+| 服務                    | 免費額度                             |
+| ----------------------- | ------------------------------------ |
+| Azure Functions         | 每月 100 萬次執行、400,000 GB-s 計算 |
+| Azure Service Bus Basic | 每月 100 萬次操作                    |
+
+> [!NOTE]
+> 以每天清理一次計算，一個月約 30 次執行，遠低於免費額度。
+> Service Bus 以每天 100 個用戶各上傳 5 張帳單計算，每月約 15,000 次操作。
+
+---
+
+## 附錄 C：加密 PDF 處理
+
+### C.1 前端檢測與 UI
+
+```typescript
+// 前端 PDF 載入
+try {
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+} catch (e) {
+  if (e.name === 'PasswordException') {
+    // 顯示密碼輸入 dialog
+    showPasswordDialog();
+  }
+}
+
+// 密碼輸入 dialog
+const PasswordDialog = ({ uploadId, onSubmit }) => (
+  <Dialog>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>PDF 需要密碼</DialogTitle>
+        <DialogDescription>
+          此 PDF 已加密，請輸入密碼以繼續解析。
+        </DialogDescription>
+      </DialogHeader>
+
+      <Input
+        type="password"
+        placeholder="請輸入 PDF 密碼"
+        onChange={(e) => setPassword(e.target.value)}
+      />
+
+      <Alert variant="info">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          密碼僅用於解密此 PDF，不會被儲存或傳送至伺服器。
+        </AlertDescription>
+      </Alert>
+
+      <Tooltip>
+        <TooltipTrigger>
+          <HelpCircle className="h-4 w-4" />
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>PDF 在您的瀏覽器中解密，</p>
+          <p>密碼不會離開您的裝置。</p>
+        </TooltipContent>
+      </Tooltip>
+
+      <Button onClick={() => onSubmit(password)}>解鎖</Button>
+    </DialogContent>
+  </Dialog>
+);
+```
+
+### C.2 使用密碼解密
+
+```typescript
+const decryptPDF = async (arrayBuffer: ArrayBuffer, password: string) => {
+  const pdf = await pdfjsLib.getDocument({
+    data: arrayBuffer,
+    password,
+  }).promise;
+
+  // 繼續正常的轉圖片流程
+  return await pdfToImages(pdf);
+};
+```
+
+> [!IMPORTANT]
+> 密碼**只在前端使用**，用於本地解密 PDF。
+> 後端不會收到密碼，也不會儲存密碼。
+> 雲端解析模式下，加密 PDF 需先在前端解密後再上傳圖片。
+
+---
+
+## 附錄 D：API 完整列表
+
+### D.1 Endpoints 總覽
+
+| Method | Endpoint                | Description        | 認證   |
+| ------ | ----------------------- | ------------------ | ------ |
+| POST   | `/pdf/upload`           | 上傳圖片或 PDF     | 需認證 |
+| POST   | `/pdf/parse/:uploadId`  | 觸發解析任務       | 需認證 |
+| GET    | `/pdf/stream/:uploadId` | SSE 即時狀態推送   | 需認證 |
+| GET    | `/pdf/pending`          | 取得待確認交易列表 | 需認證 |
+| PATCH  | `/pdf/pending/:id`      | 更新單筆待確認交易 | 需認證 |
+| POST   | `/pdf/confirm`          | 批次確認寫入 DB    | 需認證 |
+
+### D.2 Request/Response 詳細規格
+
+#### POST `/pdf/upload`
+
+上傳 PDF（雲端模式）或圖片（本地模式）。
+
+**Request**:
+
+```typescript
+// multipart/form-data
+interface UploadRequest {
+  mode: 'local' | 'cloud'; // 處理模式
+  file?: File; // 雲端模式：PDF 檔案
+  images?: File[]; // 本地模式：轉換後的圖片陣列
+}
+```
+
+**Response**:
+
+```typescript
+interface UploadResponse {
+  uploadId: string; // 上傳批次 ID
+  filename: string; // 原始檔名
+  pageCount: number; // 頁數
+  status: 'uploaded';
+}
+```
+
+**錯誤碼**:
+| 狀態碼 | 說明 |
+|--------|------|
+| 400 | 檔案格式錯誤或超過大小限制 |
+| 401 | 未認證 |
+| 413 | 檔案過大 |
+
+---
+
+#### POST `/pdf/parse/:uploadId`
+
+觸發 LLM 解析任務。
+
+**Response**:
+
+```typescript
+interface ParseResponse {
+  uploadId: string;
+  status: 'queued';
+  queuePosition?: number; // 排隊位置（optional）
+}
+```
+
+---
+
+#### GET `/pdf/stream/:uploadId`
+
+SSE 即時狀態推送。
+
+**Event Types**:
+
+```typescript
+// event: status
+interface StatusEvent {
+  status:
+    | 'queued'
+    | 'processing'
+    | 'completed'
+    | 'password_required'
+    | 'failed';
+  progress?: number; // 0-100，僅 processing 時有值
+  pendingCount?: number; // 僅 completed 時有值
+  queuePosition?: number; // 僅 queued 時有值
+  error?: string; // 僅 failed 時有值
+}
+```
+
+---
+
+#### GET `/pdf/pending`
+
+取得待確認交易列表。
+
+**Query Parameters**:
+| 參數 | 類型 | 預設值 | 說明 |
+|------|------|--------|------|
+| uploadBatchId | UUID | - | 篩選特定上傳批次 |
+| page | number | 1 | 頁碼 |
+| limit | number | 50 | 每頁筆數 |
+
+**Response**:
+
+```typescript
+interface PendingListResponse {
+  data: PendingTransaction[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+interface PendingTransaction {
+  id: string;
+  uploadBatchId: string;
+  rawMerchantName: string;
+  suggestedCategoryId: string | null;
+  isInstallment: boolean;
+  installmentNumber: number | null;
+  status: 'pending' | 'confirmed' | 'skipped';
+  transactionData: {
+    amount: number;
+    type: 'income' | 'expense';
+    description: string;
+    date: string; // YYYY-MM-DD
+    time: string | null; // HH:mm
+    accountId: string | null;
+    categoryId: string | null;
+    extraAdd: number;
+    extraMinus: number;
+    currency: string;
+  };
+  createdAt: string;
+}
+```
+
+---
+
+#### PATCH `/pdf/pending/:id`
+
+更新單筆待確認交易。
+
+**Request**:
+
+```typescript
+interface UpdatePendingRequest {
+  status?: 'pending' | 'confirmed' | 'skipped';
+  transactionData?: Partial<TransactionData>;
+}
+```
+
+---
+
+#### POST `/pdf/confirm`
+
+批次確認寫入資料庫。
+
+**Request**:
+
+```typescript
+interface ConfirmRequest {
+  confirmed: string[]; // 要確認的 pending_transaction IDs
+  skipped: string[]; // 要略過的 pending_transaction IDs
+}
+```
+
+**Response**:
+
+```typescript
+interface ConfirmResponse {
+  created: number; // 成功寫入筆數
+  skipped: number; // 略過筆數
+  telemetryId: string; // 本次統計記錄 ID
+}
+```
+
+### D.3 幣別說明
+
+> [!NOTE]
+> 本系統目前預留幣別欄位，但尚未實作多幣別功能。
+> 目前預設所有交易為 `TWD`，未來如需支援外幣交易再行擴充。
