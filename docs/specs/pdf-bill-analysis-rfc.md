@@ -178,7 +178,7 @@ async function pdfToImages(file: File): Promise<Blob[]> {
 > 頁面關閉時 Worker 會終止，轉換中途關閉瀏覽器會中斷處理。
 
 > [!TIP]
-> 建議加上 Loading 進度顯示，避免用戶以為當機。低階裝置可考慮提供「上傳原始 PDF 改由後端處理」的 fallback 選項。
+> 建議加上 Loading 進度顯示，避免用戶以為當機。
 
 ### 3.3 Multimodal LLM API
 
@@ -186,10 +186,10 @@ async function pdfToImages(file: File): Promise<Blob[]> {
 > 以下服務皆 **明確承諾不使用用戶資料進行模型訓練**
 > Groq 的 API 使用由 [Groq Services Agreement](https://console.groq.com/docs/legal/services-agreement) 管轄，明確聲明不會用 Customer Data 訓練模型。
 
-| 服務            | Model                     | 免費額度                  | 隱私政策                                      |
-| --------------- | ------------------------- | ------------------------- | --------------------------------------------- |
-| **Groq** ✅     | Llama-4-Maverick-17B-128E | 30 req/min, 1,000 req/day | ✅ [不訓練](https://groq.com/privacy-policy/) |
-| **Together AI** | Llama-4-Maverick          | $1 credit (~1M tokens)    | ✅ [不訓練](https://www.together.ai/privacy)  |
+| 服務            | Model                                  | 免費額度                  | 隱私政策                                      |
+| --------------- | -------------------------------------- | ------------------------- | --------------------------------------------- |
+| **Groq** ✅     | Llama-4-Maverick-17B-128E              | 30 req/min, 1,000 req/day | ✅ [不訓練](https://groq.com/privacy-policy/) |
+| **Together AI** | Llama-4-Maverick-17B-128E-Instruct-FP8 | $1 credit (~1M tokens)    | ✅ [不訓練](https://www.together.ai/privacy)  |
 
 **Llama-4-Maverick 特性**：
 
@@ -280,7 +280,7 @@ async function pdfToImages(file: File): Promise<Blob[]> {
   "date": "2026-01-15",
   "time": "14:30",
   "accountId": null, // 用戶確認時選擇
-  "categoryId": null, // AI 建議或用戶選擇
+  "categoryId": null, // Mapping 或用戶選擇
   "extraAdd": 0,
   "extraMinus": 50, // 手續費
   "currency": "TWD"
