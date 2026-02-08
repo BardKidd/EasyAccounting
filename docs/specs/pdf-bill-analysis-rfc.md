@@ -682,40 +682,7 @@ export const validateImageFiles = (
 
 ## 8. 實作階段 (Implementation Phases)
 
-### Phase 1: 基礎建設（1-2 週）
-
-- [ ] 建立 `merchant_mapping` 表
-- [ ] 建立 `pending_transaction` 表
-- [ ] 建立 `bill_parse_telemetry` 表
-- [ ] 實作 `/pdf/upload` API（上傳至 Azure Blob temp）
-- [ ] 實作 pdf.js 轉圖片功能
-- [ ] 設定 Azure Service Bus Queue
-- [ ] 實作 SSE `/pdf/stream` API
-
-### Phase 2: AI 整合（1-2 週）
-
-- [ ] 建立 Worker 從 Service Bus 消費任務
-- [ ] 串接 Groq API（Llama-4-Maverick）
-- [ ] 設計 LLM Prompt（結構化輸出）
-- [ ] 實作分期交易比對邏輯
-- [ ] 實作 merchant_mapping 查詢/新增
-
-### Phase 3: 前端介面（1-2 週）
-
-- [ ] 新增 Sidebar 選項「帳單匯入」
-- [ ] 實作上傳 + SSE + Web Notification
-- [ ] 實作全頁表格 UI
-- [ ] 實作編輯/勾選/略過功能
-- [ ] 實作加密 PDF 密碼輸入 UI
-- [ ] 實作 `/pdf/confirm` 批次寫入 + telemetry
-
-### Phase 4: 優化與測試（1 週）
-
-- [ ] 大量資料分頁處理
-- [ ] 錯誤處理與 retry 機制
-- [ ] 備援 LLM（Groq → Together AI）
-- [ ] Azure Functions 垃圾清理 Job
-- [ ] 端對端測試
+> 詳細任務清單請參考：[pdf-bill-analysis-tasks.md](./pdf-bill-analysis-tasks.md)
 
 ---
 
