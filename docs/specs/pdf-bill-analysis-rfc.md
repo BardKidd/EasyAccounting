@@ -265,7 +265,7 @@ async function pdfToImages(file: File): Promise<Blob[]> {
 | matchedTransactionId | UUID         | 比對到的現有交易（分期用，nullable） |
 | isInstallment        | BOOLEAN      | 是否為分期                           |
 | installmentNumber    | INT          | 第幾期（nullable）                   |
-| status               | ENUM         | `pending` / `confirmed` / `skipped`  |
+| status               | ENUM         | `PENDING` / `CONFIRMED` / `SKIPPED`  |
 | transactionData      | JSONB        | 完整 transaction 結構（見下方）      |
 | createdAt            | TIMESTAMPTZ  |                                      |
 | updatedAt            | TIMESTAMPTZ  |                                      |

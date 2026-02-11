@@ -179,3 +179,9 @@ export enum TransactionViewMode {
   LIST = 'list',
   CALENDAR = 'calendar',
 }
+
+export enum PendingTransactionStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  SKIPPED = 'SKIPPED',
+}

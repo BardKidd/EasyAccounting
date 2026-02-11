@@ -7,14 +7,14 @@
 
 ## Phase 1: 基礎建設
 
-### 1.1 資料庫 Schema
+### 1.1 資料庫 Schema ✅
 
-| Task  | 描述                                       | 預估 | 依賴        |
-| ----- | ------------------------------------------ | ---- | ----------- |
-| 1.1.1 | 建立 `merchant_mapping` 表 + migration     | 0.5h | -           |
-| 1.1.2 | 建立 `pending_transaction` 表 + migration  | 0.5h | -           |
-| 1.1.3 | 建立 `bill_parse_telemetry` 表 + migration | 0.5h | -           |
-| 1.1.4 | 建立對應的 Sequelize Models                | 1h   | 1.1.1-1.1.3 |
+| Task  | 描述                                           | 預估 | 依賴        |
+| ----- | ---------------------------------------------- | ---- | ----------- |
+| 1.1.1 | ~~建立 `merchant_mapping` 表 + migration~~     | 0.5h | -           |
+| 1.1.2 | ~~建立 `pending_transaction` 表 + migration~~  | 0.5h | -           |
+| 1.1.3 | ~~建立 `bill_parse_telemetry` 表 + migration~~ | 0.5h | -           |
+| 1.1.4 | ~~建立對應的 Sequelize Models~~                | 1h   | 1.1.1-1.1.3 |
 
 ### 1.2 Azure 服務設定
 
