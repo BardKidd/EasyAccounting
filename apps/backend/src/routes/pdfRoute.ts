@@ -1,0 +1,26 @@
+import pdfController from '@/controllers/pdfController';
+import { authMiddleware } from '@/middlewares/authMiddleware';
+import express, { Router } from 'express';
+import multer from 'multer';
+
+const router: Router = express.Router();
+
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB per file
+    files: 50, // 最多 50 個檔案（對應 PDF_VALIDATION.maxImageCount）
+  },
+});
+
+router.post(
+  '/pdf/upload',
+  authMiddleware,
+  upload.array('files'),
+  pdfController.upload,
+);
+
+router.get('/pdf/stream/:uploadId', authMiddleware, pdfController.stream);
+
+export default router;

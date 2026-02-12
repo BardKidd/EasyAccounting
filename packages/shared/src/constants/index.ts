@@ -185,3 +185,11 @@ export enum PendingTransactionStatus {
   CONFIRMED = 'CONFIRMED',
   SKIPPED = 'SKIPPED',
 }
+
+export enum ParseStatus {
+  QUEUED = 'QUEUED',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  PASSWORD_REQUIRED = 'PASSWORD_REQUIRED',
+}

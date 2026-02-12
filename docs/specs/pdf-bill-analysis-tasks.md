@@ -16,35 +16,35 @@
 | 1.1.3 | ~~建立 `bill_parse_telemetry` 表 + migration~~ | 0.5h | -           |
 | 1.1.4 | ~~建立對應的 Sequelize Models~~                | 1h   | 1.1.1-1.1.3 |
 
-### 1.2 Azure 服務設定
+### 1.2 Azure 服務設定 ✅
 
-| Task  | 描述                                                  | 預估 | 依賴  |
-| ----- | ----------------------------------------------------- | ---- | ----- |
-| 1.2.1 | 建立 Azure Service Bus Namespace + Queue              | 0.5h | -     |
-| 1.2.2 | 建立 Blob Container `pdf-temp`                        | 0.5h | -     |
-| 1.2.3 | 設定 env vars (`AZURE_SERVICE_BUS_CONNECTION_STRING`) | 0.5h | 1.2.1 |
+| Task  | 描述                                                      | 預估 | 依賴  |
+| ----- | --------------------------------------------------------- | ---- | ----- |
+| 1.2.1 | ~~建立 Azure Service Bus Namespace + Queue~~              | 0.5h | -     |
+| 1.2.2 | ~~建立 Blob Container `pdf-temp`~~                        | 0.5h | -     |
+| 1.2.3 | ~~設定 env vars (`AZURE_SERVICE_BUS_CONNECTION_STRING`)~~ | 0.5h | 1.2.1 |
 
-### 1.3 共用模組
+### 1.3 共用模組 ✅
 
-| Task  | 描述                                       | 預估 | 依賴  |
-| ----- | ------------------------------------------ | ---- | ----- |
-| 1.3.1 | 建立 `shared/validation/fileValidation.ts` | 1h   | -     |
-| 1.3.2 | 建立 Service Bus client wrapper            | 1h   | 1.2.1 |
+| Task  | 描述                                           | 預估 | 依賴  |
+| ----- | ---------------------------------------------- | ---- | ----- |
+| 1.3.1 | ~~建立 `shared/validation/fileValidation.ts`~~ | 1h   | -     |
+| 1.3.2 | ~~建立 Service Bus client wrapper~~            | 1h   | 1.2.1 |
 
-### 1.4 後端 API - 上傳
+### 1.4 後端 API - 上傳 ✅
 
-| Task  | 描述                               | 預估 | 依賴  |
-| ----- | ---------------------------------- | ---- | ----- |
-| 1.4.1 | `POST /pdf/upload` - 接收 PDF/圖片 | 2h   | 1.3.1 |
-| 1.4.2 | 上傳圖片到 Blob Storage            | 1h   | 1.2.2 |
-| 1.4.3 | 建立 upload batch 記錄             | 1h   | 1.1.4 |
+| Task  | 描述                                   | 預估 | 依賴  |
+| ----- | -------------------------------------- | ---- | ----- |
+| 1.4.1 | ~~`POST /pdf/upload` - 接收 PDF/圖片~~ | 2h   | 1.3.1 |
+| 1.4.2 | ~~上傳圖片到 Blob Storage~~            | 1h   | 1.2.2 |
+| 1.4.3 | ~~建立 upload batch 記錄~~             | 1h   | 1.1.4 |
 
-### 1.5 後端 API - SSE
+### 1.5 後端 API - SSE ✅
 
-| Task  | 描述                                       | 預估 | 依賴  |
-| ----- | ------------------------------------------ | ---- | ----- |
-| 1.5.1 | `GET /pdf/stream/:uploadId` - SSE endpoint | 2h   | -     |
-| 1.5.2 | 實作狀態變更通知機制                       | 1h   | 1.5.1 |
+| Task  | 描述                                           | 預估 | 依賴  |
+| ----- | ---------------------------------------------- | ---- | ----- |
+| 1.5.1 | ~~`GET /pdf/stream/:uploadId` - SSE endpoint~~ | 2h   | -     |
+| 1.5.2 | ~~實作狀態變更通知機制~~                       | 1h   | 1.5.1 |
 
 ---
 
