@@ -24,6 +24,7 @@ import {
   startMonthlyAnalysisNoticeCronJobs,
   startWeeklySummaryNoticeCronJobs,
 } from './cron/notificationCron';
+import { initBillParseWorker } from '@/worker';
 
 const app: express.Application = express();
 
@@ -73,6 +74,9 @@ console.log('[App] Starting Cron Jobs...');
 startDailyReminderCronJobs();
 startWeeklySummaryNoticeCronJobs();
 startMonthlyAnalysisNoticeCronJobs();
+
+// 啟動 Bill Parse Worker (同 process)
+initBillParseWorker();
 
 export { app };
 

@@ -6,6 +6,8 @@ import {
   PDF_VALIDATION,
 } from '@repo/shared';
 
+//! azureBlob.ts 那邊當初寫的有點死，所以想說不要複用好了...
+
 const CONNECTION_STRING = process.env.AZURE_BLOB_CONNECTION_STRING || '';
 const CONTAINER_NAME = 'pdf-temp';
 
@@ -77,7 +79,64 @@ export const uploadPdf = async (
 };
 
 /**
- * 刪除某次上傳的所有暫存（Worker 完成後呼叫）
+ * 從 Blob 下載檔案到 Buffer
+ */
+export const downloadBlobToBuffer = async (
+  blobUrl: string,
+): Promise<Buffer> => {
+  const container = getContainerClient();
+  const urlObj = new URL(blobUrl);
+  const blobName = urlObj.pathname.split('/').slice(2).join('/');
+  const blockBlobClient = container.getBlockBlobClient(blobName);
+
+  const downloadResponse = await blockBlobClient.download(0);
+  const chunks: Buffer[] = [];
+
+  for await (const chunk of downloadResponse.readableStreamBody as AsyncIterable<Buffer>) {
+    chunks.push(chunk);
+  }
+
+  return Buffer.concat(chunks);
+};
+
+/**
+ * 雲端模式：PDF → JPEG 圖片 Buffer[]
+ *
+ * 使用 pdfjs-dist 解析 PDF，node-canvas 渲染成圖片
+ */
+export const convertPdfToImages = async (
+  pdfBuffer: Buffer,
+): Promise<Buffer[]> => {
+  // Dynamic import 避免在不需要時載入 heavy dependencies
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const { createCanvas } = await import('canvas');
+
+  const uint8Array = new Uint8Array(pdfBuffer);
+  const pdf = await pdfjsLib.getDocument({ data: uint8Array }).promise;
+  const images: Buffer[] = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 2.0 }); // 2x for clarity
+
+    const canvas = createCanvas(viewport.width, viewport.height);
+    const context = canvas.getContext('2d');
+
+    await (page.render as any)({
+      canvasContext: context,
+      viewport,
+    }).promise;
+
+    // 轉 JPEG Buffer
+    const jpegBuffer = canvas.toBuffer('image/jpeg', { quality: 0.85 });
+    images.push(jpegBuffer);
+  }
+
+  return images;
+};
+
+/**
+ * 刪除某次上傳的所有暫存
  */
 export const deleteTempBlobs = async (blobUrls: string[]): Promise<void> => {
   const container = getContainerClient();

@@ -23,4 +23,6 @@ router.post(
 
 router.get('/pdf/stream/:uploadId', authMiddleware, pdfController.stream);
 
+router.post('/pdf/parse/:uploadId', authMiddleware, pdfController.triggerParse);
+
 export default router;

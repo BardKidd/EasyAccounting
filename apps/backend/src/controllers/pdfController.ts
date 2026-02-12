@@ -6,9 +6,11 @@ import {
   uploadPdf,
   validateUploadFiles,
 } from '@/services/pdfService';
+import { sendParseMessage } from '@/utils/serviceBus';
 import {
   getParseStatus,
   onStatusChange,
+  updateParseStatus,
   ParseStatusData,
 } from '@/utils/parseStatus';
 import { ParseStatus } from '@repo/shared';
@@ -133,13 +135,66 @@ const stream = async (req: Request, res: Response) => {
   });
 
   // 4. Heartbeat：每 30 秒送 comment 避免連線被中間層（nginx / cloudflare）超時斷掉
-  const heartbeat = setInterval(() => {
-    res.write(': heartbeat\n\n');
+  // : 是 SSE 的 comment，不會被解析
+  const ping = setInterval(() => {
+    res.write(': ping\n\n');
   }, 30_000);
 
   req.on('close', () => {
-    clearInterval(heartbeat);
+    clearInterval(ping);
   });
 };
 
-export default { upload, stream };
+/**
+ * POST /pdf/parse/:uploadId
+ *
+ * 觸發 LLM 解析任務，將訊息放入 Service Bus Queue
+ */
+const triggerParse = async (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const uploadId = req.params.uploadId as string;
+    const userId = req.user.userId;
+    const blobUrls = req.body.blobUrls as string[];
+    const processingMode = req.body.processingMode as 'local' | 'cloud';
+
+    if (!uploadId || !blobUrls?.length || !processingMode) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json(
+          responseHelper(
+            false,
+            null,
+            'Missing required fields: blobUrls, processingMode',
+            null,
+          ),
+        );
+    }
+
+    // 設定初始狀態
+    updateParseStatus({
+      uploadId,
+      status: ParseStatus.QUEUED,
+    });
+
+    // 丟進 Service Bus Queue
+    await sendParseMessage({
+      uploadId,
+      userId,
+      blobUrls,
+      processingMode,
+    });
+
+    return res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(
+          true,
+          { uploadId, status: ParseStatus.QUEUED },
+          'Parse job queued',
+          null,
+        ),
+      );
+  });
+};
+
+export default { upload, stream, triggerParse };
