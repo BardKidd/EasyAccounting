@@ -23,6 +23,13 @@ router.post(
 
 router.get('/pdf/stream/:uploadId', authMiddleware, pdfController.stream);
 
+// 觸發解析（需 auth）
 router.post('/pdf/parse/:uploadId', authMiddleware, pdfController.triggerParse);
+
+// Phase 3: 待確認交易管理
+router.get('/pdf/pending', authMiddleware, pdfController.getPending);
+router.patch('/pdf/pending/:id', authMiddleware, pdfController.updatePending);
+router.post('/pdf/confirm', authMiddleware, pdfController.confirm);
+router.delete('/pdf/pending', authMiddleware, pdfController.clearPending);
 
 export default router;

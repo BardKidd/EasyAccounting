@@ -5,6 +5,10 @@ import {
   uploadImages,
   uploadPdf,
   validateUploadFiles,
+  getPendingTransactions,
+  updatePendingTransaction,
+  confirmTransactions,
+  clearPendingTransactions,
 } from '@/services/pdfService';
 import { sendParseMessage } from '@/utils/serviceBus';
 import {
@@ -156,6 +160,7 @@ const triggerParse = async (req: Request, res: Response) => {
     const userId = req.user.userId;
     const blobUrls = req.body.blobUrls as string[];
     const processingMode = req.body.processingMode as 'local' | 'cloud';
+    const password = req.body.password as string | undefined;
 
     if (!uploadId || !blobUrls?.length || !processingMode) {
       return res
@@ -182,6 +187,7 @@ const triggerParse = async (req: Request, res: Response) => {
       userId,
       blobUrls,
       processingMode,
+      password,
     });
 
     return res
@@ -197,4 +203,118 @@ const triggerParse = async (req: Request, res: Response) => {
   });
 };
 
-export default { upload, stream, triggerParse };
+/**
+ * GET /pdf/pending
+ *
+ * 取得待確認交易列表
+ */
+const getPending = async (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+
+    const result = await getPendingTransactions(userId, { page, limit });
+
+    return res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(
+          true,
+          result,
+          'Fetch pending transactions success',
+          null,
+        ),
+      );
+  });
+};
+
+/**
+ * PATCH /pdf/pending/:id
+ *
+ * 更新單筆待確認交易
+ */
+const updatePending = async (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const id = req.params.id as string;
+    const data = req.body;
+
+    const updated = await updatePendingTransaction(userId, id, data);
+
+    return res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(
+          true,
+          updated,
+          'Update pending transaction success',
+          null,
+        ),
+      );
+  });
+};
+
+/**
+ * POST /pdf/confirm
+ *
+ * 批次確認交易
+ * body: { transactionIds: string[] }
+ */
+const confirm = async (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const transactionIds = req.body.transactionIds as string[];
+
+    if (
+      !transactionIds ||
+      !Array.isArray(transactionIds) ||
+      transactionIds.length === 0
+    ) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json(responseHelper(false, null, 'transactionIds is required', null));
+    }
+
+    const result = await confirmTransactions(userId, transactionIds);
+
+    return res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(
+          true,
+          result,
+          `Confirmed ${result.count} transactions`,
+          null,
+        ),
+      );
+  });
+};
+
+/**
+ * DELETE /pdf/pending
+ *
+ * 清除所有待確認交易
+ */
+const clearPending = async (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    await clearPendingTransactions(userId);
+
+    return res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(true, null, 'All pending transactions cleared', null),
+      );
+  });
+};
+
+export default {
+  upload,
+  stream,
+  triggerParse,
+  getPending,
+  updatePending,
+  confirm,
+  clearPending,
+};

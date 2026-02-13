@@ -22,18 +22,24 @@ const getGroqClient = (): Groq => {
 // ---------- Prompt ----------
 
 const buildSystemPrompt = (headerContext: string | null): string => {
-  const basePrompt = `你是一位專業的信用卡帳單解析專家。請從提供的帳單圖片中提取所有交易記錄。
+  const basePrompt = `You are a professional credit card bill analysis expert. Extract all transaction records from the provided bill image.
 
-## 輸出格式
+## CRITICAL RULES
 
-回傳一個 JSON 陣列，每個物件代表一筆交易：
+1.  **NO SUMMARIZATION**: You must extract **EVERY SINGLE** transaction visible in the image. If there are 50 transactions, return 50 objects.
+2.  **NO LAZINESS**: Do not list only the first few items. Scan line by line to ensure no omissions.
+3.  **PRECISE EXTRACTION**: Amounts and dates must be completely accurate. Do not miss installment payments or foreign currency transactions.
+
+## Output Format
+
+Return a JSON array, where each object represents a transaction:
 
 \`\`\`json
 [
   {
     "date": "YYYY-MM-DD",
     "time": "HH:mm",
-    "description": "品牌/商家名稱（簡化）",
+    "description": "Brand/Merchant Name (Simplified)",
     "amount": 1500.00,
     "type": "expense",
     "isInstallment": false,
@@ -46,31 +52,33 @@ const buildSystemPrompt = (headerContext: string | null): string => {
 ]
 \`\`\`
 
-## 規則
+## Detailed Field Rules
 
-1. **日期格式**：統一使用 \`YYYY-MM-DD\`，如果帳單只有月/日，年份用帳單最上方的年份
-2. **時間**：如有則填，沒有則為 null
-3. **描述**：提取品牌名稱而非帳單原始敘述。例如：
+1. **Language**: **Always use Traditional Chinese (繁體中文)** if the content is in Chinese (including Simplified Chinese). Keep other languages (English, Japanese, etc.) in their original form.
+2. **Date**: Use \`YYYY-MM-DD\`. If only Month/Day is shown, infer the year from the bill header.
+3. **Time**: Format as \`HH:mm\` if available, otherwise null.
+4. **Description**: Extract the BRAND NAME, not the raw description. Examples:
    - "UBER* EATS HELP.UBER.COM" → "Uber Eats"
    - "全聯福利中心台北南港" → "全聯福利中心"
    - "MOMO購物網" → "momo"
-4. **金額**：數字形式，不含千分位符號。正數。
-5. **類型**：消費為 \`expense\`，退款為 \`income\`
-6. **分期**：如果交易註明「分期」，設定 \`isInstallment: true\`，並填入 \`installmentCurrent\`（第幾期）和 \`installmentTotal\`（總期數）
-7. **extraAdd**：折扣金額（正數），如帳單有顯示
-8. **extraMinus**：手續費金額（正數），如帳單有顯示（通常出現在分期交易）
-9. **幣別**：預設 TWD，如果是外幣交易填入對應幣別代碼
-10. **只抓交易行**：忽略帳單摘要、利息、最低應繳等非交易項目`;
+4. **Amount**: Number, positive, no thousands separators.
+5. **Type**: \`expense\` for purchases, \`income\` for refunds (negative amounts).
+6. **Installment**: If it's an installment, set \`isInstallment: true\` and populate \`installmentCurrent\`/\`installmentTotal\`.
+7. **extraAdd**: Discount amount (positive number) if present.
+8. **extraMinus**: Handling fee (positive number) if present (e.g., foreign transaction fee).
+9. **Currency**: Default \`TWD\`. Use ISO code (e.g., USD, JPY) for foreign currencies.
+10. **Exclusions**: Only parse "Transaction Detail" or "Consumption" sections. Ignore summaries, interest, late fees, minimum payments.`;
 
   if (headerContext) {
     return `${basePrompt}
 
-## 重要提示
+## Important Context
 
-這是帳單的接續頁面，表格欄位順序同前一頁。前頁表頭為：
+This is a continuation page of the bill. The table columns follow the same order as the previous page.
+Previous page header/first row context:
 ${headerContext}
 
-請按照相同的欄位順序解析此頁的交易。`;
+Please parse this page using the same column structure.`;
   }
 
   return basePrompt;
@@ -100,14 +108,23 @@ const callGroqWithRetry = async (
           {
             role: 'user',
             content: [
-              { type: 'text', text: '請解析這張帳單圖片中的所有交易。' },
+              {
+                type: 'text',
+                text: 'Please extract all transactions from this bill image.',
+              },
               ...imageContents,
             ],
           },
         ],
         temperature: 0.1,
-        max_tokens: 4096,
+        max_tokens: 8192,
       });
+
+      if (response.usage) {
+        console.log(
+          `[Groq] Token Usage - Prompt: ${response.usage.prompt_tokens}, Completion: ${response.usage.completion_tokens}, Total: ${response.usage.total_tokens}`,
+        );
+      }
 
       return response.choices[0]?.message?.content || '';
     } catch (error) {
@@ -145,13 +162,23 @@ export const parseImages = async (
   let headerContext: string | null = null;
 
   for (let i = 0; i < imageBuffers.length; i++) {
+    // 避免觸發 Rate Limit (429)，每頁間隔 6 秒 (因免費額度限制 6000 TPM，約 10 頁/分)
+    if (i > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 6000));
+    }
     const base64 = imageBuffers[i]!.toString('base64');
 
     const rawResponse = await callGroqWithRetry([base64], headerContext);
     const result = parseLlmResponse(rawResponse);
 
     if (!result.success) {
-      console.warn(`[Groq] Page ${i + 1} parse failed: ${result.error}`);
+      console.error(`[Groq] Page ${i + 1} parse failed: ${result.error}`);
+      console.error(
+        `[Groq] Raw response (first 500 chars): ${rawResponse.slice(0, 500)}`,
+      );
+      console.error(
+        `[Groq] Raw response (last 200 chars): ${rawResponse.slice(-200)}`,
+      );
       continue; // 跳過解析失敗的頁面，不要整批失敗
     }
 

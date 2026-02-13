@@ -46,6 +46,7 @@ export interface BillParseMessage {
   userId: string;
   blobUrls: string[];
   processingMode: 'local' | 'cloud';
+  password?: string;
 }
 
 /**

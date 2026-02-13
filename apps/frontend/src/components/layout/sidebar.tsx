@@ -40,6 +40,11 @@ const sidebarItems = [
     icon: Wallet,
   },
   {
+    title: '帳單匯入',
+    href: '/bill-import',
+    icon: Command,
+  },
+  {
     title: '統計報表',
     href: '/statistics',
     icon: PieChart,
@@ -84,12 +89,7 @@ function SidebarContent({
               fill="none"
               className="h-8 w-8"
             >
-              <rect
-                width="32"
-                height="32"
-                rx="10"
-                className="fill-primary"
-              />
+              <rect width="32" height="32" rx="10" className="fill-primary" />
               <path
                 d="M26 22L22 10L18 22H14V10H7M7 16H12M7 22H14M20 17H24"
                 stroke="currentColor"
@@ -132,7 +132,9 @@ function SidebarContent({
                       : 'text-muted-foreground group-hover:text-sidebar-foreground',
                   )}
                 />
-                <span className="tracking-wide block md:hidden lg:block whitespace-nowrap">{item.title}</span>
+                <span className="tracking-wide block md:hidden lg:block whitespace-nowrap">
+                  {item.title}
+                </span>
               </Link>
             );
           })}
@@ -141,9 +143,13 @@ function SidebarContent({
       <div className="px-6 md:px-2 lg:px-6 py-4 border-t border-sidebar-border mt-auto bg-sidebar-accent/20 block md:hidden lg:block">
         <div className="flex items-center gap-3">
           <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></div>
-          <p className="text-xs text-muted-foreground font-medium">System Online</p>
+          <p className="text-xs text-muted-foreground font-medium">
+            System Online
+          </p>
         </div>
-        <p className="text-[10px] text-muted-foreground/60 mt-2">© 2025 EasyAccount</p>
+        <p className="text-[10px] text-muted-foreground/60 mt-2">
+          © 2025 EasyAccount
+        </p>
       </div>
     </div>
   );

@@ -61,7 +61,21 @@ const processMessage = async (message: BillParseMessage) => {
         progress: 20,
       });
 
-      imageBuffers = await convertPdfToImages(pdfBuffer);
+      try {
+        imageBuffers = await convertPdfToImages(pdfBuffer, message.password);
+      } catch (err: any) {
+        if (err.name === 'PasswordException' || err.code === 1) {
+          console.warn(`[Worker] ${uploadId} requires password`);
+          updateParseStatus({
+            uploadId,
+            status: ParseStatus.PASSWORD_REQUIRED,
+            error: 'Password required',
+          });
+          return;
+        }
+        throw err;
+      }
+
       updateParseStatus({
         uploadId,
         status: ParseStatus.PROCESSING,
