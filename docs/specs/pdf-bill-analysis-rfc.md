@@ -35,23 +35,17 @@
 ```mermaid
 flowchart LR
     subgraph Frontend
-        A[上傳 PDF] --> B{選擇模式}
-        B -->|本地解析| C[pdfjs-dist Worker 轉圖片]
-        B -->|雲端解析| D[直接上傳 PDF]
+        A[上傳 PDF] --> C[pdfjs-dist 轉圖片]
         C --> E[上傳圖片]
-        D --> F[上傳 PDF]
     end
 
     subgraph Backend
-        G[接收圖片/PDF] --> H{類型判斷}
-        H -->|圖片| I[Azure Blob 暫存]
-        H -->|PDF| J[pdf.js 轉圖片]
-        J --> I
+        G[接收圖片] --> I[Azure Blob 暫存]
         I --> K[Azure Service Bus Queue]
     end
 
     subgraph Worker[Backend Worker]
-        W[Service Bus Consumer] --> X[Groq API]
+        W[Service Bus Consumer] --> X[OpenRouter API]
         X --> Y[結構化 JSON]
         Y --> Z[pending_transaction]
         Z --> ZZ[刪除 Blob 暫存]
@@ -75,15 +69,20 @@ flowchart LR
 
 ### 2.2 元件關係
 
-| 元件     | 技術                          | 說明                                  |
-| -------- | ----------------------------- | ------------------------------------- |
-| 前端     | Next.js + pdfjs-dist          | PDF 轉圖片（本地模式）、上傳、確認 UI |
-| 後端     | Node.js + pdfjs-dist          | API、PDF 轉圖片（雲端模式）、SSE 推送 |
-| 訊息佇列 | Azure Service Bus             | 解析任務排隊，避免 rate limit         |
-| 定時任務 | Azure Functions Timer Trigger | 垃圾資料定期清理                      |
-| 檔案暫存 | Azure Blob                    | 圖片/PDF 臨時存放                     |
-| AI       | OpenRouter (Kimi K2.5)        | 圖片 → 結構化資料                     |
-| 資料庫   | PostgreSQL (Neon)             | 交易、暫存資料、Telemetry             |
+| 元件     | 技術                           | 說明                             |
+| -------- | ------------------------------ | -------------------------------- |
+| 前端     | Next.js + pdfjs-dist           | PDF 轉圖片、上傳、確認 UI        |
+| 後端     | Node.js                        | API、SSE 推送（不處理 PDF 轉換） |
+| 訊息佇列 | Azure Service Bus              | 解析任務排隊，避免 rate limit    |
+| 定時任務 | Azure Functions Timer Trigger  | 垃圾資料定期清理                 |
+| 檔案暫存 | Azure Blob                     | 圖片臨時存放                     |
+| AI       | OpenRouter (Gemini Flash Lite) | 圖片 → 結構化資料                |
+| 資料庫   | PostgreSQL (Neon)              | 交易、暫存資料、Telemetry        |
+
+> [!IMPORTANT]
+> **PDF → Image 轉換統一在前端執行**。pdfjs-dist 的渲染引擎依賴瀏覽器原生 Canvas API，
+> 在 Node.js 環境下使用 `node-canvas` polyfill 會因 `Image` 物件不相容導致 `drawImage()` 失敗。
+> 瀏覽器原生 Canvas 有 GPU 加速，即使 20 頁 PDF 在手機上也能在 10-15 秒內完成轉換。
 
 ---
 
@@ -91,17 +90,12 @@ flowchart LR
 
 ### 3.1 整體流程
 
-**本地解析模式**：
-
 ```
-[前端] PDF → pdfjs-dist Worker 轉圖片 → 上傳圖片 → [後端] LLM 分析 → 用戶確認 → 寫入 DB
+[前端] PDF → pdfjs-dist 轉圖片 → 上傳圖片 → [後端] LLM 分析 → 用戶確認 → 寫入 DB
 ```
 
-**雲端解析模式**：
-
-```
-[前端] PDF → 直接上傳 → [後端] pdf.js 轉圖片 → LLM 分析 → 用戶確認 → 寫入 DB
-```
+> [!NOTE]
+> 不再區分本地/雲端模式。所有 PDF 轉圖片工作統一在前端完成，後端只接收圖片。
 
 ### 3.2 PDF 轉圖片（前端處理）
 
@@ -338,14 +332,15 @@ flowchart TD
 
 ### 5.1 Endpoints 總覽
 
-| Method | Endpoint                | Description                            |
-| ------ | ----------------------- | -------------------------------------- |
-| POST   | `/pdf/upload`           | 上傳圖片（本地模式）或 PDF（雲端模式） |
-| POST   | `/pdf/parse/:uploadId`  | 觸發解析                               |
-| GET    | `/pdf/stream/:uploadId` | SSE 即時狀態推送                       |
-| GET    | `/pdf/pending`          | 取得待確認交易列表                     |
-| PATCH  | `/pdf/pending/:id`      | 更新單筆狀態                           |
-| POST   | `/pdf/confirm`          | 批次確認寫入 DB                        |
+| Method | Endpoint                | Description        |
+| ------ | ----------------------- | ------------------ |
+| POST   | `/pdf/upload`           | 上傳圖片           |
+| POST   | `/pdf/parse/:uploadId`  | 觸發解析           |
+| GET    | `/pdf/stream/:uploadId` | SSE 即時狀態推送   |
+| GET    | `/pdf/pending`          | 取得待確認交易列表 |
+| PATCH  | `/pdf/pending/:id`      | 更新單筆狀態       |
+| POST   | `/pdf/confirm`          | 批次確認寫入 DB    |
+| DELETE | `/pdf/pending`          | 捨棄所有待確認交易 |
 
 ### 5.2 流程圖
 
@@ -513,20 +508,18 @@ Notification.requestPermission();
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  帳單匯入                      [本地解析 💻] [雲端解析 ☁️]   │
-├─────────────────────────────────────────────────────────────┤
-│  💡 本地解析：在你的裝置處理，速度較快                       │
-│     雲端解析：適合大型 PDF                         │
+│  帳單匯入                                    [上傳 PDF 📄]  │
 ├─────────────────────────────────────────────────────────────┤
 │  狀態: 已識別 15 筆交易，待確認 12 筆                        │
 ├─────────────────────────────────────────────────────────────┤
-│  ☑ │ 日期 │ 商家 │ 金額 │ 類別 │ 帳戶 │ 分期 │ 折扣 │ ... │
-│  ☑ │ 1/15 │ 全聯 │ 850 │ 食品 │ 玉山 │  -   │  0  │     │
-│  ☑ │ 1/16 │ 蝦皮 │ 1200│ 購物 │ 玉山 │ 3/6  │  0  │     │
-│  ☐ │ 1/17 │ 台電 │ 2300│ 帳單 │  -   │  -   │  0  │     │
-│  ✕ │ 1/18 │ ... │ ... │ ... │ ... │ ... │ ... │     │
+│  匯入帳戶: [▼ 選擇帳戶]                                     │
 ├─────────────────────────────────────────────────────────────┤
-│                          [確認匯入選取項目] [全部略過]       │
+│  ☑ │ 日期 │ 商家 │ 金額 │ 類別 │ 分期 │ 狀態 │
+│  ☑ │ 1/15 │ 全聯 │ 850 │ 食品 │  -   │      │
+│  ☑ │ 1/16 │ 蝦皮 │ 1200│ 購物 │ 3/6  │      │
+│  ☐ │ 1/17 │ 台電 │ 2300│  -   │  -   │ ⚠️   │
+├─────────────────────────────────────────────────────────────┤
+│                       [全部捨棄] [確認匯入全部]              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -741,9 +734,14 @@ Llama 3.2 處理長列表時可能產生格式錯誤或幻覺
 
 **解決方案**：
 
-- 顯示轉換進度，讓用戶知道處理中
-- 提供「上傳原始 PDF」的 fallback 選項（後端處理）
+- 顯示轉換進度（「正在轉換第 X/N 頁」），讓用戶知道處理中
+- 逐頁處理（非同時），記憶體峰值僅 ~8MB/頁
 - 限制單次上傳最大頁數（如 50 頁）
+
+> [!NOTE]
+> 後端不處理 PDF → Image 轉換。pdfjs-dist 的渲染引擎依賴瀏覽器 DOM API（`HTMLImageElement`），
+> 在 Node.js 搭配 `node-canvas` 時 `drawImage()` 會因 Image 物件型別不相容而失敗。
+> 瀏覽器有原生 GPU 加速的 Canvas，效能遠優於 Node.js CPU 軟體渲染。
 
 #### 5. 大量資料前端效能
 
@@ -1039,7 +1037,7 @@ const decryptPDF = async (arrayBuffer: ArrayBuffer, password: string) => {
 > [!IMPORTANT]
 > 密碼**只在前端使用**，用於本地解密 PDF。
 > 後端不會收到密碼，也不會儲存密碼。
-> 雲端解析模式下，加密 PDF 需先在前端解密後再上傳圖片。
+> PDF 轉圖片統一在前端完成，密碼不會離開使用者裝置。
 
 ---
 
@@ -1049,27 +1047,26 @@ const decryptPDF = async (arrayBuffer: ArrayBuffer, password: string) => {
 
 | Method | Endpoint                | Description        | 認證   |
 | ------ | ----------------------- | ------------------ | ------ |
-| POST   | `/pdf/upload`           | 上傳圖片或 PDF     | 需認證 |
+| POST   | `/pdf/upload`           | 上傳圖片           | 需認證 |
 | POST   | `/pdf/parse/:uploadId`  | 觸發解析任務       | 需認證 |
 | GET    | `/pdf/stream/:uploadId` | SSE 即時狀態推送   | 需認證 |
 | GET    | `/pdf/pending`          | 取得待確認交易列表 | 需認證 |
 | PATCH  | `/pdf/pending/:id`      | 更新單筆待確認交易 | 需認證 |
 | POST   | `/pdf/confirm`          | 批次確認寫入 DB    | 需認證 |
+| DELETE | `/pdf/pending`          | 捨棄所有待確認交易 | 需認證 |
 
 ### D.2 Request/Response 詳細規格
 
 #### POST `/pdf/upload`
 
-上傳 PDF（雲端模式）或圖片（本地模式）。
+上傳前端轉換後的圖片。
 
 **Request**:
 
 ```typescript
 // multipart/form-data
 interface UploadRequest {
-  mode: 'local' | 'cloud'; // 處理模式
-  file?: File; // 雲端模式：PDF 檔案
-  images?: File[]; // 本地模式：轉換後的圖片陣列
+  files: File[]; // 前端轉換後的 JPEG 圖片陣列
 }
 ```
 
