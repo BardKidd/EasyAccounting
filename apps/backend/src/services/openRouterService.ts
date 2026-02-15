@@ -27,10 +27,9 @@ const getClient = (): OpenAI => {
 };
 
 // ---------- Constants ----------
-
-const MODEL_ID = 'moonshotai/kimi-k2.5';
+// moonshotai/kimi-k2.5
+const MODEL_ID = 'google/gemini-2.5-flash-lite';
 const MAX_RETRIES = 2;
-const PAGE_DELAY_MS = 2000; // OpenRouter 無嚴格 TPM 限制，保留適度間隔
 
 // ---------- Prompt ----------
 
@@ -204,9 +203,6 @@ export const parseImages = async (
   console.log(`[OpenRouter] 🔍 Starting parse: ${imageBuffers.length} page(s)`);
 
   for (let i = 0; i < imageBuffers.length; i++) {
-    if (i > 0) {
-      await new Promise((resolve) => setTimeout(resolve, PAGE_DELAY_MS));
-    }
     const base64 = imageBuffers[i]!.toString('base64');
     console.log(
       `[OpenRouter] 📄 Processing page ${i + 1}/${imageBuffers.length} (image size: ${(imageBuffers[i]!.length / 1024).toFixed(0)}KB)`,

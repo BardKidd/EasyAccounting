@@ -38,7 +38,7 @@ export const convertPdfToImages = async (
 
     for (let i = 1; i <= pageCount; i++) {
       const page = await pdf.getPage(i);
-      const viewport = page.getViewport({ scale: 2.0 }); // Scale up for better quality
+      const viewport = page.getViewport({ scale: 1.5 }); // Scale up for better quality
 
       // Create a canvas to render the page
       const canvas = document.createElement('canvas');
@@ -58,7 +58,7 @@ export const convertPdfToImages = async (
 
       // Convert canvas to Blob (JPEG)
       const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.8);
+        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.6);
       });
 
       if (blob) {
