@@ -4,11 +4,7 @@ import {
   closeServiceBus,
 } from '@/utils/serviceBus';
 import { updateParseStatus } from '@/utils/parseStatus';
-import {
-  downloadBlobToBuffer,
-  convertPdfToImages,
-  deleteTempBlobs,
-} from '@/services/pdfService';
+import { downloadBlobToBuffer, deleteTempBlobs } from '@/services/pdfService';
 import { parseImages } from '@/services/openRouterService';
 import {
   saveParsedResults,
@@ -25,18 +21,18 @@ import { ParseStatus } from '@repo/shared';
  *
  * 流程：
  * 1. 收到訊息 → 更新狀態 PROCESSING
- * 2. 雲端模式：下載 PDF → 轉圖片
- * 3. 送圖片給 Groq 解析
+ * 2. 從 Blob 下載圖片（前端已轉好）
+ * 3. 送圖片給 LLM 解析
  * 4. 存入 pending_transaction
  * 5. 清除 Blob 暫存
  * 6. 更新狀態 COMPLETED
  */
 
 const processMessage = async (message: BillParseMessage) => {
-  const { uploadId, userId, blobUrls, processingMode } = message;
+  const { uploadId, userId, blobUrls } = message;
   const startTime = Date.now();
 
-  console.log(`[Worker] Processing ${uploadId} (mode: ${processingMode})`);
+  console.log(`[Worker] Processing ${uploadId}`);
 
   try {
     // 1. 更新狀態為 PROCESSING
@@ -46,54 +42,14 @@ const processMessage = async (message: BillParseMessage) => {
       progress: 0,
     });
 
-    // 2. 取得圖片 buffers
-    let imageBuffers: Buffer[];
-
-    if (processingMode === 'cloud') {
-      // 雲端模式：從 Blob 下載 PDF → 轉圖片
-      updateParseStatus({
-        uploadId,
-        status: ParseStatus.PROCESSING,
-        progress: 10,
-      });
-
-      const pdfBuffer = await downloadBlobToBuffer(blobUrls[0]!);
-      updateParseStatus({
-        uploadId,
-        status: ParseStatus.PROCESSING,
-        progress: 20,
-      });
-
-      try {
-        imageBuffers = await convertPdfToImages(pdfBuffer, message.password);
-      } catch (err: any) {
-        if (err.name === 'PasswordException' || err.code === 1) {
-          console.warn(`[Worker] ${uploadId} requires password`);
-          updateParseStatus({
-            uploadId,
-            status: ParseStatus.PASSWORD_REQUIRED,
-            error: 'Password required',
-          });
-          return;
-        }
-        throw err;
-      }
-
-      updateParseStatus({
-        uploadId,
-        status: ParseStatus.PROCESSING,
-        progress: 30,
-      });
-    } else {
-      // 本地模式：前端已轉好圖片，從 Blob 下載 JPEG
-      const downloadPromises = blobUrls.map((url) => downloadBlobToBuffer(url));
-      imageBuffers = await Promise.all(downloadPromises);
-      updateParseStatus({
-        uploadId,
-        status: ParseStatus.PROCESSING,
-        progress: 30,
-      });
-    }
+    // 2. 從 Blob 下載圖片（前端已轉好）
+    const downloadPromises = blobUrls.map((url) => downloadBlobToBuffer(url));
+    const imageBuffers = await Promise.all(downloadPromises);
+    updateParseStatus({
+      uploadId,
+      status: ParseStatus.PROCESSING,
+      progress: 30,
+    });
 
     // 3. 送圖片給 LLM 解析
     updateParseStatus({
@@ -152,7 +108,7 @@ const processMessage = async (message: BillParseMessage) => {
       uploadBatchId: uploadId,
       totalTransactions: pendingCount,
       parseTimeMs: Date.now() - startTime,
-      processingMode,
+      processingMode: 'local',
       llmProvider: provider,
       llmModel: model,
       pageCount,

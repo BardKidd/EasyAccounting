@@ -34,7 +34,6 @@ export default function BillImportPage() {
 
   const [uploadContext, setUploadContext] = useState<{
     blobUrls: string[];
-    processingMode: 'local' | 'cloud';
   } | null>(null);
 
   const status = useParseStatus(activeUploadId);
@@ -83,61 +82,46 @@ export default function BillImportPage() {
 
   const [localFiles, setLocalFiles] = useState<File[]>([]);
 
-  const handleUpload = async (
-    files: File[],
-    mode: 'local' | 'cloud',
-    password?: string,
-  ) => {
+  const handleUpload = async (files: File[], password?: string) => {
     setIsUploading(true);
     const formData = new FormData();
 
-    // Process files based on mode
+    // 前端轉換 PDF → JPEG
     let filesToUpload: File[] = [];
 
-    if (mode === 'local') {
-      try {
-        toast.info(
-          password ? '正在嘗試使用密碼解鎖 PDF...' : '正在本地轉換 PDF...',
-        );
-        const conversionPromises = files.map(async (file) => {
-          if (file.type === 'application/pdf') {
-            const blobs = await convertPdfToImages(file, password);
-            // Convert blobs to File objects
-            return blobs.map(
-              (blob, index) =>
-                new File(
-                  [blob],
-                  `${file.name.replace('.pdf', '')}_page_${index + 1}.jpg`,
-                  { type: 'image/jpeg' },
-                ),
-            );
-          }
-          return [file]; // If it's already an image, just return it
-        });
-
-        const nestedFiles = await Promise.all(conversionPromises);
-        filesToUpload = nestedFiles.flat();
-      } catch (error: any) {
-        console.error(error);
-        if (error.name === 'PasswordRequiredError') {
-          // Store files causing error to retry later
-          setLocalFiles(files);
-          setUploadContext({
-            blobUrls: [], // No blobs yet
-            processingMode: 'local',
-          });
-          setShowPasswordDialog(true);
-          toast.warning('此 PDF 需要密碼，請輸入密碼');
-          setIsUploading(false);
-          return;
+    try {
+      toast.info(password ? '正在嘗試使用密碼解鎖 PDF...' : '正在轉換 PDF...');
+      const conversionPromises = files.map(async (file) => {
+        if (file.type === 'application/pdf') {
+          const blobs = await convertPdfToImages(file, password);
+          return blobs.map(
+            (blob, index) =>
+              new File(
+                [blob],
+                `${file.name.replace('.pdf', '')}_page_${index + 1}.jpg`,
+                { type: 'image/jpeg' },
+              ),
+          );
         }
+        return [file];
+      });
 
-        toast.error('本地 PDF 轉換失敗');
+      const nestedFiles = await Promise.all(conversionPromises);
+      filesToUpload = nestedFiles.flat();
+    } catch (error: any) {
+      console.error(error);
+      if (error.name === 'PasswordRequiredError') {
+        setLocalFiles(files);
+        setUploadContext({ blobUrls: [] });
+        setShowPasswordDialog(true);
+        toast.warning('此 PDF 需要密碼，請輸入密碼');
         setIsUploading(false);
         return;
       }
-    } else {
-      filesToUpload = files;
+
+      toast.error('PDF 轉換失敗');
+      setIsUploading(false);
+      return;
     }
 
     filesToUpload.forEach((file) => {
@@ -146,40 +130,28 @@ export default function BillImportPage() {
 
     try {
       const domain = process.env.NEXT_PUBLIC_API_DOMAIN || '/api';
-      const url = new URL(`${domain}/pdf/upload`);
-      if (mode) url.searchParams.append('mode', mode);
+      const url = `${domain}/pdf/upload`;
 
-      const res = await fetch(url.toString(), {
+      const res = await fetch(url, {
         method: 'POST',
         body: formData,
-        credentials: 'include', // Important for cookies/auth
+        credentials: 'include',
       });
-      // Handle non-ResponseHelper response (e.g. 404 from proxy if domain not set)
-      // But assuming backend returns standard JSON or ResponseHelper
       const data = await res.json();
 
       if (data.isSuccess) {
-        const { uploadId, blobUrls, blobUrl } = data.data;
-        const targetUploadId = uploadId;
-        const urls = mode === 'local' ? blobUrls : [blobUrl];
+        const { uploadId, blobUrls } = data.data;
 
-        // Store context for retry
-        setUploadContext({
-          blobUrls: urls,
-          processingMode: mode,
-        });
+        setUploadContext({ blobUrls });
 
         // Trigger Parse
-        await apiHandler(`/pdf/parse/${targetUploadId}`, 'post', {
-          blobUrls: urls,
-          processingMode: mode,
-          password, // Pass password to backend if available (though for local mode it's already used)
+        await apiHandler(`/pdf/parse/${uploadId}`, 'post', {
+          blobUrls,
         });
 
-        // If apiHandler throws, it goes to catch block. If it returns, it's success.
-        setActiveUploadId(targetUploadId);
+        setActiveUploadId(uploadId);
         toast.success('上傳成功，開始解析...');
-        setLocalFiles([]); // Clear local files on success
+        setLocalFiles([]);
       } else {
         toast.error(data.message || '上傳失敗');
       }
@@ -193,26 +165,13 @@ export default function BillImportPage() {
   const handlePasswordSubmit = async (password: string) => {
     setIsPasswordSubmitting(true);
     try {
-      // Local Mode Retry
-      if (uploadContext?.processingMode === 'local' && localFiles.length > 0) {
+      if (localFiles.length > 0) {
         setShowPasswordDialog(false);
-        await handleUpload(localFiles, 'local', password);
+        await handleUpload(localFiles, password);
         return;
       }
-
-      // Cloud Mode (Backend) Retry
-      if (!activeUploadId || !uploadContext) return;
-
-      await apiHandler(`/pdf/parse/${activeUploadId}`, 'post', {
-        blobUrls: uploadContext.blobUrls,
-        processingMode: uploadContext.processingMode,
-        password,
-      });
-
-      toast.success('密碼發送成功，重新解析中...');
-      setShowPasswordDialog(false);
     } catch (error) {
-      toast.error('密碼發送失敗，請重試');
+      toast.error('密碼錯誤或 PDF 無法解析');
     } finally {
       setIsPasswordSubmitting(false);
     }

@@ -3,7 +3,6 @@ import { StatusCodes } from 'http-status-codes';
 import { simplifyTryCatch, responseHelper } from '@/utils/common';
 import {
   uploadImages,
-  uploadPdf,
   validateUploadFiles,
   getPendingTransactions,
   updatePendingTransaction,
@@ -22,57 +21,29 @@ import { ParseStatus } from '@repo/shared';
 /**
  * POST /pdf/upload
  *
- * 接收前端上傳的圖片（本地模式）或 PDF（雲端模式）
- *
- * Query params:
- *   - mode: 'local' | 'cloud'（預設 'local'）
+ * 接收前端上傳的圖片（前端已將 PDF 轉為 JPEG）
  *
  * Body: multipart/form-data
- *   - files: 圖片檔案（本地模式，多檔）或 PDF（雲端模式，單檔）
+ *   - files: JPEG 圖片檔案（多檔）
  */
 const upload = async (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const userId = req.user.userId;
-    const mode = (req.query.mode as string) === 'cloud' ? 'cloud' : 'local';
     const files = req.files as Express.Multer.File[];
 
     // 驗證
-    const validation = validateUploadFiles(files, mode);
+    const validation = validateUploadFiles(files);
     if (!validation.valid) {
       return res
         .status(StatusCodes.BAD_REQUEST)
         .json(responseHelper(false, null, validation.error!, null));
     }
 
-    if (mode === 'cloud') {
-      // 雲端模式：上傳 PDF
-      const { uploadId, blobUrl } = await uploadPdf(userId, files[0]!);
-
-      return res
-        .status(StatusCodes.OK)
-        .json(
-          responseHelper(
-            true,
-            { uploadId, blobUrl, mode },
-            'PDF 上傳成功',
-            null,
-          ),
-        );
-    }
-
-    // 本地模式：上傳圖片
     const { uploadId, blobUrls } = await uploadImages(userId, files);
 
     return res
       .status(StatusCodes.OK)
-      .json(
-        responseHelper(
-          true,
-          { uploadId, blobUrls, mode },
-          '圖片上傳成功',
-          null,
-        ),
-      );
+      .json(responseHelper(true, { uploadId, blobUrls }, '圖片上傳成功', null));
   });
 };
 
@@ -159,17 +130,15 @@ const triggerParse = async (req: Request, res: Response) => {
     const uploadId = req.params.uploadId as string;
     const userId = req.user.userId;
     const blobUrls = req.body.blobUrls as string[];
-    const processingMode = req.body.processingMode as 'local' | 'cloud';
-    const password = req.body.password as string | undefined;
 
-    if (!uploadId || !blobUrls?.length || !processingMode) {
+    if (!uploadId || !blobUrls?.length) {
       return res
         .status(StatusCodes.BAD_REQUEST)
         .json(
           responseHelper(
             false,
             null,
-            'Missing required fields: blobUrls, processingMode',
+            'Missing required fields: blobUrls',
             null,
           ),
         );
@@ -186,8 +155,7 @@ const triggerParse = async (req: Request, res: Response) => {
       uploadId,
       userId,
       blobUrls,
-      processingMode,
-      password,
+      processingMode: 'local',
     });
 
     return res

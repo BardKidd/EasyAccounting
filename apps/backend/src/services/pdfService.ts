@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { BlobServiceClient, ContainerClient } from '@azure/storage-blob';
 import {
-  validatePdfFile,
   validateImageFiles,
   PDF_VALIDATION,
   PendingTransactionStatus,
@@ -72,27 +71,6 @@ export const uploadImages = async (
 };
 
 /**
- * 上傳 PDF 到 pdf-temp container（雲端模式）
- */
-export const uploadPdf = async (
-  userId: string,
-  file: Express.Multer.File,
-): Promise<{ uploadId: string; blobUrl: string }> => {
-  const uploadId = uuidv4();
-  const container = getContainerClient();
-  const blobName = `${userId}/${uploadId}/original.pdf`;
-  const blockBlobClient = container.getBlockBlobClient(blobName);
-
-  await blockBlobClient.uploadData(file.buffer, {
-    blobHTTPHeaders: {
-      blobContentType: 'application/pdf',
-    },
-  });
-
-  return { uploadId, blobUrl: blockBlobClient.url };
-};
-
-/**
  * 從 Blob 下載檔案到 Buffer
  */
 export const downloadBlobToBuffer = async (
@@ -114,94 +92,6 @@ export const downloadBlobToBuffer = async (
 };
 
 /**
- * 雲端模式：PDF → JPEG 圖片 Buffer[]
- *
- * 使用 pdfjs-dist 解析 PDF，node-canvas 渲染成圖片
- */
-export const convertPdfToImages = async (
-  pdfBuffer: Buffer,
-  password?: string,
-): Promise<Buffer[]> => {
-  // Dynamic import to avoid loading heavy dependencies when not needed
-  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  const canvasMod = await import('canvas');
-  const { createCanvas, Image, ImageData } = canvasMod;
-
-  // Polyfills for node-canvas interaction
-  // pdfjs-dist v4+ requires stricter globals in Node environment
-  // @ts-ignore
-  if (!global.Image) global.Image = Image;
-  // @ts-ignore
-  if (!global.createCanvas) global.createCanvas = createCanvas;
-  // @ts-ignore
-  if (!global.ImageData) global.ImageData = ImageData;
-
-  // Define NodeCanvasFactory
-  const NodeCanvasFactory = {
-    create: function (width: number, height: number) {
-      const canvas = createCanvas(width, height);
-      const context = canvas.getContext('2d');
-      return {
-        canvas: canvas,
-        context: context,
-      };
-    },
-    reset: function (canvasAndContext: any, width: number, height: number) {
-      canvasAndContext.canvas.width = width;
-      canvasAndContext.canvas.height = height;
-    },
-    destroy: function (canvasAndContext: any) {
-      canvasAndContext.canvas.width = 0;
-      canvasAndContext.canvas.height = 0;
-      canvasAndContext.canvas = null;
-      canvasAndContext.context = null;
-    },
-  };
-
-  try {
-    const uint8Array = new Uint8Array(pdfBuffer);
-    const pdf = await pdfjsLib.getDocument({
-      data: uint8Array,
-      password: password,
-      // @ts-ignore
-      canvasFactory: NodeCanvasFactory,
-      // Disable worker to avoid worker-loader issues in node
-      disableFontFace: true, // Sometimes fonts cause issues in node
-    }).promise;
-
-    const images: Buffer[] = [];
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      // scale: 2.0 代表圖片會是原始 PDF 尺寸的 2 倍大，讓 LLM 更容易看清楚
-      const viewport = page.getViewport({ scale: 2.0 });
-
-      const canvas = createCanvas(viewport.width, viewport.height);
-      const context = canvas.getContext('2d');
-
-      await page.render({
-        canvasContext: context as any, // Cast to any to avoid type mismatch with DOM types
-        viewport,
-        // @ts-ignore
-        canvasFactory: NodeCanvasFactory,
-      }).promise;
-
-      // Convert to JPEG Buffer
-      const jpegBuffer = canvas.toBuffer('image/jpeg', { quality: 0.85 });
-      images.push(jpegBuffer);
-
-      // Cleanup
-      page.cleanup();
-    }
-
-    return images;
-  } catch (error) {
-    console.error('[PDF Service] Convert failed:', error);
-    throw error;
-  }
-};
-
-/**
  * 刪除某次上傳的所有暫存
  */
 export const deleteTempBlobs = async (blobUrls: string[]): Promise<void> => {
@@ -219,34 +109,15 @@ export const deleteTempBlobs = async (blobUrls: string[]): Promise<void> => {
 };
 
 /**
- * 驗證上傳的檔案
+ * 驗證上傳的圖片檔案
  */
 export const validateUploadFiles = (
   files: Express.Multer.File[],
-  mode: 'local' | 'cloud',
 ): { valid: boolean; error?: string } => {
   if (!files || files.length === 0) {
     return { valid: false, error: '未上傳任何檔案' };
   }
 
-  if (mode === 'cloud') {
-    // 雲端模式：只接受一個 PDF
-    if (files.length !== 1) {
-      return { valid: false, error: '雲端模式只能上傳一個 PDF 檔案' };
-    }
-    const file = files[0]!;
-
-    // 透過檔案格式該投的固定簽名來判斷，而不是從副檔名
-    // https://en.wikipedia.org/wiki/List_of_file_signatures
-    const header = file.buffer.subarray(0, 5).toString();
-    if (header !== '%PDF-') {
-      return { valid: false, error: '檔案不是有效的 PDF' };
-    }
-
-    return validatePdfFile({ size: file.size, type: file.mimetype });
-  }
-
-  // 本地模式：接受多張圖片
   const imageInfos = files.map((f) => ({
     size: f.size,
     type: f.mimetype,
