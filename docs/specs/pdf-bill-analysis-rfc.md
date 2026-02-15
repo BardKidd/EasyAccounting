@@ -75,15 +75,15 @@ flowchart LR
 
 ### 2.2 元件關係
 
-| 元件     | 技術                             | 說明                                  |
-| -------- | -------------------------------- | ------------------------------------- |
-| 前端     | Next.js + pdfjs-dist             | PDF 轉圖片（本地模式）、上傳、確認 UI |
-| 後端     | Node.js + pdfjs-dist             | API、PDF 轉圖片（雲端模式）、SSE 推送 |
-| 訊息佇列 | Azure Service Bus                | 解析任務排隊，避免 rate limit         |
-| 定時任務 | Azure Functions Timer Trigger    | 垃圾資料定期清理                      |
-| 檔案暫存 | Azure Blob                       | 圖片/PDF 臨時存放                     |
-| AI       | Groq (Llama-4-Maverick-17B-128E) | 圖片 → 結構化資料                     |
-| 資料庫   | PostgreSQL (Neon)                | 交易、暫存資料、Telemetry             |
+| 元件     | 技術                          | 說明                                  |
+| -------- | ----------------------------- | ------------------------------------- |
+| 前端     | Next.js + pdfjs-dist          | PDF 轉圖片（本地模式）、上傳、確認 UI |
+| 後端     | Node.js + pdfjs-dist          | API、PDF 轉圖片（雲端模式）、SSE 推送 |
+| 訊息佇列 | Azure Service Bus             | 解析任務排隊，避免 rate limit         |
+| 定時任務 | Azure Functions Timer Trigger | 垃圾資料定期清理                      |
+| 檔案暫存 | Azure Blob                    | 圖片/PDF 臨時存放                     |
+| AI       | OpenRouter (Kimi K2.5)        | 圖片 → 結構化資料                     |
+| 資料庫   | PostgreSQL (Neon)             | 交易、暫存資料、Telemetry             |
 
 ---
 
@@ -183,25 +183,23 @@ async function pdfToImages(file: File): Promise<Blob[]> {
 ### 3.3 Multimodal LLM API
 
 > [!IMPORTANT]
-> 以下服務皆 **明確承諾不使用用戶資料進行模型訓練**
-> Groq 的 API 使用由 [Groq Services Agreement](https://console.groq.com/docs/legal/services-agreement) 管轄，明確聲明不會用 Customer Data 訓練模型。
+> OpenRouter 為模型中介平台，隱私政策由各底層供應商管轄。
+> Kimi K2.5 由 Moonshot AI 提供，詳見 [Moonshot AI Privacy Policy](https://www.moonshot.cn/privacy)。
 
-| 服務            | Model                                  | 免費額度                  | 隱私政策                                      |
-| --------------- | -------------------------------------- | ------------------------- | --------------------------------------------- |
-| **Groq** ✅     | Llama-4-Maverick-17B-128E              | 30 req/min, 1,000 req/day | ✅ [不訓練](https://groq.com/privacy-policy/) |
-| **Together AI** | Llama-4-Maverick-17B-128E-Instruct-FP8 | $1 credit (~1M tokens)    | ✅ [不訓練](https://www.together.ai/privacy)  |
+| 服務              | Model     | 計費方式      | 隱私政策                                   |
+| ----------------- | --------- | ------------- | ------------------------------------------ |
+| **OpenRouter** ✅ | Kimi K2.5 | Pay-per-token | ✅ [不訓練](https://openrouter.ai/privacy) |
 
-**Llama-4-Maverick 特性**：
+**Kimi K2.5 特性**：
 
-- **架構**：Mixture of Experts (MoE)，17B active params / 400B total
-- **多模態**：支援文字 + 圖片輸入
-- **Context Window**：128K tokens（未來擴展至 1M）
-- **知識截止**：2024 年 8 月
+- **架構**：Native Multimodal，基於 Kimi-K2-Base 持續預訓練
+- **多模態**：原生支援文字 + 圖片輸入（約 15T mixed visual and text tokens 預訓練）
+- **強項**：Visual coding、agentic tool-calling、general reasoning
+- **Agent Swarm**：支援自動分解複雜任務為平行子任務
 
-**建議策略**：
+**策略**：
 
-1. **主力**：Groq（速度最快）
-2. **備援**：Together AI（當 Groq 達到限制時切換）
+1. **主力**：OpenRouter → Kimi K2.5（自動路由至最佳 provider）
 
 ### 3.4 為什麼不選其他方案
 
@@ -210,6 +208,7 @@ async function pdfToImages(file: File): Promise<Blob[]> {
 | Google Gemini        | 免費版資料可能被用於改進產品             |
 | OpenAI GPT-4o        | 非免費                                   |
 | Claude               | 非免費                                   |
+| Groq (Llama-4)       | 辨識準確率不佳，免費額度限制嚴格         |
 | Local Model          | 需 8GB+ VRAM，不適合一般伺服器           |
 | pdf-parse + Text LLM | 信用卡帳單表格格式不統一，文字抽取易出錯 |
 

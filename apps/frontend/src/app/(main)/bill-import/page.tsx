@@ -5,10 +5,16 @@ import { toast } from 'sonner';
 import { FileUploader } from '@/components/bill-import/FileUploader';
 import { PendingTransactionTable } from '@/components/bill-import/PendingTransactionTable';
 import { useParseStatus, ParseStatusData } from '@/hooks/useParseStatus';
-import { PendingTransaction, ParseStatus } from '@repo/shared';
+import {
+  PendingTransaction,
+  ParseStatus,
+  CategoryType,
+  AccountType,
+} from '@repo/shared';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiHandler } from '@/lib/utils';
+import service from '@/services';
 
 import { PasswordDialog } from '@/components/bill-import/PasswordDialog';
 import { convertPdfToImages } from '@/lib/pdfUtils';
@@ -21,6 +27,9 @@ export default function BillImportPage() {
   const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
   const [isDiscarding, setIsDiscarding] = useState(false);
+  const [categories, setCategories] = useState<CategoryType[]>([]);
+  const [accounts, setAccounts] = useState<AccountType[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
 
   const [uploadContext, setUploadContext] = useState<{
     blobUrls: string[];
@@ -31,6 +40,7 @@ export default function BillImportPage() {
 
   useEffect(() => {
     fetchPendingTransactions();
+    fetchDropdownData();
   }, []);
 
   // Poll for pending transactions when status is completed
@@ -54,6 +64,19 @@ export default function BillImportPage() {
       toast.error('無法載入待確認交易');
     } finally {
       setIsLoadingTransactions(false);
+    }
+  };
+
+  const fetchDropdownData = async () => {
+    try {
+      const [cats, accs] = await Promise.all([
+        service.getCategories(),
+        service.getPersonnelAccounts(),
+      ]);
+      setCategories(cats);
+      setAccounts(accs);
+    } catch (error) {
+      console.error('Failed to fetch dropdown data:', error);
     }
   };
 
@@ -219,10 +242,15 @@ export default function BillImportPage() {
       toast.warning('沒有可確認的交易');
       return;
     }
+    if (!selectedAccountId) {
+      toast.warning('請先選擇匯入帳戶');
+      return;
+    }
 
     try {
       const res = await apiHandler('/pdf/confirm', 'post', {
         transactionIds: confirmedIds,
+        accountId: selectedAccountId,
       });
       if (res.isSuccess) {
         toast.success(`成功匯入 ${res.data.count} 筆交易`);
@@ -314,6 +342,10 @@ export default function BillImportPage() {
         ) : transactions.length > 0 ? (
           <PendingTransactionTable
             transactions={transactions}
+            categories={categories}
+            accounts={accounts}
+            selectedAccountId={selectedAccountId}
+            onAccountChange={setSelectedAccountId}
             onUpdate={handleUpdateTransaction}
           />
         ) : (

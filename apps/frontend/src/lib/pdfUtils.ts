@@ -1,7 +1,5 @@
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Use the worker from the public folder
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.mjs';
+// Use dynamic import to avoid SSR issues with canvas/DOMMatrix
+// import * as pdfjsLib from 'pdfjs-dist';
 
 export class PasswordRequiredError extends Error {
   constructor() {
@@ -20,6 +18,11 @@ export const convertPdfToImages = async (
   file: File,
   password?: string,
 ): Promise<Blob[]> => {
+  // Dynamically import pdfjs-dist
+  // @ts-ignore
+  const pdfjsLib = await import('pdfjs-dist');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.mjs';
+
   const arrayBuffer = await file.arrayBuffer();
 
   // Load the PDF document
@@ -51,7 +54,7 @@ export const convertPdfToImages = async (
       await page.render({
         canvasContext: context,
         viewport: viewport,
-      }).promise;
+      } as any).promise;
 
       // Convert canvas to Blob (JPEG)
       const blob = await new Promise<Blob | null>((resolve) => {

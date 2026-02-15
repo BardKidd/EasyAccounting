@@ -121,18 +121,21 @@ export const convertPdfToImages = async (
   pdfBuffer: Buffer,
   password?: string,
 ): Promise<Buffer[]> => {
-  // Dynamic import 避免在不需要時載入 heavy dependencies
+  // Dynamic import to avoid loading heavy dependencies when not needed
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
   const canvasMod = await import('canvas');
-  const { createCanvas, Image } = canvasMod;
+  const { createCanvas, Image, ImageData } = canvasMod;
 
   // Polyfills for node-canvas interaction
+  // pdfjs-dist v4+ requires stricter globals in Node environment
   // @ts-ignore
   if (!global.Image) global.Image = Image;
   // @ts-ignore
   if (!global.createCanvas) global.createCanvas = createCanvas;
+  // @ts-ignore
+  if (!global.ImageData) global.ImageData = ImageData;
 
-  // Define NodeCanvasFactory to help pdfjs-dist create canvases
+  // Define NodeCanvasFactory
   const NodeCanvasFactory = {
     create: function (width: number, height: number) {
       const canvas = createCanvas(width, height);
@@ -154,36 +157,47 @@ export const convertPdfToImages = async (
     },
   };
 
-  const uint8Array = new Uint8Array(pdfBuffer);
-  const pdf = await pdfjsLib.getDocument({
-    data: uint8Array,
-    password: password,
-    // @ts-ignore - canvasFactory is not in types but required for node-canvas
-    canvasFactory: NodeCanvasFactory,
-  }).promise;
-
-  const images: Buffer[] = [];
-
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    // scale: 2.0 代表圖片會是原始 PDF 尺寸的 2 倍大，讓 LLM 更容易看清楚
-    const viewport = page.getViewport({ scale: 2.0 });
-
-    const canvas = createCanvas(viewport.width, viewport.height);
-    const context = canvas.getContext('2d');
-
-    await (page.render as any)({
-      canvasContext: context,
-      viewport,
-      canvasFactory: NodeCanvasFactory, // Pass factory here too
+  try {
+    const uint8Array = new Uint8Array(pdfBuffer);
+    const pdf = await pdfjsLib.getDocument({
+      data: uint8Array,
+      password: password,
+      // @ts-ignore
+      canvasFactory: NodeCanvasFactory,
+      // Disable worker to avoid worker-loader issues in node
+      disableFontFace: true, // Sometimes fonts cause issues in node
     }).promise;
 
-    // 轉 JPEG Buffer
-    const jpegBuffer = canvas.toBuffer('image/jpeg', { quality: 0.85 });
-    images.push(jpegBuffer);
-  }
+    const images: Buffer[] = [];
 
-  return images;
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      // scale: 2.0 代表圖片會是原始 PDF 尺寸的 2 倍大，讓 LLM 更容易看清楚
+      const viewport = page.getViewport({ scale: 2.0 });
+
+      const canvas = createCanvas(viewport.width, viewport.height);
+      const context = canvas.getContext('2d');
+
+      await page.render({
+        canvasContext: context as any, // Cast to any to avoid type mismatch with DOM types
+        viewport,
+        // @ts-ignore
+        canvasFactory: NodeCanvasFactory,
+      }).promise;
+
+      // Convert to JPEG Buffer
+      const jpegBuffer = canvas.toBuffer('image/jpeg', { quality: 0.85 });
+      images.push(jpegBuffer);
+
+      // Cleanup
+      page.cleanup();
+    }
+
+    return images;
+  } catch (error) {
+    console.error('[PDF Service] Convert failed:', error);
+    throw error;
+  }
 };
 
 /**

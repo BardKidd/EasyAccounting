@@ -3,7 +3,7 @@ import { z } from '@repo/shared';
 /**
  * LLM 回傳的單筆交易 schema
  *
- * Groq / Together AI 回傳 JSON 後，用此 schema 驗證並正規化
+ * OpenRouter (Kimi K2.5) 回傳 JSON 後，用此 schema 驗證並正規化
  */
 export const ParsedTransactionSchema = z.object({
   date: z

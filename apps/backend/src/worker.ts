@@ -9,7 +9,7 @@ import {
   convertPdfToImages,
   deleteTempBlobs,
 } from '@/services/pdfService';
-import { parseImages } from '@/services/groqService';
+import { parseImages } from '@/services/openRouterService';
 import { saveParsedResults } from '@/services/billParseService';
 import BillParseTelemetry from '@/models/BillParseTelemetry';
 import { ParseStatus } from '@repo/shared';
