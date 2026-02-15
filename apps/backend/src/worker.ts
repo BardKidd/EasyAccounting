@@ -10,7 +10,10 @@ import {
   deleteTempBlobs,
 } from '@/services/pdfService';
 import { parseImages } from '@/services/openRouterService';
-import { saveParsedResults } from '@/services/billParseService';
+import {
+  saveParsedResults,
+  buildCategoryListForPrompt,
+} from '@/services/billParseService';
 import BillParseTelemetry from '@/models/BillParseTelemetry';
 import { ParseStatus } from '@repo/shared';
 
@@ -99,8 +102,16 @@ const processMessage = async (message: BillParseMessage) => {
       progress: 40,
     });
 
-    const { transactions, pageCount, provider, model } =
-      await parseImages(imageBuffers);
+    // 建立類別清單給 LLM prompt
+    const categoryList = await buildCategoryListForPrompt(userId);
+    console.log(
+      `[Worker] Category list for prompt (${categoryList.split('\n').length} items)`,
+    );
+
+    const { transactions, pageCount, provider, model } = await parseImages(
+      imageBuffers,
+      categoryList || null,
+    );
 
     updateParseStatus({
       uploadId,

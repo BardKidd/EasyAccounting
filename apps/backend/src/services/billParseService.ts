@@ -1,6 +1,7 @@
 import PendingTransaction from '@/models/PendingTransaction';
 import MerchantMapping from '@/models/MerchantMapping';
 import Transaction from '@/models/transaction';
+import Category from '@/models/category';
 import { PendingTransactionStatus } from '@repo/shared';
 import { ParsedTransaction } from '@/validation/llmResponseSchema';
 import { Op } from 'sequelize';
@@ -54,6 +55,119 @@ const batchSuggestCategories = async (
   return result;
 };
 
+// ---------- LLM 類別清單生成 ----------
+
+/**
+ * 產生 LLM prompt 用的扁平化類別清單
+ *
+ * 格式：每行一個，如 "- 飲食/午餐" 或 "- 購物"
+ * 只取 expense 類型的類別
+ */
+export const buildCategoryListForPrompt = async (
+  userId: string,
+): Promise<string> => {
+  const categories = await Category.findAll({
+    where: {
+      [Op.or]: [{ userId }, { userId: null }],
+    },
+  });
+
+  // 找到 expense root
+  const expenseRoot = categories.find(
+    (c) => (c as any).type === 'expense' && (c as any).parentId === null,
+  );
+  if (!expenseRoot) return '';
+
+  const expenseRootId = (expenseRoot as any).id;
+
+  // Main categories（parentId 指向 expense root）
+  const mainCats = categories.filter(
+    (c) => (c as any).parentId === expenseRootId,
+  );
+
+  const lines: string[] = [];
+
+  for (const main of mainCats) {
+    const mainName = (main as any).name as string;
+    const mainId = (main as any).id as string;
+
+    // Sub categories
+    const subs = categories.filter((c) => (c as any).parentId === mainId);
+
+    if (subs.length === 0) {
+      // 無子分類 → 直接列出主分類
+      lines.push(`- ${mainName}`);
+    } else {
+      for (const sub of subs) {
+        lines.push(`- ${mainName}/${(sub as any).name}`);
+      }
+    }
+  }
+
+  return lines.join('\n');
+};
+
+// ---------- LLM 類別名稱 → categoryId ----------
+
+/**
+ * 批次將 LLM 回傳的 suggestedCategory 名稱對應到 categoryId
+ *
+ * 支援格式："主分類/子分類" 或 "主分類"
+ */
+const batchMatchCategoriesByName = async (
+  suggestedNames: (string | null)[],
+  userId: string,
+): Promise<Map<string, string | null>> => {
+  const result = new Map<string, string | null>();
+  const uniqueNames = [
+    ...new Set(suggestedNames.filter((n): n is string => n !== null)),
+  ];
+
+  if (uniqueNames.length === 0) return result;
+
+  const categories = await Category.findAll({
+    where: {
+      [Op.or]: [{ userId }, { userId: null }],
+    },
+  });
+
+  // 建立 name → category 的 map（需考慮層級）
+  const catById = new Map<string, any>();
+  for (const c of categories) {
+    catById.set((c as any).id, (c as any).toJSON());
+  }
+
+  for (const name of uniqueNames) {
+    const parts = name.split('/');
+
+    if (parts.length === 2) {
+      // "主分類/子分類" 格式
+      const [mainName, subName] = parts;
+      const mainCat = categories.find(
+        (c) => (c as any).name === mainName && (c as any).parentId !== null,
+      );
+      if (mainCat) {
+        const subCat = categories.find(
+          (c) =>
+            (c as any).name === subName &&
+            (c as any).parentId === (mainCat as any).id,
+        );
+        result.set(name, subCat ? (subCat as any).id : (mainCat as any).id);
+      } else {
+        result.set(name, null);
+      }
+    } else {
+      // "主分類" 格式 → 直接用主分類
+      const mainCat = categories.find(
+        (c) => (c as any).name === name && (c as any).parentId !== null,
+      );
+      result.set(name, mainCat ? (mainCat as any).id : null);
+    }
+  }
+
+  return result;
+};
+
 // ---------- 批次分期交易比對 ----------
 
 /**
@@ -73,7 +187,7 @@ const batchMatchInstallments = async (
   if (installments.length === 0) return result;
 
   // 所有分期交易的日期範圍（最早-30天 到 最晚+30天）
-  const dates = installments.map(({ tx }) => new Date(tx.date));
+  const dates = installments.map(({ tx }) => new Date(tx.date ?? 0));
   const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
   minDate.setDate(minDate.getDate() - 30);
   const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
@@ -129,15 +243,27 @@ export const saveParsedResults = async (
   // 一次查完所有分期交易比對
   const installmentMap = await batchMatchInstallments(userId, transactions);
 
+  // LLM 建議的類別名稱 → categoryId
+  const llmCategoryMap = await batchMatchCategoriesByName(
+    transactions.map((tx) => tx.suggestedCategory),
+    userId,
+  );
+
   const pendingRecords = transactions.map((tx, idx) => {
     const suggestedCategoryId = categoryMap.get(tx.description) || null;
     const matchedTransactionId = installmentMap.get(idx) || null;
+
+    // 優先級：MerchantMapping → LLM 建議 → null
+    const llmCategoryId = tx.suggestedCategory
+      ? llmCategoryMap.get(tx.suggestedCategory) || null
+      : null;
+    const finalCategoryId = suggestedCategoryId || llmCategoryId;
 
     return {
       userId,
       uploadBatchId: uploadId,
       rawMerchantName: tx.description,
-      suggestedCategoryId,
+      suggestedCategoryId: finalCategoryId,
       matchedTransactionId,
       isInstallment: tx.isInstallment,
       installmentNumber: tx.installmentCurrent,
@@ -149,7 +275,7 @@ export const saveParsedResults = async (
         date: tx.date,
         time: tx.time,
         accountId: null, // 用戶確認時選擇
-        categoryId: suggestedCategoryId,
+        categoryId: finalCategoryId,
         extraAdd: tx.extraAdd,
         extraMinus: tx.extraMinus,
         currency: tx.currency,

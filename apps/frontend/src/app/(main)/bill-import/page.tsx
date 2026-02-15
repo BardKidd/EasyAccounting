@@ -27,6 +27,7 @@ export default function BillImportPage() {
   const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
   const [isDiscarding, setIsDiscarding] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [categories, setCategories] = useState<CategoryType[]>([]);
   const [accounts, setAccounts] = useState<AccountType[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
@@ -247,6 +248,7 @@ export default function BillImportPage() {
       return;
     }
 
+    setIsConfirming(true);
     try {
       const res = await apiHandler('/pdf/confirm', 'post', {
         transactionIds: confirmedIds,
@@ -259,6 +261,8 @@ export default function BillImportPage() {
       }
     } catch (error) {
       toast.error('匯入失敗');
+    } finally {
+      setIsConfirming(false);
     }
   };
 
@@ -327,8 +331,18 @@ export default function BillImportPage() {
                   '全部捨棄'
                 )}
               </Button>
-              <Button onClick={handleConfirm} disabled={isDiscarding}>
-                確認匯入全部
+              <Button
+                onClick={handleConfirm}
+                disabled={isDiscarding || isConfirming}
+              >
+                {isConfirming ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    匯入中...
+                  </>
+                ) : (
+                  '確認匯入全部'
+                )}
               </Button>
             </div>
           )}

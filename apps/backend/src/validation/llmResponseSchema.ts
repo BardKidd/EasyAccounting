@@ -30,6 +30,7 @@ export const ParsedTransactionSchema = z.object({
   currency: z.string().default('TWD'),
   extraAdd: z.number().default(0), // 折扣
   extraMinus: z.number().default(0), // 手續費
+  suggestedCategory: z.string().nullable().default(null), // LLM 建議的類別名稱（如 "飲食/午餐"）
 });
 
 export const ParsedTransactionsSchema = z.array(ParsedTransactionSchema);

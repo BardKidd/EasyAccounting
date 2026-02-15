@@ -252,22 +252,30 @@ async function pdfToImages(file: File): Promise<Blob[]> {
 > DO UPDATE SET matchCount = merchant_mapping.matchCount + 1;
 > ```
 
+##### 類別建議策略（Hybrid）
+
+`suggestedCategoryId` 來源優先級：
+
+1. **MerchantMapping**：查 `merchant_mapping` 表，若有匹配則直接使用（免費、確定性高）
+2. **LLM 建議**：LLM prompt 注入使用者的 expense 類別清單，回傳 `suggestedCategory` 字串（如 `"飲食/午餐"`），再 fuzzy match 到 `categoryId`
+3. **null**：都未匹配
+
 #### `pending_transaction`（待確認交易暫存）
 
-| Column               | Type         | Description                          |
-| -------------------- | ------------ | ------------------------------------ |
-| id                   | UUID         | PK                                   |
-| userId               | UUID         | FK → user.id                         |
-| uploadBatchId        | UUID         | 同一次上傳的 batch ID                |
-| rawMerchantName      | VARCHAR(255) | LLM 識別的原始商家名稱               |
-| suggestedCategoryId  | UUID         | AI 建議的類別（nullable）            |
-| matchedTransactionId | UUID         | 比對到的現有交易（分期用，nullable） |
-| isInstallment        | BOOLEAN      | 是否為分期                           |
-| installmentNumber    | INT          | 第幾期（nullable）                   |
-| status               | ENUM         | `PENDING` / `CONFIRMED` / `SKIPPED`  |
-| transactionData      | JSONB        | 完整 transaction 結構（見下方）      |
-| createdAt            | TIMESTAMPTZ  |                                      |
-| updatedAt            | TIMESTAMPTZ  |                                      |
+| Column               | Type         | Description                                        |
+| -------------------- | ------------ | -------------------------------------------------- |
+| id                   | UUID         | PK                                                 |
+| userId               | UUID         | FK → user.id                                       |
+| uploadBatchId        | UUID         | 同一次上傳的 batch ID                              |
+| rawMerchantName      | VARCHAR(255) | LLM 識別的原始商家名稱                             |
+| suggestedCategoryId  | UUID         | AI 建議的類別（MerchantMapping > LLM 建議 > null） |
+| matchedTransactionId | UUID         | 比對到的現有交易（分期用，nullable）               |
+| isInstallment        | BOOLEAN      | 是否為分期                                         |
+| installmentNumber    | INT          | 第幾期（nullable）                                 |
+| status               | ENUM         | `PENDING` / `CONFIRMED` / `SKIPPED`                |
+| transactionData      | JSONB        | 完整 transaction 結構（見下方）                    |
+| createdAt            | TIMESTAMPTZ  |                                                    |
+| updatedAt            | TIMESTAMPTZ  |                                                    |
 
 **transactionData JSONB 結構**：
 

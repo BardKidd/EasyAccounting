@@ -33,7 +33,10 @@ const MAX_RETRIES = 2;
 
 // ---------- Prompt ----------
 
-const buildSystemPrompt = (headerContext: string | null): string => {
+const buildSystemPrompt = (
+  headerContext: string | null,
+  categoryList: string | null,
+): string => {
   const basePrompt = `
   # Role
   You are a highly precise financial data extraction engine specializing in Taiwanese Credit Card Statements. Your goal is to convert bill images into structured JSON with 100% accuracy.
@@ -76,7 +79,8 @@ const buildSystemPrompt = (headerContext: string | null): string => {
       "installmentTotal": null,
       "currency": "TWD",
       "extraAdd": 0,
-      "extraMinus": 0
+      "extraMinus": 0,
+      "suggestedCategory": "飲食/午餐"
     }
   ]
   \`\`\`
@@ -85,9 +89,10 @@ const buildSystemPrompt = (headerContext: string | null): string => {
 
 1. **Language**: **Always use Traditional Chinese (繁體中文)** if the content is in Chinese (including Simplified Chinese). Keep other languages (English, Japanese, etc.) in their original form.
 2. **Date**: Use \`YYYY-MM-DD\` (Western calendar). Follow these rules strictly:
-   - **民國年 (ROC Calendar) Conversion**: Taiwanese bills often use 民國 (ROC) year. Convert by adding 1911. Examples: 民國 114 = 2025, 民國 113 = 2024, 114/01/15 = 2025-01-15.
+   - **TODAY'S DATE**: Today is **${new Date().toISOString().split('T')[0]}**. Credit card bill dates are ALWAYS within the last 1-2 months from today. If your inferred year results in dates far from today, you are wrong — re-check.
+   - **民國年 (ROC Calendar) Conversion**: Taiwanese bills often use 民國 (ROC) year. Convert by adding 1911. Examples: 民國 115 = 2026, 民國 114 = 2025, 115/01/15 = 2026-01-15.
    - **Year Inference**: Look for year clues in bill headers: 繳款截止日, 帳單結帳日, 本期帳單日期, 對帳單期間. Use those dates to determine the correct year for all transactions.
-   - **If only MM/DD shown**: Infer the year from the bill period. DO NOT default to 2024 or any arbitrary year.
+   - **If only MM/DD shown**: Infer the year from the bill period. If no bill period is found, use TODAY'S DATE as reference — the year should make the transaction date fall within the last 1-2 months. DO NOT default to 2024 or any arbitrary year.
    - **Cross-year bills**: If a bill period spans Dec-Jan (e.g., 12/25~01/25), December transactions belong to the previous year and January transactions to the current year.
 3. **Time**: Format as \`HH:mm\` if available, otherwise null.
 4. **Description**: Extract the BRAND NAME, not the raw description. Examples:
@@ -100,10 +105,24 @@ const buildSystemPrompt = (headerContext: string | null): string => {
 7. **extraAdd**: Discount amount (positive number) if present.
 8. **extraMinus**: Handling fee (positive number) if present (e.g., foreign transaction fee).
 9. **Currency**: Default \`TWD\`. Use ISO code (e.g., USD, JPY) for foreign currencies.
-10. **Exclusions**: Only parse "Transaction Detail" or "Consumption" sections. Ignore summaries, interest, late fees, minimum payments.`;
+10. **Exclusions**: Only parse "Transaction Detail" or "Consumption" sections. Ignore summaries, interest, late fees, minimum payments.
+11. **suggestedCategory**: Suggest a category from the provided list below. Use the format \`"MainCategory/SubCategory"\` or \`"MainCategory"\` if no sub-category fits. If no category fits, set to null.`;
+
+  // 注入類別清單
+  let prompt = basePrompt;
+  if (categoryList) {
+    prompt += `
+
+## Available Categories
+
+Choose from the following categories for the \`suggestedCategory\` field:
+${categoryList}
+
+Use the exact format "MainCategory/SubCategory" or "MainCategory" if no sub-category fits.`;
+  }
 
   if (headerContext) {
-    return `${basePrompt}
+    prompt += `
 
 ## Important Context
 
@@ -114,7 +133,7 @@ ${headerContext}
 Please parse this page using the same column structure.`;
   }
 
-  return basePrompt;
+  return prompt;
 };
 
 // ---------- Core ----------
@@ -122,6 +141,7 @@ Please parse this page using the same column structure.`;
 const callWithRetry = async (
   base64Images: string[],
   headerContext: string | null,
+  categoryList: string | null,
 ): Promise<string> => {
   const client = getClient();
 
@@ -136,7 +156,10 @@ const callWithRetry = async (
       const response = await client.chat.completions.create({
         model: MODEL_ID,
         messages: [
-          { role: 'system', content: buildSystemPrompt(headerContext) },
+          {
+            role: 'system',
+            content: buildSystemPrompt(headerContext, categoryList),
+          },
           {
             role: 'user',
             content: [
@@ -191,6 +214,7 @@ const callWithRetry = async (
  */
 export const parseImages = async (
   imageBuffers: Buffer[],
+  categoryList: string | null = null,
 ): Promise<{
   transactions: ParsedTransaction[];
   pageCount: number;
@@ -208,7 +232,11 @@ export const parseImages = async (
       `[OpenRouter] 📄 Processing page ${i + 1}/${imageBuffers.length} (image size: ${(imageBuffers[i]!.length / 1024).toFixed(0)}KB)`,
     );
 
-    const rawResponse = await callWithRetry([base64], headerContext);
+    const rawResponse = await callWithRetry(
+      [base64],
+      headerContext,
+      categoryList,
+    );
     const result = parseLlmResponse(rawResponse);
 
     if (!result.success) {

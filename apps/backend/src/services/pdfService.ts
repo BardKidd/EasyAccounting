@@ -9,6 +9,7 @@ import {
   PaymentFrequency,
   RootType,
 } from '@repo/shared';
+import { Op } from 'sequelize';
 
 import PendingTransaction, {
   PendingTransactionAttributes,
@@ -279,7 +280,12 @@ export const getPendingTransactions = async (
   const { rows, count } = await PendingTransaction.findAndCountAll({
     where: {
       userId,
-      status: PendingTransactionStatus.PENDING,
+      status: {
+        [Op.in]: [
+          PendingTransactionStatus.PENDING,
+          PendingTransactionStatus.SKIPPED,
+        ],
+      },
     },
     limit,
     offset,
@@ -336,6 +342,7 @@ export const updatePendingTransaction = async (
 export const confirmTransactions = async (
   userId: string,
   transactionIds: string[],
+  accountId: string,
 ) => {
   const transaction = await sequelize.transaction();
 
@@ -380,7 +387,7 @@ export const confirmTransactions = async (
       const newTransaction = await Transaction.create(
         {
           userId,
-          accountId: data.accountId,
+          accountId,
           categoryId: data.categoryId,
           amount: data.amount,
           type: data.type as RootType,
@@ -514,7 +521,12 @@ export const clearPendingTransactions = async (userId: string) => {
   return PendingTransaction.destroy({
     where: {
       userId,
-      status: PendingTransactionStatus.PENDING,
+      status: {
+        [Op.in]: [
+          PendingTransactionStatus.PENDING,
+          PendingTransactionStatus.SKIPPED,
+        ],
+      },
     },
   });
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -56,6 +56,37 @@ const getExpenseMainCategories = (categories: CategoryType[]) => {
   return expenseRoot?.children || [];
 };
 
+// Memoized 類別選項，避免每個 row 每次 open 都重新渲染
+const CategorySelectItems = React.memo(
+  ({ mainCategories }: { mainCategories: CategoryType[] }) => (
+    <>
+      {mainCategories.map((main) => {
+        const hasSubs = main.children && main.children.length > 0;
+        if (!hasSubs) {
+          return (
+            <SelectItem key={main.id} value={main.id}>
+              {main.name}
+            </SelectItem>
+          );
+        }
+        return (
+          <SelectGroup key={main.id}>
+            <SelectLabel className="text-xs font-semibold text-muted-foreground">
+              {main.name}
+            </SelectLabel>
+            {main.children!.map((sub) => (
+              <SelectItem key={sub.id} value={sub.id} className="pl-6">
+                {sub.name}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        );
+      })}
+    </>
+  ),
+);
+CategorySelectItems.displayName = 'CategorySelectItems';
+
 export function PendingTransactionTable({
   transactions,
   categories,
@@ -64,7 +95,10 @@ export function PendingTransactionTable({
   onAccountChange,
   onUpdate,
 }: PendingTransactionTableProps) {
-  const mainCategories = getExpenseMainCategories(categories);
+  const mainCategories = useMemo(
+    () => getExpenseMainCategories(categories),
+    [categories],
+  );
 
   if (!transactions || transactions.length === 0) {
     return (
@@ -191,7 +225,7 @@ export function PendingTransactionTable({
                   </TableCell>
                   <TableCell>
                     <Select
-                      value={tx.transactionData.categoryId || ''}
+                      value={tx.transactionData.categoryId || undefined}
                       onValueChange={(val) =>
                         onUpdate(tx.id, {
                           transactionData: {
@@ -210,35 +244,7 @@ export function PendingTransactionTable({
                         <SelectValue placeholder="選擇類別" />
                       </SelectTrigger>
                       <SelectContent>
-                        {mainCategories.map((main) => {
-                          const hasSubs =
-                            main.children && main.children.length > 0;
-                          if (!hasSubs) {
-                            // Main 沒有子分類 → 直接可選
-                            return (
-                              <SelectItem key={main.id} value={main.id}>
-                                {main.name}
-                              </SelectItem>
-                            );
-                          }
-                          // Main 有子分類 → group header + sub items
-                          return (
-                            <SelectGroup key={main.id}>
-                              <SelectLabel className="text-xs font-semibold text-muted-foreground">
-                                {main.name}
-                              </SelectLabel>
-                              {main.children!.map((sub) => (
-                                <SelectItem
-                                  key={sub.id}
-                                  value={sub.id}
-                                  className="pl-6"
-                                >
-                                  {sub.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          );
-                        })}
+                        <CategorySelectItems mainCategories={mainCategories} />
                       </SelectContent>
                     </Select>
                   </TableCell>

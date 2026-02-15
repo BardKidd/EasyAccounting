@@ -265,6 +265,7 @@ const confirm = async (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const userId = req.user.userId;
     const transactionIds = req.body.transactionIds as string[];
+    const accountId = req.body.accountId as string;
 
     if (
       !transactionIds ||
@@ -276,7 +277,13 @@ const confirm = async (req: Request, res: Response) => {
         .json(responseHelper(false, null, 'transactionIds is required', null));
     }
 
-    const result = await confirmTransactions(userId, transactionIds);
+    if (!accountId) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json(responseHelper(false, null, '請先選擇匯入帳戶', null));
+    }
+
+    const result = await confirmTransactions(userId, transactionIds, accountId);
 
     return res
       .status(StatusCodes.OK)
