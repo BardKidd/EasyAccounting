@@ -204,6 +204,40 @@ export const updatePendingTransaction = async (
 };
 
 /**
+ * 手動新增一筆待確認交易
+ */
+export const createPendingTransaction = async (
+  userId: string,
+  uploadBatchId: string | null,
+) => {
+  const now = new Date();
+  const record = await PendingTransaction.create({
+    userId,
+    uploadBatchId: uploadBatchId || `manual-${Date.now()}`,
+    rawMerchantName: '',
+    suggestedCategoryId: null,
+    matchedTransactionId: null,
+    isInstallment: false,
+    installmentNumber: null,
+    status: PendingTransactionStatus.PENDING,
+    transactionData: {
+      amount: 0,
+      type: 'expense' as any,
+      description: '',
+      date: now.toISOString().split('T')[0],
+      time: now.toLocaleTimeString('en-GB', { hour12: false }),
+      accountId: null,
+      categoryId: null,
+      extraAdd: 0,
+      extraMinus: 0,
+      currency: 'TWD',
+    },
+  });
+
+  return record;
+};
+
+/**
  * 批次確認交易
  *
  * 流程：

@@ -28,6 +28,7 @@ router.post('/pdf/parse/:uploadId', authMiddleware, pdfController.triggerParse);
 
 // Phase 3: 待確認交易管理
 router.get('/pdf/pending', authMiddleware, pdfController.getPending);
+router.post('/pdf/pending', authMiddleware, pdfController.createPending);
 router.patch('/pdf/pending/:id', authMiddleware, pdfController.updatePending);
 router.post('/pdf/confirm', authMiddleware, pdfController.confirm);
 router.delete('/pdf/pending', authMiddleware, pdfController.clearPending);

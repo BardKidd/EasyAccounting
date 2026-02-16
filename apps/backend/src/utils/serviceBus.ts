@@ -88,7 +88,7 @@ export const startWorker = (handler: MessageHandler): ServiceBusReceiver => {
       },
     },
     {
-      maxConcurrentCalls: 1, // 控制併發，避免 Groq rate limit
+      maxConcurrentCalls: 1,
       autoCompleteMessages: true,
     },
   );

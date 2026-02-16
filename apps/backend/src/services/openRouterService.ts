@@ -105,7 +105,16 @@ const buildSystemPrompt = (
 7. **extraAdd**: Discount amount (positive number) if present.
 8. **extraMinus**: Handling fee (positive number) if present (e.g., foreign transaction fee).
 9. **Currency**: Default \`TWD\`. Use ISO code (e.g., USD, JPY) for foreign currencies.
-10. **Exclusions**: Only parse "Transaction Detail" or "Consumption" sections. Ignore summaries, interest, late fees, minimum payments.
+10. **Exclusions — CRITICAL**: You MUST only extract **actual individual consumer transactions**. Specifically, **DO NOT** extract any of the following:
+      - **Summary / Total rows**: 本期合計, 本期應繳金額, 本期應繳總金額, 本期最低應繳, 本期新增款項合計, 累計未繳款項
+      - **Previous period info**: 上期應繳金額, 上期帳單金額, 前期餘額, 上期未還金額
+      - **Payment records**: 繳款紀錄, 自動轉帳繳款, 感謝您辦理本行自動轉帳繳款, 溢繳款
+      - **Section headers / labels**: 本期消費明細, 本期費用明細, 卡號, 對帳單期間, 繳款截止日
+      - **Interest / fees / adjustments**: 循環利息, 預借現金利息, 遲繳違約金, 年費
+      - **Point / reward redemptions**: e point折抵消費, 紅利折抵, 現金回饋
+      - **Any row** where the description is clearly a summary label rather than a merchant/vendor name
+
+      **Decision framework**: A valid transaction has a **specific date**, a **merchant/vendor name** (not a summary label), and a **monetary amount** for a **specific purchase**. If it looks like metadata about the bill itself, skip it.
 11. **suggestedCategory**: Suggest a category from the provided list below. Use the format \`"MainCategory/SubCategory"\` or \`"MainCategory"\` if no sub-category fits. If no category fits, set to null.`;
 
   // 注入類別清單

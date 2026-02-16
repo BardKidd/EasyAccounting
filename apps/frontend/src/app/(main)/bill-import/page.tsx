@@ -11,7 +11,7 @@ import {
   CategoryType,
   AccountType,
 } from '@repo/shared';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiHandler } from '@/lib/utils';
 import service from '@/services';
@@ -225,6 +225,20 @@ export default function BillImportPage() {
     }
   };
 
+  const handleAddManual = async () => {
+    try {
+      const res = await apiHandler('/pdf/pending', 'post', {
+        uploadBatchId: activeUploadId,
+      });
+      if (res.isSuccess) {
+        setTransactions((prev) => [res.data, ...prev]);
+        toast.success('已新增空白交易，請填寫資料');
+      }
+    } catch (error) {
+      toast.error('新增失敗');
+    }
+  };
+
   const handleClearAll = async () => {
     if (!confirm('確定要捨棄所有待確認交易嗎？此操作無法復原。')) return;
 
@@ -276,6 +290,10 @@ export default function BillImportPage() {
           </h2>
           {transactions.length > 0 && (
             <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleAddManual}>
+                <Plus className="mr-1 h-4 w-4" />
+                手動新增
+              </Button>
               <Button
                 variant="destructive"
                 onClick={handleClearAll}

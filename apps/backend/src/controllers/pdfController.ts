@@ -5,6 +5,7 @@ import {
   uploadImages,
   validateUploadFiles,
   getPendingTransactions,
+  createPendingTransaction,
   updatePendingTransaction,
   confirmTransactions,
   clearPendingTransactions,
@@ -224,6 +225,31 @@ const updatePending = async (req: Request, res: Response) => {
 };
 
 /**
+ * POST /pdf/pending
+ *
+ * 手動新增一筆待確認交易
+ */
+const createPending = async (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const uploadBatchId = req.body.uploadBatchId || null;
+
+    const record = await createPendingTransaction(userId, uploadBatchId);
+
+    return res
+      .status(StatusCodes.CREATED)
+      .json(
+        responseHelper(
+          true,
+          record,
+          'Manual pending transaction created',
+          null,
+        ),
+      );
+  });
+};
+
+/**
  * POST /pdf/confirm
  *
  * 批次確認交易
@@ -289,6 +315,7 @@ export default {
   stream,
   triggerParse,
   getPending,
+  createPending,
   updatePending,
   confirm,
   clearPending,
