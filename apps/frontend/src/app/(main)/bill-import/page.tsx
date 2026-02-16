@@ -214,7 +214,7 @@ export default function BillImportPage() {
         accountId: selectedAccountId,
       });
       if (res.isSuccess) {
-        toast.success(`成功匯入 ${res.data.count} 筆交易`);
+        toast.success(`成功匯入 ${res.data.created} 筆交易`);
         setTransactions([]); // Clear list
         setActiveUploadId(null);
       }

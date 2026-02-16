@@ -273,7 +273,8 @@ export const saveParsedResults = async (
         type: tx.type,
         description: tx.description,
         date: tx.date,
-        time: tx.time,
+        time:
+          tx.time || new Date().toLocaleTimeString('en-GB', { hour12: false }), // 帳單沒時間時，補上解析完成時間
         accountId: null, // 用戶確認時選擇
         categoryId: finalCategoryId,
         extraAdd: tx.extraAdd,

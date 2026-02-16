@@ -259,7 +259,7 @@ const confirm = async (req: Request, res: Response) => {
         responseHelper(
           true,
           result,
-          `Confirmed ${result.count} transactions`,
+          `Confirmed ${result.created} transactions, skipped ${result.skipped}`,
           null,
         ),
       );

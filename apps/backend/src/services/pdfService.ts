@@ -205,10 +205,13 @@ export const updatePendingTransaction = async (
 
 /**
  * 批次確認交易
- * 1. 寫入 Transaction 表
- * 2. 更新 MerchantMapping
- * 3. 記錄 Telemetry
- * 4. 刪除 PendingTransaction
+ *
+ * 流程：
+ * 1. 查詢要確認的 pending transactions（PENDING 狀態）
+ * 2. 寫入 Transaction 表
+ * 3. 批次更新 MerchantMapping（按 merchantName+categoryId 分組 increment）
+ * 4. 更新 Telemetry（補寫業務面欄位，Worker 已 create 技術面欄位）
+ * 5. 刪除該 batch 的所有 pending（含 SKIPPED）
  */
 export const confirmTransactions = async (
   userId: string,
@@ -218,6 +221,7 @@ export const confirmTransactions = async (
   const transaction = await sequelize.transaction();
 
   try {
+    // 查詢要確認的（PENDING 狀態）
     const pendingTransactions = await PendingTransaction.findAll({
       where: {
         id: transactionIds,
@@ -231,8 +235,23 @@ export const confirmTransactions = async (
       throw new Error('No pending transactions found to confirm');
     }
 
+    const uploadBatchId = pendingTransactions[0]!.uploadBatchId;
+
+    // 取得同 batch 中 SKIPPED 的數量
+    const skippedCount = await PendingTransaction.count({
+      where: {
+        uploadBatchId,
+        userId,
+        status: PendingTransactionStatus.SKIPPED,
+      },
+      transaction,
+    });
+
     const createdTransactions = [];
     let modifiedCount = 0;
+
+    // 收集 merchantMapping 更新（批次處理）
+    const mappingCounts = new Map<string, number>();
 
     for (const pt of pendingTransactions) {
       const data = pt.transactionData as any;
@@ -246,8 +265,8 @@ export const confirmTransactions = async (
           {
             extraAdd: data.extraAdd || 0,
             extraMinus: data.extraMinus || 0,
-            extraAddLabel: '折扣', // 預設
-            extraMinusLabel: '手續費', // 預設
+            extraAddLabel: '折扣',
+            extraMinusLabel: '手續費',
           },
           { transaction },
         );
@@ -264,120 +283,77 @@ export const confirmTransactions = async (
           type: data.type as RootType,
           description: data.description,
           date: data.date,
-          billingDate: data.date, // 信用卡通常消費日=入帳日(暫定)，或需另外欄位
+          billingDate: data.date,
           time: data.time || '00:00:00',
-          paymentFrequency: PaymentFrequency.ONE_TIME, // 暫時都當 One Time，分期需另外處理
+          paymentFrequency: PaymentFrequency.ONE_TIME,
           transactionExtraId,
         },
         { transaction },
       );
       createdTransactions.push(newTransaction);
 
-      // 3. 更新 MerchantMapping (如果類別有變更或單純增加權重)
-      if (finalCategory) {
-        await MerchantMapping.upsert(
-          {
-            merchantName: rawMerchantName,
-            categoryId: finalCategory,
-            matchCount: 1, // upsert 會處理 increment? Sequelize upsert 預設是 update，但需配合 logic
-            // 這裡用 raw query 可能比較好做 increment，或者先查再改
-            // 簡化：先做單純 upsert reset 或 increment
-            // 為了效能，這裡暫時只做 "如果不存在則建立，存在則不動(或加1)"
-            // Sequelize upsert return [instance, created]
-          },
-          {
-            transaction,
-            fields: ['merchantName', 'categoryId'], // 衝突時更新這些 (其實都不用變)
-            conflictFields: ['merchantName', 'categoryId'],
-          } as any, // Type definition workaround
-        );
-
-        // 手動 increment matchCount
-        // 因為 upsert 在 postgres 是 ON CONFLICT DO UPDATE
-        await MerchantMapping.increment('matchCount', {
-          by: 1,
-          where: {
-            merchantName: rawMerchantName,
-            categoryId: finalCategory,
-          },
-          transaction,
-        });
+      // 收集 merchantMapping 計數
+      if (finalCategory && rawMerchantName) {
+        const key = `${rawMerchantName}::${finalCategory}`;
+        mappingCounts.set(key, (mappingCounts.get(key) || 0) + 1);
       }
 
-      // 檢查是否有修改 (比較原始 suggestedCategoryId 和最終 categoryId，或其他欄位)
-      // 這邊只能概略判斷：如果有 user 介入修改 category，或者 amount/date 變了
+      // 檢查是否有修改（比較 AI 建議的 category 和最終 category）
       if (pt.suggestedCategoryId !== finalCategory) {
         modifiedCount++;
       }
     }
 
-    const skippedTransactions = await PendingTransaction.count({
-      where: {
-        id: transactionIds,
-        userId,
-        status: PendingTransactionStatus.SKIPPED,
-      },
-      transaction,
-    });
-
-    // 4. 記錄 Telemetry
-    // 假設同一批 uploadId 是一次 parsing session
-    // 我們可以從 pendingTransactions[0] 拿到 uploadBatchId
-    if (pendingTransactions.length > 0) {
-      const uploadBatchId = pendingTransactions[0]!.uploadBatchId;
-      // 這裡 logic 其實有點怪，因為 confirm 是 transaction level，而 telemetry 應該是 batch level
-      // 但如果 user 分批 confirm，telemetry 會被拆散？
-      // 暫時解法：每次 confirm 都記一筆，還是 update 既有的？
-      // 為了簡單，我們先記一筆新的 "Action Log" 概念，或者 update 既有的 telemetry (如果我們有 create init record)
-      // 根據 BillParseTelemetry model，它有 uploadBatchId。
-      // 我們用 upsert 來累加？ Or just create new record for this confirmation action?
-      // BillParseTelemetry 似乎設計為 One-to-One with UploadBatch?
-      // 若是 One-to-One，我們應該用 update.
-
-      // 嘗試找現有的 record (created at parse time?) -> 目前 parse time 沒 create telemetry.
-      // Let's create or increment.
-
-      const telemetry = await BillParseTelemetry.findOne({
-        where: { uploadBatchId },
-        transaction,
-      });
-
-      if (telemetry) {
-        await telemetry.increment(
-          {
-            totalTransactions: createdTransactions.length, // 累加確認的數量
-            modifiedTransactions: modifiedCount,
-            skippedTransactions: skippedTransactions,
-          },
-          { transaction },
-        );
-      } else {
-        await BillParseTelemetry.create(
-          {
-            uploadBatchId,
-            totalTransactions: createdTransactions.length,
-            modifiedTransactions: modifiedCount,
-            skippedTransactions: skippedTransactions,
-            // 其他欄位需在 parse 階段寫入，這裡可能拿不到
-          },
-          { transaction },
-        );
-      }
+    // 3. 批次更新 MerchantMapping（用 raw query 做 upsert + increment）
+    for (const [key, count] of mappingCounts) {
+      const [merchantName, categoryId] = key.split('::');
+      await sequelize.query(
+        `INSERT INTO accounting.merchant_mapping ("merchantName", "categoryId", "matchCount", "createdAt", "updatedAt")
+         VALUES (:merchantName, :categoryId, :count, NOW(), NOW())
+         ON CONFLICT ("merchantName", "categoryId")
+         DO UPDATE SET "matchCount" = accounting.merchant_mapping."matchCount" + :count,
+                       "updatedAt" = NOW()`,
+        {
+          replacements: { merchantName, categoryId, count },
+          transaction,
+        },
+      );
     }
 
-    // 4. 刪除已確認的 PendingTransactions
+    // 4. 更新 Telemetry（Worker 已 create，這裡補寫業務面欄位）
+    const telemetry = await BillParseTelemetry.findOne({
+      where: { uploadBatchId },
+      transaction,
+    });
+
+    if (telemetry) {
+      const total = telemetry.totalTransactions || pendingTransactions.length;
+      const accuracyRate = total > 0 ? (total - modifiedCount) / total : 0;
+
+      await telemetry.update(
+        {
+          modifiedTransactions: modifiedCount,
+          skippedTransactions: skippedCount,
+          accuracyRate,
+        },
+        { transaction },
+      );
+    }
+
+    // 5. 刪除該 batch 的所有 pending（含 SKIPPED）
     await PendingTransaction.destroy({
       where: {
-        id: pendingTransactions.map((pt) => pt.id),
+        uploadBatchId,
+        userId,
       },
       transaction,
     });
 
-    // 5. Commit
     await transaction.commit();
 
     return {
-      count: createdTransactions.length,
+      created: createdTransactions.length,
+      skipped: skippedCount,
     };
   } catch (error) {
     await transaction.rollback();

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -100,6 +100,18 @@ export function PendingTransactionTable({
     [categories],
   );
 
+  // 按日期 > 時間由新到舊排序
+  const sortedTransactions = useMemo(() => {
+    return [...transactions].sort((a, b) => {
+      const dateA = a.transactionData.date || '';
+      const dateB = b.transactionData.date || '';
+      if (dateA !== dateB) return dateB.localeCompare(dateA);
+      const timeA = a.transactionData.time || '';
+      const timeB = b.transactionData.time || '';
+      return timeB.localeCompare(timeA);
+    });
+  }, [transactions]);
+
   if (!transactions || transactions.length === 0) {
     return (
       <div className="text-center p-8 text-muted-foreground">無待確認交易</div>
@@ -136,8 +148,9 @@ export function PendingTransactionTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[50px]">匯入</TableHead>
+              <TableHead className="w-[50px] text-center">匯入</TableHead>
               <TableHead className="w-[120px]">日期</TableHead>
+              <TableHead className="w-[80px]">時間</TableHead>
               <TableHead className="w-[200px]">商家/描述</TableHead>
               <TableHead className="w-[100px]">金額</TableHead>
               <TableHead className="w-[150px]">類別</TableHead>
@@ -146,7 +159,7 @@ export function PendingTransactionTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transactions.map((tx) => {
+            {sortedTransactions.map((tx) => {
               const isConfirmed =
                 tx.status === PendingTransactionStatus.CONFIRMED;
               const isSkipped = tx.status === PendingTransactionStatus.SKIPPED;
@@ -161,7 +174,7 @@ export function PendingTransactionTable({
                     isConfirmed && 'bg-emerald-50/50 dark:bg-emerald-900/10',
                   )}
                 >
-                  <TableCell>
+                  <TableCell className="text-center">
                     <Checkbox
                       checked={!isSkipped}
                       onCheckedChange={(checked) => {
@@ -175,6 +188,7 @@ export function PendingTransactionTable({
                   </TableCell>
                   <TableCell>
                     <Input
+                      type="date"
                       defaultValue={tx.transactionData.date}
                       onBlur={(e) => {
                         if (e.target.value !== tx.transactionData.date) {
@@ -182,6 +196,26 @@ export function PendingTransactionTable({
                             transactionData: {
                               ...tx.transactionData,
                               date: e.target.value,
+                            },
+                          });
+                        }
+                      }}
+                      className="h-8"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="time"
+                      step="1"
+                      defaultValue={tx.transactionData.time || ''}
+                      onBlur={(e) => {
+                        if (
+                          e.target.value !== (tx.transactionData.time || '')
+                        ) {
+                          onUpdate(tx.id, {
+                            transactionData: {
+                              ...tx.transactionData,
+                              time: e.target.value || null,
                             },
                           });
                         }

@@ -237,14 +237,17 @@ async function pdfToImages(file: File): Promise<Blob[]> {
 >
 > 此時建議類別會選擇「購物」（matchCount=100）。
 >
-> **更新時機**：在 `/pdf/confirm` 確認交易時，使用 upsert 更新 matchCount：
+> **更新時機**：在 `/pdf/confirm` 確認交易時，按 `(merchantName, categoryId)` 分組計算出現次數後，批次 upsert 更新 matchCount：
 >
 > ```sql
+> -- 例如 10 筆路易莎+早餐的交易確認時，matchCount += 10
 > INSERT INTO merchant_mapping (merchantName, categoryId, matchCount)
-> VALUES ($1, $2, 1)
+> VALUES ($1, $2, $3)  -- $3 = 該批次中此組合的出現次數
 > ON CONFLICT (merchantName, categoryId)
-> DO UPDATE SET matchCount = merchant_mapping.matchCount + 1;
+> DO UPDATE SET matchCount = merchant_mapping.matchCount + EXCLUDED.matchCount;
 > ```
+>
+> 這確保同一批次中多筆相同商家 + 類別的交易會正確累加使用次數。
 
 ##### 類別建議策略（Hybrid）
 
@@ -311,7 +314,7 @@ flowchart TD
 | accuracyRate         | DECIMAL(5,4) | 準確率 = (total - modified) / total |
 | parseTimeMs          | INT          | LLM 解析耗時 (ms)                   |
 | processingMode       | VARCHAR(10)  | `local` / `cloud`                   |
-| llmProvider          | VARCHAR(50)  | `groq` / `together`                 |
+| llmProvider          | VARCHAR(50)  | `openrouter` / `groq`               |
 | llmModel             | VARCHAR(100) | 使用的模型名稱                      |
 | pageCount            | INT          | PDF 頁數                            |
 | createdAt            | TIMESTAMPTZ  |                                     |
@@ -319,6 +322,18 @@ flowchart TD
 > [!NOTE]  
 > 此表不儲存 `userId`，僅用於系統層級準確率統計與宣傳用途。  
 > Transaction-level 準確率：一筆交易只要有任一欄位被修改，即計入 `modifiedTransactions`。
+
+#### Telemetry Lifecycle
+
+此表的寫入分兩階段：
+
+1. **Worker parse 完成時** → `CREATE`：寫入技術面欄位
+   - `uploadBatchId`, `totalTransactions`（= parsed count）, `parseTimeMs`, `processingMode`, `llmProvider`, `llmModel`, `pageCount`
+   - 此時 `modifiedTransactions`, `skippedTransactions`, `accuracyRate` 設為 `0` / `null`
+
+2. **用戶 confirm 時** → `UPDATE` 同一筆 record：補上業務面欄位
+   - `modifiedTransactions`, `skippedTransactions`, `accuracyRate`
+   - 計算方式：`accuracyRate = (total - modified) / total`
 
 ### 4.4 現有表不需修改
 
@@ -395,9 +410,10 @@ sequenceDiagram
     B-->>U: [pending transactions...]
 
     U->>B: POST /pdf/confirm
-    B->>DB: 寫入 transaction
-    B->>DB: 寫入 telemetry
-    B->>DB: 刪除 pending
+    B->>DB: 寫入 transaction（非 SKIPPED）
+    B->>DB: 更新 telemetry（業務面欄位）
+    B->>DB: 更新 merchant_mapping（批次 increment matchCount）
+    B->>DB: 刪除全部 pending（含 SKIPPED）
 ```
 
 ### 5.3 Request/Response 範例
@@ -439,13 +455,25 @@ data: { "status": "failed", "error": "PDF 無法解析" }
 ```json
 // Request
 {
-  "confirmed": ["pending-id-1", "pending-id-2"],
-  "skipped": ["pending-id-3"]
+  "transactionIds": ["pending-id-1", "pending-id-2"],
+  "accountId": "account-uuid"
 }
+// transactionIds = 非 SKIPPED 的待確認交易 IDs
+// accountId = 整批匯入的目標帳戶
 
 // Response
 { "created": 2, "skipped": 1 }
+// created = 成功寫入交易筆數
+// skipped = 本批次中 SKIPPED 狀態的交易筆數（被刪除）
 ```
+
+> [!NOTE]
+> 略過（SKIPPED）的處理：用戶透過 PATCH `/pdf/pending/:id` 將不要的交易標為 SKIPPED。
+> confirm 時，後端會：
+>
+> 1. 將 `transactionIds` 中的交易寫入 transaction 表
+> 2. 將同 batch 的 SKIPPED 交易直接刪除
+> 3. 更新 merchant_mapping 和 telemetry
 
 ### 5.4 前端通知機制
 
@@ -1203,18 +1231,25 @@ interface UpdatePendingRequest {
 
 ```typescript
 interface ConfirmRequest {
-  confirmed: string[]; // 要確認的 pending_transaction IDs
-  skipped: string[]; // 要略過的 pending_transaction IDs
+  transactionIds: string[]; // 要確認的 pending_transaction IDs（非 SKIPPED）
+  accountId: string; // 整批匯入的目標帳戶 ID
 }
 ```
+
+**行為**:
+
+1. 查詢 `transactionIds` 對應的 pending_transactions（必須為 PENDING 狀態）
+2. 將每筆寫入 `transaction` 表（使用 `accountId` 填入帳戶）
+3. 批次更新 `merchant_mapping`（按 merchantName + categoryId 分組 increment matchCount）
+4. 更新 `bill_parse_telemetry`（補寫 modifiedTransactions, skippedTransactions, accuracyRate）
+5. 刪除該 batch 的**所有** pending_transactions（含 SKIPPED）
 
 **Response**:
 
 ```typescript
 interface ConfirmResponse {
-  created: number; // 成功寫入筆數
-  skipped: number; // 略過筆數
-  telemetryId: string; // 本次統計記錄 ID
+  created: number; // 成功寫入交易筆數
+  skipped: number; // 同 batch 中 SKIPPED 的筆數
 }
 ```
 
