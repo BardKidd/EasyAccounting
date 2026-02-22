@@ -36,11 +36,13 @@
 flowchart LR
     subgraph Frontend
         A[上傳 PDF] --> C[pdfjs-dist 轉圖片]
-        C --> E[上傳圖片]
+        C --> D[縮圖預覽與勾選 UI]
+        D --> E[上傳選取的圖片]
     end
 
     subgraph Backend
-        G[接收圖片] --> I[Azure Blob 暫存]
+        G[接收圖片] --> H[建立 Task Record (Telemetry)]
+        H --> I[Azure Blob 暫存]
         I --> K[Azure Service Bus Queue]
     end
 
@@ -49,10 +51,12 @@ flowchart LR
         X --> Y[結構化 JSON]
         Y --> Z[pending_transaction]
         Z --> ZZ[刪除 Blob 暫存]
+        ZZ --> Z2[更新 Task Record 狀態]
+        Z2 --> Z3[發送 Email (如果 Opt-in)]
     end
 
     subgraph Frontend_After[Frontend - 處理完成後]
-        O[SSE 即時通知] --> P[Web Notification]
+        O[SSE 即時推送 或 重整後 API 回復狀態] --> P[Web Notification]
         P --> Q[確認 UI]
     end
 
@@ -60,10 +64,12 @@ flowchart LR
         R[用戶確認] --> S[transaction]
         R --> T[merchant_mapping]
         R --> U[bill_parse_telemetry]
+        H -.-> U
+        Z2 -.-> U
     end
 
     K --> W
-    ZZ -.->|狀態: completed| O
+    Z2 -.->|狀態: completed| O
     Q --> R
 ```
 
@@ -91,11 +97,11 @@ flowchart LR
 ### 3.1 整體流程
 
 ```
-[前端] PDF → pdfjs-dist 轉圖片 → 上傳圖片 → [後端] LLM 分析 → 用戶確認 → 寫入 DB
+[前端] PDF → pdfjs-dist 轉圖片 → [前端] 縮圖 UI 勾選 → 上傳圖片 → [後端] 建立任務狀態與排隊 → LLM 分析 → 用戶確認 → 寫入 DB
 ```
 
 > [!NOTE]
-> 不再區分本地/雲端模式。所有 PDF 轉圖片工作統一在前端完成，後端只接收圖片。
+> 不再區分本地/雲端模式。所有 PDF 轉圖片工作統一在前端完成，並透過 UI 篩選掉廣告頁，後端只接收要分析的圖片。
 
 ### 3.2 PDF 轉圖片（前端處理）
 
@@ -302,12 +308,16 @@ flowchart TD
     D --> F[顯示給用戶：需手動處理]
 ```
 
-### 4.3 新增表：`bill_parse_telemetry`（解析準確率統計）
+### 4.3 新增表：`bill_parse_telemetry`（任務追蹤與準確率統計）
+
+此表已升格，除了原本的統計用途，也兼作異步任務的 State 存根表，讓前端重整頁面時可以找回「處理中」的 Loading 狀態。
 
 | Column               | Type         | Description                         |
 | -------------------- | ------------ | ----------------------------------- |
 | id                   | UUID         | PK                                  |
 | uploadBatchId        | UUID         | 同一次上傳的 batch ID               |
+| userId               | UUID         | FK → user.id (用於找回未完成任務)   |
+| status               | VARCHAR(20)  | `PROCESSING`, `COMPLETED`, `FAILED` |
 | totalTransactions    | INT          | 總共識別幾筆                        |
 | modifiedTransactions | INT          | 用戶修改過幾筆                      |
 | skippedTransactions  | INT          | 用戶略過幾筆                        |
@@ -316,23 +326,27 @@ flowchart TD
 | processingMode       | VARCHAR(10)  | `local` / `cloud`                   |
 | llmProvider          | VARCHAR(50)  | `openrouter` / `groq`               |
 | llmModel             | VARCHAR(100) | 使用的模型名稱                      |
-| pageCount            | INT          | PDF 頁數                            |
-| createdAt            | TIMESTAMPTZ  |                                     |
+| pageCount            | INT          | 上傳過濾後的 PDF 頁數               |
+| notifyEmail          | BOOLEAN      | 是否在完成後寄發 Email 通知         |
+| createdAt            | TIMESTAMPTZ  | 任務建立時間                        |
+| updatedAt            | TIMESTAMPTZ  | Worker 完成時間 / Confirmation 時間 |
 
 > [!NOTE]  
-> 此表不儲存 `userId`，僅用於系統層級準確率統計與宣傳用途。  
 > Transaction-level 準確率：一筆交易只要有任一欄位被修改，即計入 `modifiedTransactions`。
 
 #### Telemetry Lifecycle
 
-此表的寫入分兩階段：
+此表的寫入分三階段：
 
-1. **Worker parse 完成時** → `CREATE`：寫入技術面欄位
-   - `uploadBatchId`, `totalTransactions`（= parsed count）, `parseTimeMs`, `processingMode`, `llmProvider`, `llmModel`, `pageCount`
+1. **使用者點擊上傳時 (`/pdf/upload`)** → `CREATE`：建立 Task 存根
+   - 寫入 `uploadBatchId`, `userId`, `status = 'PROCESSING'`, `notifyEmail`, `pageCount`等先驗欄位。
+2. **Worker parse 完成時** → `UPDATE`：記錄 AI 處理結果
+   - 寫入 `status = 'COMPLETED'` (或 `FAILED`), `totalTransactions`（= parsed count）, `parseTimeMs`, `processingMode`, `llmProvider`, `llmModel`
+   - 若 `notifyEmail = true`，發送 Email。
    - 此時 `modifiedTransactions`, `skippedTransactions`, `accuracyRate` 設為 `0` / `null`
 
-2. **用戶 confirm 時** → `UPDATE` 同一筆 record：補上業務面欄位
-   - `modifiedTransactions`, `skippedTransactions`, `accuracyRate`
+3. **用戶 confirm 時** → `UPDATE` 同一筆 record：補上業務面欄位
+   - 寫入 `modifiedTransactions`, `skippedTransactions`, `accuracyRate`
    - 計算方式：`accuracyRate = (total - modified) / total`
 
 ### 4.4 現有表不需修改
@@ -450,6 +464,31 @@ event: error
 data: { "status": "failed", "error": "PDF 無法解析" }
 ```
 
+#### GET `/pdf/pending`
+
+除了回傳待確認的交易外，會一併從 `bill_parse_telemetry` 夾帶該使用者是否有正在 `PROCESSING` 的 `activeJob`。這使得前端重整頁面時，可以立刻發現有未完成的任務，並拿 `uploadBatchId` 重新建立 SSE 連線，恢復 Loading 動態。
+
+```json
+// Response
+{
+  "activeJob": {
+    "uploadBatchId": "abc-123",
+    "status": "PROCESSING",
+    "pageCount": 5,
+    "createdAt": "2026-02-22T10:00:00Z"
+  },
+  "data": [
+    {
+      "id": "pending-uuid-1",
+      "rawMerchantName": "全聯福利中心",
+      "amount": 1500
+      // ... transaction details
+    }
+  ]
+}
+// 若無進行中的任務，activeJob 為 null
+```
+
 #### POST `/pdf/confirm`
 
 ```json
@@ -532,26 +571,43 @@ Notification.requestPermission();
 - **路由**：`/bill-import`
 - **權限**：登入用戶
 
-### 6.2 頁面結構
+### 6.2 預覽與篩選 (頁數選擇 UI)
+
+為避免無意義廣告雜訊消耗 Token 及降低準確率，上傳流程加入「縮圖勾選」：
+
+1. **本地轉換**：選取 PDF 後，`pdfjs-dist` 先在本地將每一頁轉為圖片。
+2. **大尺寸縮圖顯示**：
+   - Desktop/Tablet：以 Grid 排列，每列 2 或 3 張大尺寸縮圖（寬度至少 300px），確保肉眼直視即可判別是否為明細。
+   - Mobile：單列顯示（一排一頁），圖片寬度佔滿螢幕。
+   - 右上角提供「放大鏡」小按鈕，點擊可開啟 Lightbox 檢查小字。
+3. **勾選邏輯**：
+   - 預設：全選。
+   - 提供「全選/全不選」快速按鈕。
+   - 提示文字：「請取消勾選純廣告或權益宣告的頁面，這能為您節省大量等待時間並提高 AI 準確率」。
+4. **準備上傳**：
+   - 提供 Checkbox：「解析完成後，請發送 Email 通知我」（預設不勾選，由使用者 Opt-in）。
+   - 按下「確認並上傳 X 頁圖片」，才會發送 Request 到後端。
+
+### 6.3 頁面結構
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  帳單匯入                                    [上傳 PDF 📄]  │
-├─────────────────────────────────────────────────────────────┤
-│  狀態: 已識別 15 筆交易，待確認 12 筆                        │
-├─────────────────────────────────────────────────────────────┤
-│  匯入帳戶: [▼ 選擇帳戶]                                     │
-├─────────────────────────────────────────────────────────────┤
+┌─────────────────────────────────────────────────────────────────┐
+│  帳單匯入                                         [上傳 PDF 📄] │
+├─────────────────────────────────────────────────────────────────┤
+│  狀態: 已識別 15 筆交易，待確認 12 筆                             │
+├─────────────────────────────────────────────────────────────────┤
+│  匯入帳戶: [▼ 選擇帳戶]                                          │
+├─────────────────────────────────────────────────────────────────┤
 │  ☑ │ 日期 │ 商家 │ 金額 │ 類別 │ 分期 │ 狀態 │
 │  ☑ │ 1/15 │ 全聯 │ 850 │ 食品 │  -   │      │
 │  ☑ │ 1/16 │ 蝦皮 │ 1200│ 購物 │ 3/6  │      │
 │  ☐ │ 1/17 │ 台電 │ 2300│  -   │  -   │ ⚠️   │
-├─────────────────────────────────────────────────────────────┤
-│                       [全部捨棄] [確認匯入全部]              │
-└─────────────────────────────────────────────────────────────┘
+├─────────────────────────────────────────────────────────────────┤
+│                            [全部捨棄] [確認匯入全部]              │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### 6.3 表格欄位
+### 6.4 表格欄位
 
 | 欄位                   | 來源    | 可編輯    | 必填 |
 | ---------------------- | ------- | --------- | ---- |
@@ -577,25 +633,29 @@ Notification.requestPermission();
 | 略過     | ✕    | 不匯入，從暫存刪除               |
 | 已存在   | 🔗   | 比對到現有交易（分期），建議略過 |
 
-### 6.5 使用流程
+### 6.6 使用流程
 
 ```mermaid
 flowchart TD
     A[進入帳單匯入頁面] --> B[點擊上傳 PDF]
-    B --> C[選擇檔案]
-    C --> D[顯示 Loading]
-    D --> E[收到 Web Notification]
-    E --> F[表格顯示識別結果]
-    F --> G{逐筆檢查}
-    G -->|正確| H[勾選 ☑]
-    G -->|需修改| I[直接編輯欄位]
-    G -->|不要| J[點擊 ✕ 略過]
-    I --> H
-    H --> K[點擊確認匯入]
-    K --> L[寫入 DB，清除暫存]
+    B --> C[前端轉換圖片]
+    C --> C2[UI 顯示縮圖 Grid 供使用者勾選]
+    C2 --> C3[使用者可勾選 Opt-in Email]
+    C3 --> D[上傳圖片並寫入 Telemetry 存根]
+    D --> E[顯示長效 Loading (SSE 重建機制支援)]
+    E --> F[Worker 完成 (發送 Email 若勾選)]
+    F --> G[SSE 通知前端 / API 撈回交易]
+    G --> H[表格顯示識別結果]
+    H --> I{逐筆檢查}
+    I -->|正確| J[勾選 ☑]
+    I -->|需修改| K[直接編輯欄位]
+    I -->|不要| L[點擊 ✕ 略過]
+    K --> J
+    J --> M[點擊確認匯入]
+    M --> N[寫入 DB，清除暫存，更新 Telemetry]
 ```
 
-### 6.6 特殊情況處理
+### 6.7 特殊情況處理
 
 | 情況               | UI 表現                         |
 | ------------------ | ------------------------------- |
@@ -771,14 +831,15 @@ Llama 3.2 處理長列表時可能產生格式錯誤或幻覺
 > 在 Node.js 搭配 `node-canvas` 時 `drawImage()` 會因 Image 物件型別不相容而失敗。
 > 瀏覽器有原生 GPU 加速的 Canvas，效能遠優於 Node.js CPU 軟體渲染。
 
-#### 5. 大量資料前端效能
+#### 5. 大量資料前端效能與重整狀態遺失
 
-100+ 筆可編輯欄位會導致 React 效能下降
+100+ 筆可編輯欄位會導致 React 效能下降。且耗時的異步任務在瀏覽器重新整理或背景休眠時容易中斷與遺漏狀態通知。
 
 **解決方案**：
 
-- 使用 Virtualization（如 `@tanstack/react-virtual`）
-- 分頁載入（每頁 50 筆）
+- 表格渲染：使用 Virtualization（如 `@tanstack/react-virtual`）與分頁載入（每頁 50 筆）
+- 狀態回復：在後端 API (`GET /pdf/pending`) 中夾帶 `activeJob`（查詢 `bill_parse_telemetry`）。若前端偵測到有 `PROCESSING` 的任務，直接取其 ID 重新建立 SSE 恢復畫面 Loading 狀態。
+- 通知備案：加設 Opt-in 的 Email 通知，讓背景運算完成後，能可靠地送達給使用者，不受瀏覽器生命週期影響。
 
 ### 9.3 待驗證項目
 
