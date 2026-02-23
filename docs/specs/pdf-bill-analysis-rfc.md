@@ -35,38 +35,61 @@
 ```mermaid
 flowchart LR
     subgraph Frontend
-        A[上傳 PDF] --> B[Polling 狀態]
-        B --> C[Web Notification]
-        C --> D[確認 UI]
+        A[上傳 PDF] --> C[pdfjs-dist 轉圖片]
+        C --> D[縮圖預覽與勾選 UI]
+        D --> E[上傳選取的圖片]
     end
 
     subgraph Backend
-        E[接收 PDF] --> F[Azure Blob 暫存]
-        F --> G[pdf.js 轉圖片]
-        G --> H[Groq API]
-        H --> I[結構化 JSON]
-        I --> J[pending_transaction]
+        G[接收圖片] --> H["建立 Task Record (Telemetry)"]
+        H --> I[Azure Blob 暫存]
+        I --> K[Azure Service Bus Queue]
+    end
+
+    subgraph Worker ["Backend Worker"]
+        W[Service Bus Consumer] --> X[OpenRouter API]
+        X --> Y[結構化 JSON]
+        Y --> Z[pending_transaction]
+        Z --> ZZ[刪除 Blob 暫存]
+        ZZ --> Z2[更新 Task Record 狀態]
+        Z2 --> Z3["發送 Email (如果 Opt-in)"]
+    end
+
+    subgraph Frontend_After ["Frontend - 處理完成後"]
+        O[SSE 即時推送 或 重整後 API 回復狀態] --> P[Web Notification]
+        P --> Q[確認 UI]
     end
 
     subgraph Database
-        J --> K[用戶確認]
-        K --> L[transaction]
-        K --> M[merchant_mapping]
+        R[用戶確認] --> S[transaction]
+        R --> T[merchant_mapping]
+        R --> U[bill_parse_telemetry]
+        H -.-> U
+        Z2 -.-> U
     end
 
-    A --> E
-    D --> K
+    E --> G
+    K --> W
+    Z2 -.->|狀態: completed| O
+    Q --> R
 ```
 
 ### 2.2 元件關係
 
-| 元件     | 技術                    | 說明                            |
-| -------- | ----------------------- | ------------------------------- |
-| 前端     | Next.js                 | 上傳、確認 UI、Web Notification |
-| 後端     | Node.js                 | API、pdf.js、LLM 串接           |
-| 檔案暫存 | Azure Blob              | PDF 臨時存放                    |
-| AI       | Groq (Llama 3.2 Vision) | 圖片 → 結構化資料               |
-| 資料庫   | PostgreSQL (Neon)       | 交易、暫存資料                  |
+| 元件     | 技術                           | 說明                             |
+| -------- | ------------------------------ | -------------------------------- |
+| 前端     | Next.js + pdfjs-dist           | PDF 轉圖片、上傳、確認 UI        |
+| 後端     | Node.js                        | API、SSE 推送（不處理 PDF 轉換） |
+| 訊息佇列 | Azure Service Bus              | 解析任務排隊，避免 rate limit    |
+| 定時任務 | Azure Functions Timer Trigger  | 垃圾資料定期清理                 |
+| 檔案暫存 | Azure Blob                     | 圖片臨時存放                     |
+| AI       | OpenRouter (Gemini Flash Lite) | 圖片 → 結構化資料                |
+| 資料庫   | PostgreSQL (Neon)              | 交易、暫存資料、Telemetry        |
+
+> [!IMPORTANT]  
+> **PDF → Image 轉換統一在前端執行**。pdfjs-dist 的渲染引擎依賴瀏覽器原生 Canvas API，
+> 在 Node.js 環境下使用 `node-canvas` polyfill 會因 `Image` 物件不相容導致 `drawImage()` 失敗。
+> 瀏覽器原生 Canvas 有 GPU 加速，即使 20 頁 PDF 在手機上也能在 10-15 秒內完成轉換。
 
 ---
 
@@ -75,42 +98,120 @@ flowchart LR
 ### 3.1 整體流程
 
 ```
-PDF 上傳 → pdf.js 轉圖片 → Multimodal LLM 分析 → 結構化 JSON → 用戶確認 → 寫入 DB
+[前端] PDF → pdfjs-dist 轉圖片 → [前端] 縮圖 UI 勾選 → 上傳圖片 → [後端] 建立任務狀態與排隊 → LLM 分析 → 用戶確認 → 寫入 DB
 ```
 
-### 3.2 PDF 轉圖片
+> [!NOTE]
+> 不再區分本地/雲端模式。所有 PDF 轉圖片工作統一在前端完成，並透過 UI 篩選掉廣告頁，後端只接收要分析的圖片。
 
-| 方案          | 語言       | 優點                                 | 缺點             |
-| ------------- | ---------- | ------------------------------------ | ---------------- |
-| **pdf.js** ✅ | JavaScript | 純 JS、可在 Node.js 跑、Mozilla 維護 | 需要 canvas 依賴 |
+### 3.2 PDF 轉圖片（前端處理）
 
-**選擇理由**：與現有 Node.js 後端技術棧一致，不需額外 Python 環境。
+| 方案              | 語言       | 優點                                | 缺點             |
+| ----------------- | ---------- | ----------------------------------- | ---------------- |
+| **pdfjs-dist** ✅ | JavaScript | 純 JS、瀏覽器原生支援、Mozilla 維護 | 低階裝置可能較慢 |
+
+**選擇理由**：
+
+1. **分散運算負擔**：PDF 轉圖片在用戶裝置執行，後端只需處理 LLM 請求
+2. **避免並發瓶頸**：10,000+ 用戶同時使用時，不會因 PDF 轉換阻塞伺服器
+3. **無 canvas 依賴問題**：不需在 Vercel Serverless 處理 Native Dependencies
+
+#### 套件說明
+
+- **pdf.js**：Mozilla 的原始 repo（`mozilla/pdf.js`），是開發用 source code
+- **pdfjs-dist**：官方發布的**預編譯版本**，從 npm 安裝即可使用
+
+```bash
+pnpm add pdfjs-dist
+```
+
+#### Web Worker 配置
+
+pdfjs-dist 使用 Web Worker 在背景執行 PDF 解析，避免阻塞主線程：
+
+```typescript
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Webpack 5 / Vite 皆支援此語法
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
+```
+
+> [!NOTE]  
+> `new URL(..., import.meta.url)` 是 Webpack 5 Asset Modules 語法，會自動處理檔案複製與路徑解析。
+
+#### 前端轉圖片流程
+
+```typescript
+async function pdfToImages(file: File): Promise<Blob[]> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const images: Blob[] = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 2.0 }); // 2x for clarity
+
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    await page.render({
+      canvasContext: canvas.getContext('2d')!,
+      viewport,
+    }).promise;
+
+    // 轉成 JPEG 品質 85% 減少上傳量
+    const blob = await new Promise<Blob>((resolve) =>
+      canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.85),
+    );
+    images.push(blob);
+  }
+
+  return images;
+}
+```
+
+> [!NOTE]  
+> Web Worker 是獨立的執行環境，透過 `postMessage` 與主線程通訊。
+> 頁面關閉時 Worker 會終止，轉換中途關閉瀏覽器會中斷處理。
+
+> [!TIP]  
+> 建議加上 Loading 進度顯示，避免用戶以為當機。
 
 ### 3.3 Multimodal LLM API
 
 > [!IMPORTANT]
-> 以下服務皆 **明確承諾不使用用戶資料進行模型訓練**
+> OpenRouter 為模型中介平台，隱私政策由各底層供應商管轄。
+> Gemini 2.5 Flash Lite 由 Google 提供，透過 OpenRouter 呼叫時資料不會用於訓練。
 
-| 服務                      | Model            | 免費額度                   | 隱私政策                                                           |
-| ------------------------- | ---------------- | -------------------------- | ------------------------------------------------------------------ |
-| **Groq**                  | Llama 3.2 Vision | 30 req/min, 14,400 req/day | ✅ [不訓練](https://groq.com/privacy-policy/)                      |
-| **Together AI**           | Llama 3.2 Vision | $1 credit (~1M tokens)     | ✅ [不訓練](https://www.together.ai/privacy)                       |
-| **Cloudflare Workers AI** | Llama 3.2 Vision | 10,000 req/day             | ✅ [不訓練](https://developers.cloudflare.com/workers-ai/privacy/) |
+| 服務              | Model                 | 計費方式      | 隱私政策                                   |
+| ----------------- | --------------------- | ------------- | ------------------------------------------ |
+| **OpenRouter** ✅ | Gemini 2.5 Flash Lite | Pay-per-token | ✅ [不訓練](https://openrouter.ai/privacy) |
 
-**建議策略**：
+**Gemini 2.5 Flash Lite 特性**：
 
-1. **主力**：Groq（速度最快、額度大）
-2. **備援**：Together AI 或 Cloudflare（當 Groq 達到限制時切換）
+- **架構**：Google 輕量級多模態模型，平衡速度與準確率
+- **多模態**：原生支援文字 + 圖片輸入
+- **強項**：快速推理、結構化輸出、多語系支援
+- **成本**：相較完整版 Gemini 2.5 Flash，價格更低且延遲更少
+
+**策略**：
+
+1. **主力**：OpenRouter → Gemini 2.5 Flash Lite（`google/gemini-2.5-flash-lite`）
 
 ### 3.4 為什麼不選其他方案
 
-| 方案                 | 排除原因                                 |
-| -------------------- | ---------------------------------------- |
-| Google Gemini        | 免費版資料可能被用於改進產品             |
-| OpenAI GPT-4o        | 非免費                                   |
-| Claude               | 非免費                                   |
-| Local Model          | 需 8GB+ VRAM，不適合一般伺服器           |
-| pdf-parse + Text LLM | 信用卡帳單表格格式不統一，文字抽取易出錯 |
+| 方案                 | 排除原因                                    |
+| -------------------- | ------------------------------------------- |
+| Kimi K2.5            | 曾為主力模型，後因價格與分析速度改用 Gemini |
+| OpenAI GPT-4o        | 非免費                                      |
+| Claude               | 非免費                                      |
+| Groq (Llama-4)       | 辨識準確率不佳，免費額度限制嚴格            |
+| Local Model          | 需 8GB+ VRAM，不適合一般伺服器              |
+| pdf-parse + Text LLM | 信用卡帳單表格格式不統一，文字抽取易出錯    |
 
 ---
 
@@ -129,22 +230,56 @@ PDF 上傳 → pdf.js 轉圖片 → Multimodal LLM 分析 → 結構化 JSON →
 | createdAt    | TIMESTAMPTZ  |                                    |
 | updatedAt    | TIMESTAMPTZ  |                                    |
 
+**Unique Constraint**: `UNIQUE(merchantName, categoryId)`
+
+> [!NOTE]  
+> 同一個 `merchantName` 可以對應多個 `categoryId`，形成一對多關係。
+> 查詢建議類別時，取 `matchCount` 最高者。
+>
+> 例如：
+> | merchantName | categoryId | matchCount |
+> |--------------|------------|------------|
+> | 蝦皮購物 | 購物 | 100 |
+> | 蝦皮購物 | 副業成本 | 1 |
+>
+> 此時建議類別會選擇「購物」（matchCount=100）。
+>
+> **更新時機**：在 `/pdf/confirm` 確認交易時，按 `(merchantName, categoryId)` 分組計算出現次數後，批次 upsert 更新 matchCount：
+>
+> ```sql
+> -- 例如 10 筆路易莎+早餐的交易確認時，matchCount += 10
+> INSERT INTO merchant_mapping (merchantName, categoryId, matchCount)
+> VALUES ($1, $2, $3)  -- $3 = 該批次中此組合的出現次數
+> ON CONFLICT (merchantName, categoryId)
+> DO UPDATE SET matchCount = merchant_mapping.matchCount + EXCLUDED.matchCount;
+> ```
+>
+> 這確保同一批次中多筆相同商家 + 類別的交易會正確累加使用次數。
+
+##### 類別建議策略（Hybrid）
+
+`suggestedCategoryId` 來源優先級：
+
+1. **MerchantMapping**：查 `merchant_mapping` 表，若有匹配則直接使用（免費、確定性高）
+2. **LLM 建議**：LLM prompt 注入使用者的 expense 類別清單，回傳 `suggestedCategory` 字串（如 `"飲食/午餐"`），再 fuzzy match 到 `categoryId`
+3. **null**：都未匹配
+
 #### `pending_transaction`（待確認交易暫存）
 
-| Column               | Type         | Description                          |
-| -------------------- | ------------ | ------------------------------------ |
-| id                   | UUID         | PK                                   |
-| userId               | UUID         | FK → user.id                         |
-| uploadBatchId        | UUID         | 同一次上傳的 batch ID                |
-| rawMerchantName      | VARCHAR(255) | LLM 識別的原始商家名稱               |
-| suggestedCategoryId  | UUID         | AI 建議的類別（nullable）            |
-| matchedTransactionId | UUID         | 比對到的現有交易（分期用，nullable） |
-| isInstallment        | BOOLEAN      | 是否為分期                           |
-| installmentNumber    | INT          | 第幾期（nullable）                   |
-| status               | ENUM         | `pending` / `confirmed` / `skipped`  |
-| transactionData      | JSONB        | 完整 transaction 結構（見下方）      |
-| createdAt            | TIMESTAMPTZ  |                                      |
-| updatedAt            | TIMESTAMPTZ  |                                      |
+| Column               | Type         | Description                                        |
+| -------------------- | ------------ | -------------------------------------------------- |
+| id                   | UUID         | PK                                                 |
+| userId               | UUID         | FK → user.id                                       |
+| uploadBatchId        | UUID         | 同一次上傳的 batch ID                              |
+| rawMerchantName      | VARCHAR(255) | LLM 識別的原始商家名稱                             |
+| suggestedCategoryId  | UUID         | AI 建議的類別（MerchantMapping > LLM 建議 > null） |
+| matchedTransactionId | UUID         | 比對到的現有交易（分期用，nullable）               |
+| isInstallment        | BOOLEAN      | 是否為分期                                         |
+| installmentNumber    | INT          | 第幾期（nullable）                                 |
+| status               | ENUM         | `PENDING` / `CONFIRMED` / `SKIPPED`                |
+| transactionData      | JSONB        | 完整 transaction 結構（見下方）                    |
+| createdAt            | TIMESTAMPTZ  |                                                    |
+| updatedAt            | TIMESTAMPTZ  |                                                    |
 
 **transactionData JSONB 結構**：
 
@@ -156,7 +291,7 @@ PDF 上傳 → pdf.js 轉圖片 → Multimodal LLM 分析 → 結構化 JSON →
   "date": "2026-01-15",
   "time": "14:30",
   "accountId": null, // 用戶確認時選擇
-  "categoryId": null, // AI 建議或用戶選擇
+  "categoryId": null, // Mapping 或用戶選擇
   "extraAdd": 0,
   "extraMinus": 50, // 手續費
   "currency": "TWD"
@@ -174,7 +309,48 @@ flowchart TD
     D --> F[顯示給用戶：需手動處理]
 ```
 
-### 4.3 現有表不需修改
+### 4.3 新增表：`bill_parse_telemetry`（任務追蹤與準確率統計）
+
+此表已升格，除了原本的統計用途，也兼作異步任務的 State 存根表，讓前端重整頁面時可以找回「處理中」的 Loading 狀態。
+
+| Column               | Type         | Description                                      |
+| -------------------- | ------------ | ------------------------------------------------ |
+| id                   | UUID         | PK                                               |
+| uploadBatchId        | UUID         | 同一次上傳的 batch ID                            |
+| userId               | UUID         | FK → user.id (用於找回未完成任務)                |
+| status               | VARCHAR(20)  | `PROCESSING`, `COMPLETED`, `FAILED`              |
+| totalTransactions    | INT          | 總共識別幾筆                                     |
+| modifiedTransactions | INT          | 用戶修改過幾筆                                   |
+| skippedTransactions  | INT          | 用戶略過幾筆                                     |
+| accuracyRate         | DECIMAL(5,4) | 準確率 = (total - modified) / total              |
+| parseTimeMs          | INT          | LLM 解析耗時 (ms)                                |
+| processingMode       | VARCHAR(10)  | ~~`local` / `cloud`~~ (deprecated, 統一為 local) |
+| llmProvider          | VARCHAR(50)  | `openrouter`                                     |
+| llmModel             | VARCHAR(100) | 使用的模型名稱                                   |
+| pageCount            | INT          | 上傳過濾後的 PDF 頁數                            |
+| notifyEmail          | BOOLEAN      | 是否在完成後寄發 Email 通知                      |
+| createdAt            | TIMESTAMPTZ  | 任務建立時間                                     |
+| updatedAt            | TIMESTAMPTZ  | Worker 完成時間 / Confirmation 時間              |
+
+> [!NOTE]  
+> Transaction-level 準確率：目前以「最終類別是否與 AI 建議類別不同」作為判定依據，若不同則計入 `modifiedTransactions`。
+
+#### Telemetry Lifecycle
+
+此表的寫入分三階段：
+
+1. **使用者點擊上傳時 (`/pdf/upload`)** → `CREATE`：建立 Task 存根
+   - 寫入 `uploadBatchId`, `userId`, `status = 'PROCESSING'`, `notifyEmail`, `pageCount`等先驗欄位。
+2. **Worker parse 完成時** → `UPDATE`：記錄 AI 處理結果
+   - 寫入 `status = 'COMPLETED'` (或 `FAILED`), `totalTransactions`（= parsed count）, `parseTimeMs`, `processingMode`, `llmProvider`, `llmModel`
+   - 若 `notifyEmail = true`，發送 Email。
+   - 此時 `modifiedTransactions`, `skippedTransactions`, `accuracyRate` 設為 `0` / `null`
+
+3. **用戶 confirm 時** → `UPDATE` 同一筆 record：補上業務面欄位
+   - 寫入 `modifiedTransactions`, `skippedTransactions`, `accuracyRate`
+   - 計算方式：`accuracyRate = (total - modified) / total`
+
+### 4.4 現有表不需修改
 
 - `transaction` - 結構不變
 - `transaction_extra` - 結構不變
@@ -186,55 +362,78 @@ flowchart TD
 
 ### 5.1 Endpoints 總覽
 
-| Method | Endpoint                 | Description                 |
-| ------ | ------------------------ | --------------------------- |
-| POST   | `/bill/upload`           | 上傳 PDF                    |
-| POST   | `/bill/parse/:uploadId`  | 觸發解析                    |
-| GET    | `/bill/status/:uploadId` | 查詢解析狀態（for polling） |
-| GET    | `/bill/pending`          | 取得待確認交易列表          |
-| PATCH  | `/bill/pending/:id`      | 更新單筆狀態                |
-| POST   | `/bill/confirm`          | 批次確認寫入 DB             |
+| Method | Endpoint                | Description        |
+| ------ | ----------------------- | ------------------ |
+| POST   | `/pdf/upload`           | 上傳圖片           |
+| POST   | `/pdf/parse/:uploadId`  | 觸發解析           |
+| GET    | `/pdf/stream/:uploadId` | SSE 即時狀態推送   |
+| GET    | `/pdf/pending`          | 取得待確認交易列表 |
+| PATCH  | `/pdf/pending/:id`      | 更新單筆狀態       |
+| POST   | `/pdf/confirm`          | 批次確認寫入 DB    |
+| DELETE | `/pdf/pending`          | 捨棄所有待確認交易 |
 
 ### 5.2 流程圖
 
 ```mermaid
 sequenceDiagram
-    participant U as 前端
-    participant B as 後端
-    participant AI as LLM API
-    participant DB as Database
-
-    U->>B: POST /bill/upload (PDF)
-    B->>B: 存到 Azure Blob (temp)
-    B-->>U: { uploadId }
-
-    U->>B: POST /bill/parse/:uploadId
-    B-->>U: { status: "processing" }
-
-    B->>B: pdf.js 轉圖片
-    B->>AI: 送圖片給 LLM
-    AI-->>B: JSON 結構化資料
-    B->>DB: 存入 pending_transaction
-    B->>B: 刪除 Azure Blob temp 檔案
-
-    loop Polling (每 5 秒)
-        U->>B: GET /bill/status/:uploadId
-        B-->>U: { status: "completed" }
+    box rgba(59, 130, 246, 0.1) Frontend
+        participant U as 前端 UI
+        participant FW as 前端 Web Worker<br/>(pdfjs-dist)
     end
 
-    Note over U: 觸發 Web Notification
+    box rgba(34, 197, 94, 0.1) Backend
+        participant B as 後端 API
+        participant BW as 後端 Worker<br/>(Service Bus Consumer)
+    end
 
-    U->>B: GET /bill/pending
+    box rgba(249, 115, 22, 0.1) Azure Services
+        participant Q as Service Bus Queue
+        participant Blob as Blob Storage
+    end
+
+    participant AI as OpenRouter API
+    participant DB as Database
+
+    Note over U,FW: 本地解析模式
+    U->>FW: PDF 檔案
+    FW->>FW: 轉換為圖片
+    FW-->>U: images[]
+
+    U->>B: POST /pdf/upload (images[])
+    B->>Blob: 暫存圖片
+    B-->>U: { uploadId }
+
+    U->>B: POST /pdf/parse/:uploadId
+    B->>Q: 放入 Queue
+    B-->>U: { status: "queued" }
+
+    U->>B: GET /pdf/stream/:uploadId
+    Note over U,B: SSE 長連線
+
+    Q->>BW: 取出任務
+    BW->>Blob: 讀取圖片
+    BW->>AI: 送圖片
+    AI-->>BW: JSON
+    BW->>DB: 存入 pending_transaction
+    BW->>Blob: 刪除暫存
+    BW->>DB: 更新狀態 completed
+
+    B-->>U: SSE: { status: "completed" }
+    Note over U: Web Notification
+
+    U->>B: GET /pdf/pending
     B-->>U: [pending transactions...]
 
-    U->>B: POST /bill/confirm
-    B->>DB: 寫入 transaction 表
-    B->>DB: 硬刪除 pending_transaction
+    U->>B: POST /pdf/confirm
+    B->>DB: 寫入 transaction（非 SKIPPED）
+    B->>DB: 更新 telemetry（業務面欄位）
+    B->>DB: 更新 merchant_mapping（批次 increment matchCount）
+    B->>DB: 刪除全部 pending（含 SKIPPED）
 ```
 
 ### 5.3 Request/Response 範例
 
-#### POST `/bill/upload`
+#### POST `/pdf/upload`
 
 ```json
 // Request: multipart/form-data
@@ -244,53 +443,124 @@ sequenceDiagram
 { "uploadId": "abc-123", "filename": "玉山銀行帳單.pdf" }
 ```
 
-#### GET `/bill/status/:uploadId`
+#### GET `/pdf/stream/:uploadId` (SSE)
 
-```json
-// Response (處理中)
-{ "status": "processing", "progress": 60 }
+```
+// SSE Event Stream
+event: status
+data: { "status": "queued", "position": 3 }
 
-// Response (完成)
-{ "status": "completed", "pendingCount": 15 }
+event: status
+data: { "status": "processing", "progress": 60 }
 
-// Response (失敗)
-{ "status": "failed", "error": "PDF 無法解析" }
+event: status
+data: { "status": "completed", "pendingCount": 15 }
+
+// 加密 PDF 情況
+event: status
+data: { "status": "password_required", "uploadId": "abc-123" }
+
+// 失敗情況
+event: error
+data: { "status": "failed", "error": "PDF 無法解析" }
 ```
 
-#### POST `/bill/confirm`
+#### GET `/pdf/pending`
+
+除了回傳待確認的交易外，會一併從 `bill_parse_telemetry` 夾帶該使用者是否有正在 `PROCESSING` 的 `activeJob`。這使得前端重整頁面時，可以立刻發現有未完成的任務，並拿 `uploadBatchId` 重新建立 SSE 連線，恢復 Loading 動態。
+
+```json
+// Response
+{
+  "activeJob": {
+    "uploadBatchId": "abc-123",
+    "status": "PROCESSING",
+    "pageCount": 5,
+    "createdAt": "2026-02-22T10:00:00Z"
+  },
+  "data": [
+    {
+      "id": "pending-uuid-1",
+      "rawMerchantName": "全聯福利中心",
+      "amount": 1500
+      // ... transaction details
+    }
+  ]
+}
+// 若無進行中的任務，activeJob 為 null
+```
+
+#### POST `/pdf/confirm`
 
 ```json
 // Request
 {
-  "confirmed": ["pending-id-1", "pending-id-2"],
-  "skipped": ["pending-id-3"]
+  "transactionIds": ["pending-id-1", "pending-id-2"],
+  "accountId": "account-uuid"
 }
+// transactionIds = 非 SKIPPED 的待確認交易 IDs
+// accountId = 整批匯入的目標帳戶
 
 // Response
 { "created": 2, "skipped": 1 }
+// created = 成功寫入交易筆數
+// skipped = 本批次中 SKIPPED 狀態的交易筆數（被刪除）
 ```
+
+> [!NOTE]
+> 略過（SKIPPED）的處理：用戶透過 PATCH `/pdf/pending/:id` 將不要的交易標為 SKIPPED。
+> confirm 時，後端會：
+>
+> 1. 將 `transactionIds` 中的交易寫入 transaction 表
+> 2. 將同 batch 的 SKIPPED 交易直接刪除
+> 3. 更新 merchant_mapping 和 telemetry
 
 ### 5.4 前端通知機制
 
-使用 **Web Notifications API** + Polling：
+使用 **SSE (Server-Sent Events)** + **Web Notifications API**：
 
-```javascript
+```typescript
+// SSE 連線
+const connectSSE = (uploadId: string) => {
+  const eventSource = new EventSource(`/api/pdf/stream/${uploadId}`);
+
+  eventSource.addEventListener('status', (e) => {
+    const data = JSON.parse(e.data);
+
+    switch (data.status) {
+      case 'completed':
+        new Notification('帳單解析完成', {
+          body: `已識別 ${data.pendingCount} 筆交易，點擊確認`,
+          icon: '/icon.png',
+        });
+        eventSource.close();
+        break;
+      case 'password_required':
+        // 顯示密碼輸入 dialog
+        showPasswordDialog(uploadId);
+        eventSource.close();
+        break;
+      case 'failed':
+        toast.error(data.error);
+        eventSource.close();
+        break;
+    }
+  });
+
+  eventSource.onerror = () => {
+    // SSE 斷線，fallback 到 polling
+    eventSource.close();
+    fallbackToPolling(uploadId);
+  };
+};
+
 // 請求通知權限（首次使用時）
 Notification.requestPermission();
-
-// Polling 檢查狀態
-const checkStatus = async (uploadId) => {
-  const res = await fetch(`/bill/status/${uploadId}`);
-  const data = await res.json();
-
-  if (data.status === 'completed') {
-    new Notification('帳單解析完成', {
-      body: `已識別 ${data.pendingCount} 筆交易，點擊確認`,
-      icon: '/icon.png',
-    });
-  }
-};
 ```
+
+> [!NOTE]
+> SSE 需要後端支援長連線，Railway 完全支援。
+> 如果 SSE 斷線，則 fallback 到 polling 機制。
 
 ---
 
@@ -302,40 +572,58 @@ const checkStatus = async (uploadId) => {
 - **路由**：`/bill-import`
 - **權限**：登入用戶
 
-### 6.2 頁面結構
+### 6.2 預覽與篩選 (頁數選擇 UI)
+
+為避免無意義廣告雜訊消耗 Token 及降低準確率，上傳流程加入「縮圖勾選」：
+
+1. **本地轉換**：選取 PDF 後，`pdfjs-dist` 先在本地將每一頁轉為圖片。
+2. **大尺寸縮圖顯示**：
+   - Desktop/Tablet：以 Grid 排列，每列 2 或 3 張大尺寸縮圖（寬度至少 300px），確保肉眼直視即可判別是否為明細。
+   - Mobile：單列顯示（一排一頁），圖片寬度佔滿螢幕。
+   - 右上角提供「放大鏡」小按鈕，點擊可開啟 Lightbox 檢查小字。
+3. **勾選邏輯**：
+   - 預設：全選。
+   - 提供「全選/全不選」快速按鈕。
+   - 提示文字：「請取消勾選純廣告或權益宣告的頁面，這能為您節省大量等待時間並提高 AI 準確率」。
+4. **準備上傳**：
+   - 提供 Checkbox：「解析完成後，請發送 Email 通知我」（預設不勾選，由使用者 Opt-in）。
+   - 按下「確認並上傳 X 頁圖片」，才會發送 Request 到後端。
+
+### 6.3 頁面結構
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  帳單匯入                                    [上傳 PDF]     │
-├─────────────────────────────────────────────────────────────┤
-│  狀態: 已識別 15 筆交易，待確認 12 筆                        │
-├─────────────────────────────────────────────────────────────┤
-│  ☑ │ 日期 │ 商家 │ 金額 │ 類別 │ 帳戶 │ 分期 │ 折扣 │ ... │
-│  ☑ │ 1/15 │ 全聯 │ 850 │ 食品 │ 玉山 │  -   │  0  │     │
-│  ☑ │ 1/16 │ 蝦皮 │ 1200│ 購物 │ 玉山 │ 3/6  │  0  │     │
-│  ☐ │ 1/17 │ 台電 │ 2300│ 帳單 │  -   │  -   │  0  │     │
-│  ✕ │ 1/18 │ ... │ ... │ ... │ ... │ ... │ ... │     │
-├─────────────────────────────────────────────────────────────┤
-│                          [確認匯入選取項目] [全部略過]       │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  帳單匯入                                         [上傳 PDF 📄] │
+├─────────────────────────────────────────────────────────────────┤
+│  狀態: 已識別 15 筆交易，待確認 12 筆                             │
+├─────────────────────────────────────────────────────────────────┤
+│  匯入帳戶: [▼ 選擇帳戶]                                          │
+├─────────────────────────────────────────────────────────────────┤
+│  ☑ │ 日期 │ 商家 │ 金額 │ 類別 │ 分期 │ 狀態 │
+│  ☑ │ 1/15 │ 全聯 │ 850 │ 食品 │  -   │      │
+│  ☑ │ 1/16 │ 蝦皮 │ 1200│ 購物 │ 3/6  │      │
+│  ☐ │ 1/17 │ 台電 │ 2300│  -   │  -   │ ⚠️   │
+├─────────────────────────────────────────────────────────────────┤
+│                            [全部捨棄] [確認匯入全部]              │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### 6.3 表格欄位
+### 6.4 表格欄位
 
-| 欄位                | 來源    | 可編輯    | 必填 |
-| ------------------- | ------- | --------- | ---- |
-| 勾選狀態            | -       | ☑/☐/✕    | -    |
-| 日期                | LLM     | ✅        | ✅   |
-| 時間                | LLM     | ✅        | ❌   |
-| 商家/描述           | LLM     | ✅        | ✅   |
-| 金額                | LLM     | ✅        | ✅   |
-| 類別                | AI 建議 | ✅ (下拉) | ✅   |
-| 帳戶                | 用戶選  | ✅ (下拉) | ✅   |
-| 分期 (第N期/總期)   | LLM     | ✅        | ❌   |
-| 折扣 (extraAdd)     | LLM     | ✅        | ❌   |
-| 手續費 (extraMinus) | LLM     | ✅        | ❌   |
-| 幣別                | LLM     | ✅ (下拉) | ❌   |
-| 備註                | 空白    | ✅        | ❌   |
+| 欄位                   | 來源     | 可編輯    | 必填 |
+| ---------------------- | -------- | --------- | ---- |
+| 勾選狀態               | -        | ☑/☐/✕    | -    |
+| 日期                   | LLM      | ✅        | ✅   |
+| 時間                   | LLM      | ✅        | ❌   |
+| 商家/描述              | LLM      | ✅        | ✅   |
+| 金額                   | LLM      | ✅        | ✅   |
+| 類別(SubCategory Only) | AI 建議  | ✅ (下拉) | ✅   |
+| 帳戶                   | 用戶選   | ✅ (下拉) | ✅   |
+| 分期 (第N期/總期)      | LLM      | ✅        | ❌   |
+| 折扣 (extraAdd)        | 手動合併 | ✅        | ❌   |
+| 手續費 (extraMinus)    | 手動合併 | ✅        | ❌   |
+| 幣別                   | LLM      | ✅ (下拉) | ❌   |
+| 備註                   | 空白     | ✅        | ❌   |
 
 ### 6.4 操作狀態
 
@@ -346,32 +634,37 @@ const checkStatus = async (uploadId) => {
 | 略過     | ✕    | 不匯入，從暫存刪除               |
 | 已存在   | 🔗   | 比對到現有交易（分期），建議略過 |
 
-### 6.5 使用流程
+### 6.6 使用流程
 
 ```mermaid
 flowchart TD
     A[進入帳單匯入頁面] --> B[點擊上傳 PDF]
-    B --> C[選擇檔案]
-    C --> D[顯示 Loading]
-    D --> E[收到 Web Notification]
-    E --> F[表格顯示識別結果]
-    F --> G{逐筆檢查}
-    G -->|正確| H[勾選 ☑]
-    G -->|需修改| I[直接編輯欄位]
-    G -->|不要| J[點擊 ✕ 略過]
-    I --> H
-    H --> K[點擊確認匯入]
-    K --> L[寫入 DB，清除暫存]
+    B --> C[前端轉換圖片]
+    C --> C2[UI 顯示縮圖 Grid 供使用者勾選]
+    C2 --> C3[使用者可勾選 Opt-in Email]
+    C3 --> D[上傳圖片並寫入 Telemetry 存根]
+    D --> E["顯示長效 Loading (SSE 重建機制支援)"]
+    E --> F["Worker 完成 (發送 Email 若勾選)"]
+    F --> G[SSE 通知前端 / API 撈回交易]
+    G --> H[表格顯示識別結果]
+    H --> I{逐筆檢查}
+    I -->|正確| J[勾選 ☑]
+    I -->|需修改| K[直接編輯欄位]
+    I -->|不要| L[點擊 ✕ 略過]
+    K --> J
+    J --> M[點擊確認匯入]
+    M --> N[寫入 DB，清除暫存，更新 Telemetry]
 ```
 
-### 6.6 特殊情況處理
+### 6.7 特殊情況處理
 
-| 情況               | UI 表現                         |
-| ------------------ | ------------------------------- |
-| 比對到現有分期交易 | 該行標記「🔗 已存在」，預設略過 |
-| AI 無法識別類別    | 類別欄位標紅，提示用戶選擇      |
-| 必填欄位空白       | 無法勾選確認，顯示警告          |
-| 解析失敗           | 顯示錯誤訊息，可重新上傳        |
+| 情況               | UI 表現                                                                                                                                                    |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 比對到現有分期交易 | 該行標記「🔗 已存在」，預設略過                                                                                                                            |
+| 跨行折扣/回饋明細  | 提供「作為折扣合併」操作選單（如三個小點 icon），點選後跳出視窗選擇要合併入的原始消費，系統將自動把它計入其 `extraAdd` 或 `extraMinus`，並將本筆標記為略過 |
+| AI 無法識別類別    | 類別欄位標紅，提示用戶選擇                                                                                                                                 |
+| 必填欄位空白       | 無法勾選確認，顯示警告                                                                                                                                     |
+| 解析失敗           | 顯示錯誤訊息，可重新上傳                                                                                                                                   |
 
 ---
 
@@ -386,22 +679,60 @@ flowchart TD
 
 ### 7.2 檔案上傳驗證
 
-```javascript
-// 前端驗證
-const allowedTypes = ['application/pdf'];
-const maxSize = 10 * 1024 * 1024; // 10MB
+**共用驗證函數**（前後端共用）：
 
-if (!allowedTypes.includes(file.type)) {
-  throw new Error('只允許上傳 PDF 檔案');
-}
-if (file.size > maxSize) {
-  throw new Error('檔案大小不可超過 10MB');
-}
+```typescript
+// shared/validation/fileValidation.ts
+export const PDF_VALIDATION = {
+  allowedTypes: ['application/pdf'],
+  allowedImageTypes: ['image/jpeg', 'image/png'],
+  maxPdfSize: 10 * 1024 * 1024, // 10MB
+  maxImageSize: 5 * 1024 * 1024, // 5MB per image
+  maxImageCount: 50, // 最多 50 頁
+  imageFormat: 'image/jpeg', // PDF 轉圖片統一用 JPEG
+  imageQuality: 0.85,
+};
 
-// 後端驗證（雙重檢查）
-// 1. MIME type 檢查
-// 2. Magic number 檢查（PDF 開頭為 %PDF-）
+export const validatePdfFile = (
+  file: File | Buffer,
+): { valid: boolean; error?: string } => {
+  // MIME type 檢查
+  const mimeType = file instanceof File ? file.type : 'application/pdf';
+  if (!PDF_VALIDATION.allowedTypes.includes(mimeType)) {
+    return { valid: false, error: '只允許上傳 PDF 檔案' };
+  }
+
+  // 大小檢查
+  const size = file instanceof File ? file.size : file.length;
+  if (size > PDF_VALIDATION.maxPdfSize) {
+    return { valid: false, error: '檔案大小不可超過 10MB' };
+  }
+
+  return { valid: true };
+};
+
+export const validateImageFiles = (
+  images: Blob[],
+): { valid: boolean; error?: string } => {
+  if (images.length > PDF_VALIDATION.maxImageCount) {
+    return {
+      valid: false,
+      error: `最多僅支援 ${PDF_VALIDATION.maxImageCount} 頁`,
+    };
+  }
+
+  for (const img of images) {
+    if (img.size > PDF_VALIDATION.maxImageSize) {
+      return { valid: false, error: '單頁圖片不可超過 5MB' };
+    }
+  }
+
+  return { valid: true };
+};
 ```
+
+> [!NOTE]
+> 前端轉出的圖片統一使用 **JPEG 格式**，品質 85%，平衡清晰度與檔案大小。
 
 ### 7.3 大量資料處理
 
@@ -417,7 +748,7 @@ if (file.size > maxSize) {
 **API 分頁設計**：
 
 ```json
-// GET /bill/pending?page=1&limit=50
+// GET /pdf/pending?page=1&limit=50
 {
   "data": [...],
   "pagination": {
@@ -431,46 +762,17 @@ if (file.size > maxSize) {
 
 ### 7.4 資料隱私
 
-| 項目                | 處理方式                                            |
-| ------------------- | --------------------------------------------------- |
-| PDF 暫存            | 解析完成後立即刪除                                  |
-| LLM API             | 使用不訓練資料的服務（Groq/Together AI/Cloudflare） |
-| pending_transaction | 用戶確認後硬刪除                                    |
+| 項目                | 處理方式                                    |
+| ------------------- | ------------------------------------------- |
+| PDF 暫存            | 解析完成後立即刪除                          |
+| LLM API             | 使用不訓練資料的服務（OpenRouter / Gemini） |
+| pending_transaction | 用戶確認後硬刪除                            |
 
 ---
 
 ## 8. 實作階段 (Implementation Phases)
 
-### Phase 1: 基礎建設（1-2 週）
-
-- [ ] 建立 `merchant_mapping` 表
-- [ ] 建立 `pending_transaction` 表
-- [ ] 實作 `/bill/upload` API（上傳至 Azure Blob temp）
-- [ ] 實作 pdf.js 轉圖片功能
-- [ ] 實作 `/bill/status` API（polling 用）
-
-### Phase 2: AI 整合（1-2 週）
-
-- [ ] 串接 Groq API（Llama 3.2 Vision）
-- [ ] 設計 LLM Prompt（結構化輸出）
-- [ ] 實作 `/bill/parse` API
-- [ ] 實作分期交易比對邏輯
-- [ ] 實作 merchant_mapping 查詢/新增
-
-### Phase 3: 前端介面（1-2 週）
-
-- [ ] 新增 Sidebar 選項「帳單匯入」
-- [ ] 實作上傳 + polling + Web Notification
-- [ ] 實作全頁表格 UI
-- [ ] 實作編輯/勾選/略過功能
-- [ ] 實作 `/bill/confirm` 批次寫入
-
-### Phase 4: 優化與測試（1 週）
-
-- [ ] 大量資料分頁處理
-- [ ] 錯誤處理與 retry 機制
-- [ ] 備援 LLM（Groq → Together AI → Cloudflare）
-- [ ] 端對端測試
+> 詳細任務清單請參考：[pdf-bill-analysis-tasks.md](./pdf-bill-analysis-tasks.md)
 
 ---
 
@@ -516,32 +818,38 @@ Llama 3.2 處理長列表時可能產生格式錯誤或幻覺
 - 清洗規則：讓 LLM 提取「品牌名」而非原始敘述
 - Fuzzy Match：`merchant_mapping` 查詢使用模糊搜尋而非完全匹配
 
-#### 4. pdf.js 部署限制
+#### 4. 前端轉圖片的限制
 
-pdf.js 依賴 `canvas`，Vercel Serverless 可能有 Native Dependencies 問題
-
-**解決方案**：
-
-- 確認 Vercel 對 canvas 支援度
-- 備選：pdf-lib + pdf2pic（需系統依賴）
-- 或改為 Railway 處理 PDF 轉換
-
-#### 5. 大量資料前端效能
-
-100+ 筆可編輯欄位會導致 React 效能下降
+低階裝置（舊手機、低階筆電）轉換大型 PDF 時可能卡頓
 
 **解決方案**：
 
-- 使用 Virtualization（如 `@tanstack/react-virtual`）
-- 分頁載入（每頁 50 筆）
+- 顯示轉換進度（「正在轉換第 X/N 頁」），讓用戶知道處理中
+- 逐頁處理（非同時），記憶體峰值僅 ~8MB/頁
+- 限制單次上傳最大頁數（如 50 頁）
+
+> [!NOTE]
+> 後端不處理 PDF → Image 轉換。pdfjs-dist 的渲染引擎依賴瀏覽器 DOM API（`HTMLImageElement`），
+> 在 Node.js 搭配 `node-canvas` 時 `drawImage()` 會因 Image 物件型別不相容而失敗。
+> 瀏覽器有原生 GPU 加速的 Canvas，效能遠優於 Node.js CPU 軟體渲染。
+
+#### 5. 大量資料前端效能與重整狀態遺失
+
+100+ 筆可編輯欄位會導致 React 效能下降。且耗時的異步任務在瀏覽器重新整理或背景休眠時容易中斷與遺漏狀態通知。
+
+**解決方案**：
+
+- 表格渲染：使用 Virtualization（如 `@tanstack/react-virtual`）與分頁載入（每頁 50 筆）
+- 狀態回復：在後端 API (`GET /pdf/pending`) 中夾帶 `activeJob`（查詢 `bill_parse_telemetry`）。若前端偵測到有 `PROCESSING` 的任務，直接取其 ID 重新建立 SSE 恢復畫面 Loading 狀態。
+- 通知備案：加設 Opt-in 的 Email 通知，讓背景運算完成後，能可靠地送達給使用者，不受瀏覽器生命週期影響。
 
 ### 9.3 待驗證項目
 
-- [ ] Llama 3.2 Vision 對繁體中文帳單的識別準確率
+- [ ] Gemini 2.5 Flash Lite 對繁體中文帳單的識別準確率
 - [ ] 複雜分期交易（如循環利息）的處理
 - [ ] 單張帳單 100+ 筆交易的處理效能
 - [ ] 跨頁表格的 Header Injection 效果
-- [ ] Vercel 對 canvas 依賴的支援度
+- [ ] 前端轉圖片在低階裝置的效能表現
 
 ### 9.4 未來優化方向
 
@@ -549,3 +857,467 @@ pdf.js 依賴 `canvas`，Vercel Serverless 可能有 Native Dependencies 問題
 - 支援更多帳單類型（電信、水電、發票）
 - 支援多張 PDF 批次上傳
 - 建立常見銀行帳單的專屬 prompt template
+
+---
+
+## 附錄 A：Azure Service Bus 設定與使用
+
+### A.1 建立 Service Bus Namespace
+
+```bash
+# 使用 Azure CLI
+az servicebus namespace create \
+  --resource-group EasyAccounting \
+  --name easyaccounting-bus \
+  --location eastasia \
+  --sku Basic  # Basic tier 免費額度：每月 100 萬次操作
+```
+
+### A.2 建立 Queue
+
+```bash
+az servicebus queue create \
+  --resource-group EasyAccounting \
+  --namespace-name easyaccounting-bus \
+  --name bill-parse-queue \
+  --max-size 1024  # 1GB
+```
+
+### A.3 取得連線字串
+
+```bash
+az servicebus namespace authorization-rule keys list \
+  --resource-group EasyAccounting \
+  --namespace-name easyaccounting-bus \
+  --name RootManageSharedAccessKey \
+  --query primaryConnectionString \
+  --output tsv
+```
+
+將連線字串加入 `.env`：
+
+```
+AZURE_SERVICE_BUS_CONNECTION_STRING=Endpoint=sb://easyaccounting-bus.servicebus.windows.net/;SharedAccessKeyName=...
+```
+
+### A.4 後端 Producer（發送訊息）
+
+```typescript
+import { ServiceBusClient } from '@azure/service-bus';
+
+const sbClient = new ServiceBusClient(
+  process.env.AZURE_SERVICE_BUS_CONNECTION_STRING!,
+);
+const sender = sbClient.createSender('bill-parse-queue');
+
+// 在 /pdf/parse API 中
+await sender.sendMessages({
+  body: {
+    uploadId,
+    userId,
+    blobUrls: ['https://...page1.jpg', 'https://...page2.jpg'],
+  },
+  messageId: uploadId,
+});
+```
+
+### A.5 後端 Worker（消費訊息）
+
+```typescript
+import { ServiceBusClient } from '@azure/service-bus';
+
+const sbClient = new ServiceBusClient(
+  process.env.AZURE_SERVICE_BUS_CONNECTION_STRING!,
+);
+const receiver = sbClient.createReceiver('bill-parse-queue');
+
+// 持續監聽
+receiver.subscribe({
+  processMessage: async (message) => {
+    const { uploadId, blobUrls } = message.body;
+
+    try {
+      // 1. 更新狀態為 processing
+      await updateParseStatus(uploadId, 'processing');
+
+      // 2. 呼叫 OpenRouter API 解析圖片
+      const result = await parseWithOpenRouter(blobUrls);
+
+      // 3. 寫入 pending_transaction
+      await savePendingTransactions(uploadId, result);
+
+      // 4. 刪除 Blob 暫存
+      await deleteTempBlobs(blobUrls);
+
+      // 5. 更新狀態為 completed
+      await updateParseStatus(uploadId, 'completed');
+    } catch (error) {
+      await updateParseStatus(uploadId, 'failed', error.message);
+    }
+  },
+  processError: async (error) => {
+    console.error('Service Bus error:', error);
+  },
+});
+```
+
+### A.6 Railway 部署 Worker
+
+在 `railway.json` 中新增 Worker 服務：
+
+```json
+{
+  "services": {
+    "api": { ... },
+    "worker": {
+      "build": { "builder": "NIXPACKS" },
+      "deploy": {
+        "startCommand": "node dist/worker.js",
+        "restartPolicyType": "ALWAYS"
+      }
+    }
+  }
+}
+```
+
+---
+
+## 附錄 B：垃圾資料清理 Job
+
+### B.1 使用 Azure Functions Timer Trigger
+
+```bash
+# 建立 Function App
+az functionapp create \
+  --resource-group EasyAccounting \
+  --name easyaccounting-cleanup \
+  --storage-account easyaccountingstorage \
+  --consumption-plan-location eastasia \
+  --runtime node \
+  --runtime-version 20 \
+  --functions-version 4
+```
+
+### B.2 Timer Trigger 程式碼
+
+```typescript
+// cleanupFunction/index.ts
+import { app } from '@azure/functions';
+import { Pool } from 'pg';
+import { BlobServiceClient } from '@azure/storage-blob';
+
+app.timer('cleanupStaleData', {
+  schedule: '0 0 3 * * *', // 每天凌晨 3 點執行
+  handler: async (myTimer, context) => {
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    const blobClient = BlobServiceClient.fromConnectionString(
+      process.env.AZURE_BLOB_CONNECTION_STRING!,
+    );
+
+    // 1. 清理 7 天前的 pending_transaction（非 completed 狀態）
+    const dbResult = await pool.query(`
+      DELETE FROM pending_transaction 
+      WHERE status IN ('pending', 'processing', 'queued') 
+        AND "createdAt" < NOW() - INTERVAL '7 days'
+      RETURNING id
+    `);
+    context.log(`Deleted ${dbResult.rowCount} stale pending_transactions`);
+
+    // 2. 清理 7 天前的 Blob 暫存圖片
+    const containerClient = blobClient.getContainerClient('bill-temp');
+    const blobs = containerClient.listBlobsFlat();
+    let deletedBlobs = 0;
+
+    for await (const blob of blobs) {
+      const createdOn = blob.properties.createdOn;
+      if (
+        createdOn &&
+        Date.now() - createdOn.getTime() > 7 * 24 * 60 * 60 * 1000
+      ) {
+        await containerClient.deleteBlob(blob.name);
+        deletedBlobs++;
+      }
+    }
+    context.log(`Deleted ${deletedBlobs} stale blobs`);
+  },
+});
+```
+
+### B.3 免費額度說明
+
+| 服務                    | 免費額度                             |
+| ----------------------- | ------------------------------------ |
+| Azure Functions         | 每月 100 萬次執行、400,000 GB-s 計算 |
+| Azure Service Bus Basic | 每月 100 萬次操作                    |
+
+> [!NOTE]
+> 以每天清理一次計算，一個月約 30 次執行，遠低於免費額度。
+> Service Bus 以每天 100 個用戶各上傳 5 張帳單計算，每月約 15,000 次操作。
+
+---
+
+## 附錄 C：加密 PDF 處理
+
+### C.1 前端檢測與 UI
+
+```typescript
+// 前端 PDF 載入
+try {
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+} catch (e) {
+  if (e.name === 'PasswordException') {
+    // 顯示密碼輸入 dialog
+    showPasswordDialog();
+  }
+}
+
+// 密碼輸入 dialog
+const PasswordDialog = ({ uploadId, onSubmit }) => (
+  <Dialog>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>PDF 需要密碼</DialogTitle>
+        <DialogDescription>
+          此 PDF 已加密，請輸入密碼以繼續解析。
+        </DialogDescription>
+      </DialogHeader>
+
+      <Input
+        type="password"
+        placeholder="請輸入 PDF 密碼"
+        onChange={(e) => setPassword(e.target.value)}
+      />
+
+      <Alert variant="info">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          密碼僅用於解密此 PDF，不會被儲存或傳送至伺服器。
+        </AlertDescription>
+      </Alert>
+
+      <Tooltip>
+        <TooltipTrigger>
+          <HelpCircle className="h-4 w-4" />
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>PDF 在您的瀏覽器中解密，</p>
+          <p>密碼不會離開您的裝置。</p>
+        </TooltipContent>
+      </Tooltip>
+
+      <Button onClick={() => onSubmit(password)}>解鎖</Button>
+    </DialogContent>
+  </Dialog>
+);
+```
+
+### C.2 使用密碼解密
+
+```typescript
+const decryptPDF = async (arrayBuffer: ArrayBuffer, password: string) => {
+  const pdf = await pdfjsLib.getDocument({
+    data: arrayBuffer,
+    password,
+  }).promise;
+
+  // 繼續正常的轉圖片流程
+  return await pdfToImages(pdf);
+};
+```
+
+> [!IMPORTANT]
+> 密碼**只在前端使用**，用於本地解密 PDF。
+> 後端不會收到密碼，也不會儲存密碼。
+> PDF 轉圖片統一在前端完成，密碼不會離開使用者裝置。
+
+---
+
+## 附錄 D：API 完整列表
+
+### D.1 Endpoints 總覽
+
+| Method | Endpoint                | Description        | 認證   |
+| ------ | ----------------------- | ------------------ | ------ |
+| POST   | `/pdf/upload`           | 上傳圖片           | 需認證 |
+| POST   | `/pdf/parse/:uploadId`  | 觸發解析任務       | 需認證 |
+| GET    | `/pdf/stream/:uploadId` | SSE 即時狀態推送   | 需認證 |
+| GET    | `/pdf/pending`          | 取得待確認交易列表 | 需認證 |
+| PATCH  | `/pdf/pending/:id`      | 更新單筆待確認交易 | 需認證 |
+| POST   | `/pdf/confirm`          | 批次確認寫入 DB    | 需認證 |
+| DELETE | `/pdf/pending`          | 捨棄所有待確認交易 | 需認證 |
+
+### D.2 Request/Response 詳細規格
+
+#### POST `/pdf/upload`
+
+上傳前端轉換後的圖片。
+
+**Request**:
+
+```typescript
+// multipart/form-data
+interface UploadRequest {
+  files: File[]; // 前端轉換後的 JPEG 圖片陣列
+}
+```
+
+**Response**:
+
+```typescript
+interface UploadResponse {
+  uploadId: string; // 上傳批次 ID
+  filename: string; // 原始檔名
+  pageCount: number; // 頁數
+  status: 'uploaded';
+}
+```
+
+**錯誤碼**:
+| 狀態碼 | 說明 |
+|--------|------|
+| 400 | 檔案格式錯誤或超過大小限制 |
+| 401 | 未認證 |
+| 413 | 檔案過大 |
+
+---
+
+#### POST `/pdf/parse/:uploadId`
+
+觸發 LLM 解析任務。
+
+**Response**:
+
+```typescript
+interface ParseResponse {
+  uploadId: string;
+  status: 'queued';
+  queuePosition?: number; // 排隊位置（optional）
+}
+```
+
+---
+
+#### GET `/pdf/stream/:uploadId`
+
+SSE 即時狀態推送。
+
+**Event Types**:
+
+```typescript
+// event: status
+interface StatusEvent {
+  status:
+    | 'queued'
+    | 'processing'
+    | 'completed'
+    | 'password_required'
+    | 'failed';
+  progress?: number; // 0-100，僅 processing 時有值
+  pendingCount?: number; // 僅 completed 時有值
+  queuePosition?: number; // 僅 queued 時有值
+  error?: string; // 僅 failed 時有值
+}
+```
+
+---
+
+#### GET `/pdf/pending`
+
+取得待確認交易列表。
+
+**Query Parameters**:
+| 參數 | 類型 | 預設值 | 說明 |
+|------|------|--------|------|
+| uploadBatchId | UUID | - | 篩選特定上傳批次 |
+| page | number | 1 | 頁碼 |
+| limit | number | 50 | 每頁筆數 |
+
+**Response**:
+
+```typescript
+interface PendingListResponse {
+  data: PendingTransaction[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+interface PendingTransaction {
+  id: string;
+  uploadBatchId: string;
+  rawMerchantName: string;
+  suggestedCategoryId: string | null;
+  isInstallment: boolean;
+  installmentNumber: number | null;
+  status: 'pending' | 'confirmed' | 'skipped';
+  transactionData: {
+    amount: number;
+    type: 'income' | 'expense';
+    description: string;
+    date: string; // YYYY-MM-DD
+    time: string | null; // HH:mm
+    accountId: string | null;
+    categoryId: string | null;
+    extraAdd: number;
+    extraMinus: number;
+    currency: string;
+  };
+  createdAt: string;
+}
+```
+
+---
+
+#### PATCH `/pdf/pending/:id`
+
+更新單筆待確認交易。
+
+**Request**:
+
+```typescript
+interface UpdatePendingRequest {
+  status?: 'pending' | 'confirmed' | 'skipped';
+  transactionData?: Partial<TransactionData>;
+}
+```
+
+---
+
+#### POST `/pdf/confirm`
+
+批次確認寫入資料庫。
+
+**Request**:
+
+```typescript
+interface ConfirmRequest {
+  transactionIds: string[]; // 要確認的 pending_transaction IDs（非 SKIPPED）
+  accountId: string; // 整批匯入的目標帳戶 ID
+}
+```
+
+**行為**:
+
+1. 查詢 `transactionIds` 對應的 pending_transactions（必須為 PENDING 狀態）
+2. 將每筆寫入 `transaction` 表（使用 `accountId` 填入帳戶）
+3. 批次更新 `merchant_mapping`（按 merchantName + categoryId 分組 increment matchCount）
+4. 更新 `bill_parse_telemetry`（補寫 modifiedTransactions, skippedTransactions, accuracyRate）
+5. 刪除該 batch 的**所有** pending_transactions（含 SKIPPED）
+
+**Response**:
+
+```typescript
+interface ConfirmResponse {
+  created: number; // 成功寫入交易筆數
+  skipped: number; // 同 batch 中 SKIPPED 的筆數
+}
+```
+
+### D.3 幣別說明
+
+> [!NOTE]
+> 本系統目前預留幣別欄位，但尚未實作多幣別功能。
+> 目前預設所有交易為 `TWD`，未來如需支援外幣交易再行擴充。

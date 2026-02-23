@@ -11,6 +11,9 @@ import Budget from './budget';
 import BudgetCategory from './budgetCategory';
 import TransactionBudget from './transactionBudget';
 import BudgetPeriodSnapshot from './budgetPeriodSnapshot';
+import MerchantMapping from './MerchantMapping';
+import PendingTransaction from './PendingTransaction';
+import BillParseTelemetry from './BillParseTelemetry';
 
 // -----------------------------------------------------------------------------
 // Soft Delete Hooks (Cascade)
@@ -188,6 +191,43 @@ Transaction.belongsToMany(Budget, {
   foreignKey: 'transactionId',
 });
 
+// MerchantMapping & Category
+Category.hasMany(MerchantMapping, {
+  foreignKey: 'categoryId',
+  as: 'merchantMappings',
+});
+MerchantMapping.belongsTo(Category, {
+  foreignKey: 'categoryId',
+  as: 'category',
+});
+
+// PendingTransaction & User
+User.hasMany(PendingTransaction, {
+  foreignKey: 'userId',
+  as: 'pendingTransactions',
+});
+PendingTransaction.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+// PendingTransaction & Category (suggested)
+Category.hasMany(PendingTransaction, {
+  foreignKey: 'suggestedCategoryId',
+  as: 'suggestedPendingTransactions',
+});
+PendingTransaction.belongsTo(Category, {
+  foreignKey: 'suggestedCategoryId',
+  as: 'suggestedCategory',
+});
+
+// PendingTransaction & Transaction (matched installment)
+Transaction.hasOne(PendingTransaction, {
+  foreignKey: 'matchedTransactionId',
+  as: 'matchedPendingTransaction',
+});
+PendingTransaction.belongsTo(Transaction, {
+  foreignKey: 'matchedTransactionId',
+  as: 'matchedTransaction',
+});
+
 // Export everything
 export {
   Account,
@@ -203,4 +243,7 @@ export {
   BudgetCategory,
   TransactionBudget,
   BudgetPeriodSnapshot,
+  MerchantMapping,
+  PendingTransaction,
+  BillParseTelemetry,
 };

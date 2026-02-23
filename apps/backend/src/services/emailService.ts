@@ -7,6 +7,7 @@ import WeeklySummary from '@/emails/weeklySummary';
 import MonthlyAnalysis, {
   MonthlyAnalysisProps,
 } from '@/emails/monthlyAnalysis';
+import BillParseComplete from '@/emails/billParseComplete';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -85,7 +86,7 @@ export const sendWeeklySummaryNoticeEmail = async ({
         endDate,
         expenseSummaryData,
         incomeSummaryData,
-      })
+      }),
     );
     const data = await resend.emails.send({
       from:
@@ -123,9 +124,40 @@ export const sendMonthlyAnalysisNoticeEmail = async ({
   }
 };
 
+interface SendBillParseCompleteProps {
+  userName: string;
+  to: string;
+  transactionCount: number;
+}
+
+export const sendBillParseCompleteEmail = async ({
+  userName,
+  to,
+  transactionCount,
+}: SendBillParseCompleteProps) => {
+  try {
+    const html = await render(
+      BillParseComplete({ userName, transactionCount }),
+    );
+    const data = await resend.emails.send({
+      from:
+        process.env.EMAIL_FROM || 'EasyAccounting <easyaccounting@resend.dev>',
+      to,
+      subject: 'EasyAccounting: 您的帳單解析已完成 🎉',
+      html,
+    });
+    console.log('[Email] Send bill parse complete email success');
+    return data;
+  } catch (error) {
+    console.error('[Email] Send bill parse complete email error', error);
+    throw error;
+  }
+};
+
 export default {
   sendDailyReminderEmail,
   sendWelcomeEmail,
   sendWeeklySummaryNoticeEmail,
   sendMonthlyAnalysisNoticeEmail,
+  sendBillParseCompleteEmail,
 };

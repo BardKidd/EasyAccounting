@@ -44,7 +44,8 @@ function RecentTransactions({
 
     if (netAmount === 0) {
       return {
-        color: 'text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.3)]',
+        color:
+          'text-teal-600 dark:text-teal-400 drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(45,212,191,0.3)]',
         prefix: '',
         amount: netAmount,
       };
@@ -52,12 +53,14 @@ function RecentTransactions({
 
     return item.type === RootType.INCOME
       ? {
-          color: 'text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.3)]',
+          color:
+            'text-teal-600 dark:text-teal-400 drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(45,212,191,0.3)]',
           prefix: '+',
           amount: netAmount,
         }
       : {
-          color: 'text-rose-400 drop-shadow-[0_0_8px_rgba(251,113,133,0.3)]',
+          color:
+            'text-rose-600 dark:text-rose-400 drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(251,113,133,0.3)]',
           prefix: '-',
           amount: netAmount,
         };
@@ -77,9 +80,7 @@ function RecentTransactions({
               {/* Use a placeholder icon or consistent empty state */}
               <div className="w-8 h-8 rounded-md border-2 border-dashed border-muted-foreground/30" />
             </div>
-            <p className="text-muted-foreground font-medium">
-              尚無交易記錄
-            </p>
+            <p className="text-muted-foreground font-medium">尚無交易記錄</p>
             <p className="text-sm text-muted-foreground/80 mt-2">
               點擊右上角「新增交易」按鈕開始記帳
             </p>

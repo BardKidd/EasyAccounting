@@ -9,29 +9,33 @@ const summaryCardsData = (values = [0, 0, 0, 0] as number[]) => {
       title: '總資產',
       value: formatCurrency(values[0]),
       icon: Wallet,
-      color: 'text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]',
-      bg: 'bg-teal-500/10',
+      color:
+        'text-teal-600 dark:text-teal-400 drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]',
+      bg: 'bg-teal-50 dark:bg-teal-500/10',
     },
     {
       title: '本月收入',
       value: formatCurrency(values[1]),
       icon: TrendingUp,
-      color: 'text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]',
-      bg: 'bg-teal-500/10',
+      color:
+        'text-teal-600 dark:text-teal-400 drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]',
+      bg: 'bg-teal-50 dark:bg-teal-500/10',
     },
     {
       title: '本月支出',
       value: formatCurrency(values[2]),
       icon: TrendingDown,
-      color: 'text-rose-400 drop-shadow-[0_0_8px_rgba(251,113,133,0.5)]',
-      bg: 'bg-rose-500/10',
+      color:
+        'text-rose-600 dark:text-rose-400 drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(251,113,133,0.5)]',
+      bg: 'bg-rose-50 dark:bg-rose-500/10',
     },
     {
       title: '本月損益',
       value: formatCurrency(values[3]),
       icon: PiggyBank,
-      color: 'text-teal-400 drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]',
-      bg: 'bg-teal-500/10',
+      color:
+        'text-teal-600 dark:text-teal-400 drop-shadow-sm dark:drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]',
+      bg: 'bg-teal-50 dark:bg-teal-500/10',
     },
   ];
 };
@@ -89,8 +93,8 @@ function SummaryCards({
         <Card
           key={item.title}
           className={cn(
-            "border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 group hover:border-primary/50",
-            index !== 2 && "dark:shadow-teal-glow" // Don't glow for Expense card (index 2)
+            'border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 group hover:border-primary/50',
+            index !== 2 && 'dark:shadow-teal-glow', // Don't glow for Expense card (index 2)
           )}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
