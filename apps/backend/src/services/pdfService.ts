@@ -10,13 +10,14 @@ import {
 } from '@repo/shared';
 import { Op } from 'sequelize';
 
-import PendingTransaction, {
-  PendingTransactionAttributes,
-} from '@/models/PendingTransaction';
-import Transaction from '@/models/transaction';
-import TransactionExtra from '@/models/TransactionExtra';
-import MerchantMapping from '@/models/MerchantMapping';
-import BillParseTelemetry from '@/models/BillParseTelemetry';
+import {
+  PendingTransaction,
+  Transaction,
+  TransactionExtra,
+  MerchantMapping,
+  BillParseTelemetry,
+} from '@/models';
+import { PendingTransactionAttributes } from '@/models/PendingTransaction';
 import sequelize from '@/utils/postgres';
 
 //! azureBlob.ts 那邊當初寫的有點死，所以想說不要複用好了...

@@ -110,7 +110,7 @@ const getAllCategoriesHyphenString = async (userId: string) => {
  * @returns categoryNames: 該 User 以及預設的分類，以結合的方式命名 e.g. ["飲食-早餐", "飲食-午餐", ...]
  */
 const getPersonnelAccountsAndCategoriesForExcelDropdown = async (
-  userId: string
+  userId: string,
 ) => {
   const accounts = await Account.findAll({
     where: { userId },
@@ -182,11 +182,11 @@ const generateTransactionsBuffer = async ({
   const categoryCount = categoryNames.length || 1;
   workbook.definedNames.add(
     `'_Options'!$A$1:$A$${accountCount}`,
-    'AccountList'
+    'AccountList',
   );
   workbook.definedNames.add(
     `'_Options'!$B$1:$B$${categoryCount}`,
-    'CategoryList'
+    'CategoryList',
   );
 
   if (!hasErrorColumn && transactions && transactions.length > 0) {
@@ -341,7 +341,7 @@ const exportUserTransactionsExcel = async (userId: string) => {
         ? `${parentName}-${c.name}`
         : c.name;
       return [c.id, combinedParentAndChild];
-    })
+    }),
   );
 
   const transactions = await Transaction.findAll({
@@ -401,7 +401,7 @@ const exportUserTransactionsExcel = async (userId: string) => {
 const validateAndParseRows = async (
   worksheet: ExcelJS.Worksheet,
   accountMap: Map<string, string>,
-  categoryMap: Map<string, string>
+  categoryMap: Map<string, string>,
 ): Promise<{
   successRows: (CreateTransactionSchema | CreateTransferSchema)[];
   errorRows: ImportTransactionRow[];
@@ -593,20 +593,26 @@ const validateAndParseRows = async (
 
 const insertTransactions = async (
   userId: string,
-  successRows: (CreateTransactionSchema | CreateTransferSchema)[]
+  successRows: (CreateTransactionSchema | CreateTransferSchema)[],
 ) => {
   for (const row of successRows) {
     if (row.type === RootType.OPERATE) {
-      await transactionServices.createTransfer(row, userId);
+      await transactionServices.createTransfer(
+        row as CreateTransferSchema,
+        userId,
+      );
     } else {
-      await transactionServices.createTransaction({ ...row, userId });
+      await transactionServices.createTransaction(
+        row as CreateTransactionSchema,
+        userId,
+      );
     }
   }
 };
 
 const importNewTransactionsExcel = async (
   userId: string,
-  fileBuffer: Buffer
+  fileBuffer: Buffer,
 ) => {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(fileBuffer as any);
@@ -636,7 +642,7 @@ const importNewTransactionsExcel = async (
 
   // User 都是填文字，所以製作 Map <name -> id>
   const accountMap = new Map<string, string>(
-    accounts.map((a) => [a.name, a.id])
+    accounts.map((a) => [a.name, a.id]),
   );
   const categoryMap = new Map<string, string>();
   categoriesName.forEach((cstr) => {
@@ -648,19 +654,20 @@ const importNewTransactionsExcel = async (
       categoryMap.set(
         cstr,
         categories.find((c) => c.name === subName && c.parentId === mainId)
-          ?.id || ''
+          ?.id || '',
       );
     } else if (splitCat.length === 1) {
       categoryMap.set(
         cstr,
-        categories.find((c) => c.name === mainName && c.id === mainId)?.id || ''
+        categories.find((c) => c.name === mainName && c.id === mainId)?.id ||
+          '',
       );
     }
   });
   const { successRows, errorRows } = await validateAndParseRows(
     worksheet,
     accountMap,
-    categoryMap
+    categoryMap,
   );
 
   let errorUrl = '';

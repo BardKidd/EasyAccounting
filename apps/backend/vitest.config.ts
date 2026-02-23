@@ -13,6 +13,13 @@ export default defineConfig({
       '**/dist/**',
       '**/.{idea,git,cache,output,temp}/**',
     ],
+    // Disable parallelism to prevent SequelizeDatabaseError during parallel db syncs
+    fileParallelism: false,
+    env: {
+      RESEND_API_KEY: 're_123_mock',
+      AZURE_BLOB_CONNECTION_STRING:
+        'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;',
+    },
   },
   resolve: {
     alias: {
