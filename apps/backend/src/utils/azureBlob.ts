@@ -24,7 +24,7 @@ const containerClient = blobServiceClient.getContainerClient(CONTAINER_NAME);
 export const uploadFileToBlob = async (
   blobName: string,
   buffer: ExcelJS.Buffer,
-  contentType: string = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  contentType: string = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ) => {
   const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
@@ -39,13 +39,13 @@ export const uploadFileToBlob = async (
 
 export const generateSasUrl = (
   blobName: string,
-  expiresInMinutes: number = 15
+  expiresInMinutes: number = 15,
 ) => {
   const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
   // (.*?) 會抓取到在這裡的最短字串
   const matches = CONNECTION_STRING.match(
-    /AccountName=(.*?);AccountKey=(.*?);/
+    /AccountName=(.*?);AccountKey=(.*?);/,
   );
 
   if (!matches) {
@@ -58,7 +58,7 @@ export const generateSasUrl = (
   // 產生憑證
   const sharedKeyCredential = new StorageSharedKeyCredential(
     accountName,
-    accountKey
+    accountKey,
   );
 
   const sasOptions = {
@@ -72,7 +72,7 @@ export const generateSasUrl = (
   // 產生 SAS Token，附上我們憑證簽名。
   const sasToken = generateBlobSASQueryParameters(
     sasOptions,
-    sharedKeyCredential
+    sharedKeyCredential,
   ).toString();
 
   return `${blockBlobClient.url}?${sasToken}`;
