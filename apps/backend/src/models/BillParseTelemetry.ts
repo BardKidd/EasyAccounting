@@ -1,11 +1,12 @@
 import Sequelize, { Model, Optional } from 'sequelize';
 import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
+import { ParseStatus } from '@repo/shared';
 
 export interface BillParseTelemetryAttributes {
   id: string;
   uploadBatchId: string;
   userId: string;
-  status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  status: ParseStatus;
   totalTransactions: number;
   modifiedTransactions: number;
   skippedTransactions: number;
@@ -65,7 +66,7 @@ const BillParseTelemetry = sequelize.define<BillParseTelemetryInstance>(
     status: {
       type: Sequelize.STRING(20),
       allowNull: false,
-      defaultValue: 'PROCESSING',
+      defaultValue: ParseStatus.PROCESSING,
     },
     totalTransactions: {
       type: Sequelize.INTEGER,
