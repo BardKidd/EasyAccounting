@@ -18,7 +18,7 @@ import {
   ParseStatusData,
 } from '@/utils/parseStatus';
 import { ParseStatus } from '@repo/shared';
-import BillParseTelemetry from '@/models/BillParseTelemetry';
+import { BillParseTelemetry } from '@/models';
 
 /**
  * POST /pdf/upload
