@@ -97,7 +97,7 @@ const processMessage = async (message: BillParseMessage) => {
       // 更新 Telemetry 狀態為 COMPLETED
       if (taskRecord) {
         await taskRecord.update({
-          status: 'COMPLETED',
+          status: ParseStatus.COMPLETED,
           parseTimeMs: Date.now() - startTime,
           processingMode: 'local',
           llmProvider: provider,
@@ -127,7 +127,7 @@ const processMessage = async (message: BillParseMessage) => {
     // 6. 更新 telemetry，並設為 COMPLETED
     if (taskRecord) {
       await taskRecord.update({
-        status: 'COMPLETED',
+        status: ParseStatus.COMPLETED,
         totalTransactions: pendingCount,
         parseTimeMs: Date.now() - startTime,
         processingMode: 'local',
@@ -177,7 +177,7 @@ const processMessage = async (message: BillParseMessage) => {
       where: { uploadBatchId: uploadId, userId },
     });
     if (taskRecord) {
-      await taskRecord.update({ status: 'FAILED' });
+      await taskRecord.update({ status: ParseStatus.FAILED });
     }
   }
 };
