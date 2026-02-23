@@ -11,6 +11,8 @@ import {
   buildCategoryListForPrompt,
 } from '@/services/billParseService';
 import BillParseTelemetry from '@/models/BillParseTelemetry';
+import User from '@/models/user';
+import emailService from '@/services/emailService';
 import { ParseStatus } from '@repo/shared';
 
 /**
@@ -25,7 +27,8 @@ import { ParseStatus } from '@repo/shared';
  * 3. 送圖片給 LLM 解析
  * 4. 存入 pending_transaction
  * 5. 清除 Blob 暫存
- * 6. 更新狀態 COMPLETED
+ * 6. 更新 Telemetry 表狀態為 COMPLETED
+ * 7. (Optional) 如果有勾選，寄送 Email 通知
  */
 
 const processMessage = async (message: BillParseMessage) => {
@@ -35,11 +38,16 @@ const processMessage = async (message: BillParseMessage) => {
   console.log(`[Worker] Processing ${uploadId}`);
 
   try {
-    // 1. 更新狀態為 PROCESSING
+    // 1. 更新狀態為 PROCESSING (SSE)
     updateParseStatus({
       uploadId,
       status: ParseStatus.PROCESSING,
       progress: 0,
+    });
+
+    // 取得 Telemetry Task Record 以決定是否要記信
+    const taskRecord = await BillParseTelemetry.findOne({
+      where: { uploadBatchId: uploadId, userId },
     });
 
     // 2. 從 Blob 下載圖片（前端已轉好）
@@ -85,6 +93,19 @@ const processMessage = async (message: BillParseMessage) => {
         status: ParseStatus.COMPLETED,
         pendingCount: 0,
       });
+
+      // 更新 Telemetry 狀態為 COMPLETED
+      if (taskRecord) {
+        await taskRecord.update({
+          status: 'COMPLETED',
+          parseTimeMs: Date.now() - startTime,
+          processingMode: 'local',
+          llmProvider: provider,
+          llmModel: model,
+          pageCount,
+        });
+      }
+
       return;
     }
 
@@ -103,18 +124,38 @@ const processMessage = async (message: BillParseMessage) => {
     // 5. 清除 Blob 暫存
     await deleteTempBlobs(blobUrls);
 
-    // 6. 記錄 telemetry
-    await BillParseTelemetry.create({
-      uploadBatchId: uploadId,
-      totalTransactions: pendingCount,
-      parseTimeMs: Date.now() - startTime,
-      processingMode: 'local',
-      llmProvider: provider,
-      llmModel: model,
-      pageCount,
-    });
+    // 6. 更新 telemetry，並設為 COMPLETED
+    if (taskRecord) {
+      await taskRecord.update({
+        status: 'COMPLETED',
+        totalTransactions: pendingCount,
+        parseTimeMs: Date.now() - startTime,
+        processingMode: 'local',
+        llmProvider: provider,
+        llmModel: model,
+        pageCount,
+      });
+      // 7. 若有勾選寄出 Email，可以在這裡觸發寄信
+      if (taskRecord.notifyEmail) {
+        console.log(
+          `[Worker] Sending completion email for ${uploadId} to User ${userId}`,
+        );
+        try {
+          const user = await User.findByPk(userId);
+          if (user && user.email) {
+            await emailService.sendBillParseCompleteEmail({
+              userName: user.name,
+              to: user.email,
+              transactionCount: pendingCount,
+            });
+          }
+        } catch (emailError) {
+          console.error('[Worker] Failed to send email', emailError);
+        }
+      }
+    }
 
-    // 7. 完成
+    // 7. 完成 (SSE)
     updateParseStatus({
       uploadId,
       status: ParseStatus.COMPLETED,
@@ -131,6 +172,13 @@ const processMessage = async (message: BillParseMessage) => {
       status: ParseStatus.FAILED,
       error: error instanceof Error ? error.message : 'Unknown error',
     });
+
+    const taskRecord = await BillParseTelemetry.findOne({
+      where: { uploadBatchId: uploadId, userId },
+    });
+    if (taskRecord) {
+      await taskRecord.update({ status: 'FAILED' });
+    }
   }
 };
 

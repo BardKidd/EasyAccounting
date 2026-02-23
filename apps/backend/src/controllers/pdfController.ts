@@ -18,6 +18,7 @@ import {
   ParseStatusData,
 } from '@/utils/parseStatus';
 import { ParseStatus } from '@repo/shared';
+import BillParseTelemetry from '@/models/BillParseTelemetry';
 
 /**
  * POST /pdf/upload
@@ -26,11 +27,13 @@ import { ParseStatus } from '@repo/shared';
  *
  * Body: multipart/form-data
  *   - files: JPEG 圖片檔案（多檔）
+ *   - notifyEmail: boolean string
  */
 const upload = async (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const userId = req.user.userId;
     const files = req.files as Express.Multer.File[];
+    const notifyEmail = req.body.notifyEmail === 'true';
 
     // 驗證
     const validation = validateUploadFiles(files);
@@ -41,6 +44,19 @@ const upload = async (req: Request, res: Response) => {
     }
 
     const { uploadId, blobUrls } = await uploadImages(userId, files);
+
+    // 在這裡先建立 Telemetry Task Record 作為狀態存根
+    await BillParseTelemetry.create({
+      uploadBatchId: uploadId,
+      userId,
+      status: 'PROCESSING',
+      notifyEmail,
+      pageCount: files.length,
+      // 給預設值以符合 model requirement
+      totalTransactions: 0,
+      modifiedTransactions: 0,
+      skippedTransactions: 0,
+    });
 
     return res
       .status(StatusCodes.OK)
@@ -175,7 +191,7 @@ const triggerParse = async (req: Request, res: Response) => {
 /**
  * GET /pdf/pending
  *
- * 取得待確認交易列表
+ * 取得待確認交易列表，並夾帶是否有 activeJob (PROCESSING 狀態的任務)
  */
 const getPending = async (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -183,14 +199,33 @@ const getPending = async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
 
+    // 取得待處理的交易分頁資料
     const result = await getPendingTransactions(userId, { page, limit });
+
+    // 尋找該 user 狀態為 PROCESSING 的任務
+    const activeJobRecord = await BillParseTelemetry.findOne({
+      where: {
+        userId,
+        status: 'PROCESSING',
+      },
+      order: [['createdAt', 'DESC']],
+    });
+
+    const activeJob = activeJobRecord
+      ? {
+          uploadBatchId: activeJobRecord.uploadBatchId,
+          status: activeJobRecord.status,
+          pageCount: activeJobRecord.pageCount,
+          createdAt: activeJobRecord.createdAt,
+        }
+      : null;
 
     return res
       .status(StatusCodes.OK)
       .json(
         responseHelper(
           true,
-          result,
+          { ...result, activeJob },
           'Fetch pending transactions success',
           null,
         ),

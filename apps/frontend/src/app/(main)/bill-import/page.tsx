@@ -11,13 +11,14 @@ import {
   CategoryType,
   AccountType,
 } from '@repo/shared';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, Trash2, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiHandler } from '@/lib/utils';
 import service from '@/services';
 
 import { PasswordDialog } from '@/components/bill-import/PasswordDialog';
 import { convertPdfToImages } from '@/lib/pdfUtils';
+import { PdfPreviewGrid } from '@/components/bill-import/PdfPreviewGrid';
 
 export default function BillImportPage() {
   const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
@@ -59,6 +60,11 @@ export default function BillImportPage() {
       const res = await apiHandler('/pdf/pending?limit=100', 'get', null);
       if (res.isSuccess) {
         setTransactions(res.data.data);
+
+        // 自動回復處理中的任務狀態
+        if (res.data.activeJob) {
+          setActiveUploadId(res.data.activeJob.uploadBatchId);
+        }
       }
     } catch (error) {
       toast.error('無法載入待確認交易');
@@ -81,33 +87,46 @@ export default function BillImportPage() {
   };
 
   const [localFiles, setLocalFiles] = useState<File[]>([]);
+  const [localImages, setLocalImages] = useState<
+    { id: string; file: File; previewUrl: string; selected: boolean }[]
+  >([]);
+  const [isSelecting, setIsSelecting] = useState(false);
 
   const handleUpload = async (files: File[], password?: string) => {
     setIsUploading(true);
-    const formData = new FormData();
-
-    // 前端轉換 PDF → JPEG
-    let filesToUpload: File[] = [];
 
     try {
       toast.info(password ? '正在嘗試使用密碼解鎖 PDF...' : '正在轉換 PDF...');
       const conversionPromises = files.map(async (file) => {
         if (file.type === 'application/pdf') {
           const blobs = await convertPdfToImages(file, password);
-          return blobs.map(
-            (blob, index) =>
-              new File(
-                [blob],
-                `${file.name.replace('.pdf', '')}_page_${index + 1}.jpg`,
-                { type: 'image/jpeg' },
-              ),
-          );
+          return blobs.map((blob, index) => {
+            const imageFile = new File(
+              [blob],
+              `${file.name.replace('.pdf', '')}_page_${index + 1}.jpg`,
+              { type: 'image/jpeg' },
+            );
+            return {
+              id: `${file.name}-${index}`,
+              file: imageFile,
+              previewUrl: URL.createObjectURL(blob),
+              selected: true, // Default select all
+            };
+          });
         }
-        return [file];
+        // Handle non-pdf image uploads directly if enabled in the future
+        return [];
       });
 
-      const nestedFiles = await Promise.all(conversionPromises);
-      filesToUpload = nestedFiles.flat();
+      const nestedImages = await Promise.all(conversionPromises);
+      const allImages = nestedImages.flat();
+
+      if (allImages.length > 0) {
+        setLocalImages(allImages);
+        setIsSelecting(true);
+      } else {
+        toast.error('無法從 PDF 讀取圖片');
+      }
     } catch (error: any) {
       console.error(error);
       if (error.name === 'PasswordRequiredError') {
@@ -115,18 +134,30 @@ export default function BillImportPage() {
         setUploadContext({ blobUrls: [] });
         setShowPasswordDialog(true);
         toast.warning('此 PDF 需要密碼，請輸入密碼');
-        setIsUploading(false);
-        return;
+      } else {
+        toast.error('PDF 轉換失敗');
       }
-
-      toast.error('PDF 轉換失敗');
+    } finally {
       setIsUploading(false);
-      return;
     }
+  };
 
-    filesToUpload.forEach((file) => {
+  const confirmUploadSelection = async (notifyEmail: boolean) => {
+    const selectedFiles = localImages
+      .filter((img) => img.selected)
+      .map((img) => img.file);
+    if (selectedFiles.length === 0) return;
+
+    setIsSelecting(false);
+    setIsUploading(true);
+    const formData = new FormData();
+
+    selectedFiles.forEach((file) => {
       formData.append('files', file);
     });
+
+    // 附帶 notifyEmail 設定
+    formData.append('notifyEmail', String(notifyEmail));
 
     try {
       const domain = process.env.NEXT_PUBLIC_API_DOMAIN || '/api';
@@ -151,6 +182,10 @@ export default function BillImportPage() {
 
         setActiveUploadId(uploadId);
         toast.success('上傳成功，開始解析...');
+
+        // Cleanup object URLs
+        localImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+        setLocalImages([]);
         setLocalFiles([]);
       } else {
         toast.error(data.message || '上傳失敗');
@@ -160,6 +195,12 @@ export default function BillImportPage() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const cancelSelection = () => {
+    localImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+    setLocalImages([]);
+    setIsSelecting(false);
   };
 
   const handlePasswordSubmit = async (password: string) => {
@@ -271,10 +312,19 @@ export default function BillImportPage() {
         )}
       </div>
 
-      <FileUploader
-        onUpload={handleUpload}
-        isUploading={isUploading || isProcessing}
-      />
+      {isSelecting ? (
+        <PdfPreviewGrid
+          images={localImages}
+          onImagesChange={setLocalImages}
+          onConfirm={confirmUploadSelection}
+          onCancel={cancelSelection}
+        />
+      ) : transactions.length === 0 || isProcessing ? (
+        <FileUploader
+          onUpload={handleUpload}
+          isUploading={isUploading || isProcessing}
+        />
+      ) : null}
 
       <PasswordDialog
         open={showPasswordDialog}
@@ -284,20 +334,25 @@ export default function BillImportPage() {
       />
 
       <div className="space-y-4">
-        <div className="flex justify-between items-end">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
           <h2 className="text-xl font-semibold">
             待確認交易 ({transactions.length})
           </h2>
           {transactions.length > 0 && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleAddManual}>
-                <Plus className="mr-1 h-4 w-4" />
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                onClick={handleAddManual}
+                className="rounded-full h-10 px-5 shadow-md border-slate-200 dark:border-slate-800 transition-all duration-300 transform hover:scale-105 font-medium tracking-wide"
+              >
+                <Plus className="mr-2 h-4 w-4" />
                 手動新增
               </Button>
               <Button
                 variant="destructive"
                 onClick={handleClearAll}
                 disabled={isDiscarding}
+                className="rounded-full h-10 px-5 shadow-md shadow-red-500/20 transition-all duration-300 transform hover:scale-105 font-medium tracking-wide border-0 bg-red-500 hover:bg-red-600 text-white"
               >
                 {isDiscarding ? (
                   <>
@@ -305,12 +360,16 @@ export default function BillImportPage() {
                     捨棄中...
                   </>
                 ) : (
-                  '全部捨棄'
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    全部捨棄
+                  </>
                 )}
               </Button>
               <Button
                 onClick={handleConfirm}
                 disabled={isDiscarding || isConfirming}
+                className="rounded-full h-10 px-5 shadow-md shadow-teal-500/20 transition-all duration-300 transform hover:scale-105 font-medium tracking-wide border-0 bg-teal-500 hover:bg-teal-600 text-white"
               >
                 {isConfirming ? (
                   <>
@@ -318,7 +377,10 @@ export default function BillImportPage() {
                     匯入中...
                   </>
                 ) : (
-                  '確認匯入全部'
+                  <>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    確認匯入全部
+                  </>
                 )}
               </Button>
             </div>

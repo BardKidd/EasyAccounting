@@ -4,6 +4,8 @@ import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
 export interface BillParseTelemetryAttributes {
   id: string;
   uploadBatchId: string;
+  userId: string;
+  status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
   totalTransactions: number;
   modifiedTransactions: number;
   skippedTransactions: number;
@@ -13,6 +15,9 @@ export interface BillParseTelemetryAttributes {
   llmProvider: string | null;
   llmModel: string | null;
   pageCount: number | null;
+  notifyEmail: boolean;
+  createdAt?: string; // OR Date depending on your convention
+  updatedAt?: string;
 }
 
 export interface BillParseTelemetryCreationAttributes
@@ -28,6 +33,8 @@ export interface BillParseTelemetryCreationAttributes
     | 'llmProvider'
     | 'llmModel'
     | 'pageCount'
+    | 'notifyEmail'
+    | 'status'
   > {}
 
 export interface BillParseTelemetryInstance
@@ -49,6 +56,15 @@ const BillParseTelemetry = sequelize.define<BillParseTelemetryInstance>(
     uploadBatchId: {
       type: Sequelize.UUID,
       allowNull: false,
+    },
+    userId: {
+      type: Sequelize.UUID,
+      allowNull: false,
+    },
+    status: {
+      type: Sequelize.STRING(20),
+      allowNull: false,
+      defaultValue: 'PROCESSING',
     },
     totalTransactions: {
       type: Sequelize.INTEGER,
@@ -89,11 +105,15 @@ const BillParseTelemetry = sequelize.define<BillParseTelemetryInstance>(
       type: Sequelize.INTEGER,
       allowNull: true,
     },
+    notifyEmail: {
+      type: Sequelize.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     ...TABLE_DEFAULT_SETTING,
     paranoid: false,
-    updatedAt: false,
   },
 );
 

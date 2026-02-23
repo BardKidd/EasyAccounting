@@ -159,6 +159,23 @@ module.exports = {
           type: Sequelize.UUID,
           allowNull: false,
         },
+        userId: {
+          type: Sequelize.UUID,
+          allowNull: false,
+          references: {
+            model: {
+              tableName: 'user',
+              schema,
+            },
+            key: 'id',
+          },
+          onDelete: 'CASCADE',
+        },
+        status: {
+          type: Sequelize.STRING(20),
+          allowNull: false,
+          defaultValue: 'PROCESSING',
+        },
         totalTransactions: {
           type: Sequelize.INTEGER,
           allowNull: false,
@@ -198,7 +215,17 @@ module.exports = {
           type: Sequelize.INTEGER,
           allowNull: true,
         },
+        notifyEmail: {
+          type: Sequelize.BOOLEAN,
+          allowNull: false,
+          defaultValue: false,
+        },
         createdAt: {
+          allowNull: false,
+          type: Sequelize.DATE,
+          defaultValue: Sequelize.fn('NOW'),
+        },
+        updatedAt: {
           allowNull: false,
           type: Sequelize.DATE,
           defaultValue: Sequelize.fn('NOW'),

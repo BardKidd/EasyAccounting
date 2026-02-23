@@ -41,21 +41,21 @@ flowchart LR
     end
 
     subgraph Backend
-        G[接收圖片] --> H[建立 Task Record (Telemetry)]
+        G[接收圖片] --> H["建立 Task Record (Telemetry)"]
         H --> I[Azure Blob 暫存]
         I --> K[Azure Service Bus Queue]
     end
 
-    subgraph Worker[Backend Worker]
+    subgraph Worker ["Backend Worker"]
         W[Service Bus Consumer] --> X[OpenRouter API]
         X --> Y[結構化 JSON]
         Y --> Z[pending_transaction]
         Z --> ZZ[刪除 Blob 暫存]
         ZZ --> Z2[更新 Task Record 狀態]
-        Z2 --> Z3[發送 Email (如果 Opt-in)]
+        Z2 --> Z3["發送 Email (如果 Opt-in)"]
     end
 
-    subgraph Frontend_After[Frontend - 處理完成後]
+    subgraph Frontend_After ["Frontend - 處理完成後"]
         O[SSE 即時推送 或 重整後 API 回復狀態] --> P[Web Notification]
         P --> Q[確認 UI]
     end
@@ -68,6 +68,7 @@ flowchart LR
         Z2 -.-> U
     end
 
+    E --> G
     K --> W
     Z2 -.->|狀態: completed| O
     Q --> R
@@ -85,7 +86,7 @@ flowchart LR
 | AI       | OpenRouter (Gemini Flash Lite) | 圖片 → 結構化資料                |
 | 資料庫   | PostgreSQL (Neon)              | 交易、暫存資料、Telemetry        |
 
-> [!IMPORTANT]
+> [!IMPORTANT]  
 > **PDF → Image 轉換統一在前端執行**。pdfjs-dist 的渲染引擎依賴瀏覽器原生 Canvas API，
 > 在 Node.js 環境下使用 `node-canvas` polyfill 會因 `Image` 物件不相容導致 `drawImage()` 失敗。
 > 瀏覽器原生 Canvas 有 GPU 加速，即使 20 頁 PDF 在手機上也能在 10-15 秒內完成轉換。
@@ -138,7 +139,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 ```
 
-> [!NOTE]
+> [!NOTE]  
 > `new URL(..., import.meta.url)` 是 Webpack 5 Asset Modules 語法，會自動處理檔案複製與路徑解析。
 
 #### 前端轉圖片流程
@@ -173,11 +174,11 @@ async function pdfToImages(file: File): Promise<Blob[]> {
 }
 ```
 
-> [!NOTE]
+> [!NOTE]  
 > Web Worker 是獨立的執行環境，透過 `postMessage` 與主線程通訊。
 > 頁面關閉時 Worker 會終止，轉換中途關閉瀏覽器會中斷處理。
 
-> [!TIP]
+> [!TIP]  
 > 建議加上 Loading 進度顯示，避免用戶以為當機。
 
 ### 3.3 Multimodal LLM API
@@ -231,7 +232,7 @@ async function pdfToImages(file: File): Promise<Blob[]> {
 
 **Unique Constraint**: `UNIQUE(merchantName, categoryId)`
 
-> [!NOTE]
+> [!NOTE]  
 > 同一個 `merchantName` 可以對應多個 `categoryId`，形成一對多關係。
 > 查詢建議類別時，取 `matchCount` 最高者。
 >
@@ -642,8 +643,8 @@ flowchart TD
     C --> C2[UI 顯示縮圖 Grid 供使用者勾選]
     C2 --> C3[使用者可勾選 Opt-in Email]
     C3 --> D[上傳圖片並寫入 Telemetry 存根]
-    D --> E[顯示長效 Loading (SSE 重建機制支援)]
-    E --> F[Worker 完成 (發送 Email 若勾選)]
+    D --> E["顯示長效 Loading (SSE 重建機制支援)"]
+    E --> F["Worker 完成 (發送 Email 若勾選)"]
     F --> G[SSE 通知前端 / API 撈回交易]
     G --> H[表格顯示識別結果]
     H --> I{逐筆檢查}
