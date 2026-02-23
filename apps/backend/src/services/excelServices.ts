@@ -602,10 +602,7 @@ const insertTransactions = async (
         userId,
       );
     } else {
-      await transactionServices.createTransaction(
-        row as CreateTransactionSchema,
-        userId,
-      );
+      await transactionServices.createTransaction(row as any, userId);
     }
   }
 };

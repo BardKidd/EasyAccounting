@@ -76,7 +76,13 @@ startWeeklySummaryNoticeCronJobs();
 startMonthlyAnalysisNoticeCronJobs();
 
 // 啟動 Bill Parse Worker (同 process)
-initBillParseWorker();
+// CI / test 環境不需要啟動 Worker
+if (
+  process.env.NODE_ENV !== 'test' &&
+  process.env.AZURE_SERVICE_BUS_CONNECTION_STRING
+) {
+  initBillParseWorker();
+}
 
 export { app };
 
