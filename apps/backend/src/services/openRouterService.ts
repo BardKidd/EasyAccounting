@@ -27,7 +27,6 @@ const getClient = (): OpenAI => {
 };
 
 // ---------- Constants ----------
-// moonshotai/kimi-k2.5
 const MODEL_ID = 'google/gemini-2.5-flash-lite';
 const MAX_RETRIES = 2;
 
@@ -60,7 +59,6 @@ const buildSystemPrompt = (
   - **type**: 
     - expense: Standard purchases.
     - income: Cash back, refunds, or reversals (often marked with "minus" or "CR").
-  - **extraMinus (Fees)**: Specifically for "Foreign Transaction Fees". Do NOT merge this into the main amount; create a separate object or link it if possible (Current schema uses separate objects).
   - **amount**: Positive float. Remove all commas and currency symbols.
 
   # Output Format
@@ -78,8 +76,6 @@ const buildSystemPrompt = (
       "installmentCurrent": null,
       "installmentTotal": null,
       "currency": "TWD",
-      "extraAdd": 0,
-      "extraMinus": 0,
       "suggestedCategory": "飲食/午餐"
     }
   ]
@@ -102,9 +98,7 @@ const buildSystemPrompt = (
 4. **Amount**: Number, positive, no thousands separators.
 5. **Type**: \`expense\` for purchases, \`income\` for refunds (negative amounts).
 6. **Installment**: If it's an installment, set \`isInstallment: true\` and populate \`installmentCurrent\`/\`installmentTotal\`.
-7. **extraAdd**: Discount amount (positive number) if present.
-8. **extraMinus**: Handling fee (positive number) if present (e.g., foreign transaction fee).
-9. **Currency**: Default \`TWD\`. Use ISO code (e.g., USD, JPY) for foreign currencies.
+7. **Currency**: Default \`TWD\`. Use ISO code (e.g., USD, JPY) for foreign currencies.
 10. **Exclusions — CRITICAL**: You MUST only extract **actual individual consumer transactions**. Specifically, **DO NOT** extract any of the following:
       - **Summary / Total rows**: 本期合計, 本期應繳金額, 本期應繳總金額, 本期最低應繳, 本期新增款項合計, 累計未繳款項
       - **Previous period info**: 上期應繳金額, 上期帳單金額, 前期餘額, 上期未還金額
@@ -197,8 +191,21 @@ const callWithRetry = async (
         );
       }
 
+      if (!response.choices || response.choices.length === 0) {
+        throw new Error(
+          `API returned no choices. Response: ${JSON.stringify(response)}`,
+        );
+      }
+
       const content = response.choices[0]?.message?.content || '';
       console.log(`[OpenRouter] Raw response length: ${content.length} chars`);
+
+      if (!content.trim()) {
+        throw new Error(
+          `API returned empty content. finish_reason=${finishReason}. Choices: ${JSON.stringify(response.choices)}`,
+        );
+      }
+
       return content;
     } catch (error) {
       if (attempt === MAX_RETRIES) throw error;
@@ -206,7 +213,7 @@ const callWithRetry = async (
       // 指數退避
       const delay = Math.pow(2, attempt) * 1000;
       console.warn(
-        `[OpenRouter] Attempt ${attempt + 1} failed, retrying in ${delay}ms...`,
+        `[OpenRouter] Attempt ${attempt + 1} failed, retrying in ${delay}ms... Error: ${error instanceof Error ? error.message : String(error)}`,
       );
       await new Promise((r) => setTimeout(r, delay));
     }

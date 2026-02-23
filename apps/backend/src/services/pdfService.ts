@@ -342,13 +342,13 @@ export const confirmTransactions = async (
     for (const [key, count] of mappingCounts) {
       const [merchantName, categoryId] = key.split('::');
       await sequelize.query(
-        `INSERT INTO accounting.merchant_mapping ("merchantName", "categoryId", "matchCount", "createdAt", "updatedAt")
-         VALUES (:merchantName, :categoryId, :count, NOW(), NOW())
+        `INSERT INTO accounting.merchant_mapping ("id", "merchantName", "categoryId", "matchCount", "createdAt", "updatedAt")
+         VALUES (:id, :merchantName, :categoryId, :count, NOW(), NOW())
          ON CONFLICT ("merchantName", "categoryId")
          DO UPDATE SET "matchCount" = accounting.merchant_mapping."matchCount" + :count,
                        "updatedAt" = NOW()`,
         {
-          replacements: { merchantName, categoryId, count },
+          replacements: { id: uuidv4(), merchantName, categoryId, count },
           transaction,
         },
       );
@@ -397,8 +397,17 @@ export const confirmTransactions = async (
 
 /**
  * 清除用戶所有待確認交易
+ *
+ * 同時將 PROCESSING 狀態的 telemetry 標為 COMPLETED，
+ * 避免下次進入頁面時 activeJob 誤判。
  */
 export const clearPendingTransactions = async (userId: string) => {
+  // 將殘留的 PROCESSING telemetry 標為 COMPLETED，避免 activeJob 誤判
+  await BillParseTelemetry.update(
+    { status: 'COMPLETED' },
+    { where: { userId, status: 'PROCESSING' } },
+  );
+
   return PendingTransaction.destroy({
     where: {
       userId,

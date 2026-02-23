@@ -1,4 +1,3 @@
-import { TransactionType } from './transactionTypes';
 import { PendingTransactionStatus } from '../constants';
 
 export interface PendingTransaction {
@@ -13,7 +12,7 @@ export interface PendingTransaction {
   status: PendingTransactionStatus;
   transactionData: {
     amount: number;
-    type: TransactionType;
+    type: 'expense' | 'income';
     description: string;
     date: string; // YYYY-MM-DD
     time: string | null; // HH:mm:ss

@@ -42,6 +42,14 @@ export default function BillImportPage() {
   useEffect(() => {
     fetchPendingTransactions();
     fetchDropdownData();
+
+    // 請求桌面通知權限
+    if (
+      typeof Notification !== 'undefined' &&
+      Notification.permission === 'default'
+    ) {
+      Notification.requestPermission();
+    }
   }, []);
 
   // Poll for pending transactions when status is completed
@@ -57,7 +65,7 @@ export default function BillImportPage() {
   const fetchPendingTransactions = async () => {
     setIsLoadingTransactions(true);
     try {
-      const res = await apiHandler('/pdf/pending?limit=100', 'get', null);
+      const res = await apiHandler('/pdf/pending?limit=9999', 'get', null);
       if (res.isSuccess) {
         setTransactions(res.data.data);
 

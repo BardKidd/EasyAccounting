@@ -186,23 +186,24 @@ const batchMatchInstallments = async (
 
   if (installments.length === 0) return result;
 
-  // 所有分期交易的日期範圍（最早-30天 到 最晚+30天）
+  // 所有分期交易的日期範圍：分期可能跨越數月甚至數年，將往前查詢範圍拉長（例如：往回推 2 年，往後推 30 天）
   const dates = installments.map(({ tx }) => new Date(tx.date ?? 0));
   const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-  minDate.setDate(minDate.getDate() - 30);
+  minDate.setFullYear(minDate.getFullYear() - 2); // 往前找 2 年的分期紀錄
   const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
   maxDate.setDate(maxDate.getDate() + 30);
 
-  // 一次查出時間範圍內所有可能匹配的交易
+  // 一次查出時間範圍內所有可能匹配的交易，只找也是分期類型的交易
   const existingTransactions = await Transaction.findAll({
     where: {
       userId,
-      date: { [Op.between]: [minDate, maxDate] },
       description: {
         [Op.or]: installments.map(({ tx }) => ({
           [Op.iLike]: `%${escapeLike(tx.description)}%`,
         })),
       },
+      // 確保只比對有分期計畫或是分期類型的交易
+      paymentFrequency: 'INSTALLMENT',
     },
   });
 
@@ -259,6 +260,14 @@ export const saveParsedResults = async (
       : null;
     const finalCategoryId = suggestedCategoryId || llmCategoryId;
 
+    // 預設狀態判斷：
+    // 1. 若有比對到現有交易 (matchedTransactionId 存在)，代表是已存在的未來帳款，預設「略過」(SKIPPED) 避免重複記帳
+    // 2. 若是分期款 (isInstallment)，即使沒比對到，也預設「略過」，提示使用者應該另外去「建立分期計畫」而非當作單筆普通支出匯入
+    const initialStatus =
+      matchedTransactionId || tx.isInstallment
+        ? PendingTransactionStatus.SKIPPED
+        : PendingTransactionStatus.PENDING;
+
     return {
       userId,
       uploadBatchId: uploadId,
@@ -267,7 +276,7 @@ export const saveParsedResults = async (
       matchedTransactionId,
       isInstallment: tx.isInstallment,
       installmentNumber: tx.installmentCurrent,
-      status: PendingTransactionStatus.PENDING,
+      status: initialStatus,
       transactionData: {
         amount: tx.amount,
         type: tx.type,

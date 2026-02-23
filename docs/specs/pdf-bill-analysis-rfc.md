@@ -185,33 +185,33 @@ async function pdfToImages(file: File): Promise<Blob[]> {
 
 > [!IMPORTANT]
 > OpenRouter 為模型中介平台，隱私政策由各底層供應商管轄。
-> Kimi K2.5 由 Moonshot AI 提供，詳見 [Moonshot AI Privacy Policy](https://www.moonshot.cn/privacy)。
+> Gemini 2.5 Flash Lite 由 Google 提供，透過 OpenRouter 呼叫時資料不會用於訓練。
 
-| 服務              | Model     | 計費方式      | 隱私政策                                   |
-| ----------------- | --------- | ------------- | ------------------------------------------ |
-| **OpenRouter** ✅ | Kimi K2.5 | Pay-per-token | ✅ [不訓練](https://openrouter.ai/privacy) |
+| 服務              | Model                 | 計費方式      | 隱私政策                                   |
+| ----------------- | --------------------- | ------------- | ------------------------------------------ |
+| **OpenRouter** ✅ | Gemini 2.5 Flash Lite | Pay-per-token | ✅ [不訓練](https://openrouter.ai/privacy) |
 
-**Kimi K2.5 特性**：
+**Gemini 2.5 Flash Lite 特性**：
 
-- **架構**：Native Multimodal，基於 Kimi-K2-Base 持續預訓練
-- **多模態**：原生支援文字 + 圖片輸入（約 15T mixed visual and text tokens 預訓練）
-- **強項**：Visual coding、agentic tool-calling、general reasoning
-- **Agent Swarm**：支援自動分解複雜任務為平行子任務
+- **架構**：Google 輕量級多模態模型，平衡速度與準確率
+- **多模態**：原生支援文字 + 圖片輸入
+- **強項**：快速推理、結構化輸出、多語系支援
+- **成本**：相較完整版 Gemini 2.5 Flash，價格更低且延遲更少
 
 **策略**：
 
-1. **主力**：OpenRouter → Kimi K2.5（自動路由至最佳 provider）
+1. **主力**：OpenRouter → Gemini 2.5 Flash Lite（`google/gemini-2.5-flash-lite`）
 
 ### 3.4 為什麼不選其他方案
 
-| 方案                 | 排除原因                                 |
-| -------------------- | ---------------------------------------- |
-| Google Gemini        | 免費版資料可能被用於改進產品             |
-| OpenAI GPT-4o        | 非免費                                   |
-| Claude               | 非免費                                   |
-| Groq (Llama-4)       | 辨識準確率不佳，免費額度限制嚴格         |
-| Local Model          | 需 8GB+ VRAM，不適合一般伺服器           |
-| pdf-parse + Text LLM | 信用卡帳單表格格式不統一，文字抽取易出錯 |
+| 方案                 | 排除原因                                    |
+| -------------------- | ------------------------------------------- |
+| Kimi K2.5            | 曾為主力模型，後因價格與分析速度改用 Gemini |
+| OpenAI GPT-4o        | 非免費                                      |
+| Claude               | 非免費                                      |
+| Groq (Llama-4)       | 辨識準確率不佳，免費額度限制嚴格            |
+| Local Model          | 需 8GB+ VRAM，不適合一般伺服器              |
+| pdf-parse + Text LLM | 信用卡帳單表格格式不統一，文字抽取易出錯    |
 
 ---
 
@@ -313,27 +313,27 @@ flowchart TD
 
 此表已升格，除了原本的統計用途，也兼作異步任務的 State 存根表，讓前端重整頁面時可以找回「處理中」的 Loading 狀態。
 
-| Column               | Type         | Description                         |
-| -------------------- | ------------ | ----------------------------------- |
-| id                   | UUID         | PK                                  |
-| uploadBatchId        | UUID         | 同一次上傳的 batch ID               |
-| userId               | UUID         | FK → user.id (用於找回未完成任務)   |
-| status               | VARCHAR(20)  | `PROCESSING`, `COMPLETED`, `FAILED` |
-| totalTransactions    | INT          | 總共識別幾筆                        |
-| modifiedTransactions | INT          | 用戶修改過幾筆                      |
-| skippedTransactions  | INT          | 用戶略過幾筆                        |
-| accuracyRate         | DECIMAL(5,4) | 準確率 = (total - modified) / total |
-| parseTimeMs          | INT          | LLM 解析耗時 (ms)                   |
-| processingMode       | VARCHAR(10)  | `local` / `cloud`                   |
-| llmProvider          | VARCHAR(50)  | `openrouter` / `groq`               |
-| llmModel             | VARCHAR(100) | 使用的模型名稱                      |
-| pageCount            | INT          | 上傳過濾後的 PDF 頁數               |
-| notifyEmail          | BOOLEAN      | 是否在完成後寄發 Email 通知         |
-| createdAt            | TIMESTAMPTZ  | 任務建立時間                        |
-| updatedAt            | TIMESTAMPTZ  | Worker 完成時間 / Confirmation 時間 |
+| Column               | Type         | Description                                      |
+| -------------------- | ------------ | ------------------------------------------------ |
+| id                   | UUID         | PK                                               |
+| uploadBatchId        | UUID         | 同一次上傳的 batch ID                            |
+| userId               | UUID         | FK → user.id (用於找回未完成任務)                |
+| status               | VARCHAR(20)  | `PROCESSING`, `COMPLETED`, `FAILED`              |
+| totalTransactions    | INT          | 總共識別幾筆                                     |
+| modifiedTransactions | INT          | 用戶修改過幾筆                                   |
+| skippedTransactions  | INT          | 用戶略過幾筆                                     |
+| accuracyRate         | DECIMAL(5,4) | 準確率 = (total - modified) / total              |
+| parseTimeMs          | INT          | LLM 解析耗時 (ms)                                |
+| processingMode       | VARCHAR(10)  | ~~`local` / `cloud`~~ (deprecated, 統一為 local) |
+| llmProvider          | VARCHAR(50)  | `openrouter`                                     |
+| llmModel             | VARCHAR(100) | 使用的模型名稱                                   |
+| pageCount            | INT          | 上傳過濾後的 PDF 頁數                            |
+| notifyEmail          | BOOLEAN      | 是否在完成後寄發 Email 通知                      |
+| createdAt            | TIMESTAMPTZ  | 任務建立時間                                     |
+| updatedAt            | TIMESTAMPTZ  | Worker 完成時間 / Confirmation 時間              |
 
 > [!NOTE]  
-> Transaction-level 準確率：一筆交易只要有任一欄位被修改，即計入 `modifiedTransactions`。
+> Transaction-level 準確率：目前以「最終類別是否與 AI 建議類別不同」作為判定依據，若不同則計入 `modifiedTransactions`。
 
 #### Telemetry Lifecycle
 
@@ -391,7 +391,7 @@ sequenceDiagram
         participant Blob as Blob Storage
     end
 
-    participant AI as Groq API
+    participant AI as OpenRouter API
     participant DB as Database
 
     Note over U,FW: 本地解析模式
@@ -610,20 +610,20 @@ Notification.requestPermission();
 
 ### 6.4 表格欄位
 
-| 欄位                   | 來源    | 可編輯    | 必填 |
-| ---------------------- | ------- | --------- | ---- |
-| 勾選狀態               | -       | ☑/☐/✕    | -    |
-| 日期                   | LLM     | ✅        | ✅   |
-| 時間                   | LLM     | ✅        | ❌   |
-| 商家/描述              | LLM     | ✅        | ✅   |
-| 金額                   | LLM     | ✅        | ✅   |
-| 類別(SubCategory Only) | AI 建議 | ✅ (下拉) | ✅   |
-| 帳戶                   | 用戶選  | ✅ (下拉) | ✅   |
-| 分期 (第N期/總期)      | LLM     | ✅        | ❌   |
-| 折扣 (extraAdd)        | LLM     | ✅        | ❌   |
-| 手續費 (extraMinus)    | LLM     | ✅        | ❌   |
-| 幣別                   | LLM     | ✅ (下拉) | ❌   |
-| 備註                   | 空白    | ✅        | ❌   |
+| 欄位                   | 來源     | 可編輯    | 必填 |
+| ---------------------- | -------- | --------- | ---- |
+| 勾選狀態               | -        | ☑/☐/✕    | -    |
+| 日期                   | LLM      | ✅        | ✅   |
+| 時間                   | LLM      | ✅        | ❌   |
+| 商家/描述              | LLM      | ✅        | ✅   |
+| 金額                   | LLM      | ✅        | ✅   |
+| 類別(SubCategory Only) | AI 建議  | ✅ (下拉) | ✅   |
+| 帳戶                   | 用戶選   | ✅ (下拉) | ✅   |
+| 分期 (第N期/總期)      | LLM      | ✅        | ❌   |
+| 折扣 (extraAdd)        | 手動合併 | ✅        | ❌   |
+| 手續費 (extraMinus)    | 手動合併 | ✅        | ❌   |
+| 幣別                   | LLM      | ✅ (下拉) | ❌   |
+| 備註                   | 空白     | ✅        | ❌   |
 
 ### 6.4 操作狀態
 
@@ -658,12 +658,13 @@ flowchart TD
 
 ### 6.7 特殊情況處理
 
-| 情況               | UI 表現                         |
-| ------------------ | ------------------------------- |
-| 比對到現有分期交易 | 該行標記「🔗 已存在」，預設略過 |
-| AI 無法識別類別    | 類別欄位標紅，提示用戶選擇      |
-| 必填欄位空白       | 無法勾選確認，顯示警告          |
-| 解析失敗           | 顯示錯誤訊息，可重新上傳        |
+| 情況               | UI 表現                                                                                                                                                    |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 比對到現有分期交易 | 該行標記「🔗 已存在」，預設略過                                                                                                                            |
+| 跨行折扣/回饋明細  | 提供「作為折扣合併」操作選單（如三個小點 icon），點選後跳出視窗選擇要合併入的原始消費，系統將自動把它計入其 `extraAdd` 或 `extraMinus`，並將本筆標記為略過 |
+| AI 無法識別類別    | 類別欄位標紅，提示用戶選擇                                                                                                                                 |
+| 必填欄位空白       | 無法勾選確認，顯示警告                                                                                                                                     |
+| 解析失敗           | 顯示錯誤訊息，可重新上傳                                                                                                                                   |
 
 ---
 
@@ -761,11 +762,11 @@ export const validateImageFiles = (
 
 ### 7.4 資料隱私
 
-| 項目                | 處理方式                                   |
-| ------------------- | ------------------------------------------ |
-| PDF 暫存            | 解析完成後立即刪除                         |
-| LLM API             | 使用不訓練資料的服務（Groq / Together AI） |
-| pending_transaction | 用戶確認後硬刪除                           |
+| 項目                | 處理方式                                    |
+| ------------------- | ------------------------------------------- |
+| PDF 暫存            | 解析完成後立即刪除                          |
+| LLM API             | 使用不訓練資料的服務（OpenRouter / Gemini） |
+| pending_transaction | 用戶確認後硬刪除                            |
 
 ---
 
@@ -844,7 +845,7 @@ Llama 3.2 處理長列表時可能產生格式錯誤或幻覺
 
 ### 9.3 待驗證項目
 
-- [ ] Llama-4-Maverick 對繁體中文帳單的識別準確率
+- [ ] Gemini 2.5 Flash Lite 對繁體中文帳單的識別準確率
 - [ ] 複雜分期交易（如循環利息）的處理
 - [ ] 單張帳單 100+ 筆交易的處理效能
 - [ ] 跨頁表格的 Header Injection 效果
@@ -939,8 +940,8 @@ receiver.subscribe({
       // 1. 更新狀態為 processing
       await updateParseStatus(uploadId, 'processing');
 
-      // 2. 呼叫 Groq API 解析圖片
-      const result = await parseWithGroq(blobUrls);
+      // 2. 呼叫 OpenRouter API 解析圖片
+      const result = await parseWithOpenRouter(blobUrls);
 
       // 3. 寫入 pending_transaction
       await savePendingTransactions(uploadId, result);

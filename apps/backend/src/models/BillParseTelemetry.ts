@@ -11,6 +11,7 @@ export interface BillParseTelemetryAttributes {
   skippedTransactions: number;
   accuracyRate: number | null;
   parseTimeMs: number | null;
+  /** @deprecated 已統一為前端處理，此欄位永遠為 'local'，未來可移除 */
   processingMode: string | null;
   llmProvider: string | null;
   llmModel: string | null;
@@ -89,6 +90,7 @@ const BillParseTelemetry = sequelize.define<BillParseTelemetryInstance>(
       type: Sequelize.INTEGER,
       allowNull: true,
     },
+    /** @deprecated 已統一為前端處理，此欄位永遠為 'local'，未來可移除 */
     processingMode: {
       type: Sequelize.STRING(10),
       allowNull: true,
