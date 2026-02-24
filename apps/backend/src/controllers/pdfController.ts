@@ -49,7 +49,7 @@ const upload = async (req: Request, res: Response) => {
     await BillParseTelemetry.create({
       uploadBatchId: uploadId,
       userId,
-      status: 'PROCESSING',
+      status: ParseStatus.PROCESSING,
       notifyEmail,
       pageCount: files.length,
       // 給預設值以符合 model requirement

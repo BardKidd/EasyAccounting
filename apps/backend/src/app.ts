@@ -77,11 +77,19 @@ startMonthlyAnalysisNoticeCronJobs();
 
 // 啟動 Bill Parse Worker (同 process)
 // CI / test 環境不需要啟動 Worker
+console.log('[Debug] Env check at worker init:', {
+  NODE_ENV: process.env.NODE_ENV,
+  hasSBUrl: !!process.env.AZURE_SERVICE_BUS_CONNECTION_STRING,
+});
 if (
   process.env.NODE_ENV !== 'test' &&
   process.env.AZURE_SERVICE_BUS_CONNECTION_STRING
 ) {
   initBillParseWorker();
+} else {
+  console.log(
+    '[Worker] Skipped (non-production or missing Service Bus config)',
+  );
 }
 
 export { app };
