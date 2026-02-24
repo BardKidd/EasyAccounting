@@ -4,6 +4,7 @@ import {
   validateImageFiles,
   PDF_VALIDATION,
   PendingTransactionStatus,
+  ParseStatus,
   TransactionType,
   PaymentFrequency,
   RootType,
@@ -405,8 +406,8 @@ export const confirmTransactions = async (
 export const clearPendingTransactions = async (userId: string) => {
   // 將殘留的 PROCESSING telemetry 標為 COMPLETED，避免 activeJob 誤判
   await BillParseTelemetry.update(
-    { status: 'COMPLETED' },
-    { where: { userId, status: 'PROCESSING' } },
+    { status: ParseStatus.COMPLETED },
+    { where: { userId, status: ParseStatus.PROCESSING } },
   );
 
   return PendingTransaction.destroy({
