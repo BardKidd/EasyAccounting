@@ -59,8 +59,8 @@ const buildSystemPrompt = (
   # Field Specifications
   - **description**: Clean brand names. (e.g., "連線商業銀行" -> "LINE Bank", "蝦皮拍賣-通訊服務" -> "蝦皮購物").
   - **type**: 
-    - expense: Standard purchases.
-    - income: Cash back, refunds, or reversals (often marked with "minus" or "CR").
+    - 支出: Standard purchases.
+    - 收入: Cash back, refunds, or reversals (often marked with "minus" or "CR").
   - **amount**: Positive float. Remove all commas and currency symbols.
 
   # Output Format
@@ -73,7 +73,7 @@ const buildSystemPrompt = (
       "time": "HH:mm",
       "description": "Brand/Merchant Name (Simplified)",
       "amount": 1500.00,
-      "type": "expense",
+      "type": "支出",
       "isInstallment": false,
       "installmentCurrent": null,
       "installmentTotal": null,
@@ -98,7 +98,7 @@ const buildSystemPrompt = (
    - "全聯福利中心台北南港" → "全聯福利中心"
    - "MOMO購物網" → "momo"
 4. **Amount**: Number, positive, no thousands separators.
-5. **Type**: \`expense\` for purchases, \`income\` for refunds (negative amounts).
+5. **Type**: \`支出\` for purchases, \`收入\` for refunds (negative amounts).
 6. **Installment**: If it's an installment, set \`isInstallment: true\` and populate \`installmentCurrent\`/\`installmentTotal\`.
 7. **Currency**: Default \`TWD\`. Use ISO code (e.g., USD, JPY) for foreign currencies.
 10. **Exclusions — CRITICAL**: You MUST only extract **actual individual consumer transactions**. Specifically, **DO NOT** extract any of the following:
