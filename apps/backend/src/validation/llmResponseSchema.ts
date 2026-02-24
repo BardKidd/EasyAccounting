@@ -1,4 +1,4 @@
-import { z } from '@repo/shared';
+import { z, RootType } from '@repo/shared';
 
 /**
  * LLM 回傳的單筆交易 schema
@@ -23,7 +23,12 @@ export const ParsedTransactionSchema = z.object({
     },
     z.number().min(0, '金額必須大於或等於 0'),
   ),
-  type: z.enum(['income', 'expense']),
+  type: z.preprocess((val) => {
+    // 支援舊的英文回傳值，並自動 mapping 為 RootType
+    if (val === 'income') return RootType.INCOME;
+    if (val === 'expense') return RootType.EXPENSE;
+    return val;
+  }, z.nativeEnum(RootType)),
   isInstallment: z.boolean().default(false),
   installmentCurrent: z.number().int().positive().nullable().default(null),
   installmentTotal: z.number().int().positive().nullable().default(null),
