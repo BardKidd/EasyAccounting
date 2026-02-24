@@ -6,7 +6,8 @@ import {
   ProcessErrorArgs,
 } from '@azure/service-bus';
 
-const QUEUE_NAME = 'bill-parse-queue';
+const QUEUE_NAME =
+  process.env.AZURE_SERVICE_BUS_QUEUE_NAME || 'bill-parse-queue';
 
 let sbClient: ServiceBusClient | null = null;
 
@@ -81,7 +82,21 @@ export const startWorker = (handler: MessageHandler): ServiceBusReceiver => {
   receiver.subscribe(
     {
       processMessage: async (receivedMessage: ServiceBusReceivedMessage) => {
-        await handler.processMessage(receivedMessage.body as BillParseMessage);
+        console.log(
+          '[ServiceBus Worker] Raw received message:',
+          receivedMessage.messageId,
+        );
+        try {
+          await handler.processMessage(
+            receivedMessage.body as BillParseMessage,
+          );
+          // 只有處理成功才從 Queue 移除，避免 tsx force kill 時訊息遺失
+          await receiver.completeMessage(receivedMessage);
+        } catch (err) {
+          // 處理失敗，abandon 讓訊息回到 Queue 重試
+          await receiver.abandonMessage(receivedMessage);
+          throw err;
+        }
       },
       processError: async (args: ProcessErrorArgs) => {
         await handler.processError(args.error);
@@ -89,7 +104,7 @@ export const startWorker = (handler: MessageHandler): ServiceBusReceiver => {
     },
     {
       maxConcurrentCalls: 1,
-      autoCompleteMessages: true,
+      autoCompleteMessages: false,
     },
   );
 

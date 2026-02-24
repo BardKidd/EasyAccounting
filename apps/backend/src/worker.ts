@@ -31,9 +31,14 @@ import { ParseStatus } from '@repo/shared';
  * 7. (Optional) 如果有勾選，寄送 Email 通知
  */
 
-const processMessage = async (message: BillParseMessage) => {
+export const processMessage = async (message: BillParseMessage) => {
   const { uploadId, userId, blobUrls } = message;
   const startTime = Date.now();
+
+  if (!uploadId || !userId) {
+    console.error(`[Worker] Invalid message payload`, message);
+    return;
+  }
 
   console.log(`[Worker] Processing ${uploadId}`);
 
@@ -197,9 +202,11 @@ export const initBillParseWorker = () => {
   const receiver = startWorker({
     processMessage,
     processError: async (error: Error) => {
-      console.error('[Worker] Service Bus error:', error);
+      console.error('[Worker] Service Bus error:', error.message);
     },
   });
+
+  console.log('[Worker] Receiver created, listening for messages...');
 
   // Graceful shutdown
   const shutdown = async () => {
