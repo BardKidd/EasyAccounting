@@ -79,6 +79,7 @@ export interface MessageHandler {
 export const startWorker = (handler: MessageHandler): ServiceBusReceiver => {
   const receiver = getClient().createReceiver(QUEUE_NAME);
 
+  // 當任務進入 queue 時，就會觸發 processMessage
   receiver.subscribe(
     {
       processMessage: async (receivedMessage: ServiceBusReceivedMessage) => {
