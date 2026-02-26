@@ -8,7 +8,7 @@ import {
   ChevronUp,
   Trash2,
   X,
-  Check,
+  // Check, // [HIDDEN] 預算功能暫時停用
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -81,9 +81,10 @@ import { z } from '@repo/shared';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
-import { budgetService } from '@/services/budget';
-import { Budget } from '@/types/budget';
-import { Badge } from '@/components/ui/badge';
+// [HIDDEN] 預算功能暫時停用
+// import { budgetService } from '@/services/budget';
+// import { Budget } from '@/types/budget';
+// import { Badge } from '@/components/ui/badge'; // [HIDDEN] 預算功能暫時停用
 import { TRANSACTION_COLORS } from '@/lib/transactionColors';
 
 interface TransactionSheetProps {
@@ -105,17 +106,19 @@ export function TransactionSheet({
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showExtra, setShowExtra] = useState(false);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [selectedBudgetIds, setSelectedBudgetIds] = useState<string[]>([]);
+  // [HIDDEN] 預算功能暫時停用
+  // const [budgets, setBudgets] = useState<Budget[]>([]);
+  // const [selectedBudgetIds, setSelectedBudgetIds] = useState<string[]>([]);
   const isEditMode = !!transaction;
 
-  useEffect(() => {
-    const fetchBudgets = async () => {
-      const res = await budgetService.getBudgets();
-      if (res.isSuccess) setBudgets(res.data.filter((b) => b.isActive));
-    };
-    fetchBudgets();
-  }, []);
+  // [HIDDEN] 預算功能暫時停用
+  // useEffect(() => {
+  //   const fetchBudgets = async () => {
+  //     const res = await budgetService.getBudgets();
+  //     if (res.isSuccess) setBudgets(res.data.filter((b) => b.isActive));
+  //   };
+  //   fetchBudgets();
+  // }, []);
 
   const findCategoryPath = (
     categoryId: string,
@@ -304,7 +307,7 @@ export function TransactionSheet({
             rewardsType: RewardsType.EVERY,
           },
         });
-        setSelectedBudgetIds([]);
+        // setSelectedBudgetIds([]); // [HIDDEN] 預算功能暫時停用
         setShowExtra(false);
       }
     }
@@ -385,7 +388,7 @@ export function TransactionSheet({
         extraAddLabel: data.extraAddLabel,
         extraMinus: data.extraMinus,
         extraMinusLabel: data.extraMinusLabel,
-        budgetIds: selectedBudgetIds,
+        // budgetIds: selectedBudgetIds, // [HIDDEN] 預算功能暫時停用
       };
       const result = await services.addTransaction(payload);
       if (result?.isSuccess) {
@@ -414,7 +417,7 @@ export function TransactionSheet({
       // But we can only send a value if we have one.
       targetAccountId:
         data.type === RootType.OPERATE ? data.targetAccountId : undefined,
-      budgetIds: selectedBudgetIds, // Supported now
+      // budgetIds: selectedBudgetIds, // [HIDDEN] 預算功能暫時停用
       // Update other fields as supported by schema
       paymentFrequency: data.paymentFrequency, // Ensure Schema supports
       extraAdd: data.extraAdd,
@@ -677,8 +680,8 @@ export function TransactionSheet({
                 )}
               </div>
 
-              {/* Budget Selection - Available for Expense in both modes */}
-              {watchedType === RootType.EXPENSE && (
+              {/* [HIDDEN] 預算功能暫時停用 — Budget Selection UI */}
+              {/* {watchedType === RootType.EXPENSE && (
                 <div className="space-y-2">
                   <FormLabel>歸入預算</FormLabel>
                   <Popover>
@@ -755,7 +758,7 @@ export function TransactionSheet({
                     </PopoverContent>
                   </Popover>
                 </div>
-              )}
+              )} */}
 
               {/* Amount */}
               <div className="pt-2 pb-4">
