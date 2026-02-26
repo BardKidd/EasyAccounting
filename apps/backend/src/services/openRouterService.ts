@@ -177,7 +177,7 @@ const callWithRetry = async (
           },
         ],
         temperature: 0.1,
-        max_tokens: 32768, // 自己設定 output 的上限（K2.5 最高支援 65536）
+        max_tokens: 32768,
       });
 
       const finishReason = response.choices[0]?.finish_reason;
@@ -227,7 +227,7 @@ const callWithRetry = async (
 /**
  * 解析帳單圖片
  *
- * 逐頁送圖片給 OpenRouter (Kimi K2.5)，收集所有交易
+ * 逐頁送圖片給 OpenRouter，收集所有交易
  * 第一頁成功後，將表頭 context 帶給後續頁面（解決跨頁表格問題）
  */
 export const parseImages = async (

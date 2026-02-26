@@ -2,7 +2,11 @@ import PendingTransaction from '@/models/PendingTransaction';
 import MerchantMapping from '@/models/MerchantMapping';
 import Transaction from '@/models/transaction';
 import Category from '@/models/category';
-import { PendingTransactionStatus } from '@repo/shared';
+import {
+  PendingTransactionStatus,
+  RootType,
+  PaymentFrequency,
+} from '@repo/shared';
 import { ParsedTransaction } from '@/validation/llmResponseSchema';
 import { Op } from 'sequelize';
 
@@ -74,7 +78,7 @@ export const buildCategoryListForPrompt = async (
 
   // 找到 expense root
   const expenseRoot = categories.find(
-    (c) => (c as any).type === 'expense' && (c as any).parentId === null,
+    (c) => (c as any).type === RootType.EXPENSE && (c as any).parentId === null,
   );
   if (!expenseRoot) return '';
 
@@ -203,7 +207,7 @@ const batchMatchInstallments = async (
         })),
       },
       // 確保只比對有分期計畫或是分期類型的交易
-      paymentFrequency: 'INSTALLMENT',
+      paymentFrequency: PaymentFrequency.INSTALLMENT,
     },
   });
 

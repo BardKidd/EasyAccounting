@@ -44,7 +44,6 @@ const getContainerClient = (): ContainerClient => {
  * 上傳圖片到 pdf-temp container
  *
  * 本地模式：前端已把 PDF 轉成 JPEG，上傳多張圖片
- * 雲端模式：前端上傳 PDF，後端處理（Phase 2 再實作轉檔邏輯）
  */
 export const uploadImages = async (
   userId: string,

@@ -117,6 +117,7 @@ export default function BillImportPage() {
             return {
               id: `${file.name}-${index}`,
               file: imageFile,
+              // 在前端先行預覽，方面在 img tag 顯示
               previewUrl: URL.createObjectURL(blob),
               selected: true, // Default select all
             };
