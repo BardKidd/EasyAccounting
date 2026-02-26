@@ -109,6 +109,7 @@ const stream = async (req: Request, res: Response) => {
   }
 
   // 2. 監聽後續狀態變更
+  // 在這裡就會先去註冊監聽了，因為有 onStatusChange() 的緣故。
   const cleanup = onStatusChange(uploadId, (data) => {
     sendEvent(data);
 
@@ -206,7 +207,7 @@ const getPending = async (req: Request, res: Response) => {
     const activeJobRecord = await BillParseTelemetry.findOne({
       where: {
         userId,
-        status: 'PROCESSING',
+        status: ParseStatus.PROCESSING,
       },
       order: [['createdAt', 'DESC']],
     });
