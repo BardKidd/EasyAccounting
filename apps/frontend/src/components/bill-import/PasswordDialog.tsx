@@ -35,10 +35,12 @@ export function PasswordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border-slate-200/50 dark:border-white/10 rounded-3xl shadow-2xl">
         <DialogHeader>
-          <DialogTitle>輸入 PDF 密碼</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-xl font-bold font-playfair bg-linear-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent">
+            輸入 PDF 密碼
+          </DialogTitle>
+          <DialogDescription className="text-slate-500 dark:text-slate-400">
             此 PDF 文件受到密碼保護，請輸入密碼以繼續解析。
             系統不會儲存您的密碼。
           </DialogDescription>
@@ -60,19 +62,24 @@ export function PasswordDialog({
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               onClick={() => onOpenChange(false)}
+              className="rounded-xl font-medium border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               取消
             </Button>
-            <Button type="submit" disabled={!password || isSubmitting}>
+            <Button
+              type="submit"
+              disabled={!password || isSubmitting}
+              className="rounded-xl font-bold bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/20 transition-all duration-300 hover:-translate-y-0.5"
+            >
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              確認
+              確認解鎖
             </Button>
           </DialogFooter>
         </form>

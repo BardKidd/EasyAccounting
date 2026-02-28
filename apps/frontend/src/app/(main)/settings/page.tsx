@@ -12,13 +12,13 @@ export default async function SettingsPage() {
   const notifications = await service.getPersonnelNotification();
 
   return (
-    <Container className="max-w-5xl py-10 space-y-10">
-      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
-        <div className="space-y-1.5">
-          <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent dark:from-gray-100 dark:to-gray-400">
+    <Container className="py-8 space-y-8 max-w-[1600px] px-4 md:px-8">
+      <div className="flex items-center justify-between space-y-2">
+        <div className="space-y-1">
+          <h2 className="text-3xl font-bold font-outfit uppercase tracking-widest bg-linear-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent drop-shadow-sm">
             設定
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
             管理您的應用程式偏好設定與分類
           </p>
         </div>
@@ -28,16 +28,16 @@ export default async function SettingsPage() {
         </div>
       </div>
       <Tabs defaultValue="categories" className="space-y-8">
-        <TabsList className="bg-transparent p-0 border-b border-border/50 w-full justify-start rounded-none h-auto">
+        <TabsList className="inline-flex h-12 items-center justify-center rounded-full bg-slate-100 dark:bg-[#0f172a]/80 backdrop-blur-md p-1 border border-slate-200/50 dark:border-white/10 mb-4 shadow-sm relative">
           <TabsTrigger
             value="categories"
-            className="cursor-pointer rounded-none border-b-2 border-transparent px-4 py-2 text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none transition-all hover:text-foreground"
+            className="cursor-pointer rounded-full px-8 py-2 md:px-10 text-sm font-medium transition-all duration-300 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/20 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 data-[state=active]:hover:text-white"
           >
             分類管理
           </TabsTrigger>
           <TabsTrigger
             value="notifications"
-            className="cursor-pointer rounded-none border-b-2 border-transparent px-4 py-2 text-muted-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none transition-all hover:text-foreground"
+            className="cursor-pointer rounded-full px-8 py-2 md:px-10 text-sm font-medium transition-all duration-300 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/20 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 data-[state=active]:hover:text-white"
           >
             通知設定
           </TabsTrigger>

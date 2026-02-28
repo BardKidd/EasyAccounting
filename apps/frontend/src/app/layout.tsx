@@ -1,13 +1,18 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Outfit, Work_Sans } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
 
-const inter = Inter({
+const workSans = Work_Sans({
   variable: '--font-sans',
+  subsets: ['latin'],
+});
+
+const outfit = Outfit({
+  variable: '--font-outfit',
   subsets: ['latin'],
 });
 
@@ -26,7 +31,7 @@ export default function RootLayout({
       {/* antialiased 防止字體模糊 */}
       <body
         suppressHydrationWarning
-        className={`${inter.variable} font-sans antialiased`}
+        className={`${workSans.variable} ${outfit.variable} font-sans antialiased`}
       >
         <ThemeProvider
           attribute="class"

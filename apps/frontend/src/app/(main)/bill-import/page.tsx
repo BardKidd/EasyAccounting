@@ -312,13 +312,9 @@ export default function BillImportPage() {
   return (
     <div className="container mx-auto py-6 space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">帳單匯入</h1>
-        {isProcessing && (
-          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>AI 解析中... {status?.progress}%</span>
-          </div>
-        )}
+        <h1 className="text-3xl font-bold tracking-tight bg-linear-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent font-outfit uppercase">
+          帳單匯入
+        </h1>
       </div>
 
       {isSelecting ? (
@@ -332,6 +328,8 @@ export default function BillImportPage() {
         <FileUploader
           onUpload={handleUpload}
           isUploading={isUploading || isProcessing}
+          progress={isProcessing ? status?.progress : undefined}
+          loadingMessage={isProcessing ? 'AI 解析中...' : undefined}
         />
       ) : null}
 
@@ -344,7 +342,7 @@ export default function BillImportPage() {
 
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-          <h2 className="text-xl font-semibold">
+          <h2 className="text-xl font-bold font-playfair bg-linear-to-r from-slate-900 to-slate-700 dark:from-white dark:to-white/60 bg-clip-text text-transparent">
             待確認交易 ({transactions.length})
           </h2>
           {transactions.length > 0 && (
@@ -352,7 +350,7 @@ export default function BillImportPage() {
               <Button
                 variant="outline"
                 onClick={handleAddManual}
-                className="rounded-full h-10 px-5 shadow-md border-slate-200 dark:border-slate-800 transition-all duration-300 transform hover:scale-105 font-medium tracking-wide"
+                className="rounded-2xl h-10 px-5 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600 transition-all font-medium tracking-wide shadow-sm"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 手動新增
@@ -361,7 +359,7 @@ export default function BillImportPage() {
                 variant="destructive"
                 onClick={handleClearAll}
                 disabled={isDiscarding}
-                className="rounded-full h-10 px-5 shadow-md shadow-red-500/20 transition-all duration-300 transform hover:scale-105 font-medium tracking-wide border-0 bg-red-500 hover:bg-red-600 text-white"
+                className="rounded-2xl h-10 px-5 bg-rose-500 hover:bg-rose-600 text-white border border-rose-500 hover:border-rose-600 transition-all font-medium tracking-wide shadow-md shadow-rose-500/20"
               >
                 {isDiscarding ? (
                   <>
@@ -378,7 +376,7 @@ export default function BillImportPage() {
               <Button
                 onClick={handleConfirm}
                 disabled={isDiscarding || isConfirming}
-                className="rounded-full h-10 px-5 shadow-md shadow-teal-500/20 transition-all duration-300 transform hover:scale-105 font-medium tracking-wide border-0 bg-teal-500 hover:bg-teal-600 text-white"
+                className="rounded-2xl h-10 px-5 bg-emerald-500 hover:bg-emerald-400 text-white transition-all font-bold tracking-wide shadow-lg shadow-emerald-500/20"
               >
                 {isConfirming ? (
                   <>

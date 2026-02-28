@@ -13,9 +13,10 @@ export function TopExpensesList({
   items: OverviewTop3ExpensesType[];
 }) {
   return (
-    <Card className="h-full border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 hover:bg-white dark:hover:bg-slate-900/70 transition-all duration-300 group dark:shadow-teal-glow">
-      <CardHeader className="border-b border-slate-200 dark:border-white/5 pb-4">
-        <CardTitle className="text-lg font-bold font-playfair text-slate-900 dark:text-white">
+    <Card className="h-full border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden group rounded-3xl">
+      <CardHeader className="pb-2 border-b border-slate-200/50 dark:border-white/10 bg-white/40 dark:bg-white/5 relative overflow-hidden">
+        <div className="absolute inset-0 bg-linear-to-r from-emerald-500/0 via-emerald-500/5 to-teal-500/0 dark:from-emerald-400/0 dark:via-emerald-400/5 dark:to-teal-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+        <CardTitle className="text-lg font-bold font-playfair text-slate-900 dark:text-white relative z-10 transition-colors duration-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
           單筆支出 Top 3
         </CardTitle>
       </CardHeader>
@@ -36,12 +37,12 @@ export function TopExpensesList({
               >
                 <div className="flex items-center gap-4">
                   <div
-                    className={`flex items-center justify-center w-8 h-8 rounded-full text-white font-bold text-xs shadow-lg ring-2 ring-white dark:ring-slate-800 ${rankConfig.bg} ${rankConfig.shadow}`}
+                    className={`flex items-center justify-center w-8 h-8 rounded-full text-white font-bold text-xs shadow-lg ring-2 ring-white dark:ring-[#0f172a] ${rankConfig.bg} ${rankConfig.shadow}`}
                   >
                     {index + 1}
                   </div>
 
-                  <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 group-hover/item:bg-white dark:group-hover/item:bg-slate-700 text-slate-500 dark:text-slate-400 group-hover/item:text-indigo-500 dark:group-hover/item:text-indigo-400 transition-colors duration-200">
+                  <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 group-hover/item:bg-white dark:group-hover/item:bg-slate-700 text-slate-500 dark:text-slate-400 group-hover/item:text-emerald-500 dark:group-hover/item:text-emerald-400 transition-colors duration-200">
                     <CategoryIcon iconName={item.category.icon} size={18} />
                   </div>
 

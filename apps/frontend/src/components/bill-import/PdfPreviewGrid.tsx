@@ -52,17 +52,27 @@ export function PdfPreviewGrid({
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-semibold">預覽與篩選上傳頁面</h2>
-          <p className="text-sm text-muted-foreground mt-1">
+        <div className="space-y-1">
+          <h2 className="text-2xl font-bold font-playfair bg-linear-to-r from-slate-900 to-slate-700 dark:from-white dark:to-white/60 bg-clip-text text-transparent">
+            預覽與篩選
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-sans">
             請勾選含有交易明細的頁面，取消勾選廣告或其他無用頁面以加快解析速度。
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => selectAll(true)}>
-            全選
+          <Button
+            variant="outline"
+            onClick={() => selectAll(true)}
+            className="rounded-full shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            全部選取
           </Button>
-          <Button variant="outline" onClick={() => selectAll(false)}>
+          <Button
+            variant="outline"
+            onClick={() => selectAll(false)}
+            className="rounded-full shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
             取消全選
           </Button>
         </div>
@@ -72,37 +82,42 @@ export function PdfPreviewGrid({
         {images.map((img, index) => (
           <div
             key={img.id}
-            className={`relative group rounded-lg border-2 overflow-hidden transition-all ${
+            className={`relative group rounded-3xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 flex flex-col bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border ${
               img.selected
-                ? 'border-primary ring-2 ring-primary/20'
-                : 'border-muted-foreground/20'
+                ? 'border-emerald-500 ring-4 ring-emerald-500/20 shadow-emerald-500/10'
+                : 'border-slate-200/50 dark:border-white/10'
             }`}
           >
             {/* Image Preview */}
-            <div className="aspect-[1/1.4] bg-muted flex items-center justify-center overflow-hidden">
+            <div className="aspect-[1/1.4] bg-slate-100/50 dark:bg-slate-900/50 flex items-center justify-center overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={img.previewUrl}
                 alt={`Page ${index + 1}`}
-                className="w-full h-full object-contain"
+                className={`w-full h-full object-contain transition-transform duration-500 ${!img.selected && 'opacity-70 grayscale-30'} group-hover:scale-105`}
               />
             </div>
 
             {/* Selection Overlay */}
             <div
-              className={`absolute inset-0 cursor-pointer ${
-                img.selected ? 'bg-primary/10' : 'bg-black/5 hover:bg-black/10'
+              className={`absolute inset-0 cursor-pointer transition-colors duration-300 ${
+                img.selected
+                  ? 'bg-emerald-500/10'
+                  : 'bg-black/5 hover:bg-black/20 dark:bg-black/20 dark:hover:bg-black/40'
               }`}
               onClick={() => toggleSelection(img.id, img.selected)}
             >
               <div
-                className={`absolute top-3 left-3 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                className={`absolute top-4 left-4 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 shadow-sm ${
                   img.selected
-                    ? 'bg-primary border-primary text-primary-foreground'
-                    : 'bg-background/80 border-muted-foreground'
+                    ? 'bg-emerald-500 border-emerald-500 text-white scale-110'
+                    : 'bg-white/80 dark:bg-slate-800/80 border-slate-300 dark:border-slate-600 text-transparent hover:border-emerald-500!'
                 }`}
               >
-                {img.selected && <Check className="w-4 h-4" />}
+                <Check
+                  className={`w-5 h-5 ${img.selected ? 'opacity-100' : 'opacity-0'}`}
+                  strokeWidth={3}
+                />
               </div>
             </div>
 
@@ -112,48 +127,55 @@ export function PdfPreviewGrid({
                 e.stopPropagation();
                 setZoomedImage(img.previewUrl);
               }}
-              className="absolute top-3 right-3 p-2 rounded-full bg-background/80 text-foreground hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
+              className="absolute top-4 right-4 p-2.5 rounded-full bg-white/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 hover:bg-white hover:text-emerald-600 dark:hover:bg-slate-700 dark:hover:text-emerald-400 opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg scale-90 group-hover:scale-100 z-10 backdrop-blur-md"
               title="放大預覽"
             >
               <ZoomIn className="w-5 h-5" />
             </button>
-            <div className="absolute bottom-0 left-0 right-0 bg-background/90 px-3 py-2 text-sm font-medium border-t">
+            <div className="absolute bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-4 py-3 text-sm font-bold text-center border-t border-slate-200/50 dark:border-white/10 text-slate-700 dark:text-slate-300">
               第 {index + 1} 頁
             </div>
           </div>
         ))}
       </div>
 
-      <div className="bg-muted/50 p-4 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center space-x-2">
+      <div className="bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border border-slate-200/50 dark:border-white/10 p-6 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
+        <div className="flex items-start space-x-3">
           <Checkbox
             id="notifyEmail"
             checked={notifyEmail}
             onCheckedChange={(checked) => setNotifyEmail(checked as boolean)}
+            className="mt-1 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 border-slate-300 dark:border-slate-600"
           />
-          <div className="grid leading-none pt-0.5">
-            <label
-              htmlFor="notifyEmail"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-            >
+          <label
+            htmlFor="notifyEmail"
+            className="grid leading-none gap-1.5 cursor-pointer group"
+          >
+            <span className="text-base font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
               處理完成時以 Email 通知我
-            </label>
-            <p className="text-sm text-muted-foreground mt-1">
+            </span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">
               背景處理可能需要數分鐘，勾選此項以便完成後收到通知。
-            </p>
-          </div>
+            </span>
+          </label>
         </div>
 
-        <div className="flex gap-3 w-full sm:w-auto">
-          <Button variant="outline" onClick={onCancel} className="flex-1">
-            取消
+        <div className="flex gap-3 w-full md:w-auto">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={onCancel}
+            className="flex-1 md:flex-none rounded-xl font-medium"
+          >
+            取消處理
           </Button>
           <Button
             onClick={() => onConfirm(notifyEmail)}
             disabled={selectedCount === 0}
-            className="flex-1"
+            size="lg"
+            className="flex-1 md:flex-none rounded-xl font-bold bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/20 transition-all duration-300 hover:-translate-y-0.5"
           >
-            開始上傳與解析 ({selectedCount})
+            開始上傳與解析 ({selectedCount} 頁)
           </Button>
         </div>
       </div>

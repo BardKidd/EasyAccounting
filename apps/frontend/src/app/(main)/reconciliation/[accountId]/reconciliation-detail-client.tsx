@@ -167,7 +167,7 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold bg-linear-to-r from-slate-900 to-slate-700 dark:from-white dark:to-white/60 bg-clip-text text-transparent font-playfair">
+          <h1 className="text-2xl font-bold bg-linear-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent font-outfit uppercase">
             交易核對
           </h1>
           <p className="text-muted-foreground text-sm font-sans">
@@ -176,8 +176,8 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
         </div>
       </div>
 
-      <Card className="shadow-sm overflow-hidden">
-        <CardHeader className="pb-4 border-b">
+      <Card className="shadow-xl bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border-slate-200/50 dark:border-white/10 rounded-3xl overflow-hidden">
+        <CardHeader className="pb-4 border-b border-slate-200/50 dark:border-white/5">
           <div className="flex items-center justify-between">
             <CardTitle className="font-playfair text-xl">
               待核對交易列表
@@ -209,8 +209,8 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
         </CardHeader>
         <CardContent className="p-0">
           <Table>
-            <TableHeader className="bg-slate-50/50 dark:bg-slate-900/50">
-              <TableRow className="hover:bg-transparent border-slate-100 dark:border-slate-800">
+            <TableHeader className="bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-sm">
+              <TableRow className="hover:bg-transparent border-slate-200/50 dark:border-white/5">
                 <TableHead className="w-[50px] pl-6">
                   <Checkbox
                     checked={
@@ -218,7 +218,7 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
                       selectedIds.size === data.transactions.length
                     }
                     onCheckedChange={toggleAll}
-                    className="border-slate-300 dark:border-slate-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                    className="border-slate-300 dark:border-slate-600 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 rounded flex w-4 h-4"
                   />
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300">
@@ -250,11 +250,11 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
                   <TableRow
                     key={txn.id}
                     className={`
-                      cursor-pointer transition-colors duration-200 border-slate-100 dark:border-slate-800
+                      cursor-pointer transition-all duration-300 border-b border-slate-100/50 dark:border-white/5
                       ${
                         selectedIds.has(txn.id)
-                          ? 'bg-primary/5 hover:bg-primary/10 dark:bg-primary/10 dark:hover:bg-primary/20'
-                          : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/50'
+                          ? 'bg-emerald-50/50 hover:bg-emerald-50/80 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20'
+                          : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/30'
                       }
                     `}
                     onClick={() => toggleSelection(txn.id)}
@@ -266,7 +266,7 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
                       <Checkbox
                         checked={selectedIds.has(txn.id)}
                         onCheckedChange={() => toggleSelection(txn.id)}
-                        className="border-slate-300 dark:border-slate-600 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        className="border-slate-300 dark:border-slate-600 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 rounded flex w-4 h-4"
                       />
                     </TableCell>
                     <TableCell className="text-slate-600 dark:text-slate-400">
@@ -304,7 +304,7 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
       </Card>
 
       {/* Footer Summary Bar */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 border-t border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl z-10 md:pl-64 transition-all duration-300">
+      <div className="fixed bottom-0 left-0 right-0 p-4 border-t border-slate-200/50 dark:border-white/10 bg-white/70 dark:bg-[#060c15]/70 backdrop-blur-2xl z-10 md:pl-64 transition-all duration-300 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
         <div className="container max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex flex-col md:flex-row md:gap-12 gap-2">
             <div className="flex items-baseline gap-2">
@@ -322,7 +322,7 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
               <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
                 總金額
               </span>
-              <span className="text-xl font-bold font-playfair text-primary">
+              <span className="text-xl font-bold font-playfair text-emerald-600 dark:text-emerald-400">
                 {formatCurrency(summary.selectedAmount)}
               </span>
               <span className="text-xs text-slate-400 font-mono ml-1">
@@ -334,7 +334,7 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
             onClick={handleConfirm}
             disabled={isSubmitting || data.transactions.length === 0}
             size="lg"
-            className="shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 bg-primary hover:bg-primary/90 min-w-[120px]"
+            className="shadow-xl hover:-translate-y-0.5 transition-all duration-300 bg-emerald-500 hover:bg-emerald-400 text-white min-w-[120px] rounded-xl font-medium"
           >
             {isSubmitting ? '處理中...' : '完成核對'}
           </Button>

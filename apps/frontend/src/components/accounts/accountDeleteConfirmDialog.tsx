@@ -58,11 +58,11 @@ function AccountDeleteConfirmDialog({
       open={isDeleteConfirmDialogOpen}
       onOpenChange={setIsDeleteConfirmDialogOpen}
     >
-      <AlertDialogContent className="sm:max-w-[450px]">
+      <AlertDialogContent className="sm:max-w-[450px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-slate-200/50 dark:border-white/10 shadow-2xl rounded-3xl">
         <AlertDialogHeader className="flex flex-col gap-3">
-          <div className="flex items-center gap-2 text-destructive">
+          <div className="flex items-center gap-2 text-rose-500 dark:text-rose-400">
             <AlertTriangle className="h-6 w-6" />
-            <AlertDialogTitle className="text-xl">
+            <AlertDialogTitle className="text-xl font-bold font-outfit uppercase tracking-widest">
               確認刪除帳戶？
             </AlertDialogTitle>
           </div>
@@ -103,7 +103,7 @@ function AccountDeleteConfirmDialog({
             disabled={isDeleting}
             className={cn(
               buttonVariants({ variant: 'destructive' }),
-              isDeleting ? 'cursor-not-allowed' : 'cursor-pointer'
+              isDeleting ? 'cursor-not-allowed' : 'cursor-pointer',
             )}
           >
             {isDeleting ? '刪除中...' : '確認刪除'}

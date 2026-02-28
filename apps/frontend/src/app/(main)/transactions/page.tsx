@@ -119,10 +119,10 @@ async function TransactionsPage(props: PageProps) {
     <Container className="py-8 space-y-8 max-w-[1600px] px-4 md:px-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-3xl font-bold tracking-tight text-foreground">
+          <h2 className="text-3xl font-bold font-outfit uppercase tracking-widest bg-linear-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent drop-shadow-sm">
             交易紀錄
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
             管理與檢視您的每一筆收支
           </p>
         </div>
@@ -137,16 +137,16 @@ async function TransactionsPage(props: PageProps) {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center border-b border-border">
+      {/* Floating Pill Tabs */}
+      <div className="inline-flex h-12 items-center justify-center rounded-full bg-slate-100 dark:bg-[#0f172a]/80 backdrop-blur-md p-1 border border-slate-200/50 dark:border-white/10 mb-4 shadow-sm relative">
         <Link
           href={getTabLink(TransactionViewMode.CALENDAR)}
           data-testid="tab-calendar"
           className={cn(
-            'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+            'cursor-pointer rounded-full px-8 py-2 md:px-10 text-sm font-medium transition-all duration-300',
             view === TransactionViewMode.CALENDAR
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground',
+              ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:text-white'
+              : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400',
           )}
         >
           日曆
@@ -155,10 +155,10 @@ async function TransactionsPage(props: PageProps) {
           href={getTabLink(TransactionViewMode.LIST)}
           data-testid="tab-list"
           className={cn(
-            'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+            'cursor-pointer rounded-full px-8 py-2 md:px-10 text-sm font-medium transition-all duration-300',
             view === TransactionViewMode.LIST
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground',
+              ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:text-white'
+              : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400',
           )}
         >
           列表

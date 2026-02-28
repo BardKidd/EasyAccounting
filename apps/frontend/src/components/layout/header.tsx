@@ -66,8 +66,9 @@ function Header() {
   }, [user.name]);
 
   return (
-    <header className="sticky top-4 z-50 mx-4 md:mr-8 mt-4 rounded-2xl border border-border bg-background/80 backdrop-blur-xl shadow-sm transition-all duration-300 hover:shadow-md">
-      <div className="flex h-16 items-center px-6 gap-4">
+    <header className="sticky top-4 z-50 mx-4 md:mr-8 mt-4 rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-lg shadow-slate-200/20 dark:shadow-black/20 transition-all duration-300 hover:shadow-xl group">
+      <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none rounded-2xl" />
+      <div className="flex h-16 items-center px-6 gap-4 relative z-10">
         {/* Breadcrumbs or Page Title could go here in future */}
         <div className="flex-1">
           {/* Placeholder for potential breadcrumbs */}
@@ -79,25 +80,25 @@ function Header() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 cursor-pointer relative rounded-full hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="h-10 w-10 cursor-pointer relative rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             onClick={() => router.push('/reconciliation')}
           >
-            <Bell className="h-5 w-5 text-muted-foreground" />
+            <Bell className="h-5 w-5 text-slate-500 dark:text-slate-400" />
             {notificationCount > 0 && (
-              <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background animate-pulse" />
+              <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)] ring-2 ring-white dark:ring-[#0f172a] animate-pulse" />
             )}
             <span className="sr-only">Toggle notifications</span>
           </Button>
 
-          <div className="h-8 w-px bg-border mx-1 hidden md:block"></div>
+          <div className="h-8 w-px bg-slate-200 dark:bg-white/10 mx-1 hidden md:block"></div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="relative h-10 w-10 rounded-full border border-border bg-secondary/30 p-0 font-bold hover:bg-secondary/50 transition-all cursor-pointer ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 overflow-hidden"
+                className="relative h-10 w-10 rounded-full border border-slate-200/50 dark:border-white/10 p-0 font-bold hover:scale-105 transition-all cursor-pointer ring-offset-background focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 overflow-hidden shadow-sm"
               >
-                <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-primary to-secondary text-primary-foreground shadow-inner">
+                <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-emerald-500 to-teal-400 text-white shadow-inner">
                   {getFirstLetterAsAvatar}
                 </div>
               </Button>

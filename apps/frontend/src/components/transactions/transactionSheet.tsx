@@ -475,11 +475,29 @@ export function TransactionSheet({
     [RootType.OPERATE]: TRANSACTION_COLORS.transfer,
   };
 
+  const typeStyles = {
+    [RootType.EXPENSE]: {
+      bg: 'bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-500/20 border-rose-500',
+      focus: 'focus-visible:ring-rose-500/30',
+    },
+    [RootType.INCOME]: {
+      bg: 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-500/20 border-emerald-500',
+      focus: 'focus-visible:ring-emerald-500/30',
+    },
+    [RootType.OPERATE]: {
+      bg: 'bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/20 border-amber-500',
+      focus: 'focus-visible:ring-amber-500/30',
+    },
+  };
+
+  const currentTypeStyle =
+    typeStyles[watchedType as RootType] || typeStyles[RootType.EXPENSE];
+
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-[540px] p-0 flex flex-col h-dvh bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-2xl border-l border-slate-200 dark:border-white/10 shadow-2xl">
-        <SheetHeader className="px-6 py-6 border-b border-slate-200/50 dark:border-white/5 bg-white/50 dark:bg-white/2">
-          <SheetTitle className="text-2xl font-bold font-playfair text-slate-900 dark:text-slate-50">
+      <SheetContent className="w-full sm:max-w-[540px] p-0 flex flex-col h-dvh bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-2xl border-l border-slate-200/50 dark:border-white/10 shadow-2xl">
+        <SheetHeader className="px-6 py-6 border-b border-slate-200/50 dark:border-white/5 bg-transparent">
+          <SheetTitle className="text-2xl font-bold font-playfair text-slate-800 dark:text-slate-100">
             {isEditMode ? '編輯交易' : '新增交易'}
           </SheetTitle>
         </SheetHeader>
@@ -515,7 +533,7 @@ export function TransactionSheet({
                       </div>
                     ) : (
                       // Interactive Type Selector for Create Mode
-                      <div className="bg-slate-200/50 dark:bg-white/5 p-1 rounded-2xl flex gap-1">
+                      <div className="bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-sm p-1.5 rounded-3xl flex gap-1 border border-slate-200/50 dark:border-slate-700/50 shadow-inner">
                         {[
                           RootType.EXPENSE,
                           RootType.INCOME,
@@ -531,14 +549,10 @@ export function TransactionSheet({
                               form.clearErrors();
                             }}
                             className={cn(
-                              'flex-1 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 shadow-sm',
+                              'flex-1 py-3 text-sm font-bold rounded-2xl transition-all duration-300',
                               field.value === type
-                                ? type === RootType.EXPENSE
-                                  ? 'bg-rose-500 text-white shadow-rose-200 dark:shadow-rose-900/30'
-                                  : type === RootType.INCOME
-                                    ? 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-emerald-900/30'
-                                    : 'bg-amber-500 text-white shadow-amber-200 dark:shadow-amber-900/30'
-                                : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-white/5 shadow-none',
+                                ? typeStyles[type as RootType].bg
+                                : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-white/60 dark:hover:bg-slate-700/50',
                             )}
                           >
                             {type}
@@ -573,7 +587,7 @@ export function TransactionSheet({
                       value={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger className="w-full cursor-pointer">
+                        <SelectTrigger className="w-full cursor-pointer h-12 rounded-2xl bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-800">
                           <SelectValue placeholder="選擇帳戶" />
                         </SelectTrigger>
                       </FormControl>
@@ -622,7 +636,7 @@ export function TransactionSheet({
                         value={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger className="w-full cursor-pointer">
+                          <SelectTrigger className="w-full cursor-pointer h-12 rounded-2xl bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-800">
                             <SelectValue placeholder="選擇主分類" />
                           </SelectTrigger>
                         </FormControl>
@@ -655,7 +669,7 @@ export function TransactionSheet({
                           }
                         >
                           <FormControl>
-                            <SelectTrigger className="w-full cursor-pointer">
+                            <SelectTrigger className="w-full cursor-pointer h-12 rounded-2xl bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-800">
                               <SelectValue
                                 placeholder={
                                   currentSubCategory.length === 0
@@ -787,12 +801,8 @@ export function TransactionSheet({
                             placeholder="0.00"
                             {...field}
                             className={cn(
-                              'h-10 text-base pl-8 font-medium bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800',
-                              watchedType === RootType.EXPENSE
-                                ? 'focus-visible:ring-rose-500/30'
-                                : watchedType === RootType.INCOME
-                                  ? 'focus-visible:ring-emerald-500/30'
-                                  : 'focus-visible:ring-amber-500/30',
+                              'h-12 rounded-2xl text-base pl-8 font-medium bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors',
+                              currentTypeStyle.focus,
                             )}
                             value={
                               field.value !== undefined && field.value !== null
@@ -852,7 +862,10 @@ export function TransactionSheet({
                               <Input
                                 placeholder="例如：獎金"
                                 {...field}
-                                className="h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                className={cn(
+                                  'h-12 rounded-2xl text-sm bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors',
+                                  currentTypeStyle.focus,
+                                )}
                               />
                             </FormControl>
                             <FormMessage />
@@ -876,7 +889,10 @@ export function TransactionSheet({
                                   type="number"
                                   placeholder="0.00"
                                   {...field}
-                                  className="h-10 text-base pl-8 font-medium bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-emerald-500/30"
+                                  className={cn(
+                                    'h-12 rounded-2xl text-base pl-8 font-medium bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors',
+                                    currentTypeStyle.focus,
+                                  )}
                                   value={field.value || ''}
                                   onChange={(e) =>
                                     field.onChange(e.target.valueAsNumber || 0)
@@ -913,7 +929,10 @@ export function TransactionSheet({
                               <Input
                                 placeholder="例如：稅金"
                                 {...field}
-                                className="h-10 text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                                className={cn(
+                                  'h-12 rounded-2xl text-sm bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors',
+                                  currentTypeStyle.focus,
+                                )}
                               />
                             </FormControl>
                             <FormMessage />
@@ -937,7 +956,10 @@ export function TransactionSheet({
                                   type="number"
                                   placeholder="0.00"
                                   {...field}
-                                  className="h-10 text-base pl-8 font-medium bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-rose-500/30"
+                                  className={cn(
+                                    'h-12 rounded-2xl text-base pl-8 font-medium bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors',
+                                    currentTypeStyle.focus,
+                                  )}
                                   value={field.value || ''}
                                   onChange={(e) =>
                                     field.onChange(e.target.valueAsNumber || 0)
@@ -999,7 +1021,10 @@ export function TransactionSheet({
                                 <Input
                                   type="number"
                                   {...field}
-                                  className="h-12 text-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus-visible:ring-slate-400"
+                                  className={cn(
+                                    'h-12 rounded-2xl text-lg bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors',
+                                    currentTypeStyle.focus,
+                                  )}
                                   placeholder="0"
                                   onChange={(e) =>
                                     field.onChange(Number(e.target.value))
@@ -1024,7 +1049,7 @@ export function TransactionSheet({
                                 value={field.value}
                               >
                                 <FormControl>
-                                  <SelectTrigger className="h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                                  <SelectTrigger className="h-12 rounded-2xl bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-800">
                                     <SelectValue />
                                   </SelectTrigger>
                                 </FormControl>
@@ -1054,7 +1079,7 @@ export function TransactionSheet({
                                 value={field.value}
                               >
                                 <FormControl>
-                                  <SelectTrigger className="h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                                  <SelectTrigger className="h-12 rounded-2xl bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-800">
                                     <SelectValue />
                                   </SelectTrigger>
                                 </FormControl>
@@ -1091,7 +1116,8 @@ export function TransactionSheet({
                               type="button"
                               variant={'outline'}
                               className={cn(
-                                'justify-start text-left font-normal w-full cursor-pointer',
+                                'justify-start text-left font-normal w-full cursor-pointer h-12 rounded-2xl bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors',
+                                currentTypeStyle.focus,
                                 !field.value && 'text-muted-foreground',
                               )}
                             >
@@ -1128,7 +1154,10 @@ export function TransactionSheet({
                         <Input
                           type="time"
                           step="1"
-                          className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                          className={cn(
+                            'appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none h-12 rounded-2xl bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors',
+                            currentTypeStyle.focus,
+                          )}
                           {...field}
                         />
                       </FormControl>
@@ -1151,7 +1180,7 @@ export function TransactionSheet({
                         value={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger className="w-full cursor-pointer">
+                          <SelectTrigger className="w-full cursor-pointer h-12 rounded-2xl bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-800">
                             <SelectValue placeholder="選擇目標帳戶" />
                           </SelectTrigger>
                         </FormControl>
@@ -1191,8 +1220,10 @@ export function TransactionSheet({
                     <FormLabel>發票</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="發票號碼"
-                        className="text-lg font-semibold"
+                        className={cn(
+                          'text-lg font-semibold h-12 rounded-2xl bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors',
+                          currentTypeStyle.focus,
+                        )}
                         type="text"
                         {...field}
                       />
@@ -1210,7 +1241,14 @@ export function TransactionSheet({
                   <FormItem>
                     <FormLabel>備註</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="輸入備註..." {...field} />
+                      <Textarea
+                        placeholder="輸入備註..."
+                        {...field}
+                        className={cn(
+                          'rounded-2xl bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors min-h-[100px] resize-none',
+                          currentTypeStyle.focus,
+                        )}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1218,14 +1256,14 @@ export function TransactionSheet({
               />
             </div>
 
-            <SheetFooter className="px-6 py-4 border-t border-slate-200/50 dark:border-white/5 bg-white/50 dark:bg-white/2 flex flex-row! items-center gap-3">
+            <SheetFooter className="px-6 py-6 border-t border-slate-200/50 dark:border-white/5 bg-transparent flex flex-row! items-center gap-4">
               {isEditMode && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
                       type="button"
                       variant="destructive"
-                      className="flex-1"
+                      className="flex-1 rounded-2xl h-12 font-bold tracking-wide bg-rose-500 hover:bg-rose-600 shadow-md shadow-rose-500/20 transition-all transform hover:scale-[1.02]"
                       disabled={isDeleting}
                     >
                       <Trash2 className="h-4 w-4 mr-1" />
@@ -1258,13 +1296,16 @@ export function TransactionSheet({
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                className="flex-1"
+                className="flex-1 rounded-2xl h-12 font-bold tracking-wide border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
               >
                 取消
               </Button>
               <Button
                 type="submit"
-                className="cursor-pointer flex-1"
+                className={cn(
+                  'cursor-pointer flex-1 rounded-2xl h-12 font-bold tracking-wide shadow-lg transition-all transform hover:scale-[1.02]',
+                  currentTypeStyle.bg,
+                )}
                 disabled={isLoading}
               >
                 {isLoading ? '儲存中...' : isEditMode ? '儲存' : '儲存交易'}

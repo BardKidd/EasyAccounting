@@ -122,9 +122,9 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
             disabled={isPending}
             className={cn(
               'w-full sm:w-[260px] justify-start text-left font-normal cursor-pointer h-10',
-              'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+              'rounded-xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow hover:border-slate-300 dark:hover:border-slate-600',
               !date && 'text-slate-500 dark:text-slate-400',
-            )} // updated classes
+            )}
           >
             <CalendarIcon className="mr-2 h-4 w-4 text-slate-500" />
             {date?.from ? (
@@ -157,7 +157,7 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
         onValueChange={handleTypeChange}
         disabled={isPending}
       >
-        <SelectTrigger className="w-full sm:w-[180px] cursor-pointer h-10! bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+        <SelectTrigger className="w-full sm:w-[180px] cursor-pointer h-10! rounded-xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow hover:border-slate-300 dark:hover:border-slate-600 focus:ring-emerald-500/30">
           <SelectValue placeholder="交易類型" />
         </SelectTrigger>
         <SelectContent>
@@ -173,7 +173,7 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
         onValueChange={handleAccountChange}
         disabled={isPending}
       >
-        <SelectTrigger className="w-full sm:w-[180px] cursor-pointer h-10! bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+        <SelectTrigger className="w-full sm:w-[180px] cursor-pointer h-10! rounded-xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow hover:border-slate-300 dark:hover:border-slate-600 focus:ring-emerald-500/30">
           <SelectValue placeholder="選擇帳戶" />
         </SelectTrigger>
         <SelectContent>
