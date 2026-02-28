@@ -115,27 +115,27 @@ function TransactionTable({
 
   return (
     <div className="space-y-4">
-      <Card className="overflow-hidden">
+      <Card className="rounded-3xl bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border-slate-200/50 dark:border-white/10 shadow-xl overflow-hidden transition-all duration-300">
         <div className="rounded-md">
           <Table data-testid="transaction-table">
             <TableHeader>
-              <TableRow className="hover:bg-transparent border-b-0">
-                <TableHead className="w-[120px]">
+              <TableRow className="hover:bg-transparent border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-white/5">
+                <TableHead className="w-[120px] text-slate-500 dark:text-slate-400">
                   日期
                 </TableHead>
-                <TableHead className="w-[100px]">
+                <TableHead className="w-[100px] text-slate-500 dark:text-slate-400">
                   類型
                 </TableHead>
-                <TableHead className="w-[200px]">
+                <TableHead className="w-[200px] text-slate-500 dark:text-slate-400">
                   分類
                 </TableHead>
-                <TableHead className="w-[200px]">
+                <TableHead className="w-[200px] text-slate-500 dark:text-slate-400">
                   帳戶
                 </TableHead>
-                <TableHead>
+                <TableHead className="text-slate-500 dark:text-slate-400">
                   備註
                 </TableHead>
-                <TableHead className="text-right w-[150px]">
+                <TableHead className="text-right w-[150px] text-slate-500 dark:text-slate-400">
                   金額
                 </TableHead>
               </TableRow>
@@ -150,7 +150,7 @@ function TransactionTable({
                 return (
                   <TableRow
                     key={transaction.id}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                    className="hover:bg-slate-100/50 dark:hover:bg-slate-800/30 transition-colors border-b border-slate-100 dark:border-slate-800/50 last:border-0"
                   >
                     <TableCell className="font-mono text-sm text-foreground">
                       <div>

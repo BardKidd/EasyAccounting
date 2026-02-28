@@ -1,5 +1,4 @@
-import Image from 'next/image';
-import LoginBackground from '@/assets/login_background.png';
+import { Logo } from '@/components/ui/logo';
 
 export default function AuthLayout({
   children,
@@ -7,64 +6,34 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center overflow-hidden bg-slate-950">
-      {/* Background Image with optional blur for Depth of Field */}
-      <div className="absolute inset-0 w-full h-full z-0">
-        <Image
-          src={LoginBackground}
-          alt="Authentication background"
-          fill
-          className="object-cover opacity-90 transition-opacity duration-700 hover:scale-105 transform hover:opacity-100 ease-in-out"
-          priority
-          placeholder="blur"
-          style={{
-            /* Subtle zoom effect for "alive" feel */
-            transition: 'transform 20s ease-in-out',
-          }}
-        />
-        {/* Dark overlay with blur for DOF effect behind the glass card */}
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
+    <div className="min-h-screen w-full relative flex items-center justify-center overflow-hidden bg-slate-50 dark:bg-[#060c15] transition-colors duration-500">
+      {/* Dynamic Ambient Background Elements */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-emerald-500/10 dark:bg-emerald-500/10 rounded-full blur-[100px] md:blur-[150px] mix-blend-multiply dark:mix-blend-screen opacity-70 animate-pulse transition-opacity duration-[10s]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-teal-500/10 dark:bg-teal-500/10 rounded-full blur-[100px] md:blur-[150px] mix-blend-multiply dark:mix-blend-screen opacity-50 transition-opacity duration-[15s]" />
       </div>
 
       {/* Main Content Container - Centered Glass Card Context */}
-      <div className="relative z-10 w-full max-w-lg px-4 animate-in fade-in zoom-in duration-500 slide-in-from-bottom-4">
-        {/* Logo and Slogan typically go inside the card or just above it. 
-            For this design, let's keep it clean and put the logo inside the cards or just above.
-            We'll pass children through which will be the cards.
-        */}
-        <div className="flex flex-col items-center justify-center mb-8 text-center space-y-2 text-white drop-shadow-md">
-          <div className="flex items-center text-2xl font-semibold tracking-wide">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 32 32"
-              fill="none"
-              className="mr-3 h-10 w-10"
-            >
-              <rect
-                width="32"
-                height="32"
-                rx="10"
-                fill="white"
-                className="fill-white"
-              />
-              <path
-                d="M26 22L22 10L18 22H14V10H7M7 16H12M7 22H14M20 17H24"
-                stroke="#0F172A"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle cx="27" cy="9" r="2" fill="#38BDF8" />
-            </svg>
+      <div className="relative z-10 w-full max-w-lg px-4 animate-in fade-in zoom-in-95 duration-700 slide-in-from-bottom-8">
+        {/* Logo and Slogan */}
+        <div className="flex flex-col items-center justify-center mb-8 text-center space-y-3">
+          <Logo className="w-8 h-8 text-emerald-500" />
+          <div className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white font-outfit">
             EasyAccounting
           </div>
         </div>
 
-        {children}
+        {/* The Auth Forms */}
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-linear-to-r from-emerald-500 to-teal-500 rounded-3xl blur-md opacity-20 dark:opacity-30 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
+          <div className="relative bg-white/90 dark:bg-slate-900/80 backdrop-blur-2xl border border-slate-200/50 dark:border-slate-800/50 shadow-2xl rounded-2xl p-8 md:p-10">
+            {children}
+          </div>
+        </div>
       </div>
 
-      {/* Footer / Copyright / Additional Links if needed */}
-      <div className="absolute bottom-4 text-xs text-white/50 z-10">
+      {/* Footer / Copyright */}
+      <div className="absolute bottom-6 text-sm font-medium text-slate-500 dark:text-slate-500 z-10 transition-colors">
         © {new Date().getFullYear()} EasyAccounting. All rights reserved.
       </div>
     </div>

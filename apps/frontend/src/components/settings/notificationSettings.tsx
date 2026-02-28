@@ -157,12 +157,16 @@ export function NotificationSettings({
         onConfirm={handleConfirmLeave}
         onCancel={handleCancelLeave}
       />
-      <Card className="backdrop-blur-xl bg-background/60 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300">
-        <CardHeader className="border-b border-border/10 pb-4">
-          <CardTitle className="text-xl font-semibold">通知設定</CardTitle>
-          <CardDescription>管理您的應用程式通知</CardDescription>
+      <Card className="rounded-3xl bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border-slate-200/50 dark:border-white/10 shadow-xl overflow-hidden transition-all duration-300 flex flex-col h-full">
+        <CardHeader className="border-b border-slate-200/50 dark:border-white/10 p-6">
+          <CardTitle className="text-xl font-semibold text-slate-800 dark:text-slate-100">
+            通知設定
+          </CardTitle>
+          <CardDescription className="text-slate-500 dark:text-slate-400">
+            管理您的應用程式通知
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6 pt-6">
+        <CardContent className="space-y-6 p-6 flex-1">
           <div className="flex items-center justify-between space-x-2 p-3 hover:bg-muted/30 rounded-lg transition-colors">
             <Label
               htmlFor="daily-reminder"
@@ -177,7 +181,7 @@ export function NotificationSettings({
               id="daily-reminder"
               checked={isDailyNotification}
               onCheckedChange={setIsDailyNotification}
-              className="data-[state=checked]:bg-primary"
+              className="data-[state=checked]:bg-emerald-500"
             />
           </div>
           <div className="flex items-center justify-between space-x-2 p-3 hover:bg-muted/30 rounded-lg transition-colors">
@@ -194,7 +198,7 @@ export function NotificationSettings({
               id="weekly-report"
               checked={isWeeklySummaryNotification}
               onCheckedChange={setIsWeeklySummaryNotification}
-              className="data-[state=checked]:bg-primary"
+              className="data-[state=checked]:bg-emerald-500"
             />
           </div>
           <div className="flex items-center justify-between space-x-2 p-3 hover:bg-muted/30 rounded-lg transition-colors">
@@ -211,11 +215,11 @@ export function NotificationSettings({
               id="monthly-analysis"
               checked={isMonthlyAnalysisNotification}
               onCheckedChange={setIsMonthlyAnalysisNotification}
-              className="data-[state=checked]:bg-primary"
+              className="data-[state=checked]:bg-emerald-500"
             />
           </div>
         </CardContent>
-        <CardFooter className="flex justify-between border-t border-border/10 bg-muted/5 px-6 py-4">
+        <CardFooter className="flex justify-between border-t border-slate-200/50 dark:border-white/10 px-6 py-4 pt-6">
           <div className="flex items-center text-sm">
             {showSuccess ? (
               <span className="text-emerald-500 font-medium flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
@@ -235,7 +239,7 @@ export function NotificationSettings({
                 variant="ghost"
                 onClick={handleReset}
                 disabled={isSaving}
-                className="text-muted-foreground hover:text-foreground cursor-pointer"
+                className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
               >
                 還原
               </Button>
@@ -243,7 +247,7 @@ export function NotificationSettings({
             <Button
               onClick={handleSave}
               className={cn(
-                'cursor-pointer shadow-sm transition-all hover:shadow-md active:scale-95',
+                'cursor-pointer shadow-sm transition-all hover:shadow-md active:scale-95 bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/20',
                 isSaving && 'cursor-not-allowed',
               )}
               disabled={!isDirty || isSaving}

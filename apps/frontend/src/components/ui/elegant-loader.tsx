@@ -1,124 +1,95 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { Logo } from '@/components/ui/logo';
 
 interface ElegantLoaderProps {
   message?: string;
   className?: string;
+  fullScreen?: boolean;
+  progress?: number;
 }
 
 export function ElegantLoader({
   message = '載入中...',
   className,
+  fullScreen = true,
+  progress,
 }: ElegantLoaderProps) {
   return (
     <div
       className={cn(
-        'fixed inset-0 z-100 flex flex-col items-center justify-center',
-        'bg-slate-950/80 backdrop-blur-xl',
+        'flex flex-col items-center justify-center',
+        fullScreen
+          ? 'fixed inset-0 z-100 bg-slate-50/80 dark:bg-[#060c15]/80 backdrop-blur-xl transition-colors duration-500'
+          : 'relative w-full h-full py-8',
         className,
       )}
     >
-      {/* Animated Orbs Container */}
-      <div className="relative w-32 h-32 mb-8">
-        {/* Primary Orb - Outer glow */}
-        <div
-          className="absolute inset-0 rounded-full bg-linear-to-br from-white/20 to-white/5 blur-2xl animate-pulse"
-          style={{ animationDuration: '2s' }}
+      {/* Animated Rings Container */}
+      <div className="relative flex items-center justify-center w-32 h-32 mb-8">
+        {/* Outer Ring - Spins Clockwise */}
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
+          className="absolute inset-0 rounded-full border-4 border-emerald-500/10 dark:border-emerald-500/20 border-t-emerald-500 dark:border-t-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.3)]"
         />
 
-        {/* Secondary Orb - Floating ring */}
-        <div
-          className="absolute inset-2 rounded-full border border-white/20 animate-spin"
-          style={{ animationDuration: '8s' }}
+        {/* Inner Ring - Spins Counter-Clockwise */}
+        <motion.div
+          animate={{ rotate: -360 }}
+          transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}
+          className="absolute inset-4 rounded-full border-4 border-teal-500/10 dark:border-teal-500/20 border-b-teal-500 dark:border-b-teal-500"
         />
 
-        {/* Tertiary Orb - Inner glass */}
-        <div
-          className="absolute inset-4 rounded-full bg-linear-to-br from-white/30 via-white/10 to-transparent backdrop-blur-md border border-white/30 shadow-2xl"
-          style={{
-            animation: 'breathe 2.5s ease-in-out infinite',
-          }}
+        {/* Inner Core Pulsing Background */}
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
+          transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+          className="absolute inset-10 rounded-full bg-emerald-500/20 blur-md"
         />
 
-        {/* Core - Bright center */}
-        <div
-          className="absolute inset-8 rounded-full bg-white/50 blur-md"
-          style={{
-            animation: 'breathe 2s ease-in-out infinite',
-            animationDelay: '0.5s',
-          }}
-        />
-
-        {/* Floating particles */}
-        <div
-          className="absolute top-1/2 left-1/2 w-1.5 h-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80"
-          style={{
-            animation: 'float 3s ease-in-out infinite',
-          }}
-        />
-        <div
-          className="absolute top-1/4 left-1/4 w-1 h-1 rounded-full bg-white/60"
-          style={{
-            animation: 'float 2.5s ease-in-out infinite',
-            animationDelay: '0.8s',
-          }}
-        />
-        <div
-          className="absolute top-3/4 right-1/4 w-1 h-1 rounded-full bg-white/60"
-          style={{
-            animation: 'float 3.2s ease-in-out infinite',
-            animationDelay: '1.2s',
-          }}
-        />
+        {/* Center Logo */}
+        <motion.div
+          animate={{ scale: [0.95, 1.05, 0.95] }}
+          transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+        >
+          <Logo className="w-6 h-6 text-emerald-500" />
+        </motion.div>
       </div>
 
-      {/* Message */}
-      <p className="text-white/90 text-lg font-playfair tracking-widest">
+      {/* Message Text */}
+      <motion.p
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+        className="font-outfit text-slate-800 dark:text-white/90 text-lg sm:text-xl font-semibold tracking-[0.2em] uppercase"
+      >
         {message}
-      </p>
+      </motion.p>
 
-      {/* Subtle loading bar */}
-      <div className="mt-6 w-48 h-0.5 bg-white/10 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-linear-to-r from-transparent via-white/60 to-transparent rounded-full"
-          style={{
-            animation: 'shimmer 1.5s ease-in-out infinite',
-          }}
-        />
+      {/* Loading Progress Bar Illusion or Actual Progress */}
+      <div className="mt-8 w-48 h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden relative">
+        {typeof progress === 'number' ? (
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="absolute inset-y-0 left-0 bg-emerald-500 rounded-full"
+          />
+        ) : (
+          <motion.div
+            animate={{ x: ['-100%', '200%'] }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+            className="absolute inset-y-0 left-0 w-1/2 bg-linear-to-r from-transparent via-emerald-500 to-transparent rounded-full"
+          />
+        )}
       </div>
-
-      {/* Custom keyframes */}
-      <style jsx>{`
-        @keyframes breathe {
-          0%,
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-          50% {
-            transform: scale(1.08);
-            opacity: 0.8;
-          }
-        }
-        @keyframes float {
-          0%,
-          100% {
-            transform: translate(-50%, -50%) translateY(0);
-          }
-          50% {
-            transform: translate(-50%, -50%) translateY(-8px);
-          }
-        }
-        @keyframes shimmer {
-          0% {
-            transform: translateX(-100%);
-          }
-          100% {
-            transform: translateX(200%);
-          }
-        }
-      `}</style>
+      {typeof progress === 'number' && (
+        <p className="mt-3 text-sm font-bold text-emerald-600 dark:text-emerald-400 drop-shadow-sm">
+          {Math.round(progress)}%
+        </p>
+      )}
     </div>
   );
 }

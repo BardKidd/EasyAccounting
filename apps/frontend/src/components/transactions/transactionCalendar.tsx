@@ -72,12 +72,12 @@ interface TransactionCalendarProps {
 
 const CustomToolbar = ({ date, onNavigate, label }: ToolbarProps) => {
   return (
-    <div className="flex items-center justify-between p-4 px-6 mb-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+    <div className="flex items-center justify-between p-4 px-6 mb-2 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md rounded-t-3xl border-b border-slate-200/50 dark:border-white/10">
       <div className="flex items-center gap-2">
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8 rounded-full border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-all"
+          className="h-8 w-8 rounded-full bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/50 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 shadow-sm transition-all duration-300"
           onClick={() => onNavigate('PREV')}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -88,7 +88,7 @@ const CustomToolbar = ({ date, onNavigate, label }: ToolbarProps) => {
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8 rounded-full border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-all"
+          className="h-8 w-8 rounded-full bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/50 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 shadow-sm transition-all duration-300"
           onClick={() => onNavigate('NEXT')}
         >
           <ChevronRight className="h-4 w-4" />
@@ -98,7 +98,7 @@ const CustomToolbar = ({ date, onNavigate, label }: ToolbarProps) => {
       <Button
         variant="outline"
         size="sm"
-        className="h-8 px-4 text-xs font-medium rounded-full border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-900/30 hover:text-teal-800 dark:hover:text-teal-200 hover:border-teal-300 dark:hover:border-teal-700 transition-all"
+        className="h-8 px-4 text-xs font-medium rounded-full bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200/50 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 hover:text-emerald-800 dark:hover:text-emerald-200 transition-all shadow-sm"
         onClick={() => onNavigate('TODAY')}
       >
         今天
@@ -278,7 +278,7 @@ export default function TransactionCalendar({
   );
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden ring-1 ring-slate-100 dark:ring-slate-900">
+    <div className="bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl rounded-3xl shadow-xl border border-slate-200/50 dark:border-white/10 overflow-hidden">
       <div className="h-[calc(100vh-200px)] min-h-[600px] p-0">
         <DnDCalendar
           localizer={localizer}

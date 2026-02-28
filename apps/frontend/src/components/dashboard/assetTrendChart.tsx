@@ -54,14 +54,15 @@ export default function AssetTrendChart({
             : param.color;
 
           let label = param.seriesName;
+          let valueStyling = isDark ? 'text-white' : 'text-slate-900';
 
           result += `
             <div class="flex items-center justify-between gap-4 text-xs font-mono mb-1">
               <span class="flex items-center gap-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}">
                 <span class="w-2 h-2 rounded-full" style="background-color: ${color}"></span>
-                ${label}
+                  ${label}
               </span>
-              <span class="font-bold ${isDark ? 'text-white' : 'text-slate-900'}">$${value}</span>
+              <span class="font-bold tracking-tight ${valueStyling}">$${value}</span>
             </div>
           `;
         });
@@ -179,8 +180,8 @@ export default function AssetTrendChart({
         barMaxWidth: 12,
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#0d9488' }, // Teal-600
-            { offset: 1, color: 'rgba(13, 148, 136, 0.1)' },
+            { offset: 0, color: '#10b981' }, // emerald-500
+            { offset: 1, color: 'rgba(16, 185, 129, 0.1)' },
           ]),
           borderRadius: [4, 4, 0, 0],
         },
@@ -207,15 +208,15 @@ export default function AssetTrendChart({
         showSymbol: false,
         lineStyle: {
           width: 3,
-          color: '#3b82f6', // Blue-500 (kept distinct but professional)
-          shadowColor: 'rgba(59, 130, 246, 0.5)',
+          color: '#14b8a6', // teal-500
+          shadowColor: 'rgba(20, 184, 166, 0.5)',
           shadowBlur: 10,
         },
         areaStyle: {
           opacity: 0.1,
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#8b5cf6' },
-            { offset: 1, color: 'rgba(139, 92, 246, 0)' },
+            { offset: 0, color: '#0d9488' },
+            { offset: 1, color: 'rgba(13, 148, 136, 0)' },
           ]),
         },
         data: data.map((item) => item.balance),
@@ -224,18 +225,19 @@ export default function AssetTrendChart({
   };
 
   return (
-    <Card className="h-[450px] border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 group dark:shadow-teal-glow">
-      <CardHeader className="pb-2 border-b border-slate-200 dark:border-white/5 flex flex-row items-center justify-between">
+    <Card className="h-[450px] border-0 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/40 ring-1 ring-white/50 dark:ring-white/10 group dark:shadow-teal-glow relative overflow-hidden">
+      <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none" />
+      <CardHeader className="pb-2 border-b border-slate-200 dark:border-white/5 flex flex-row items-center justify-between relative z-10">
         <div className="space-y-1">
-          <CardTitle className="text-xl font-bold font-playfair text-slate-900 dark:text-white">
+          <CardTitle className="text-xl font-bold font-playfair tracking-wide text-slate-800 dark:text-slate-100">
             財務概況
           </CardTitle>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
             收支與資產趨勢分析
           </p>
         </div>
       </CardHeader>
-      <CardContent className="h-[370px] pt-4">
+      <CardContent className="h-[370px] pt-4 relative z-10">
         {isLoading ? (
           <div className="h-full w-full flex items-center justify-center bg-white/5 animate-pulse rounded-lg">
             <span className="text-slate-400">載入中...</span>

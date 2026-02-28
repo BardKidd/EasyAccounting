@@ -54,11 +54,16 @@ export function MergeDiscountDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border-slate-200/50 dark:border-white/10 rounded-3xl shadow-2xl">
         <DialogHeader>
-          <DialogTitle>作為折扣/費用合併</DialogTitle>
-          <DialogDescription>
-            將此筆明細的金額（{sourceTransaction.transactionData.amount}
+          <DialogTitle className="text-xl font-bold font-playfair bg-linear-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent">
+            作為折扣/費用合併
+          </DialogTitle>
+          <DialogDescription className="text-slate-500 dark:text-slate-400">
+            將此筆明細的金額（
+            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+              {sourceTransaction.transactionData.amount}
+            </span>
             ）合併到另一筆消費的折扣或手續費中，系統將把此筆明細標記為略過。
           </DialogDescription>
         </DialogHeader>
@@ -111,14 +116,18 @@ export function MergeDiscountDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="mt-4">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="rounded-xl font-medium border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
             取消
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={!selectedTargetId}
-            className="bg-teal-500 hover:bg-teal-600 text-white"
+            className="rounded-xl font-bold bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/20 transition-all duration-300 hover:-translate-y-0.5"
           >
             確認合併
           </Button>

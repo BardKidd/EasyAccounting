@@ -67,9 +67,10 @@ function RecentTransactions({
   };
 
   return (
-    <Card className="col-span-3 border-border bg-card shadow-sm h-full flex flex-col hover:shadow-md transition-shadow">
-      <CardHeader className="border-b border-border pb-4">
-        <CardTitle className="text-lg font-bold text-foreground">
+    <Card className="col-span-3 border-0 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/40 ring-1 ring-white/50 dark:ring-white/10 dark:shadow-teal-glow h-full flex flex-col hover:shadow-2xl transition-shadow relative overflow-hidden">
+      <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none" />
+      <CardHeader className="border-b border-slate-200 dark:border-white/5 pb-4 relative z-10">
+        <CardTitle className="text-lg font-bold font-playfair text-slate-800 dark:text-slate-100">
           近期交易
         </CardTitle>
       </CardHeader>
@@ -95,7 +96,7 @@ function RecentTransactions({
               return (
                 <div
                   key={item.id}
-                  className="flex items-center p-3 rounded-xl hover:bg-accent/50 transition-all duration-200 group border border-transparent hover:border-border"
+                  className="flex items-center p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:shadow-md transition-all duration-300 group border border-transparent hover:border-slate-200 dark:hover:border-slate-700/50 hover:-translate-y-0.5"
                 >
                   <div
                     className={`flex h-10 w-10 items-center justify-center rounded-xl shadow-inner ${
