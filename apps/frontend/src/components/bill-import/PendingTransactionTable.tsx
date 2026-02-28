@@ -125,6 +125,7 @@ const TransactionRow = React.memo(
         <TableCell className="text-center">
           <Checkbox
             checked={!isSkipped}
+            className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 border-slate-300 dark:border-slate-600"
             onCheckedChange={(checked) => {
               onUpdate(tx.id, {
                 status: checked
@@ -166,7 +167,7 @@ const TransactionRow = React.memo(
                 });
               }
             }}
-            className="h-8 bg-transparent border-transparent hover:border-slate-200 dark:hover:border-slate-800 focus:bg-background focus:border-ring transition-colors cursor-pointer w-[120px]"
+            className="h-8 bg-transparent border-transparent hover:border-slate-200 dark:hover:border-slate-800 focus:bg-background focus:border-ring transition-colors cursor-pointer w-[110px]"
           />
         </TableCell>
         <TableCell>
@@ -293,9 +294,11 @@ const TransactionRow = React.memo(
           >
             <SelectTrigger
               className={cn(
-                'h-8 bg-transparent border-transparent hover:border-slate-200 dark:hover:border-slate-800 transition-colors w-[140px]',
+                'h-8 bg-transparent border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors w-[140px] focus:ring-emerald-500 focus:border-emerald-500 font-medium',
                 !tx.transactionData.categoryId &&
                   'border-red-300 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10 text-red-600 dark:text-red-400 hover:border-red-400 dark:hover:border-red-800',
+                tx.transactionData.categoryId &&
+                  'text-emerald-700 dark:text-emerald-400',
               )}
             >
               <SelectValue placeholder="選擇類別" />
@@ -307,7 +310,7 @@ const TransactionRow = React.memo(
         </TableCell>
         <TableCell>
           {tx.isInstallment && (
-            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+            <span className="text-xs font-semibold bg-emerald-100/80 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 px-2.5 py-1 rounded-full ring-1 ring-inset ring-emerald-500/20 dark:ring-emerald-500/30">
               {tx.installmentNumber ? `第 ${tx.installmentNumber} 期` : '分期'}
             </span>
           )}
@@ -442,7 +445,10 @@ export function PendingTransactionTable({
         </label>
         <Select value={selectedAccountId} onValueChange={onAccountChange}>
           <SelectTrigger
-            className={cn('w-[240px]', !selectedAccountId && 'border-red-500')}
+            className={cn(
+              'w-[240px] rounded-xl border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium',
+              !selectedAccountId && 'border-red-500 ring-2 ring-red-500/20',
+            )}
           >
             <SelectValue placeholder="選擇此帳單的帳戶" />
           </SelectTrigger>
@@ -462,20 +468,36 @@ export function PendingTransactionTable({
       {/* Virtualized Table */}
       <div
         ref={scrollContainerRef}
-        className="rounded-md border overflow-auto"
+        className="rounded-3xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl overflow-auto"
         style={{ maxHeight: '65vh' }}
       >
         <Table>
-          <TableHeader className="sticky top-0 z-10 bg-background">
-            <TableRow>
-              <TableHead className="w-[50px] text-center">匯入</TableHead>
-              <TableHead className="w-[120px]">日期</TableHead>
-              <TableHead className="w-[80px]">時間</TableHead>
-              <TableHead className="w-[200px]">商家/描述</TableHead>
-              <TableHead className="w-[100px]">金額</TableHead>
-              <TableHead className="w-[150px]">類別</TableHead>
-              <TableHead className="w-[100px]">分期</TableHead>
-              <TableHead className="w-[100px]">狀態</TableHead>
+          <TableHeader className="sticky top-0 z-10 bg-slate-100/90 dark:bg-slate-900/90 backdrop-blur-md shadow-sm border-b border-slate-200/50 dark:border-white/10">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-[50px] text-center font-bold text-slate-700 dark:text-slate-300">
+                匯入
+              </TableHead>
+              <TableHead className="w-[130px] font-bold text-slate-700 dark:text-slate-300">
+                日期
+              </TableHead>
+              <TableHead className="w-[100px] font-bold text-slate-700 dark:text-slate-300">
+                時間
+              </TableHead>
+              <TableHead className="w-[260px] font-bold text-slate-700 dark:text-slate-300">
+                商家/描述
+              </TableHead>
+              <TableHead className="w-[100px] font-bold text-slate-700 dark:text-slate-300">
+                金額
+              </TableHead>
+              <TableHead className="w-[150px] font-bold text-slate-700 dark:text-slate-300">
+                類別
+              </TableHead>
+              <TableHead className="w-[70px] font-bold text-slate-700 dark:text-slate-300">
+                分期
+              </TableHead>
+              <TableHead className="w-[60px] font-bold text-slate-700 dark:text-slate-300">
+                狀態
+              </TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>

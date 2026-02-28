@@ -166,23 +166,27 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
 
   return (
     <div className="grid gap-8 md:grid-cols-2">
-      <Card className="backdrop-blur-xl bg-background/60 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b border-border/10">
+      <Card className="rounded-3xl bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border-slate-200/50 dark:border-white/10 shadow-xl overflow-hidden transition-all duration-300 flex flex-col h-full">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 p-6 border-b border-slate-200/50 dark:border-white/10">
           <div className="space-y-1">
-            <CardTitle className="text-xl font-semibold">支出分類</CardTitle>
-            <CardDescription>管理您的支出類別結構</CardDescription>
+            <CardTitle className="text-xl font-semibold text-slate-800 dark:text-slate-100">
+              支出分類
+            </CardTitle>
+            <CardDescription className="text-slate-500 dark:text-slate-400">
+              管理您的支出類別結構
+            </CardDescription>
           </div>
           <Button
             size="sm"
             variant="ghost"
-            className="cursor-pointer hover:bg-red-500/10 hover:text-red-500 transition-colors rounded-full"
+            className="cursor-pointer bg-slate-500/5 dark:bg-white/5 text-slate-700 dark:text-slate-200 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-500 dark:hover:text-white transition-all rounded-full border border-slate-200/50 dark:border-white/10 hover:border-transparent hover:shadow-lg hover:shadow-emerald-500/20"
             onClick={() => handleAddMain(RootType.EXPENSE)}
           >
             <Plus className="mr-2 h-4 w-4" />
             新增分類
           </Button>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="p-6 flex-1">
           {expenseTree.length > 0 ? (
             <div className="space-y-1">
               {expenseTree.map((node) => (
@@ -203,23 +207,27 @@ export function CategorySettings({ categories }: CategorySettingsProps) {
         </CardContent>
       </Card>
 
-      <Card className="backdrop-blur-xl bg-background/60 border-border/50 shadow-lg hover:shadow-xl transition-all duration-300">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b border-border/10">
+      <Card className="rounded-3xl bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border-slate-200/50 dark:border-white/10 shadow-xl overflow-hidden transition-all duration-300 flex flex-col h-full">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 p-6 border-b border-slate-200/50 dark:border-white/10">
           <div className="space-y-1">
-            <CardTitle className="text-xl font-semibold">收入分類</CardTitle>
-            <CardDescription>管理您的收入類別結構</CardDescription>
+            <CardTitle className="text-xl font-semibold text-slate-800 dark:text-slate-100">
+              收入分類
+            </CardTitle>
+            <CardDescription className="text-slate-500 dark:text-slate-400">
+              管理您的收入類別結構
+            </CardDescription>
           </div>
           <Button
             size="sm"
             variant="ghost"
-            className="cursor-pointer hover:bg-green-500/10 hover:text-green-500 transition-colors rounded-full"
+            className="cursor-pointer bg-slate-500/5 dark:bg-white/5 text-slate-700 dark:text-slate-200 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-500 dark:hover:text-white transition-all rounded-full border border-slate-200/50 dark:border-white/10 hover:border-transparent hover:shadow-lg hover:shadow-emerald-500/20"
             onClick={() => handleAddMain(RootType.INCOME)}
           >
             <Plus className="mr-2 h-4 w-4" />
             新增分類
           </Button>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="p-6 flex-1">
           {incomeTree.length > 0 ? (
             <div className="space-y-1">
               {incomeTree.map((node) => (

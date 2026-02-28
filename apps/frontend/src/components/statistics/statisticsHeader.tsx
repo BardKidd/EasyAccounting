@@ -165,11 +165,11 @@ export function StatisticsHeader({
             <Button
               variant="outline"
               className={cn(
-                'w-auto h-auto flex-row items-center justify-center py-2 px-4 gap-2 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer bg-white/50 dark:bg-transparent backdrop-blur-sm transition-all duration-200 shadow-sm',
-                open && 'border-indigo-500/50 ring-2 ring-indigo-500/20',
+                'w-auto h-auto flex-row items-center justify-center py-2 px-4 gap-2 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer bg-white/50 dark:bg-transparent backdrop-blur-sm transition-all duration-200 shadow-sm rounded-xl',
+                open && 'border-emerald-500/50 ring-2 ring-emerald-500/20',
               )}
             >
-              <CalendarIcon className="w-4 h-4 text-indigo-500/70 dark:text-indigo-400/70" />
+              <CalendarIcon className="w-4 h-4 text-emerald-500/70 dark:text-emerald-400/70" />
               <span className="font-bold text-lg font-playfair text-slate-800 dark:text-slate-100">
                 {getMainLabel(date)}
               </span>
@@ -179,7 +179,7 @@ export function StatisticsHeader({
             </Button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-[320px] p-0 border-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 ring-1 ring-slate-200 dark:ring-white/10"
+            className="w-[320px] p-0 border-0 bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 ring-1 ring-slate-200 dark:ring-white/10 rounded-3xl"
             align="center"
           >
             <ScrollArea className="h-[300px]">
@@ -192,9 +192,9 @@ export function StatisticsHeader({
                       key={idx}
                       variant="ghost"
                       className={cn(
-                        'justify-start h-auto py-3 px-4 flex-row items-center gap-2 font-normal rounded-xl transition-all duration-200',
+                        'justify-start h-auto py-3 px-4 flex-row items-center gap-2 font-normal rounded-2xl transition-all duration-200',
                         isSelected
-                          ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-medium'
+                          ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium'
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-200',
                       )}
                       onClick={() => {
@@ -229,21 +229,21 @@ export function StatisticsHeader({
         onValueChange={(v) => onPeriodChange(v as PeriodType)}
         className="order-1 sm:order-2"
       >
-        <TabsList className="bg-slate-100/50 dark:bg-white/5 p-1 border border-slate-200/50 dark:border-white/5">
+        <TabsList className="bg-slate-100/50 dark:bg-slate-900/50 p-1.5 border border-slate-200/50 dark:border-white/5 rounded-2xl backdrop-blur-md shadow-sm">
           <TabsTrigger
-            className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 data-[state=active]:shadow-sm transition-all duration-300"
+            className="rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-md transition-all duration-300 text-slate-500 font-medium"
             value={PeriodType.WEEK}
           >
             週
           </TabsTrigger>
           <TabsTrigger
-            className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 data-[state=active]:shadow-sm transition-all duration-300"
+            className="rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-md transition-all duration-300 text-slate-500 font-medium"
             value={PeriodType.MONTH}
           >
             月
           </TabsTrigger>
           <TabsTrigger
-            className="cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 data-[state=active]:shadow-sm transition-all duration-300"
+            className="rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-md transition-all duration-300 text-slate-500 font-medium"
             value={PeriodType.YEAR}
           >
             年

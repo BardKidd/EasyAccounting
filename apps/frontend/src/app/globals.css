@@ -43,11 +43,7 @@
   --radius-2xl: 1rem; /* 16px */
   --radius-3xl: 1.5rem; /* 24px */
 
-  --shadow-teal-glow: 0 0 15px -3px rgba(20, 184, 166, 0.5);
-}
-
-@utility shadow-teal-glow {
-  box-shadow: var(--shadow-teal-glow);
+  --font-outfit: var(--font-outfit);
 }
 
 :root {
@@ -63,8 +59,8 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.208 0.042 265.755);
 
-  /* Primary: Teal 600 */
-  --primary: oklch(0.58 0.15 180); /* teal-600 approx */
+  /* Primary: Emerald 600 */
+  --primary: oklch(0.62 0.16 150);
   --primary-foreground: oklch(0.985 0 0);
 
   /* Secondary: Slate 100 or White with Border (Used for buttons) */
@@ -84,7 +80,7 @@
   --border: oklch(0.896 0.016 263.295); /* slate-200 */
   --input: oklch(0.896 0.016 263.295);
 
-  --ring: oklch(0.58 0.15 180); /* teal-600 */
+  --ring: oklch(0.62 0.16 150); /* emerald-600 */
 
   --chart-1: oklch(0.58 0.15 180); /* teal-600 */
   --chart-2: oklch(0.5 0.13 180);
@@ -113,9 +109,9 @@
   --popover: oklch(0.279 0.041 260.031);
   --popover-foreground: oklch(0.985 0.002 247.839);
 
-  /* Primary: Teal 500 */
-  --primary: oklch(0.72 0.16 175); /* teal-500 approx */
-  --primary-foreground: oklch(1 0 0);
+  /* Primary: Emerald 500 */
+  --primary: oklch(0.7 0.17 150);
+  --primary-foreground: oklch(0.2 0.05 150);
 
   /* Secondary: Slate 800 */
   --secondary: oklch(0.279 0.041 260.031);
@@ -134,7 +130,7 @@
   --border: oklch(0.338 0.042 262.181); /* slate-700 */
   --input: oklch(0.338 0.042 262.181);
 
-  --ring: oklch(0.72 0.16 175); /* teal-500 */
+  --ring: oklch(0.7 0.17 150); /* emerald-500 */
 
   --chart-1: oklch(0.72 0.16 175); /* Teal */
   --chart-2: oklch(0.4 0.11 180);

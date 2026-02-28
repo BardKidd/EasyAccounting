@@ -11,7 +11,7 @@ export default async function AccountsPage() {
   return (
     <Container className="py-6 space-y-6 max-w-[1600px] px-4 md:px-8">
       <div className="space-y-1">
-        <h2 className="text-3xl font-bold tracking-tight bg-linear-to-r from-slate-900 to-slate-700 dark:from-white dark:to-white/60 bg-clip-text text-transparent font-playfair">
+        <h2 className="text-3xl font-bold font-outfit uppercase tracking-widest bg-linear-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent drop-shadow-sm">
           帳戶管理
         </h2>
         <p className="text-sm text-slate-500 dark:text-slate-400">

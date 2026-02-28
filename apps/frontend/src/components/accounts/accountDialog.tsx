@@ -31,12 +31,12 @@ function AccountDialog({
       <DialogContent
         className={
           currentAccountType === Account.CREDIT_CARD
-            ? 'sm:max-w-[800px] max-h-[90vh] overflow-y-auto bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-2xl border-slate-200 dark:border-white/10 shadow-2xl'
-            : 'sm:max-w-[425px] max-h-[90vh] overflow-y-auto bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-2xl border-slate-200 dark:border-white/10 shadow-2xl'
+            ? 'sm:max-w-[800px] max-h-[90vh] overflow-y-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-slate-200/50 dark:border-white/10 shadow-2xl rounded-3xl'
+            : 'sm:max-w-[425px] max-h-[90vh] overflow-y-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-slate-200/50 dark:border-white/10 shadow-2xl rounded-3xl'
         }
       >
         <DialogHeader className="border-b border-slate-200/50 dark:border-white/5 pb-4 mb-2">
-          <DialogTitle className="text-2xl font-bold font-playfair text-slate-900 dark:text-slate-50">
+          <DialogTitle className="text-2xl font-bold font-outfit uppercase tracking-widest text-slate-900 dark:text-slate-50">
             {isEditMode ? '編輯帳戶' : '新增帳戶'}
           </DialogTitle>
           <DialogDescription className="text-slate-500 dark:text-slate-400">

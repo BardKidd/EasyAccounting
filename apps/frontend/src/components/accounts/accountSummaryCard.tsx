@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface AccountSummaryCardProps {
   accounts: AccountType[];
@@ -41,9 +42,9 @@ function DashboardAccountGroup({
   const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
 
   return (
-    <div className="border border-slate-200 dark:border-white/5 rounded-xl overflow-hidden bg-slate-50 dark:bg-white/5">
+    <div className="border border-slate-200/50 dark:border-white/10 rounded-2xl overflow-hidden bg-white/40 dark:bg-[#0f172a]/40 backdrop-blur-md shadow-sm transition-all duration-300 hover:shadow-md">
       <div
-        className="flex items-center justify-between p-3 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+        className="flex items-center justify-between p-3.5 cursor-pointer hover:bg-white dark:hover:bg-slate-800/50 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex items-center gap-2">
@@ -73,38 +74,48 @@ function DashboardAccountGroup({
         </div>
       </div>
 
-      {accounts.length > 0 && isOpen && (
-        <div className="bg-white dark:bg-black/20 px-3 py-1 border-t border-slate-200 dark:border-white/5">
-          {accounts.map((account, index) => (
-            <div key={account.id}>
-              <div className="flex items-center justify-between py-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-1.5 h-1.5 rounded-full ring-2 ring-white/10"
-                    style={{ backgroundColor: account.color || 'gray' }}
-                  />
-                  <span className="text-slate-600 dark:text-slate-300">
-                    {account.name}
-                  </span>
-                </div>
-                <span
-                  className={cn(
-                    'font-mono font-medium text-slate-700 dark:text-slate-300',
-                    account.balance < 0
-                      ? 'text-rose-600 dark:text-rose-400'
-                      : '',
+      <AnimatePresence initial={false}>
+        {accounts.length > 0 && isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="bg-slate-50/80 dark:bg-black/20 px-4 py-2 border-t border-slate-100 dark:border-white/5 backdrop-blur-md">
+              {accounts.map((account, index) => (
+                <div key={account.id} className="group/item">
+                  <div className="flex items-center justify-between py-2.5 text-sm transition-transform group-hover/item:translate-x-1 duration-300">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-1.5 h-1.5 rounded-full ring-2 ring-white/10"
+                        style={{ backgroundColor: account.color || 'gray' }}
+                      />
+                      <span className="text-slate-600 dark:text-slate-300">
+                        {account.name}
+                      </span>
+                    </div>
+                    <span
+                      className={cn(
+                        'font-mono font-medium text-slate-700 dark:text-slate-300',
+                        account.balance < 0
+                          ? 'text-rose-500 dark:text-rose-400'
+                          : '',
+                      )}
+                    >
+                      ${account.balance.toLocaleString()}
+                    </span>
+                  </div>
+                  {index < accounts.length - 1 && (
+                    <Separator className="bg-slate-200/50 dark:bg-white/5" />
                   )}
-                >
-                  ${account.balance.toLocaleString()}
-                </span>
-              </div>
-              {index < accounts.length - 1 && (
-                <Separator className="bg-slate-200 dark:bg-white/5" />
-              )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -135,16 +146,19 @@ function AccountSummaryCard({ accounts }: AccountSummaryCardProps) {
   ];
 
   return (
-    <Card className="h-full flex flex-col border-0 bg-white/80 dark:bg-slate-900/50 backdrop-blur-md shadow-lg shadow-slate-200/50 dark:shadow-black/10 ring-1 ring-slate-200 dark:ring-white/10 dark:shadow-teal-glow">
-      <CardHeader className="pb-4 border-b border-slate-200 dark:border-white/5">
+    <Card className="h-full flex flex-col border-0 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/40 ring-1 ring-white/50 dark:ring-white/10 dark:shadow-teal-glow relative overflow-hidden">
+      <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none" />
+      <CardHeader className="pb-4 border-b border-slate-200 dark:border-white/5 relative z-10">
         <CardTitle className="text-lg font-medium flex justify-between items-center text-slate-700 dark:text-slate-200">
-          <span>帳戶概覽</span>
-          <span className="text-xl font-bold tracking-tight font-playfair text-slate-900 dark:text-white">
+          <span className="font-playfair font-bold text-slate-800 dark:text-slate-100">
+            帳戶概覽
+          </span>
+          <span className="text-2xl font-bold tracking-tight font-outfit text-slate-900 dark:text-white drop-shadow-sm">
             ${totalBalance.toLocaleString()}
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar pt-4">
+      <CardContent className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar pt-4 relative z-10">
         {accountTypeOrder.map((type) => {
           const typeAccounts = groupedAccounts[type] || [];
           return (

@@ -6,23 +6,23 @@
   @apply font-sans text-slate-600 dark:text-slate-400;
 }
 
+/* Month View Grid */
+.rbc-month-view {
+  @apply bg-transparent border-slate-200/50 dark:border-white/10 rounded-b-3xl overflow-hidden;
+}
+
 /* Header */
 .rbc-header {
-  @apply py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 uppercase tracking-wider;
+  @apply py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 uppercase tracking-wider;
 }
 
 .rbc-header + .rbc-header {
-  @apply border-l border-slate-200 dark:border-slate-700;
-}
-
-/* Month View Grid */
-.rbc-month-view {
-  @apply bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden;
+  @apply border-l border-slate-200/50 dark:border-white/10;
 }
 
 /* Row Styling */
 .rbc-month-row {
-  @apply border-slate-200 dark:border-slate-700;
+  @apply border-slate-200/50 dark:border-white/10;
   min-height: 100px;
   /* Laptop/Small Screen: Constrain height to force "+More" popup style */
   max-height: 140px;
@@ -38,15 +38,15 @@
 }
 
 .rbc-day-bg {
-  @apply bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 transition-colors duration-200;
+  @apply bg-transparent border-slate-200/50 dark:border-white/10 transition-colors duration-200;
 }
 
 .rbc-day-bg:hover {
-  @apply bg-slate-50 dark:bg-slate-700/50;
+  @apply bg-slate-100/50 dark:bg-slate-800/30;
 }
 
 .rbc-day-bg + .rbc-day-bg {
-  @apply border-l border-slate-200 dark:border-slate-700;
+  @apply border-l border-slate-200/50 dark:border-white/10;
 }
 
 /* Date Cell Content */
@@ -60,11 +60,11 @@
 
 /* Today Highlight */
 .rbc-today {
-  @apply bg-teal-50 dark:bg-teal-900/10;
+  @apply bg-emerald-50/50 dark:bg-emerald-900/10;
 }
 
 .rbc-today .rbc-date-cell {
-  @apply text-teal-600 dark:text-teal-400 font-bold;
+  @apply text-emerald-600 dark:text-emerald-400 font-bold;
 }
 
 /* Events Container */
@@ -78,11 +78,11 @@
 }
 
 .rbc-event.rbc-selected {
-  @apply bg-transparent opacity-100 ring-2 ring-teal-500 ring-offset-1 rounded-sm;
+  @apply bg-transparent opacity-100 ring-2 ring-emerald-500 ring-offset-1 rounded-sm;
 }
 
 .rbc-event:focus {
-  @apply outline-none ring-2 ring-teal-400/50 rounded-sm;
+  @apply outline-none ring-2 ring-emerald-400/50 rounded-sm;
 }
 
 /* Show More Overlay (Popup) */
@@ -99,7 +99,7 @@
 
 /* Show More Link */
 .rbc-show-more {
-  @apply text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:underline bg-transparent px-1 py-0.5 rounded-sm transition-colors cursor-pointer block mt-1;
+  @apply text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline bg-transparent px-1 py-0.5 rounded-sm transition-colors cursor-pointer block mt-1;
 }
 
 /* Off-range text */

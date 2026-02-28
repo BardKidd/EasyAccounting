@@ -60,7 +60,7 @@ export function StatisticsClient({ initialDate }: StatisticsClientProps) {
   return (
     <Container className="py-8 space-y-8 max-w-[1600px] px-4 md:px-8">
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight bg-linear-to-r from-slate-900 to-slate-700 dark:from-white dark:to-white/60 bg-clip-text text-transparent font-playfair">
+        <h2 className="text-3xl font-bold font-outfit uppercase tracking-widest bg-linear-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent drop-shadow-sm">
           統計報表
         </h2>
         <div className="flex items-center gap-2">
@@ -79,34 +79,34 @@ export function StatisticsClient({ initialDate }: StatisticsClientProps) {
         />
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6 p-1 bg-slate-100/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-white/5 rounded-2xl backdrop-blur-sm">
+          <TabsList className="h-auto grid w-full grid-cols-5 gap-1 mb-6 p-1.5 bg-slate-100/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-white/5 rounded-2xl backdrop-blur-md shadow-sm items-stretch">
             <TabsTrigger
               value="overview"
-              className="rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 transition-all duration-300"
+              className="h-full py-2.5 rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 transition-all duration-300 text-slate-500 font-medium"
             >
               總覽
             </TabsTrigger>
             <TabsTrigger
               value="details"
-              className="rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 transition-all duration-300"
+              className="h-full py-2.5 rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 transition-all duration-300 text-slate-500 font-medium"
             >
               明細
             </TabsTrigger>
             <TabsTrigger
               value="category"
-              className="rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 transition-all duration-300"
+              className="h-full py-2.5 rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 transition-all duration-300 text-slate-500 font-medium"
             >
               類別
             </TabsTrigger>
             <TabsTrigger
               value="ranking"
-              className="rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 transition-all duration-300"
+              className="h-full py-2.5 rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 transition-all duration-300 text-slate-500 font-medium"
             >
               排行
             </TabsTrigger>
             <TabsTrigger
               value="account"
-              className="rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-300 transition-all duration-300"
+              className="h-full py-2.5 rounded-xl cursor-pointer data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-md data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 transition-all duration-300 text-slate-500 font-medium"
             >
               帳戶
             </TabsTrigger>

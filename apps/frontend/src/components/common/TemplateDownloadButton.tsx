@@ -43,7 +43,7 @@ export function TemplateDownloadButton({
       onClick={handleDownload}
       disabled={loading}
       className={cn(
-        'cursor-pointer bg-orange-600 hover:bg-orange-700 text-white h-11 rounded-full shadow-lg shadow-orange-500/20 transition-all active:scale-95',
+        'cursor-pointer bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-300 dark:hover:border-emerald-700 h-11 rounded-full shadow-sm transition-all active:scale-95',
         className,
       )}
       title="下載匯入範本"
