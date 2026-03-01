@@ -279,7 +279,7 @@ export default function TransactionCalendar({
 
   return (
     <div className="bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl rounded-3xl shadow-xl border border-slate-200/50 dark:border-white/10 overflow-hidden">
-      <div className="h-[calc(100vh-200px)] min-h-[600px] p-0">
+      <div className="h-[calc(100vh-220px)] min-h-[750px] p-0">
         <DnDCalendar
           localizer={localizer}
           events={events}
