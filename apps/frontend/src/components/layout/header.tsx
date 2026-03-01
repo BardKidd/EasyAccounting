@@ -66,78 +66,80 @@ function Header() {
   }, [user.name]);
 
   return (
-    <header className="sticky top-4 z-50 mx-4 md:mr-8 mt-4 rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-lg shadow-slate-200/20 dark:shadow-black/20 transition-all duration-300 hover:shadow-xl group">
-      <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none rounded-2xl" />
-      <div className="flex h-16 items-center px-6 gap-4 relative z-10">
-        {/* Breadcrumbs or Page Title could go here in future */}
-        <div className="flex-1">
-          {/* Placeholder for potential breadcrumbs */}
-        </div>
+    <>
+      <header className="sticky top-4 z-50 mx-4 md:mr-8 mt-4 rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-lg shadow-slate-200/20 dark:shadow-black/20 transition-all duration-300 hover:shadow-xl group">
+        <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none rounded-2xl" />
+        <div className="flex h-16 items-center px-6 gap-4 relative z-10">
+          {/* Breadcrumbs or Page Title could go here in future */}
+          <div className="flex-1">
+            {/* Placeholder for potential breadcrumbs */}
+          </div>
 
-        <div className="flex items-center gap-2 md:gap-4">
-          <ModeToggle />
+          <div className="flex items-center gap-2 md:gap-4">
+            <ModeToggle />
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 cursor-pointer relative rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            onClick={() => router.push('/reconciliation')}
-          >
-            <Bell className="h-5 w-5 text-slate-500 dark:text-slate-400" />
-            {notificationCount > 0 && (
-              <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)] ring-2 ring-white dark:ring-[#0f172a] animate-pulse" />
-            )}
-            <span className="sr-only">Toggle notifications</span>
-          </Button>
-
-          <div className="h-8 w-px bg-slate-200 dark:bg-white/10 mx-1 hidden md:block"></div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="relative h-10 w-10 rounded-full border border-slate-200/50 dark:border-white/10 p-0 font-bold hover:scale-105 transition-all cursor-pointer ring-offset-background focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 overflow-hidden shadow-sm"
-              >
-                <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-emerald-500 to-teal-400 text-white shadow-inner">
-                  {getFirstLetterAsAvatar}
-                </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-60 rounded-xl shadow-xl border-border bg-popover/95 backdrop-blur-md"
-              align="end"
-              forceMount
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 cursor-pointer relative rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              onClick={() => router.push('/reconciliation')}
             >
-              <DropdownMenuLabel className="font-normal p-4">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-base font-semibold leading-none tracking-wide text-foreground">
-                    {user.name}
-                  </p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user.email}
-                  </p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent focus:text-accent-foreground rounded-md m-1">
-                個人檔案
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent focus:text-accent-foreground rounded-md m-1">
-                設定
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem
-                className="text-destructive cursor-pointer py-2.5 px-3 focus:bg-destructive/10 rounded-md m-1 focus:text-destructive"
-                onClick={handleLogout}
+              <Bell className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+              {notificationCount > 0 && (
+                <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)] ring-2 ring-white dark:ring-[#0f172a] animate-pulse" />
+              )}
+              <span className="sr-only">Toggle notifications</span>
+            </Button>
+
+            <div className="h-8 w-px bg-slate-200 dark:bg-white/10 mx-1 hidden md:block"></div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="relative h-10 w-10 rounded-full border border-slate-200/50 dark:border-white/10 p-0 font-bold hover:scale-105 transition-all cursor-pointer ring-offset-background focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 overflow-hidden shadow-sm"
+                >
+                  <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-emerald-500 to-teal-400 text-white shadow-inner">
+                    {getFirstLetterAsAvatar}
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-60 rounded-xl shadow-xl border-border bg-popover/95 backdrop-blur-md"
+                align="end"
+                forceMount
               >
-                登出
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuLabel className="font-normal p-4">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-base font-semibold leading-none tracking-wide text-foreground">
+                      {user.name}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-border" />
+                <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent focus:text-accent-foreground rounded-md m-1">
+                  個人檔案
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent focus:text-accent-foreground rounded-md m-1">
+                  設定
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-border" />
+                <DropdownMenuItem
+                  className="text-destructive cursor-pointer py-2.5 px-3 focus:bg-destructive/10 rounded-md m-1 focus:text-destructive"
+                  onClick={handleLogout}
+                >
+                  登出
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-      </div>
+      </header>
       {isLoading && <ElegantLoader message="登出中..." />}
-    </header>
+    </>
   );
 }
 
