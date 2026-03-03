@@ -5,6 +5,10 @@ import CreditCardDetail from '@/models/CreditCardDetail';
 import sequelize from '@/utils/postgres';
 import { StatusCodes } from 'http-status-codes';
 import { Account as AccountEnum } from '@repo/shared';
+import {
+  deleteTemplatesByAccountId,
+  archiveTemplatesByAccountId,
+} from '@/services/recurringTemplateService';
 
 const getAccountsByUser = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -53,7 +57,7 @@ const getAccountsByUser = (req: Request, res: Response) => {
     return res
       .status(StatusCodes.OK)
       .json(
-        responseHelper(true, accountsData, 'Get accounts successfully', null)
+        responseHelper(true, accountsData, 'Get accounts successfully', null),
       );
   });
 };
@@ -76,7 +80,7 @@ const addAccount = (req: Request, res: Response) => {
             ...req.body.creditCardDetail,
             accountId: account.id,
           },
-          { transaction: t }
+          { transaction: t },
         );
       }
 
@@ -94,8 +98,8 @@ const addAccount = (req: Request, res: Response) => {
             true,
             reloadedAccount,
             'Account created successfully',
-            null
-          )
+            null,
+          ),
         );
     } catch (error) {
       await t.rollback();
@@ -138,7 +142,7 @@ const editAccount = (req: Request, res: Response) => {
               ...req.body.creditCardDetail,
               accountId,
             },
-            { transaction: t }
+            { transaction: t },
           );
         }
       }
@@ -157,15 +161,77 @@ const editAccount = (req: Request, res: Response) => {
 const deleteAccount = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const { userId } = req.user;
-    await Account.destroy({
-      where: {
-        id: req.params.accountId,
-        userId,
-      },
-    });
+    const accountId = req.params.accountId as string;
+
+    const t = await sequelize.transaction();
+    try {
+      // 先刪除所有關聯的 ACTIVE/ARCHIVED templates
+      await deleteTemplatesByAccountId(accountId, userId, t);
+
+      await Account.destroy({
+        where: { id: accountId, userId },
+        transaction: t,
+        individualHooks: true,
+      });
+      await t.commit();
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+
     return res
       .status(StatusCodes.OK)
       .json(responseHelper(true, null, '該帳戶已刪除', null));
+  });
+};
+
+const archiveAccount = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const { userId } = req.user;
+    const accountId = req.params.accountId as string;
+
+    const t = await sequelize.transaction();
+    try {
+      await Account.update(
+        { isArchived: true },
+        { where: { id: accountId, userId }, transaction: t },
+      );
+
+      // 將所有 ACTIVE templates 設為 ARCHIVED
+      await archiveTemplatesByAccountId(accountId, userId, t);
+
+      await t.commit();
+    } catch (err) {
+      await t.rollback();
+      throw err;
+    }
+
+    return res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, '該帳戶已封存', null));
+  });
+};
+
+const unarchiveAccount = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const { userId } = req.user;
+    const accountId = req.params.accountId as string;
+
+    await Account.update(
+      { isArchived: false },
+      { where: { id: accountId, userId } },
+    );
+
+    return res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(
+          true,
+          null,
+          '該帳戶已解除封存，週期交易規則需手動重啟',
+          null,
+        ),
+      );
   });
 };
 
@@ -174,4 +240,6 @@ export default {
   addAccount,
   editAccount,
   deleteAccount,
+  archiveAccount,
+  unarchiveAccount,
 };

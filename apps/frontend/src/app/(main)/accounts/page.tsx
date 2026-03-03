@@ -6,7 +6,9 @@ import { AccountType } from '@repo/shared';
 export const dynamic = 'force-dynamic'; // 取消 Next.js 的快取機制。
 
 export default async function AccountsPage() {
-  const accounts: AccountType[] = await service.getPersonnelAccounts();
+  const accounts: AccountType[] = await service.getPersonnelAccounts({
+    showArchived: true,
+  });
 
   return (
     <Container className="py-6 space-y-6 max-w-[1600px] px-4 md:px-8">

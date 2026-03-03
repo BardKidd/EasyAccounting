@@ -23,11 +23,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { cn, getErrorMessage } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { ACCOUNT_ICONS, IconName } from '@/lib/icon-mapping';
 import AccountDialog from '@/components/accounts/accountDialog';
 import AccountDeleteConfirmDialog from '@/components/accounts/accountDeleteConfirmDialog';
+import AccountArchiveConfirmDialog from '@/components/accounts/accountArchiveConfirmDialog';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Archive, RefreshCw, Pencil, Trash2 } from 'lucide-react';
+import services from '@/services';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 // import { ExcelExportButton } from '@/components/common/ExcelExportButton';
 // import { ExcelImportButton } from '@/components/common/ExcelImportButton';
 
@@ -37,7 +44,6 @@ const accountTypeOrder = [
   Account.BANK,
   Account.CREDIT_CARD,
   Account.SECURITIES_ACCOUNT,
-  Account.OTHER,
 ];
 // 大卡 icon
 const accountIcons = {
@@ -69,11 +75,15 @@ function CollapsibleAccountGroup({
   accounts,
   onEdit,
   onDelete,
+  onArchive,
+  onUnarchive,
 }: {
   type: Account;
   accounts: AccountType[];
   onEdit: (account: AccountType) => void;
   onDelete: (account: AccountType) => void;
+  onArchive: (account: AccountType) => void;
+  onUnarchive: (account: AccountType) => void;
 }) {
   const [isOpen, setIsOpen] = useState(true);
 
@@ -163,7 +173,17 @@ function CollapsibleAccountGroup({
                         />
                       </div>
                       <div>
-                        <div className="font-medium">{account.name}</div>
+                        <div className="font-medium flex items-center gap-2">
+                          {account.name}
+                          {account.isArchived && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0 h-4 bg-slate-100 dark:bg-slate-800 text-slate-500"
+                            >
+                              已封存
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -202,8 +222,34 @@ function CollapsibleAccountGroup({
                               onEdit(account);
                             }}
                           >
+                            <Pencil className="mr-2 h-4 w-4" />
                             編輯
                           </DropdownMenuItem>
+
+                          {account.isArchived ? (
+                            <DropdownMenuItem
+                              className="cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onUnarchive(account);
+                              }}
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              解除封存
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              className="cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onArchive(account);
+                              }}
+                            >
+                              <Archive className="mr-2 h-4 w-4" />
+                              封存帳戶
+                            </DropdownMenuItem>
+                          )}
+
                           <DropdownMenuItem
                             className="text-destructive cursor-pointer"
                             onClick={(e) => {
@@ -211,6 +257,7 @@ function CollapsibleAccountGroup({
                               onDelete(account);
                             }}
                           >
+                            <Trash2 className="mr-2 h-4 w-4" />
                             刪除
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -228,12 +275,16 @@ function CollapsibleAccountGroup({
 }
 
 function AccountList({ accounts }: AccountListProps) {
+  const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteConfirmDialogOpen, setIsDeleteConfirmDialogOpen] =
+    useState(false);
+  const [isArchiveConfirmDialogOpen, setIsArchiveConfirmDialogOpen] =
     useState(false);
   const [selectedAccount, setSelectedAccount] = useState<AccountType | null>(
     null,
   );
+  const [showArchived, setShowArchived] = useState(false);
 
   const handleCreate = () => {
     setSelectedAccount(null);
@@ -250,7 +301,27 @@ function AccountList({ accounts }: AccountListProps) {
     setIsDeleteConfirmDialogOpen(true);
   };
 
-  const groupedAccounts = accounts.reduce(
+  const handleArchive = (account: AccountType) => {
+    setSelectedAccount(account);
+    setIsArchiveConfirmDialogOpen(true);
+  };
+
+  const handleUnarchive = async (account: AccountType) => {
+    try {
+      if (!account.id) return;
+      await services.unarchiveAccount(account.id);
+      toast.success('帳戶已解除封存');
+      router.refresh();
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const filteredAccounts = showArchived
+    ? accounts
+    : accounts.filter((a) => !a.isArchived);
+
+  const groupedAccounts = filteredAccounts.reduce(
     (acc, account) => {
       const type = account.type as Account;
       if (!acc[type]) {
@@ -264,8 +335,20 @@ function AccountList({ accounts }: AccountListProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-end space-y-2">
-        {/* <h2 className="text-3xl font-bold tracking-tight">帳戶管理</h2> */}
+      <div className="flex items-end justify-between space-y-2">
+        <div className="flex items-center space-x-2 bg-white/50 dark:bg-slate-900/50 px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 backdrop-blur-sm">
+          <Switch
+            id="show-archived"
+            checked={showArchived}
+            onCheckedChange={setShowArchived}
+          />
+          <Label
+            htmlFor="show-archived"
+            className="text-sm cursor-pointer text-slate-600 dark:text-slate-400"
+          >
+            顯示已封存帳戶
+          </Label>
+        </div>
 
         <div className="flex items-center gap-2">
           {/* <ExcelImportButton type={PageType.ACCOUNTS} />
@@ -291,6 +374,8 @@ function AccountList({ accounts }: AccountListProps) {
               accounts={typeAccounts}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onArchive={handleArchive}
+              onUnarchive={handleUnarchive}
             />
           );
         })}
@@ -304,6 +389,11 @@ function AccountList({ accounts }: AccountListProps) {
       <AccountDeleteConfirmDialog
         isDeleteConfirmDialogOpen={isDeleteConfirmDialogOpen}
         setIsDeleteConfirmDialogOpen={setIsDeleteConfirmDialogOpen}
+        account={selectedAccount}
+      />
+      <AccountArchiveConfirmDialog
+        isArchiveConfirmDialogOpen={isArchiveConfirmDialogOpen}
+        setIsArchiveConfirmDialogOpen={setIsArchiveConfirmDialogOpen}
         account={selectedAccount}
       />
     </div>

@@ -2,12 +2,15 @@ import { apiHandler, getErrorMessage } from '@/lib/utils';
 import { ResponseHelper, AccountType, UpdateAccountInput } from '@repo/shared';
 import { CreateAccountInput } from '@repo/shared';
 
-export const getPersonnelAccounts = async () => {
+export const getPersonnelAccounts = async (params?: {
+  showArchived?: boolean;
+}) => {
   try {
+    const query = params?.showArchived ? '?showArchived=true' : '';
     const result = (await apiHandler(
-      `/personnel-accounts`,
+      `/personnel-accounts${query}`,
       'get',
-      null
+      null,
     )) as ResponseHelper<AccountType[]>;
     if (result.isSuccess) {
       return result.data;
@@ -41,6 +44,34 @@ export const updateAccount = async (account: UpdateAccountInput) => {
 export const deleteAccount = async (accountId: string) => {
   try {
     const res = await apiHandler(`/account/${accountId}`, 'DELETE', null);
+    return res;
+  } catch (err) {
+    console.error(err);
+    throw new Error(getErrorMessage(err));
+  }
+};
+
+export const archiveAccount = async (accountId: string) => {
+  try {
+    const res = await apiHandler(
+      `/account/${accountId}/archive`,
+      'PATCH',
+      null,
+    );
+    return res;
+  } catch (err) {
+    console.error(err);
+    throw new Error(getErrorMessage(err));
+  }
+};
+
+export const unarchiveAccount = async (accountId: string) => {
+  try {
+    const res = await apiHandler(
+      `/account/${accountId}/unarchive`,
+      'PATCH',
+      null,
+    );
     return res;
   } catch (err) {
     console.error(err);

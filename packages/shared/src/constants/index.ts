@@ -193,3 +193,15 @@ export enum ParseStatus {
   FAILED = 'FAILED',
   PASSWORD_REQUIRED = 'PASSWORD_REQUIRED',
 }
+
+export enum RecurringFrequency {
+  WEEKLY = 'WEEKLY',
+  MONTHLY = 'MONTHLY',
+  YEARLY = 'YEARLY',
+}
+
+export enum RecurringTemplateStatus {
+  ACTIVE = 'ACTIVE',
+  COMPLETED = 'COMPLETED',
+  ARCHIVED = 'ARCHIVED',
+}

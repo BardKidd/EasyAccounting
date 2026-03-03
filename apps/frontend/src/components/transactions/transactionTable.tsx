@@ -251,12 +251,26 @@ function TransactionTable({
                       </div>
                     </TableCell>
                     <TableCell className="max-w-[200px]">
-                      <span
-                        className="text-sm text-slate-500 dark:text-slate-400 truncate block"
-                        title={transaction.description || ''}
-                      >
-                        {transaction.description || '-'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {transaction.recurringTemplateId && (
+                          <div
+                            className="flex items-center justify-center bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 rounded px-1.5 py-0.5 text-[10px] font-bold shrink-0"
+                            title="週期性交易"
+                          >
+                            <span className="mr-1">🔁</span>
+                            {transaction.recurringSequence !== null &&
+                            transaction.recurringSequence !== undefined
+                              ? transaction.recurringSequence
+                              : ''}
+                          </div>
+                        )}
+                        <span
+                          className="text-sm text-slate-500 dark:text-slate-400 truncate block"
+                          title={transaction.description || ''}
+                        >
+                          {transaction.description || '-'}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       {formatAmount(transaction)}

@@ -13,6 +13,7 @@ import {
   Menu,
   Command,
   FileCheck,
+  Repeat,
   // Calculator, // [HIDDEN] 預算功能暫時停用
 } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
@@ -49,6 +50,11 @@ const sidebarItems = [
     title: '統計報表',
     href: '/statistics',
     icon: PieChart,
+  },
+  {
+    title: '週期性交易',
+    href: '/recurring',
+    icon: Repeat,
   },
   {
     title: '信用卡對帳',

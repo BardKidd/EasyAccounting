@@ -6,6 +6,8 @@ export interface TransactionAttributes extends TransactionType {
   linkId?: string | null;
   targetAccountId?: string | null;
   transactionExtraId?: string | null;
+  recurringTemplateId?: string | null;
+  recurringSequence?: number | null;
 }
 export interface TransactionInstance
   extends Model<TransactionAttributes>,
@@ -79,7 +81,7 @@ const Transaction = sequelize.define<TransactionInstance>(
       type: Sequelize.ENUM(
         PaymentFrequency.ONE_TIME,
         PaymentFrequency.RECURRING,
-        PaymentFrequency.INSTALLMENT
+        PaymentFrequency.INSTALLMENT,
       ),
       allowNull: false,
     },
@@ -126,8 +128,20 @@ const Transaction = sequelize.define<TransactionInstance>(
       type: Sequelize.DATE,
       allowNull: true,
     },
+    recurringTemplateId: {
+      type: Sequelize.UUID,
+      allowNull: true,
+      references: {
+        model: 'recurring_transaction_template',
+        key: 'id',
+      },
+    },
+    recurringSequence: {
+      type: Sequelize.INTEGER,
+      allowNull: true,
+    },
   },
-  TABLE_DEFAULT_SETTING
+  TABLE_DEFAULT_SETTING,
 );
 
 export default Transaction;

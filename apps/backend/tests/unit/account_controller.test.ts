@@ -8,23 +8,32 @@ import sequelize from '@/utils/postgres';
 import { Account as AccountEnum } from '@repo/shared';
 
 // Mock Models and Utils
-vi.mock('@/models/account', () => ({
-  default: {
-    findAll: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    destroy: vi.fn(),
-    findByPk: vi.fn(),
-  },
-}));
-
-vi.mock('@/models/CreditCardDetail', () => ({
-  default: {
+const { createMockModel } = vi.hoisted(() => ({
+  createMockModel: () => ({
     create: vi.fn(),
     findOne: vi.fn(),
     update: vi.fn(),
-  },
+    destroy: vi.fn(),
+    findByPk: vi.fn(),
+    findAll: vi.fn(),
+    addHook: vi.fn(),
+    hasMany: vi.fn(),
+    belongsTo: vi.fn(),
+    belongsToMany: vi.fn(),
+    hasOne: vi.fn(),
+  }),
 }));
+
+vi.mock('@/models/account', () => ({ default: createMockModel() }));
+vi.mock('@/models/CreditCardDetail', () => ({ default: createMockModel() }));
+vi.mock('@/models/user', () => ({ default: createMockModel() }));
+vi.mock('@/models/transaction', () => ({ default: createMockModel() }));
+vi.mock('@/models/TransactionExtra', () => ({ default: createMockModel() }));
+vi.mock('@/models/category', () => ({ default: createMockModel() }));
+vi.mock('@/models/budget', () => ({ default: createMockModel() }));
+vi.mock('@/models/installmentPlan', () => ({ default: createMockModel() }));
+vi.mock('@/models/installmentDetail', () => ({ default: createMockModel() }));
+vi.mock('@/models/RecurringTemplate', () => ({ default: createMockModel() }));
 
 vi.mock('@/utils/postgres', () => {
   const mSequelize = {
@@ -32,8 +41,21 @@ vi.mock('@/utils/postgres', () => {
       commit: vi.fn(),
       rollback: vi.fn(),
     })),
+    define: vi.fn(() => ({
+      hasMany: vi.fn(),
+      belongsTo: vi.fn(),
+      belongsToMany: vi.fn(),
+      hasOne: vi.fn(),
+    })),
   };
-  return { default: mSequelize };
+  return {
+    default: mSequelize,
+    TABLE_DEFAULT_SETTING: {
+      underscored: true,
+      timestamps: true,
+      paranoid: true,
+    },
+  };
 });
 
 vi.mock('@/utils/common', () => ({
@@ -48,7 +70,7 @@ vi.mock('@/utils/common', () => ({
     isSuccess: boolean,
     data: any,
     message: string,
-    error: any
+    error: any,
   ) => ({
     isSuccess,
     data,
@@ -102,7 +124,7 @@ describe('Account Controller (Mocked)', () => {
       expect(Account.findAll).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { userId: 'user-123', isArchived: false },
-        })
+        }),
       );
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -112,13 +134,16 @@ describe('Account Controller (Mocked)', () => {
               creditCardDetail: expect.objectContaining({ creditLimit: 5000 }),
             }),
           ]),
-        })
+        }),
       );
     });
   });
 
   describe('addAccount', () => {
     it('should create general account without credit card detail', async () => {
+      const transaction = { commit: vi.fn(), rollback: vi.fn() };
+      (sequelize.transaction as any).mockResolvedValue(transaction);
+
       const newAcc = { id: 'acc-1' };
       (Account.create as any).mockResolvedValue(newAcc);
       (Account.findByPk as any).mockResolvedValue(newAcc);
@@ -130,12 +155,23 @@ describe('Account Controller (Mocked)', () => {
       await accountController.addAccount(req, res);
       await waitTick();
 
-      expect(Account.create).toHaveBeenCalled();
+      expect(Account.create).toHaveBeenCalledWith(
+        {
+          name: 'Cash',
+          type: '一般',
+          userId: 'user-123',
+        },
+        { transaction },
+      );
       expect(CreditCardDetail.create).not.toHaveBeenCalled();
+      expect(transaction.commit).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(StatusCodes.CREATED);
     });
 
     it('should create credit card account with detail', async () => {
+      const transaction = { commit: vi.fn(), rollback: vi.fn() };
+      (sequelize.transaction as any).mockResolvedValue(transaction);
+
       const newAcc = { id: 'acc-cc' };
       (Account.create as any).mockResolvedValue(newAcc);
       (Account.findByPk as any).mockResolvedValue(newAcc);
@@ -151,11 +187,19 @@ describe('Account Controller (Mocked)', () => {
       await accountController.addAccount(req, res);
       await waitTick();
 
-      expect(Account.create).toHaveBeenCalled();
+      expect(Account.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'My Card',
+          type: AccountEnum.CREDIT_CARD,
+          userId: 'user-123',
+        }),
+        expect.objectContaining({ transaction }),
+      );
       expect(CreditCardDetail.create).toHaveBeenCalledWith(
         expect.objectContaining({ statementDate: 5, accountId: 'acc-cc' }),
-        expect.anything()
+        expect.objectContaining({ transaction }),
       );
+      expect(transaction.commit).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(StatusCodes.CREATED);
     });
   });
@@ -190,18 +234,34 @@ describe('Account Controller (Mocked)', () => {
 
   describe('deleteAccount', () => {
     it('should destroy account', async () => {
+      const transaction = { commit: vi.fn(), rollback: vi.fn() };
+      (sequelize.transaction as any).mockResolvedValue(transaction);
+
       (Account.destroy as any).mockResolvedValue(1);
 
       const req = mockRequest();
       req.params.accountId = 'acc-1';
       const res = mockResponse();
 
+      const recurringTemplateService = await vi.importActual<
+        typeof import('@/services/recurringTemplateService')
+      >('@/services/recurringTemplateService');
+      vi.spyOn(
+        recurringTemplateService,
+        'deleteTemplatesByAccountId',
+      ).mockResolvedValue(true as any);
+
       await accountController.deleteAccount(req, res);
       await waitTick();
 
       expect(Account.destroy).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'acc-1', userId: 'user-123' } })
+        expect.objectContaining({
+          where: { id: 'acc-1', userId: 'user-123' },
+          transaction,
+          individualHooks: true,
+        }),
       );
+      expect(transaction.commit).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
     });
   });
