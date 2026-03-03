@@ -44,6 +44,7 @@ const accountTypeOrder = [
   Account.BANK,
   Account.CREDIT_CARD,
   Account.SECURITIES_ACCOUNT,
+  Account.OTHER,
 ];
 // 大卡 icon
 const accountIcons = {

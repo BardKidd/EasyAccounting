@@ -70,13 +70,13 @@ describe('transactionToCalendarEvent', () => {
     expect(event.title).toBe('測試描述');
   });
 
-  it('should fallback to "Transaction" when description is empty', () => {
+  it('should fallback to empty string when description is empty', () => {
     const tx = createMockTransaction({
       description: '',
     });
 
     const event = transactionToCalendarEvent(tx);
-    expect(event.title).toBe('Transaction');
+    expect(event.title).toBe('');
   });
 });
 
@@ -130,8 +130,8 @@ describe('getEventColor', () => {
     expect(getEventColor(RootType.EXPENSE)).toBe('bg-rose-100');
   });
 
-  it('should return cyan for transfer (isTransfer = true)', () => {
-    expect(getEventColor(RootType.EXPENSE, true)).toBe('bg-cyan-100');
+  it('should return amber for transfer (isTransfer = true)', () => {
+    expect(getEventColor(RootType.EXPENSE, true)).toBe('bg-amber-100');
   });
 
   it('should return slate for unknown type', () => {

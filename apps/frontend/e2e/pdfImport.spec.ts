@@ -8,17 +8,11 @@ test('User can manually add and view pending transactions in Bill Import', async
 
   // Navigate and login directly
   await page.goto('/login');
-  if (email && password) {
-    await page.getByPlaceholder('name@example.com').fill(email);
-    await page.getByPlaceholder('••••••••').fill(password);
-    await page.getByRole('button', { name: '登入', exact: true }).click();
-  } else {
-    // If no configured env vars, assume it's hardcoded test or dev session
-    // Try filling it with default values or skip
-    await page.getByPlaceholder('name@example.com').fill('test1234@gmail.com');
-    await page.getByPlaceholder('••••••••').fill('test1234');
-    await page.getByRole('button', { name: '登入', exact: true }).click();
-  }
+  await page
+    .getByPlaceholder('name@example.com')
+    .fill(email || 'test1234@gmail.com');
+  await page.getByPlaceholder('••••••••').fill(password || 'test1234');
+  await page.getByRole('button', { name: '登入', exact: true }).click();
 
   // Wait for login redirect
   await page.waitForURL('**/dashboard');

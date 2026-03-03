@@ -10,7 +10,7 @@ const mockData: AccountType[] = [
     type: Account.CASH,
     balance: 100,
     color: 'red',
-    isArchived: true,
+    isArchived: false,
     icon: 'wallet',
     createdAt: new Date(),
     updatedAt: new Date(),
