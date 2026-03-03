@@ -142,7 +142,6 @@ function AccountSummaryCard({ accounts }: AccountSummaryCardProps) {
     AccountEnum.BANK,
     AccountEnum.CREDIT_CARD,
     AccountEnum.SECURITIES_ACCOUNT,
-    AccountEnum.OTHER,
   ];
 
   return (

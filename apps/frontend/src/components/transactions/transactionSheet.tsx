@@ -16,6 +16,7 @@ import {
   AccountType,
   CreateTransactionSchema,
   TransactionType,
+  RecurringTemplateType,
 } from '@repo/shared';
 import {
   RootType,
@@ -27,7 +28,9 @@ import {
   CalculationMethod,
   RemainderPlacement,
   RewardsType,
+  RecurringFrequency,
 } from '@repo/shared';
+import { RecurringEditDialog } from './recurringEditDialog';
 import { cn, getErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -93,6 +96,9 @@ interface TransactionSheetProps {
   categories: CategoryType[];
   accounts: AccountType[];
   transaction?: TransactionType | null; // If provided, Edit Mode
+  hideDelete?: boolean;
+  mode?: 'transaction' | 'template';
+  recurringTemplate?: RecurringTemplateType | null;
 }
 
 export function TransactionSheet({
@@ -101,6 +107,9 @@ export function TransactionSheet({
   categories,
   accounts,
   transaction,
+  hideDelete = false,
+  mode = 'transaction',
+  recurringTemplate = null,
 }: TransactionSheetProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -110,6 +119,26 @@ export function TransactionSheet({
   // const [budgets, setBudgets] = useState<Budget[]>([]);
   // const [selectedBudgetIds, setSelectedBudgetIds] = useState<string[]>([]);
   const isEditMode = !!transaction;
+  const isRecurring = !!transaction?.recurringTemplateId;
+
+  // Recurring state
+  const [showRecurring, setShowRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] =
+    useState<RecurringFrequency>(RecurringFrequency.MONTHLY);
+  const [recurringDayOfMonth, setRecurringDayOfMonth] = useState<number>(1);
+  const [recurringDayOfWeek, setRecurringDayOfWeek] = useState<number>(1);
+  const [recurringMonth, setRecurringMonth] = useState<number>(1);
+  const [recurringDay, setRecurringDay] = useState<number>(1);
+  const [recurringTotalOccurrences, setRecurringTotalOccurrences] = useState<
+    number | null
+  >(null);
+  const [recurringEditDialogOpen, setRecurringEditDialogOpen] = useState(false);
+  const [recurringDialogMode, setRecurringDialogMode] = useState<
+    'edit' | 'delete'
+  >('delete');
+  const [pendingData, setPendingData] = useState<TransactionFormSchema | null>(
+    null,
+  );
 
   // [HIDDEN] 預算功能暫時停用
   // useEffect(() => {
@@ -239,6 +268,23 @@ export function TransactionSheet({
   // Initialize form
   useEffect(() => {
     if (isOpen) {
+      setShowRecurring(
+        mode === 'template' || !!transaction?.recurringTemplateId,
+      );
+
+      // 初始化 recurring state（從 recurringTemplate prop）
+      if (recurringTemplate) {
+        setRecurringFrequency(recurringTemplate.frequency);
+        setRecurringDayOfMonth(recurringTemplate.dayOfMonth ?? 1);
+        setRecurringDayOfWeek(recurringTemplate.dayOfWeek ?? 1);
+        setRecurringTotalOccurrences(recurringTemplate.totalOccurrences);
+        if (recurringTemplate.monthDay) {
+          const parts = recurringTemplate.monthDay.split('-');
+          setRecurringMonth(parseInt(parts[0]!, 10));
+          setRecurringDay(parseInt(parts[1]!, 10));
+        }
+      }
+
       if (isEditMode && transaction) {
         // Edit Mode Initialization
         const { mainCategory, subCategory } = findCategoryPath(
@@ -369,6 +415,44 @@ export function TransactionSheet({
         onClose();
         router.refresh();
       }
+    } else if (showRecurring) {
+      // Build recurring template
+      const result = await services.createRecurringTemplate({
+        baseTransactionAttrs: {
+          accountId: data.accountId,
+          categoryId: data.subCategory || data.mainCategory,
+          amount: Number(data.amount),
+          type: data.type as RootType.EXPENSE | RootType.INCOME,
+          description: data.description ?? null,
+          receipt: data.receipt ?? null,
+          paymentFrequency: PaymentFrequency.RECURRING,
+          extraAdd: data.extraAdd,
+          extraAddLabel: data.extraAddLabel,
+          extraMinus: data.extraMinus,
+          extraMinusLabel: data.extraMinusLabel,
+          time: data.time,
+        },
+        frequency: recurringFrequency,
+        dayOfMonth:
+          recurringFrequency === RecurringFrequency.MONTHLY
+            ? recurringDayOfMonth
+            : undefined,
+        dayOfWeek:
+          recurringFrequency === RecurringFrequency.WEEKLY
+            ? recurringDayOfWeek
+            : undefined,
+        monthDay:
+          recurringFrequency === RecurringFrequency.YEARLY
+            ? `${String(recurringMonth).padStart(2, '0')}-${String(recurringDay).padStart(2, '0')}`
+            : undefined,
+        totalOccurrences: recurringTotalOccurrences,
+        startDate: format(data.date, 'yyyy-MM-dd'),
+      });
+      if (result?.isSuccess) {
+        toast.success('週期性交易規則已建立，將於設定日期起每筆自動記帳');
+        onClose();
+        router.refresh();
+      }
     } else {
       const payload: CreateTransactionSchema = {
         accountId: data.accountId,
@@ -441,6 +525,13 @@ export function TransactionSheet({
   const handleDelete = async () => {
     if (!transaction?.id) return;
 
+    // 若為週期性交易，先彈 Dialog 詢問範圍
+    if (isRecurring) {
+      setRecurringDialogMode('delete');
+      setRecurringEditDialogOpen(true);
+      return;
+    }
+
     try {
       setIsDeleting(true);
       await services.deleteTransaction(transaction.id);
@@ -454,10 +545,84 @@ export function TransactionSheet({
     }
   };
 
+  const handleRecurringDeleteSingle = async () => {
+    if (!transaction?.id) return;
+    setRecurringEditDialogOpen(false);
+    try {
+      setIsDeleting(true);
+      await services.deleteTransaction(transaction.id);
+      toast.success('刪除成功');
+      onClose();
+      router.refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleRecurringDeleteAll = async () => {
+    if (!transaction?.id || !transaction.recurringTemplateId) return;
+    setRecurringEditDialogOpen(false);
+    try {
+      setIsDeleting(true);
+      await services.cancelRecurringTemplate(transaction.recurringTemplateId, {
+        transactionId: transaction.id,
+      });
+      toast.success('整個週期已取消');
+      onClose();
+      router.refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleRecurringEditAll = async (data: TransactionFormSchema) => {
+    if (!transaction?.id || !transaction.recurringTemplateId) return;
+    setRecurringEditDialogOpen(false);
+    try {
+      setIsLoading(true);
+      await services.updateRecurringTemplateFuture(
+        transaction.recurringTemplateId,
+        {
+          transactionId: transaction.id,
+          baseTransactionAttrs: {
+            accountId: data.accountId,
+            categoryId: data.subCategory || data.mainCategory,
+            amount: Number(data.amount),
+            type: data.type as RootType.EXPENSE | RootType.INCOME,
+            description: data.description ?? null,
+            receipt: data.receipt ?? null,
+            extraAdd: data.extraAdd,
+            extraAddLabel: data.extraAddLabel,
+            extraMinus: data.extraMinus,
+            extraMinusLabel: data.extraMinusLabel,
+          },
+        },
+      );
+      toast.success('此筆及後續週期已更新');
+      onClose();
+      router.refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const onSubmit = async (data: TransactionFormSchema) => {
     try {
       setIsLoading(true);
       if (isEditMode) {
+        if (isRecurring) {
+          // 週期性交易編輯：先彈 Dialog 詢問
+          setPendingData(data);
+          setRecurringDialogMode('edit');
+          setRecurringEditDialogOpen(true);
+          return;
+        }
         await handleUpdate(data);
       } else {
         await handleCreate(data);
@@ -498,7 +663,13 @@ export function TransactionSheet({
       <SheetContent className="w-full sm:max-w-[540px] p-0 flex flex-col h-dvh bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-2xl border-l border-slate-200/50 dark:border-white/10 shadow-2xl">
         <SheetHeader className="px-6 py-6 border-b border-slate-200/50 dark:border-white/5 bg-transparent">
           <SheetTitle className="text-2xl font-bold font-playfair text-slate-800 dark:text-slate-100">
-            {isEditMode ? '編輯交易' : '新增交易'}
+            {mode === 'template'
+              ? isEditMode
+                ? '編輯週期事件'
+                : '新增週期事件'
+              : isEditMode
+                ? '編輯交易'
+                : '新增交易'}
           </SheetTitle>
         </SheetHeader>
 
@@ -1101,6 +1272,179 @@ export function TransactionSheet({
                 </div>
               )}
 
+              {/* Recurring Section（只有 template 模式顯示） */}
+              {mode === 'template' && (
+                <div className="rounded-2xl p-6 bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-4">
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {/* 頻率 */}
+                    <div>
+                      <FormLabel className="text-sm">重複頻率</FormLabel>
+                      <div className="flex gap-2 mt-2">
+                        {[
+                          {
+                            label: '每月',
+                            value: RecurringFrequency.MONTHLY,
+                          },
+                          { label: '每週', value: RecurringFrequency.WEEKLY },
+                          { label: '每年', value: RecurringFrequency.YEARLY },
+                        ].map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setRecurringFrequency(opt.value)}
+                            className={cn(
+                              'flex-1 py-2 text-sm rounded-xl border transition-colors',
+                              recurringFrequency === opt.value
+                                ? 'bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-slate-800'
+                                : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800',
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 每月的幾號 */}
+                    {recurringFrequency === RecurringFrequency.MONTHLY && (
+                      <div>
+                        <FormLabel className="text-sm">每月幾號執行</FormLabel>
+                        <input
+                          type="number"
+                          min={1}
+                          max={31}
+                          value={recurringDayOfMonth}
+                          onChange={(e) =>
+                            setRecurringDayOfMonth(Number(e.target.value))
+                          }
+                          className="mt-2 w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 px-3 text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          月底邊界會自動調整（如 31 號 → 2 月最後一天）
+                        </p>
+                      </div>
+                    )}
+
+                    {/* 每週的星期幾 */}
+                    {recurringFrequency === RecurringFrequency.WEEKLY && (
+                      <div>
+                        <FormLabel className="text-sm">每週幾執行</FormLabel>
+                        <div className="flex gap-1.5 mt-2">
+                          {[
+                            { label: '日', value: 0 },
+                            { label: '一', value: 1 },
+                            { label: '二', value: 2 },
+                            { label: '三', value: 3 },
+                            { label: '四', value: 4 },
+                            { label: '五', value: 5 },
+                            { label: '六', value: 6 },
+                          ].map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setRecurringDayOfWeek(opt.value)}
+                              className={cn(
+                                'flex-1 py-2 text-sm rounded-xl border transition-colors',
+                                recurringDayOfWeek === opt.value
+                                  ? 'bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-slate-800'
+                                  : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800',
+                              )}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 每年的月/日 */}
+                    {recurringFrequency === RecurringFrequency.YEARLY && (
+                      <div>
+                        <FormLabel className="text-sm">
+                          每年幾月幾日執行
+                        </FormLabel>
+                        <div className="flex gap-2 mt-2">
+                          <div className="flex-1">
+                            <select
+                              value={recurringMonth}
+                              onChange={(e) =>
+                                setRecurringMonth(Number(e.target.value))
+                              }
+                              className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 px-3 text-sm"
+                            >
+                              {Array.from({ length: 12 }, (_, i) => (
+                                <option key={i + 1} value={i + 1}>
+                                  {i + 1} 月
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex-1">
+                            <input
+                              type="number"
+                              min={1}
+                              max={31}
+                              value={recurringDay}
+                              onChange={(e) =>
+                                setRecurringDay(Number(e.target.value))
+                              }
+                              className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 px-3 text-sm"
+                              placeholder="日"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          若選 2/29，平年將以 2/28 代替
+                        </p>
+                      </div>
+                    )}
+
+                    {/* 結束條件 */}
+                    <div>
+                      <FormLabel className="text-sm">結束條件</FormLabel>
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setRecurringTotalOccurrences(null)}
+                          className={cn(
+                            'flex-1 py-2 text-sm rounded-xl border transition-colors',
+                            recurringTotalOccurrences === null
+                              ? 'bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-slate-800'
+                              : 'border-slate-200 dark:border-slate-700',
+                          )}
+                        >
+                          無限
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRecurringTotalOccurrences(12)}
+                          className={cn(
+                            'flex-1 py-2 text-sm rounded-xl border transition-colors',
+                            recurringTotalOccurrences !== null
+                              ? 'bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-slate-800'
+                              : 'border-slate-200 dark:border-slate-700',
+                          )}
+                        >
+                          指定次數
+                        </button>
+                      </div>
+                      {recurringTotalOccurrences !== null && (
+                        <input
+                          type="number"
+                          min={1}
+                          value={recurringTotalOccurrences}
+                          onChange={(e) =>
+                            setRecurringTotalOccurrences(Number(e.target.value))
+                          }
+                          className="mt-2 w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 px-3 text-sm"
+                          placeholder="次數"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Date / Time */}
               <div className="grid gap-4 grid-cols-2">
                 <FormField
@@ -1212,26 +1556,28 @@ export function TransactionSheet({
               )}
 
               {/* Receipt */}
-              <FormField
-                control={form.control}
-                name="receipt"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>發票</FormLabel>
-                    <FormControl>
-                      <Input
-                        className={cn(
-                          'text-lg font-semibold h-12 rounded-2xl bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors',
-                          currentTypeStyle.focus,
-                        )}
-                        type="text"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {mode !== 'template' && (
+                <FormField
+                  control={form.control}
+                  name="receipt"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>發票</FormLabel>
+                      <FormControl>
+                        <Input
+                          className={cn(
+                            'text-lg font-semibold h-12 rounded-2xl bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors',
+                            currentTypeStyle.focus,
+                          )}
+                          type="text"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {/* Note */}
               <FormField
@@ -1257,7 +1603,7 @@ export function TransactionSheet({
             </div>
 
             <SheetFooter className="px-6 py-6 border-t border-slate-200/50 dark:border-white/5 bg-transparent flex flex-row! items-center gap-4">
-              {isEditMode && (
+              {isEditMode && !hideDelete && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
@@ -1291,6 +1637,29 @@ export function TransactionSheet({
                   </AlertDialogContent>
                 </AlertDialog>
               )}
+
+              {/* Recurring Edit/Delete Dialog */}
+              <RecurringEditDialog
+                isOpen={recurringEditDialogOpen}
+                mode={recurringDialogMode}
+                onClose={() => setRecurringEditDialogOpen(false)}
+                onSelectSingle={
+                  recurringDialogMode === 'delete'
+                    ? handleRecurringDeleteSingle
+                    : () => {
+                        setRecurringEditDialogOpen(false);
+                        if (pendingData) handleUpdate(pendingData);
+                      }
+                }
+                onSelectAll={
+                  recurringDialogMode === 'delete'
+                    ? handleRecurringDeleteAll
+                    : () => {
+                        if (pendingData) handleRecurringEditAll(pendingData);
+                      }
+                }
+                isLoading={isLoading || isDeleting}
+              />
 
               <Button
                 type="button"

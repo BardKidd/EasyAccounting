@@ -10,23 +10,33 @@ router.post(
   '/account',
   authMiddleware,
   validate(createAccountSchema),
-  accountController.addAccount
+  accountController.addAccount,
 );
 router.get(
   '/personnel-accounts',
   authMiddleware,
-  accountController.getAccountsByUser
+  accountController.getAccountsByUser,
 );
 router.put(
   '/account/:accountId',
   authMiddleware,
   validate(updateAccountSchema),
-  accountController.editAccount
+  accountController.editAccount,
 );
 router.delete(
   '/account/:accountId',
   authMiddleware,
-  accountController.deleteAccount
+  accountController.deleteAccount,
+);
+router.patch(
+  '/account/:accountId/archive',
+  authMiddleware,
+  accountController.archiveAccount,
+);
+router.patch(
+  '/account/:accountId/unarchive',
+  authMiddleware,
+  accountController.unarchiveAccount,
 );
 
 export default router;

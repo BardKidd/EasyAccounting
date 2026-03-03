@@ -9,6 +9,8 @@ import {
   createAccount,
   updateAccount,
   deleteAccount,
+  archiveAccount,
+  unarchiveAccount,
 } from './personnelAccount';
 import {
   getTransactions,
@@ -36,6 +38,14 @@ import {
   getTransactionTemplateUrl,
   getTransactionsExcelUrl,
 } from './importExport';
+import {
+  getRecurringTemplates,
+  createRecurringTemplate,
+  updateRecurringTemplateFuture,
+  cancelRecurringTemplate,
+  archiveRecurringTemplate,
+  resumeRecurringTemplate,
+} from './recurringTemplate';
 
 export default {
   getCategories,
@@ -47,6 +57,8 @@ export default {
   createAccount,
   updateAccount,
   deleteAccount,
+  archiveAccount,
+  unarchiveAccount,
   addTransaction,
   addTransfer,
   updateTransaction,
@@ -64,4 +76,10 @@ export default {
   getTransactionTemplateUrl,
   getTransactionsExcelUrl,
   getAssetTrend,
+  getRecurringTemplates,
+  createRecurringTemplate,
+  updateRecurringTemplateFuture,
+  cancelRecurringTemplate,
+  archiveRecurringTemplate,
+  resumeRecurringTemplate,
 };

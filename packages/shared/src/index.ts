@@ -12,6 +12,7 @@ export * from './schemas/account.schema';
 export * from './schemas/transaction.schema';
 export * from './schemas/statistics.schema';
 export * from './schemas/personnelNotification.schema';
+export * from './schemas/recurringTemplate.schema';
 
 // 匯出所有 types
 export * from './types/categoryTypes';

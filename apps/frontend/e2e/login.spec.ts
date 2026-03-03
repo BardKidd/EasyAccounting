@@ -5,11 +5,11 @@ test('login', async ({ page }) => {
   const password = process.env.TEST_USER_PASSWORD || '';
 
   await page.goto('/');
-  await page.getByRole('button', { name: '立即開始' }).click();
-  await page.getByRole('textbox', { name: '電子郵件' }).click();
-  await page.getByRole('textbox', { name: '電子郵件' }).fill(email);
-  await page.getByRole('textbox', { name: '電子郵件' }).press('Tab');
-  await page.getByRole('textbox', { name: '密碼' }).fill(password);
-  await page.getByRole('textbox', { name: '密碼' }).press('Enter');
+  await page.getByRole('link', { name: '免費開始使用' }).click();
+  await page.getByPlaceholder('name@example.com').click();
+  await page.getByPlaceholder('name@example.com').fill(email);
+  await page.getByPlaceholder('name@example.com').press('Tab');
+  await page.getByPlaceholder('••••••••').fill(password);
+  await page.getByPlaceholder('••••••••').press('Enter');
   await page.getByRole('button', { name: '登入' }).click();
 });

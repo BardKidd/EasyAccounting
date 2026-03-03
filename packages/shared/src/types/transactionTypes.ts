@@ -5,6 +5,8 @@ import {
   CalculationMethod,
   RemainderPlacement,
   RewardsType,
+  RecurringFrequency,
+  RecurringTemplateStatus,
 } from '../constants';
 
 export interface InstallmentPlanType {
@@ -52,6 +54,39 @@ export interface TransactionType {
   reconciliationDate?: Date | string | null;
   transactionExtraId?: string | null;
   transactionExtra?: TransactionExtraType | null;
+
+  // Recurring fields
+  recurringTemplateId?: string | null;
+  recurringSequence?: number | null;
+}
+
+export interface RecurringTemplateType {
+  id: string;
+  userId: string;
+  baseTransactionAttrs: {
+    accountId: string;
+    categoryId: string;
+    amount: number;
+    type: RootType;
+    description: string | null;
+    receipt: string | null;
+    paymentFrequency: PaymentFrequency;
+    extraAdd?: number;
+    extraAddLabel?: string;
+    extraMinus?: number;
+    extraMinusLabel?: string;
+    time?: string;
+  };
+  frequency: RecurringFrequency;
+  dayOfMonth?: number | null;
+  dayOfWeek?: number | null;
+  monthDay?: string | null;
+  totalOccurrences: number | null;
+  currentOccurrence: number;
+  nextExecutionDate: string;
+  status: RecurringTemplateStatus;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TransactionTypeWhenOperate extends TransactionType {

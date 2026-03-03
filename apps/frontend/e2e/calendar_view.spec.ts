@@ -7,13 +7,16 @@ test.describe('Calendar View', () => {
   test.beforeEach(async ({ page }) => {
     // Login
     await page.goto('/');
-    await page.getByRole('button', { name: '立即開始' }).click();
-    await page.getByRole('textbox', { name: '電子郵件' }).fill(TEST_EMAIL);
-    await page.getByRole('textbox', { name: '密碼' }).fill(TEST_PASSWORD);
+    await page.getByRole('link', { name: '免費開始使用' }).click();
+    await page.getByPlaceholder('name@example.com').fill(TEST_EMAIL);
+    await page.getByPlaceholder('••••••••').fill(TEST_PASSWORD);
     await page.getByRole('button', { name: '登入' }).click();
 
     // Navigate to transactions page
-    await page.getByRole('link', { name: '交易紀錄' }).click();
+    await page
+      .locator('a[href="/transactions"]')
+      .first()
+      .click({ force: true });
     await page.waitForURL(/\/transactions/);
   });
 
@@ -85,8 +88,8 @@ test.describe('Calendar View', () => {
   test('should show transfer events with distinct styling', async ({
     page,
   }) => {
-    // 檢查是否有轉帳樣式的事件（bg-cyan）
-    const transferEvents = page.locator('.rbc-event .bg-cyan-100');
+    // 檢查是否有轉帳樣式的事件（bg-amber-100）
+    const transferEvents = page.locator('.rbc-event .bg-amber-100');
     // 這是軟性測試 - 如果有轉帳交易就會有這個樣式
     const count = await transferEvents.count();
 

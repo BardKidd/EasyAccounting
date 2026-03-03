@@ -54,10 +54,10 @@ export default async function DashboardPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7 h-auto">
-          <div className="lg:col-span-3 h-[500px]">
+          <div className="lg:col-span-3">
             <AccountSummaryCard accounts={accounts} />
           </div>
-          <div className="lg:col-span-4 h-[500px]">
+          <div className="lg:col-span-4">
             <RecentTransactions
               transactions={transactions.items}
               categories={categories}

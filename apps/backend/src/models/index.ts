@@ -14,6 +14,7 @@ import BudgetPeriodSnapshot from './budgetPeriodSnapshot';
 import MerchantMapping from './MerchantMapping';
 import PendingTransaction from './PendingTransaction';
 import BillParseTelemetry from './BillParseTelemetry';
+import RecurringTemplate from './RecurringTemplate';
 
 // -----------------------------------------------------------------------------
 // Soft Delete Hooks (Cascade)
@@ -35,6 +36,7 @@ User.addHook('afterDestroy', async (user: any, options: any) => {
   });
   await PersonnelNotification.destroy({ where: { userId }, transaction });
   await InstallmentPlan.destroy({ where: { userId }, transaction });
+  await RecurringTemplate.destroy({ where: { userId }, transaction });
 });
 
 Transaction.addHook('afterDestroy', async (instance: any, options: any) => {
@@ -228,6 +230,23 @@ PendingTransaction.belongsTo(Transaction, {
   as: 'matchedTransaction',
 });
 
+// User & RecurringTemplate
+User.hasMany(RecurringTemplate, {
+  foreignKey: 'userId',
+  as: 'recurringTemplates',
+});
+RecurringTemplate.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+// RecurringTemplate & Transaction
+RecurringTemplate.hasMany(Transaction, {
+  foreignKey: 'recurringTemplateId',
+  as: 'transactions',
+});
+Transaction.belongsTo(RecurringTemplate, {
+  foreignKey: 'recurringTemplateId',
+  as: 'recurringTemplate',
+});
+
 // Export everything
 export {
   Account,
@@ -246,4 +265,5 @@ export {
   MerchantMapping,
   PendingTransaction,
   BillParseTelemetry,
+  RecurringTemplate,
 };
