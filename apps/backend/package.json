@@ -57,6 +57,7 @@
     "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "express-basic-auth": "^1.2.1",
+    "express-rate-limit": "^8.2.1",
     "http-status-codes": "^2.3.0",
     "jose": "^6.1.2",
     "mongodb": "^7.0.0",

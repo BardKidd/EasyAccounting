@@ -20,6 +20,7 @@ const getUser = (req: Request, res: Response) => {
     const sortedUser: UserType = {
       name: userJson.name,
       email: userJson.email,
+      isGuest: userJson.isGuest ?? false,
     };
     res
       .status(StatusCodes.OK)
@@ -45,7 +46,7 @@ const addUser = (req: Request, res: Response) => {
 
     await personnelNotificationServices.postPersonnelNotification(
       user.id,
-      payload
+      payload,
     );
 
     await emailService.sendWelcomeEmail({

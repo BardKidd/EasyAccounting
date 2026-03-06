@@ -11,9 +11,10 @@ const JWT_ACCESS_IN = '15m';
 const JWT_REFRESH_IN = '7d';
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
-interface TokenPayload {
+export interface TokenPayload {
   userId: string;
   email: string;
+  isGuest?: boolean;
 }
 
 const isProduction = process.env.NODE_ENV === 'production';

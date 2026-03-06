@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,6 +25,14 @@ type RegisterFormValues = RegisterInput;
 export default function RegisterPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+
+  // FR-3: Auth guard — 若已登入則自動導回 Dashboard
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      router.replace('/dashboard');
+    }
+  }, [router]);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
