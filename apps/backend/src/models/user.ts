@@ -6,6 +6,8 @@ type UserAttributes = {
   name: string;
   email: string;
   password: string;
+  isGuest: boolean;
+  lastActivityAt: Date | null;
 };
 
 export interface UserInstance extends Model<UserAttributes>, UserAttributes {}
@@ -32,8 +34,18 @@ const User = sequelize.define<UserInstance>(
       type: Sequelize.STRING,
       allowNull: false,
     },
+    isGuest: {
+      type: Sequelize.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    lastActivityAt: {
+      type: Sequelize.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
-  TABLE_DEFAULT_SETTING
+  TABLE_DEFAULT_SETTING,
 );
 
 export default User;

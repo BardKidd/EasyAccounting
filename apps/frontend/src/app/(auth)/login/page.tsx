@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,12 +18,31 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ElegantLoader } from '@/components/ui/elegant-loader';
-import { apiHandler, simplifyTryCatch } from '@/lib/utils';
+import { apiHandler, getErrorMessage } from '@/lib/utils';
+import { guestLogin, checkSession } from '@/services/authService';
 import { toast } from 'sonner';
+import { UserPlus } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGuestLoading, setIsGuestLoading] = useState(false);
+
+  // FR-3: Auth guard — 若已登入且 Session 有效則自動導回 Dashboard
+  useEffect(() => {
+    const checkLogin = async () => {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const result = await checkSession();
+        if (result.isSuccess) {
+          router.replace('/dashboard');
+        } else {
+          localStorage.removeItem('user');
+        }
+      }
+    };
+    checkLogin();
+  }, [router]);
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -34,20 +53,53 @@ export default function LoginPage() {
   });
 
   async function onSubmit(data: LoginInput) {
-    simplifyTryCatch(async () => {
+    setIsLoading(true);
+    try {
       const url = '/login';
       const result = await apiHandler(url, 'post', data);
       if (result.isSuccess) {
         toast.success(result.message);
         localStorage.setItem('user', JSON.stringify(result.data));
-        router.push('/dashboard');
+        // 不使用 push。直接取代上一次 history 的紀錄，避免用戶來回跳轉。
+        router.replace('/dashboard');
+        // 不關閉 loading — 讓它保持到頁面跳轉完成
+        return;
       }
-    }, setIsLoading);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+    setIsLoading(false);
+  }
+
+  async function handleGuestLogin() {
+    setIsGuestLoading(true);
+    try {
+      const result = await guestLogin();
+      if (result.isSuccess) {
+        toast.success(result.message);
+        localStorage.setItem('user', JSON.stringify(result.data));
+        router.replace('/dashboard');
+        // 不關閉 loading — 讓它保持到頁面跳轉完成
+        return;
+      }
+    } catch (error: any) {
+      // 特別處理 429 Rate Limit
+      if (error?.message) {
+        toast.error(error.message);
+      } else {
+        toast.error('訪客登入失敗，請稍後再試');
+      }
+    }
+    setIsGuestLoading(false);
   }
 
   return (
     <>
-      {isLoading && <ElegantLoader message="驗證中..." />}
+      {(isLoading || isGuestLoading) && (
+        <ElegantLoader
+          message={isGuestLoading ? '建立訪客帳號...' : '驗證中...'}
+        />
+      )}
       <div className="flex flex-col space-y-2 text-center">
         <h1 className="text-3xl font-outfit font-bold tracking-tight text-slate-900 dark:text-white">
           歡迎回來
@@ -115,7 +167,7 @@ export default function LoginPage() {
           <Button
             type="submit"
             className="w-full h-12 mt-4 bg-emerald-500 text-white hover:bg-emerald-600 dark:bg-emerald-500 dark:hover:bg-emerald-400 shadow-lg shadow-emerald-500/20 transition-all duration-300 hover:-translate-y-0.5 text-base font-semibold"
-            disabled={isLoading}
+            disabled={isLoading || isGuestLoading}
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
@@ -128,6 +180,39 @@ export default function LoginPage() {
           </Button>
         </form>
       </Form>
+
+      {/* Divider */}
+      <div className="relative my-2">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-slate-200 dark:border-slate-700" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-white dark:bg-slate-900 px-2 text-slate-500 dark:text-slate-400 font-medium">
+            或者
+          </span>
+        </div>
+      </div>
+
+      {/* Guest Login Button */}
+      <Button
+        variant="outline"
+        className="w-full h-12 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-300 hover:-translate-y-0.5 text-base font-medium cursor-pointer"
+        onClick={handleGuestLogin}
+        disabled={isLoading || isGuestLoading}
+      >
+        {isGuestLoading ? (
+          <span className="flex items-center gap-2">
+            <span className="h-4 w-4 border-2 border-slate-400/30 border-t-slate-400 rounded-full animate-spin" />
+            建立中...
+          </span>
+        ) : (
+          <span className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4" />
+            免註冊試用
+          </span>
+        )}
+      </Button>
+
       <div className="text-center text-sm font-medium text-slate-600 dark:text-slate-400 pt-2">
         還沒有帳戶？{' '}
         <Link

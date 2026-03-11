@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ModeToggle } from '@/components/mode-toggle';
-import { Bell } from 'lucide-react';
+import { Bell, UserPlus } from 'lucide-react';
 import { simplifyTryCatch } from '@/lib/utils';
 import { getReconciliationNotifications } from '@/services/reconciliationService';
 import { logout } from '@/services/authService';
@@ -18,14 +18,25 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { ElegantLoader } from '@/components/ui/elegant-loader';
 import { useMemo, useState, useEffect } from 'react';
+import { GuestLogoutDialog } from '@/components/auth/guest-logout-dialog';
+import { PromoteDialog } from '@/components/auth/promote-dialog';
 
 function Header() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState<{ name: string; email: string }>({
+  const [user, setUser] = useState<{
+    name: string;
+    email: string;
+    isGuest?: boolean;
+  }>({
     name: '',
     email: '',
+    isGuest: false,
   });
+
+  // Guest-specific dialog states
+  const [showGuestLogout, setShowGuestLogout] = useState(false);
+  const [showPromote, setShowPromote] = useState(false);
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -33,6 +44,8 @@ function Header() {
       setUser(JSON.parse(userStr));
     }
   }, []);
+
+  const isGuest = user.isGuest === true;
 
   const [notificationCount, setNotificationCount] = useState(0);
 
@@ -51,6 +64,12 @@ function Header() {
   }, []);
 
   const handleLogout = () => {
+    // 訪客登出走特殊流程
+    if (isGuest) {
+      setShowGuestLogout(true);
+      return;
+    }
+
     simplifyTryCatch(async () => {
       const result = await logout();
       if (result.isSuccess) {
@@ -62,8 +81,12 @@ function Header() {
   };
 
   const getFirstLetterAsAvatar = useMemo(() => {
+    if (isGuest) return 'G';
     return user.name.charAt(0).toUpperCase();
-  }, [user.name]);
+  }, [user.name, isGuest]);
+
+  const displayName = isGuest ? '訪客用戶' : user.name;
+  const displayEmail = isGuest ? '尚未註冊' : user.email;
 
   return (
     <>
@@ -112,21 +135,41 @@ function Header() {
                 <DropdownMenuLabel className="font-normal p-4">
                   <div className="flex flex-col space-y-1">
                     <p className="text-base font-semibold leading-none tracking-wide text-foreground">
-                      {user.name}
+                      {displayName}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
+                      {displayEmail}
                     </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-border" />
-                <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent focus:text-accent-foreground rounded-md m-1">
-                  個人檔案
-                </DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent focus:text-accent-foreground rounded-md m-1">
-                  設定
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-border" />
+
+                {/* Guest CTA: 註冊以保存資料 */}
+                {isGuest && (
+                  <>
+                    <DropdownMenuItem
+                      className="cursor-pointer py-2.5 px-3 focus:bg-emerald-500/10 focus:text-emerald-600 dark:focus:text-emerald-400 rounded-md m-1 font-medium"
+                      onClick={() => setShowPromote(true)}
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      註冊以永久保存資料
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-border" />
+                  </>
+                )}
+
+                {!isGuest && (
+                  <>
+                    <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent focus:text-accent-foreground rounded-md m-1">
+                      個人檔案
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent focus:text-accent-foreground rounded-md m-1">
+                      設定
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-border" />
+                  </>
+                )}
+
                 <DropdownMenuItem
                   className="text-destructive cursor-pointer py-2.5 px-3 focus:bg-destructive/10 rounded-md m-1 focus:text-destructive"
                   onClick={handleLogout}
@@ -139,6 +182,13 @@ function Header() {
         </div>
       </header>
       {isLoading && <ElegantLoader message="登出中..." />}
+
+      {/* Guest Dialogs */}
+      <GuestLogoutDialog
+        open={showGuestLogout}
+        onOpenChange={setShowGuestLogout}
+      />
+      <PromoteDialog open={showPromote} onOpenChange={setShowPromote} />
     </>
   );
 }

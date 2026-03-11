@@ -6,11 +6,21 @@ import {
   setAccessCookie,
 } from '@/utils/auth';
 import { StatusCodes } from 'http-status-codes';
+import User from '@/models/user';
+
+/** Fire-and-forget: 更新使用者的 lastActivityAt */
+const updateLastActivity = (userId: string) => {
+  User.update({ lastActivityAt: new Date() }, { where: { id: userId } }).catch(
+    (err) => {
+      console.error('[Auth] Failed to update lastActivityAt:', err);
+    },
+  );
+};
 
 export const authMiddleware = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const accessToken = req.cookies.accessToken;
@@ -26,6 +36,7 @@ export const authMiddleware = async (
     // 1. Access Token 有效 -> 直接放行
     if (accessPayload) {
       req.user = accessPayload;
+      updateLastActivity(accessPayload.userId as string);
       return next();
     }
 
@@ -63,6 +74,7 @@ export const authMiddleware = async (
     const newPayload = {
       userId: refreshPayload.userId as string,
       email: refreshPayload.email as string,
+      isGuest: (refreshPayload.isGuest as boolean) || false,
     };
 
     const newAccessToken = await generateAccessToken(newPayload);
@@ -74,6 +86,8 @@ export const authMiddleware = async (
     req.cookies.accessToken = newAccessToken;
     req.user = newPayload;
 
+    updateLastActivity(newPayload.userId);
+
     next();
   } catch (error) {
     console.log('[Auth middleware error] :', error);
@@ -84,8 +98,8 @@ export const authMiddleware = async (
           false,
           null,
           'Internal server error during authentication',
-          null
-        )
+          null,
+        ),
       );
   }
 };

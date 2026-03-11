@@ -85,12 +85,15 @@ describe('Auth Middleware Unit Test', () => {
 
     // Assertions
     expect(AuthUtils.verifyToken).toHaveBeenCalledTimes(2); // Access then Refresh
-    expect(AuthUtils.generateAccessToken).toHaveBeenCalledWith(refreshPayload);
+    expect(AuthUtils.generateAccessToken).toHaveBeenCalledWith({
+      ...refreshPayload,
+      isGuest: false,
+    });
     expect(AuthUtils.setAccessCookie).toHaveBeenCalledWith(res, newAccessToken);
 
     // Check request mutation
     expect(req.cookies?.accessToken).toBe(newAccessToken);
-    expect(req.user).toEqual(refreshPayload);
+    expect(req.user).toEqual({ ...refreshPayload, isGuest: false });
     expect(next).toHaveBeenCalled();
   });
 
