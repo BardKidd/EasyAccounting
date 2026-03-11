@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { apiHandler, simplifyTryCatch } from '@/lib/utils';
+import { checkSession } from '@/services/authService';
 import { toast } from 'sonner';
 
 type RegisterFormValues = RegisterInput;
@@ -26,12 +27,20 @@ export default function RegisterPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  // FR-3: Auth guard — 若已登入則自動導回 Dashboard
+  // FR-3: Auth guard — 若已登入且 Session 有效則自動導回 Dashboard
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      router.replace('/dashboard');
-    }
+    const checkLogin = async () => {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const result = await checkSession();
+        if (result.isSuccess) {
+          router.replace('/dashboard');
+        } else {
+          localStorage.removeItem('user');
+        }
+      }
+    };
+    checkLogin();
   }, [router]);
 
   const form = useForm<RegisterFormValues>({

@@ -224,22 +224,26 @@ const promote = (req: Request, res: Response) => {
     setAccessCookie(res, accessToken);
     setRefreshCookie(res, refreshToken);
 
-    // 建立預設通知設定 (同 addUser)
+    // 建立預設通知設定 & 寄發歡迎信 (fire-and-forget，不影響 promote response)
     const notificationPayload = {
       isDailyNotification: false,
       isWeeklySummaryNotification: false,
       isMonthlyAnalysisNotification: true,
     };
-    await personnelNotificationServices.postPersonnelNotification(
-      promotedUser.id,
-      notificationPayload,
-    );
+    personnelNotificationServices
+      .postPersonnelNotification(promotedUser.id, notificationPayload)
+      .catch((err) =>
+        console.error('[Promote] Failed to create notification:', err),
+      );
 
-    // 寄發歡迎信
-    await emailService.sendWelcomeEmail({
-      userName: promotedUser.name,
-      to: promotedUser.email,
-    });
+    emailService
+      .sendWelcomeEmail({
+        userName: promotedUser.name,
+        to: promotedUser.email,
+      })
+      .catch((err) =>
+        console.error('[Promote] Failed to send welcome email:', err),
+      );
 
     const userInfo = {
       name: promotedUser.name,
@@ -253,4 +257,36 @@ const promote = (req: Request, res: Response) => {
   });
 };
 
-export default { login, logout, guestLogin, promote };
+/**
+ * GET /api/auth/me
+ * 驗證 Session 有效性並回傳當前使用者資訊
+ */
+const me = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json(responseHelper(false, null, 'Unauthorized', null));
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json(responseHelper(false, null, 'User not found', null));
+    }
+
+    const userInfo = {
+      name: user.name,
+      email: user.email,
+      isGuest: user.isGuest,
+    };
+
+    return res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, userInfo, 'Authenticated', null));
+  });
+};
+
+export default { login, logout, guestLogin, promote, me };

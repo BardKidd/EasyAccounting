@@ -20,17 +20,8 @@ export const promote = async (data: {
 
 /**
  * 檢查當前 session 是否有效
- * 透過呼叫需要 auth 的 API 來驗證
+ * 透過 GET /api/auth/me 驗證 cookie token
  */
-export const checkSession = async (): Promise<boolean> => {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_DOMAIN}/user/me`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+export const checkSession = async (): Promise<ResponseHelper<UserType>> => {
+  return await apiHandler('/me', 'get', null);
 };

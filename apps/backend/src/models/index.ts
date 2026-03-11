@@ -24,12 +24,23 @@ User.addHook('afterDestroy', async (user: any, options: any) => {
   const transaction = options.transaction;
   const userId = user.id;
 
+  // 先刪除 Transaction（底層依賴），帶 individualHooks 以觸發 TransactionExtra/linkId 清理
+  await Transaction.destroy({
+    where: { userId },
+    transaction,
+    individualHooks: true,
+  });
   await Account.destroy({
     where: { userId },
     transaction,
     individualHooks: true,
   });
-  await Transaction.destroy({
+  await Budget.destroy({
+    where: { userId },
+    transaction,
+    individualHooks: true,
+  });
+  await Category.destroy({
     where: { userId },
     transaction,
     individualHooks: true,

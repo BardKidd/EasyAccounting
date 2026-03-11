@@ -55,8 +55,7 @@ export function PromoteDialog({ open, onOpenChange }: PromoteDialogProps) {
         localStorage.setItem('user', JSON.stringify(result.data));
         toast.success(result.message);
         onOpenChange(false);
-        // 重新整理頁面以刷新所有 state
-        router.refresh();
+        // 註冊為正式用戶後重新渲染一次
         window.location.reload();
       }
     } catch (error: any) {

@@ -20,4 +20,6 @@ router.post(
   authController.promote,
 );
 
+router.get('/me', authMiddleware, authController.me);
+
 export default router;

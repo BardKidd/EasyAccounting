@@ -18,8 +18,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ElegantLoader } from '@/components/ui/elegant-loader';
-import { apiHandler, simplifyTryCatch } from '@/lib/utils';
-import { guestLogin } from '@/services/authService';
+import { apiHandler, getErrorMessage } from '@/lib/utils';
+import { guestLogin, checkSession } from '@/services/authService';
 import { toast } from 'sonner';
 import { UserPlus } from 'lucide-react';
 
@@ -28,12 +28,20 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGuestLoading, setIsGuestLoading] = useState(false);
 
-  // FR-3: Auth guard — 若已登入則自動導回 Dashboard
+  // FR-3: Auth guard — 若已登入且 Session 有效則自動導回 Dashboard
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      router.replace('/dashboard');
-    }
+    const checkLogin = async () => {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const result = await checkSession();
+        if (result.isSuccess) {
+          router.replace('/dashboard');
+        } else {
+          localStorage.removeItem('user');
+        }
+      }
+    };
+    checkLogin();
   }, [router]);
 
   const form = useForm<LoginInput>({
@@ -45,15 +53,22 @@ export default function LoginPage() {
   });
 
   async function onSubmit(data: LoginInput) {
-    simplifyTryCatch(async () => {
+    setIsLoading(true);
+    try {
       const url = '/login';
       const result = await apiHandler(url, 'post', data);
       if (result.isSuccess) {
         toast.success(result.message);
         localStorage.setItem('user', JSON.stringify(result.data));
-        router.push('/dashboard');
+        // 不使用 push。直接取代上一次 history 的紀錄，避免用戶來回跳轉。
+        router.replace('/dashboard');
+        // 不關閉 loading — 讓它保持到頁面跳轉完成
+        return;
       }
-    }, setIsLoading);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+    setIsLoading(false);
   }
 
   async function handleGuestLogin() {
@@ -63,7 +78,9 @@ export default function LoginPage() {
       if (result.isSuccess) {
         toast.success(result.message);
         localStorage.setItem('user', JSON.stringify(result.data));
-        router.push('/dashboard');
+        router.replace('/dashboard');
+        // 不關閉 loading — 讓它保持到頁面跳轉完成
+        return;
       }
     } catch (error: any) {
       // 特別處理 429 Rate Limit
@@ -72,9 +89,8 @@ export default function LoginPage() {
       } else {
         toast.error('訪客登入失敗，請稍後再試');
       }
-    } finally {
-      setIsGuestLoading(false);
     }
+    setIsGuestLoading(false);
   }
 
   return (
