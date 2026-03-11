@@ -26,6 +26,7 @@ import {
   startWeeklySummaryNoticeCronJobs,
 } from './cron/notificationCron';
 import { startRecurringTransactionCronJob } from './cron/recurringCron';
+import { startGuestCleanupCronJob } from './cron/guestCleanupCron';
 import { initBillParseWorker } from '@/worker';
 
 const app: express.Application = express();
@@ -78,6 +79,7 @@ startDailyReminderCronJobs();
 startWeeklySummaryNoticeCronJobs();
 startMonthlyAnalysisNoticeCronJobs();
 startRecurringTransactionCronJob();
+startGuestCleanupCronJob();
 
 // 啟動 Bill Parse Worker (同 process)
 // CI / test 環境不需要啟動 Worker
