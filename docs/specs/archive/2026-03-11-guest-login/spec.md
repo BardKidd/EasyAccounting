@@ -1,8 +1,8 @@
 # Guest Login (訪客登入)
 
-> Status: APPROVED
+> Status: ARCHIVED
 > Created: 2026-03-04
-> Last Updated: 2026-03-04
+> Last Updated: 2026-03-11
 
 ## Summary
 

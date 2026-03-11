@@ -1,7 +1,7 @@
 # Guest Login — Implementation Tasks
 
 > Spec: [spec.md](./spec.md)
-> Status: IN PROGRESS
+> Status: DONE
 
 ## Tasks
 
