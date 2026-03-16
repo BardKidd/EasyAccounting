@@ -10,8 +10,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ModeToggle } from '@/components/mode-toggle';
-import { Bell, UserPlus } from 'lucide-react';
-import { simplifyTryCatch } from '@/lib/utils';
+import { Bell, UserPlus, MessageSquare } from 'lucide-react';
+import { simplifyTryCatch, cn } from '@/lib/utils';
 import { getReconciliationNotifications } from '@/services/reconciliationService';
 import { logout } from '@/services/authService';
 import { toast } from 'sonner';
@@ -20,8 +20,10 @@ import { ElegantLoader } from '@/components/ui/elegant-loader';
 import { useMemo, useState, useEffect } from 'react';
 import { GuestLogoutDialog } from '@/components/auth/guest-logout-dialog';
 import { PromoteDialog } from '@/components/auth/promote-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useChatState } from '@/contexts/chatContext';
 
-function Header() {
+export function Header() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<{
@@ -33,6 +35,7 @@ function Header() {
     email: '',
     isGuest: false,
   });
+  const { toggleChat, isChatOpen } = useChatState();
 
   // Guest-specific dialog states
   const [showGuestLogout, setShowGuestLogout] = useState(false);
@@ -112,6 +115,21 @@ function Header() {
                 <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)] ring-2 ring-white dark:ring-[#0f172a] animate-pulse" />
               )}
               <span className="sr-only">Toggle notifications</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-10 w-10 cursor-pointer relative rounded-full transition-colors",
+                isChatOpen 
+                  ? "bg-emerald-100/50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400" 
+                  : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
+              )}
+              onClick={toggleChat}
+            >
+              <MessageSquare className="h-5 w-5" />
+              <span className="sr-only">Toggle AI Chat</span>
             </Button>
 
             <div className="h-8 w-px bg-slate-200 dark:bg-white/10 mx-1 hidden md:block"></div>

@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import { loggerMiddleware } from '@/middlewares/loggerMiddleware';
+import mongoConnection from '@/utils/mongodb';
 
 import '@/models';
 
@@ -20,6 +21,7 @@ import reconciliationRoute from '@/routes/reconciliationRoute';
 import budgetRoute from '@/routes/budgetRoute';
 import pdfRoute from '@/routes/pdfRoute';
 import recurringTemplateRoute from '@/routes/recurringTemplateRoute';
+import chatRoute from '@/routes/chatRoute';
 import {
   startDailyReminderCronJobs,
   startMonthlyAnalysisNoticeCronJobs,
@@ -72,6 +74,7 @@ app.use('/api', budgetRoute);
 app.use('/api', deployHealthRoute);
 app.use('/api', pdfRoute);
 app.use('/api', recurringTemplateRoute);
+app.use('/api', chatRoute);
 
 // env 沒設定預設直接通過。這樣 PRD DEV 都不用去改了。
 console.log('[App] Starting Cron Jobs...');
@@ -102,7 +105,7 @@ export { app };
 
 const startServer = async () => {
   try {
-    // await mongoConnection();
+    await mongoConnection();
 
     // 只有非測試環境才啟動 Server
     // Supertest 會自動找空的 port 啟動 Server，所以測試環境不需要啟動
