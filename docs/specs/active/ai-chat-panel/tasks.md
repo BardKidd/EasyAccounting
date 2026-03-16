@@ -34,7 +34,7 @@
 
 ### 4. Testing
 
-- [ ] 4.1 後端 chatService unit test（mock OpenRouter + Google embedding）
-- [ ] 4.2 前端 ChatPanel 元件 render test
-- [ ] 4.3 前端 useChat hook test
+- [x] 4.1 後端 chatService unit test（mock OpenRouter + Google embedding）
+- [x] 4.2 前端 ChatPanel 元件 render test
+- [x] 4.3 前端 useChat hook test
 - [ ] 4.4 手動 E2E 測試：開啟面板、發送訊息、streaming 顯示、停止生成、關閉面板
