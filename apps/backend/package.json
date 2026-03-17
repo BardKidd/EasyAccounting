@@ -45,6 +45,7 @@
   "dependencies": {
     "@azure/service-bus": "^7.9.5",
     "@azure/storage-blob": "^12.29.1",
+    "@google/generative-ai": "^0.24.1",
     "@react-email/components": "^1.0.2",
     "@react-email/render": "^2.0.0",
     "@repo/shared": "workspace:*",
