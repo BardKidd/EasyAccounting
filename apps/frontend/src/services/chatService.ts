@@ -22,7 +22,8 @@ export const streamChat = async (
   onComplete: () => void,
   signal: AbortSignal,
 ): Promise<void> => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+  const apiUrl =
+    process.env.NEXT_PUBLIC_API_DOMAIN || 'http://localhost:3000/api';
 
   try {
     const res = await fetch(`${apiUrl}/chat`, {
