@@ -1,7 +1,9 @@
 import { Sequelize, ModelOptions } from 'sequelize';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({
+  path: process.env.NODE_ENV === 'production' ? '.env.production' : '.env',
+});
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test';

@@ -1,7 +1,9 @@
 import { SignJWT, jwtVerify } from 'jose';
 import dotenv from 'dotenv';
 import { Request, Response } from 'express';
-dotenv.config();
+dotenv.config({
+  path: process.env.NODE_ENV === 'production' ? '.env.production' : '.env',
+});
 
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'default_secret_for_dev_only_do_not_use',
