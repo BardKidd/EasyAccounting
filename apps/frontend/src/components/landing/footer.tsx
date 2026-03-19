@@ -33,15 +33,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
-                  className="hover:text-emerald-400 transition-colors"
-                >
-                  價格方案
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#"
+                  href="/updates"
                   className="hover:text-emerald-400 transition-colors"
                 >
                   更新日誌
@@ -58,7 +50,7 @@ export function Footer() {
             <ul className="space-y-4 text-sm font-medium">
               <li>
                 <Link
-                  href="#"
+                  href="/about"
                   className="hover:text-emerald-400 transition-colors"
                 >
                   關於我們
@@ -66,7 +58,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/contact"
                   className="hover:text-emerald-400 transition-colors"
                 >
                   聯絡我們
@@ -74,7 +66,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/privacy"
                   className="hover:text-emerald-400 transition-colors"
                 >
                   隱私權政策
@@ -82,7 +74,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/terms"
                   className="hover:text-emerald-400 transition-colors"
                 >
                   服務條款
