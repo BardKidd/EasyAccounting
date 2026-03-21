@@ -12,6 +12,7 @@
     "db:seed:generate": "npx sequelize-cli seed:generate --name \"$NAME\"",
     "db:seed": "npx sequelize-cli db:seed:all",
     "db:seed:undo": "npx sequelize-cli db:seed:undo:all",
+    "db:seed:knowledge": "tsx src/utils/seedKnowledge.ts",
     "email": "email dev --dir src/emails --port 3001",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",

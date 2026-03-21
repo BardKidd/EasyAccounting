@@ -6,7 +6,9 @@ import KnowledgeChunk from '@/models/knowledgeChunk';
 import { generateEmbedding } from '@/services/chatService';
 import mongoConnection from '@/utils/mongodb';
 
-dotenv.config();
+dotenv.config({
+  path: process.env.NODE_ENV === 'production' ? '.env.production' : '.env',
+});
 
 // 指定存放 spec 的目錄
 const DOCS_DIR = path.resolve(__dirname, '../../../../docs/specs');
