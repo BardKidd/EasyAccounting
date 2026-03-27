@@ -361,6 +361,7 @@ const forgotPassword = (req: Request, res: Response) => {
 
     if (recentTokenCount >= MAX_RESET_EMAILS_PER_WINDOW) {
       // 改為回傳實際的上限錯誤訊息（犧牲些微的帳號列舉防護，換取更好的 UX）
+      //! 不過假如該信箱真的存在 DB，改為回傳這個內容的話有可能會被知道該信箱真的存在於 DB。
       return res
         .status(StatusCodes.TOO_MANY_REQUESTS)
         .json(
