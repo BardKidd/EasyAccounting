@@ -2,8 +2,16 @@ import express, { Router } from 'express';
 import authController from '@/controllers/authController';
 import { validate } from '@/middlewares/validate';
 import { authMiddleware } from '@/middlewares/authMiddleware';
-import { guestLoginLimiter } from '@/middlewares/rateLimiter';
-import { loginSchema, registerSchema } from '@repo/shared';
+import {
+  guestLoginLimiter,
+  forgotPasswordLimiter,
+} from '@/middlewares/rateLimiter';
+import {
+  loginSchema,
+  registerSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from '@repo/shared';
 
 const router: Router = express.Router();
 
@@ -21,5 +29,18 @@ router.post(
 );
 
 router.get('/me', authMiddleware, authController.me);
+
+router.post(
+  '/forgot-password',
+  forgotPasswordLimiter,
+  validate(forgotPasswordSchema),
+  authController.forgotPassword,
+);
+
+router.post(
+  '/reset-password',
+  validate(resetPasswordSchema),
+  authController.resetPassword,
+);
 
 export default router;

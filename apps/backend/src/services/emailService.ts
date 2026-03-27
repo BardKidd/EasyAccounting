@@ -8,6 +8,7 @@ import MonthlyAnalysis, {
   MonthlyAnalysisProps,
 } from '@/emails/monthlyAnalysis';
 import BillParseComplete from '@/emails/billParseComplete';
+import PasswordReset from '@/emails/passwordReset';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -154,10 +155,56 @@ export const sendBillParseCompleteEmail = async ({
   }
 };
 
+interface SendPasswordResetEmailProps {
+  userName: string;
+  to: string;
+  resetUrl: string;
+  ipAddress: string;
+  location: string;
+  operationTime: string;
+  supportEmail: string;
+}
+
+export const sendPasswordResetEmail = async ({
+  userName,
+  to,
+  resetUrl,
+  ipAddress,
+  location,
+  operationTime,
+  supportEmail,
+}: SendPasswordResetEmailProps) => {
+  try {
+    const html = await render(
+      PasswordReset({
+        userName,
+        resetUrl,
+        ipAddress,
+        location,
+        operationTime,
+        supportEmail,
+      }),
+    );
+    const data = await resend.emails.send({
+      from:
+        process.env.EMAIL_FROM || 'EasyAccounting <easyaccounting@resend.dev>',
+      to,
+      subject: 'EasyAccounting: 密碼重設請求 🔐',
+      html,
+    });
+    console.log('[Email] Send password reset email success');
+    return data;
+  } catch (error) {
+    console.error('[Email] Send password reset email error', error);
+    throw error;
+  }
+};
+
 export default {
   sendDailyReminderEmail,
   sendWelcomeEmail,
   sendWeeklySummaryNoticeEmail,
   sendMonthlyAnalysisNoticeEmail,
   sendBillParseCompleteEmail,
+  sendPasswordResetEmail,
 };

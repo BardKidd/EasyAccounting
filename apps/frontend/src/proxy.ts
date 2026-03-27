@@ -10,6 +10,8 @@ export function proxy(req: NextRequest) {
   const publicPath = [
     '/login',
     '/register',
+    '/forgot-password',
+    '/reset-password',
     '/api/login',
     '/api/register',
     '/',

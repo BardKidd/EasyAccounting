@@ -138,17 +138,9 @@ export default function LoginPage() {
             name="password"
             render={({ field }) => (
               <FormItem className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">
-                    密碼
-                  </FormLabel>
-                  <Link
-                    href="/forgot-password"
-                    className="text-sm font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
-                  >
-                    忘記密碼?
-                  </Link>
-                </div>
+                <FormLabel className="text-slate-700 dark:text-slate-300 font-medium">
+                  密碼
+                </FormLabel>
                 <FormControl>
                   <div className="relative group">
                     <Input
@@ -164,6 +156,14 @@ export default function LoginPage() {
               </FormItem>
             )}
           />
+          <div className="flex justify-end -mt-1">
+            <Link
+              href="/forgot-password"
+              className="text-sm font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
+            >
+              忘記密碼?
+            </Link>
+          </div>
           <Button
             type="submit"
             className="w-full h-12 mt-4 bg-emerald-500 text-white hover:bg-emerald-600 dark:bg-emerald-500 dark:hover:bg-emerald-400 shadow-lg shadow-emerald-500/20 transition-all duration-300 hover:-translate-y-0.5 text-base font-semibold"

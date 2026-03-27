@@ -12,3 +12,15 @@ export const guestLoginLimiter = rateLimit({
   legacyHeaders: false,
   message: responseHelper(false, null, '請求過於頻繁，請稍後再試', null),
 });
+
+/**
+ * Forgot Password Rate Limiter
+ * 限制同一 IP 每分鐘最多 10 次忘記密碼請求
+ */
+export const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: responseHelper(false, null, '請求過於頻繁，請稍後再試', null),
+});

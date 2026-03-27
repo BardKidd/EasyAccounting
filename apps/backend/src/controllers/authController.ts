@@ -1,9 +1,12 @@
 import User from '@/models/user';
+import PasswordResetToken from '@/models/PasswordResetToken';
 import { responseHelper, simplifyTryCatch } from '@/utils/common';
 import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
+import { Op } from 'sequelize';
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -19,6 +22,45 @@ const comparePassword = async (password: string, dbPassword: string) => {
   const compareResult = await bcrypt.compare(password, dbPassword);
   return compareResult;
 };
+
+/**
+ * IP Geolocation via ipinfo.io (HTTPS)
+ * Fallback: 回傳「位置未知」
+ */
+const getIpLocation = async (
+  ip: string,
+): Promise<{ city: string; country: string }> => {
+  try {
+    // localhost / private IP 不查詢
+    if (
+      ip === '127.0.0.1' ||
+      ip === '::1' ||
+      ip === '::ffff:127.0.0.1' ||
+      ip.startsWith('192.168.') ||
+      ip.startsWith('10.')
+    ) {
+      return { city: 'localhost', country: 'Local' };
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const response = await fetch(`https://ipinfo.io/${ip}/json`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!response.ok) throw new Error(`ipinfo.io returned ${response.status}`);
+    const data = await response.json();
+    return {
+      city: data.city || '未知',
+      country: data.country || '未知',
+    };
+  } catch (error) {
+    console.error('[Auth] IP geolocation failed:', error);
+    return { city: '未知', country: '未知' };
+  }
+};
+
+const RESET_TOKEN_EXPIRY_MINUTES = 15;
+const MAX_RESET_EMAILS_PER_WINDOW = 10;
 
 const login = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -289,4 +331,164 @@ const me = (req: Request, res: Response) => {
   });
 };
 
-export default { login, logout, guestLogin, promote, me };
+/**
+ * POST /api/auth/forgot-password
+ * 產生 reset token 並寄送重設密碼信件
+ */
+const forgotPassword = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const { email } = req.body;
+    const genericMessage = '若此信箱已註冊，您將收到重設密碼的信件';
+
+    // 不論結果都回傳成功（防止 email 列舉攻擊）
+    const user = await User.findOne({ where: { email } });
+    if (!user || user.isGuest) {
+      return res
+        .status(StatusCodes.OK)
+        .json(responseHelper(true, null, genericMessage, null));
+    }
+
+    // Per-email rate limiting: 15 分鐘內最多 10 封
+    const windowStart = new Date(
+      Date.now() - RESET_TOKEN_EXPIRY_MINUTES * 60 * 1000,
+    );
+    const recentTokenCount = await PasswordResetToken.count({
+      where: {
+        userId: user.id,
+        createdAt: { [Op.gt]: windowStart },
+      } as any,
+    });
+
+    if (recentTokenCount >= MAX_RESET_EMAILS_PER_WINDOW) {
+      // 改為回傳實際的上限錯誤訊息（犧牲些微的帳號列舉防護，換取更好的 UX）
+      return res
+        .status(StatusCodes.TOO_MANY_REQUESTS)
+        .json(
+          responseHelper(
+            false,
+            null,
+            `該信箱發送重設連結次數已達上限（15 分鐘內最多 ${MAX_RESET_EMAILS_PER_WINDOW} 次），請稍後再試。`,
+            null,
+          ),
+        );
+    }
+
+    // 產生 token
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(rawToken)
+      .digest('hex');
+    const expiresAt = new Date(
+      Date.now() + RESET_TOKEN_EXPIRY_MINUTES * 60 * 1000,
+    );
+
+    await PasswordResetToken.create({
+      userId: user.id,
+      token: hashedToken,
+      expiresAt,
+    });
+
+    // 先取得 IP（同步可用），組合連結
+    const clientIp = req.ip || '未知';
+    const frontendUrl = process.env.ORIGIN_URL || 'http://localhost:3001';
+    const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
+    const supportEmail =
+      process.env.SUPPORT_EMAIL_FROM || 'support@riinouo-eaccounting.win';
+
+    // 先回傳 response，geolocation + 寄信在背景執行 (fire-and-forget)
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, genericMessage, null));
+
+    // 背景非同步：查 geolocation → 寄信
+    (async () => {
+      const { city, country } = await getIpLocation(clientIp);
+      const locationStr = `${city}, ${country}`;
+      const operationTime = new Date().toLocaleString('zh-TW', {
+        timeZone: 'Asia/Taipei',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+
+      await emailService.sendPasswordResetEmail({
+        userName: user.name,
+        to: user.email,
+        resetUrl,
+        ipAddress: clientIp,
+        location: locationStr,
+        operationTime,
+        supportEmail,
+      });
+    })().catch((err) =>
+      console.error('[Auth] Failed to send password reset email:', err),
+    );
+  });
+};
+
+/**
+ * POST /api/auth/reset-password
+ * 驗證 token 並重設密碼
+ */
+const resetPassword = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const { token, password } = req.body;
+
+    // SHA-256 hash the incoming raw token
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // O(1) indexed lookup
+    const resetRecord = await PasswordResetToken.findOne({
+      where: {
+        token: hashedToken,
+        expiresAt: { [Op.gt]: new Date() },
+        usedAt: null,
+      },
+    });
+
+    if (!resetRecord) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json(
+          responseHelper(
+            false,
+            null,
+            '無效或已過期的重設連結，請重新申請',
+            null,
+          ),
+        );
+    }
+
+    const user = await User.findByPk(resetRecord.userId);
+    if (!user) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json(responseHelper(false, null, '使用者不存在', null));
+    }
+
+    // DB Transaction: 密碼更新 + token 標記必須原子性完成
+    await sequelize.transaction(async (t) => {
+      const hashedPassword = await bcrypt.hash(password, 12);
+      await user.update({ password: hashedPassword }, { transaction: t });
+      await resetRecord.update({ usedAt: new Date() }, { transaction: t });
+    });
+
+    return res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, '密碼已重設成功', null));
+  });
+};
+
+export default {
+  login,
+  logout,
+  guestLogin,
+  promote,
+  me,
+  forgotPassword,
+  resetPassword,
+};

@@ -15,6 +15,7 @@ import MerchantMapping from './MerchantMapping';
 import PendingTransaction from './PendingTransaction';
 import BillParseTelemetry from './BillParseTelemetry';
 import RecurringTemplate from './RecurringTemplate';
+import PasswordResetToken from './PasswordResetToken';
 
 // -----------------------------------------------------------------------------
 // Soft Delete Hooks (Cascade)
@@ -258,6 +259,13 @@ Transaction.belongsTo(RecurringTemplate, {
   as: 'recurringTemplate',
 });
 
+// User & PasswordResetToken
+User.hasMany(PasswordResetToken, {
+  foreignKey: 'userId',
+  as: 'passwordResetTokens',
+});
+PasswordResetToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 // Export everything
 export {
   Account,
@@ -277,4 +285,5 @@ export {
   PendingTransaction,
   BillParseTelemetry,
   RecurringTemplate,
+  PasswordResetToken,
 };

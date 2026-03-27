@@ -33,6 +33,9 @@ import { initBillParseWorker } from '@/worker';
 
 const app: express.Application = express();
 
+// Trust proxy — 確保在 Cloudflare 後取得真實 Client IP
+app.set('trust proxy', true);
+
 // CORS 設定
 app.use(
   cors({

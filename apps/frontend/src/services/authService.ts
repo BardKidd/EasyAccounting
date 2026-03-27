@@ -25,3 +25,23 @@ export const promote = async (data: {
 export const checkSession = async (): Promise<ResponseHelper<UserType>> => {
   return await apiHandler('/me', 'get', null);
 };
+
+/**
+ * 忘記密碼 — 發送重設密碼信件
+ */
+export const forgotPassword = async (
+  email: string,
+): Promise<ResponseHelper<null>> => {
+  return await apiHandler('/forgot-password', 'post', { email });
+};
+
+/**
+ * 重設密碼 — 驗證 token 並更新密碼
+ */
+export const resetPassword = async (data: {
+  token: string;
+  password: string;
+  confirmPassword: string;
+}): Promise<ResponseHelper<null>> => {
+  return await apiHandler('/reset-password', 'post', data);
+};
