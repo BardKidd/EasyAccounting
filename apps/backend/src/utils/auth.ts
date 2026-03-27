@@ -42,7 +42,7 @@ const isSecure = isProduction || isCloudHost;
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isSecure,
-  sameSite: isSecure ? ('none' as const) : ('lax' as const), // Secure 時允許跨域 (None)
+  sameSite: 'lax' as const,
   path: '/', //! 會鎖定 cookie 在這個路徑底下
   domain: whichDomain(),
   maxAge: COOKIE_MAX_AGE,
