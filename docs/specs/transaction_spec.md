@@ -37,14 +37,27 @@
 
 當使用者 **修改** 一筆過去的交易時：
 
-### 餘額更新邏輯 (Revert & Apply)
+### 2.1 一般收支的餘額更新邏輯 (Revert & Apply)
 
 1.  **Revert (沖銷)**: 先將 **原交易** 對餘額的影響「反向」扣回/加回。
     - 若原為支出 $100 -> 帳戶 +100。
     - 若原為收入 $100 -> 帳戶 -100。
+    - 沖銷時需 **交換** `extraAdd` 與 `extraMinus`，因為 Income/Expense 的 Net Amount 公式加減項相反。
 2.  **Apply (套用)**: 再計算 **新交易** 對餘額的影響。
     - 若改為支出 $200 -> 帳戶 -200。
 3.  **Result**: 只需更新該 Account 的最終 `balance` 欄位，不需重算中間所有歷史流水帳。
+
+### 2.2 轉帳交易的修改 (Transfer Update)
+
+轉帳由 2 筆交易組成 (透過 `linkId` 關聯)。修改轉帳交易時，需額外處理對向交易：
+
+1. **沖銷主交易**：反向沖銷主帳戶餘額。
+2. **沖銷對向交易**：查找 `linkId` 關聯的交易，反向沖銷對向帳戶餘額。
+3. **套用主交易新值**：更新主帳戶餘額 (含手續費等 Extra)。
+4. **同步關聯交易**：將 `amount`、`date`、`billingDate`、`description` 同步到對向交易。
+5. **重算對向帳戶餘額**：以新金額重新計算對向帳戶餘額 (**收入方不含手續費**，與 `createTransfer` 一致)。
+
+> **帳戶切換**：目前 `updateIncomeExpense` 支援一般收支的帳戶切換 (`accountId` 變更)，但轉帳的帳戶切換不在此函式處理範圍。
 
 ---
 
@@ -174,3 +187,64 @@
 - **欄位排列**: `extraAdd` 與 `extraMinus` **同一排** (各佔 50% 寬度)。
 - **自訂標題**: 點擊欄位標題 (預設「折扣」或「手續費」) 可編輯名稱。
 - **預設狀態**: 收合，維持介面簡潔。
+
+---
+
+## 7. 業務邏輯流程圖 (Business Logic Flow Charts)
+
+### 7.1 建立交易流程 (Create Transaction)
+
+```mermaid
+graph TD
+    A[開始建立交易] --> B{檢查帳戶是否存在}
+    B -- 否 --> C[拋出錯誤: Account not found]
+    B -- 是 --> D[處理負數金額: Math.abs]
+    D --> E{是否有額外金額?}
+    E -- 是 --> F[建立 TransactionExtra 紀錄]
+    E -- 否 --> G[無 TransactionExtra]
+    F --> H{是否為分期付款?}
+    G --> H
+    H -- 是 (期數 > 1) --> I[建立 InstallmentPlan]
+    I --> J[計算每期金額與餘數分配]
+    J --> K[建立多筆 Transaction 紀錄]
+    K --> L[計算並更新帳戶餘額]
+    H -- 否 --> M[建立單筆 Transaction 紀錄]
+    M --> L
+    L --> N{是否有關聯預算?}
+    N -- 是 --> O[建立 TransactionBudget 關聯]
+    N -- 否 --> P[執行 handleBudgetImpact]
+    O --> P
+    P --> Q[提交事務並結束]
+```
+
+### 7.2 更新交易流程 (Update Transaction)
+
+```mermaid
+graph TD
+    A[開始更新交易] --> B{檢查交易與帳戶是否存在}
+    B -- 否 --> C[拋出錯誤]
+    B -- 是 --> D["沖銷舊交易: calcAccountBalance 反向 \n (交換 extraAdd/extraMinus)"]
+    D --> E["處理新金額與類型: Math.abs\n(支援部分更新: 未提供則用舊值)"]
+    E --> F{更新 TransactionExtra?}
+    F -- 需建立/更新 --> G[建立或更新 TransactionExtra]
+    F -- 需刪除 --> H["刪除 TransactionExtra\n(extraAdd 與 extraMinus 皆為 0)"]
+    F -- 無變動 --> I[維持現狀]
+    G --> J{帳戶是否變更?}
+    H --> J
+    I --> J
+    J -- 是 --> K[查詢新帳戶]
+    J -- 否 --> L[使用原帳戶]
+    K --> M["套用新交易餘額: calcAccountBalance"]
+    L --> M
+    M --> N[更新 Transaction 紀錄]
+    N --> O{是否為轉帳? linkId}
+    O -- 是 --> P["1. 沖銷對向帳戶舊餘額\n(交換 extraAdd/extraMinus)"]
+    P --> Q["2. 同步關聯交易\n(amount + date + billingDate + description)"]
+    Q --> R["3. 重算對向帳戶新餘額\n(收入方不含手續費: extraAdd=0, extraMinus=0)"]
+    R --> S[同步 TransactionBudget 關聯]
+    O -- 否 --> S
+    S --> T["收集預算影響\n(舊日期 + 新日期的 budgetIds)"]
+    T --> U[提交事務]
+    U --> V[執行 handleBudgetImpact]
+    V --> W[結束]
+```

@@ -126,3 +126,202 @@ Request Payload:
 - **分期金額準確性**: 確保 100元/3期 result 為 34, 33, 33 或 33, 33, 34，總和必為 100。
 - **帳單歸屬**: 測試跨結帳日的交易是否歸入正確月份。
 - **關聯完整性**: 刪除信用卡帳戶時，關聯的 `Detail` 應一併處理 (Soft Delete)。
+
+---
+
+## 6. 業務邏輯流程圖 (Business Logic Diagrams)
+
+### 6.1 架構總覽
+
+```mermaid
+graph TD
+    subgraph Frontend
+        AF["AccountForm\n建立信用卡帳戶"]
+        TS["TransactionSheet\n建立交易/分期"]
+        BIP["BillImportPage\n帳單匯入"]
+    end
+
+    subgraph Backend - Controllers
+        AC["accountController\naddAccount"]
+        TC["transactionController"]
+    end
+
+    subgraph Backend - Services
+        TXS["transactionServices\ncreateTransaction"]
+        BPS["billParseService\nsaveParsedResults"]
+    end
+
+    subgraph Backend - Utils
+        CCU["creditCardUtils\nisCreditCardAccount\ngetCreditCardBillingDates"]
+    end
+
+    subgraph Models
+        ACC["Account\ntype: CREDIT_CARD"]
+        CCD["CreditCardDetail\n1:1 關聯"]
+        IP["InstallmentPlan\n分期計畫"]
+        TX["Transaction\n交易紀錄"]
+    end
+
+    AF --> AC --> ACC
+    AC --> CCD
+    TS --> TC --> TXS
+    TXS --> IP
+    TXS --> TX
+    TXS --> CCU
+    BIP --> BPS
+    BPS --> TX
+```
+
+### 6.2 建立信用卡帳戶流程
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Controller as addAccount
+    participant DB
+
+    Client->>Controller: POST /api/account {type: CREDIT_CARD, creditCardDetail: {...}}
+    Controller->>DB: BEGIN TRANSACTION
+    Controller->>DB: Account.create({type: CREDIT_CARD})
+    alt type === CREDIT_CARD && creditCardDetail 存在
+        Controller->>DB: CreditCardDetail.create({accountId, limit, statementDate, ...})
+    end
+    Controller->>DB: COMMIT
+    Controller->>DB: Account.findByPk(id, include: CreditCardDetail)
+    Controller-->>Client: 201 Created (含 credit_card_detail)
+```
+
+> 使用 Sequelize Transaction 確保 Account 和 CreditCardDetail 原子性建立。
+
+### 6.3 分期付款建立流程
+
+```mermaid
+sequenceDiagram
+    participant Fn as createTransaction
+    participant DB
+
+    Fn->>DB: InstallmentPlan.create({totalAmount, totalInstallments, ...})
+
+    Note over Fn: 計算每期金額
+    Note over Fn: monthlyAmount = totalAmount / count
+    Note over Fn: 根據 calculationMethod 做 FLOOR/CEIL/ROUND
+    Note over Fn: remainder = totalAmount - (monthlyAmount × count)
+    Note over Fn: 根據 remainderPlacement 分配餘數至 FIRST 或 LAST 期
+
+    loop i = 1 to count
+        Fn->>DB: Transaction.create({amount: 當期金額, description: "原始說明 (i/count)", date: addMonths(startDate, i-1), installmentPlanId: plan.id})
+    end
+
+    Note over Fn: ⚠️ 全額立即扣帳戶餘額
+    Fn->>DB: calcAccountBalance(account, type, totalAmount)
+    Fn->>DB: account.save()
+```
+
+#### 分期金額計算規則
+
+```
+1. 基本每期 = total / count，依 calculationMethod 取整
+   monthlyAmount = Math.round(totalAmount / count)  // 或 floor / ceil
+
+2. 餘數分配
+   remainder = totalAmount - (monthlyAmount × count)
+   remainderPlacement = FIRST → 第一期加 remainder
+   remainderPlacement = LAST  → 最後期加 remainder
+```
+
+**範例**：12000 元 / 7 期 (ROUND, FIRST)
+
+| 期數      | 金額      | 說明                                                                |
+| --------- | --------- | ------------------------------------------------------------------- |
+| 第 1 期   | 1716      | Math.round(12000/7) = 1714, remainder = 12000 - 1714×7 = 2, 首期 +2 |
+| 第 2~7 期 | 1714      | 標準每期金額                                                        |
+| **總計**  | **12000** | 1716 + 1714×6 = 12000 ✓                                             |
+
+> **重要**：分期付款的全部債務在建立當下立即反映在帳戶餘額中 (傳入 `calcAccountBalance` 的是原始總金額，而非每期金額)。
+
+### 6.4 帳單週期判斷流程
+
+```mermaid
+flowchart TD
+    A["輸入: accountId + transactionDate"] --> B["查 Account + CreditCardDetail"]
+    B --> C{"帳戶是信用卡？"}
+    C -->|否| D["return null"]
+    C -->|是| E["取 statementDay, dueDay, gracePeriod"]
+    E --> F{"交易日 > 結帳日?"}
+    F -->|是| G["結帳日月份 +1\n計入下月帳單"]
+    F -->|否| H["維持本月帳單"]
+    G --> I["statementDate = setDate(月份, statementDay)"]
+    H --> I
+    I --> J["dueDate = setDate(statementDate, dueDay)"]
+    J --> K{"dueDay <= statementDay?"}
+    K -->|是| L["dueDate 月份 +1\n繳款日在下個月"]
+    K -->|否| M["維持同月"]
+    L --> N{"有 gracePeriod?"}
+    M --> N
+    N -->|是| O["dueDate += gracePeriod 天"]
+    N -->|否| P["return {statementDate, paymentDueDate}"]
+    O --> P
+```
+
+**範例**：結帳日 25 號、繳款日 5 號、寬限期 3 天
+
+| 交易日 | 結帳日 | 繳款截止日 | 說明                                              |
+| ------ | ------ | ---------- | ------------------------------------------------- |
+| 1/20   | 1/25   | 2/8        | 交易日 ≤ 結帳日 → 本月帳單，繳款日 2/5 + 3 天寬限 |
+| 1/28   | 2/25   | 3/8        | 交易日 > 結帳日 → 下月帳單，繳款日 3/5 + 3 天寬限 |
+
+> **設計決策**：系統以「交易日」而非銀行的「入帳日」為判斷基準，簡化使用者操作。小月溢出（如設定 30 號結帳，遇到 2 月）目前由 date-fns `setDate` 自動進位處理。
+
+### 6.5 帳單匯入與分期比對流程
+
+```mermaid
+flowchart TD
+    A["解析後的交易列表"] --> B["batchSuggestCategories\nMerchantMapping 比對"]
+    A --> C["batchMatchInstallments\n分期交易比對"]
+    A --> D["batchMatchCategoriesByName\nLLM 類別建議比對"]
+
+    B --> E["合併結果"]
+    C --> E
+    D --> E
+
+    E --> F{"每筆交易判斷狀態"}
+    F -->|"matchedTransactionId 存在\n或 isInstallment"| G["Status: SKIPPED\n避免重複記帳"]
+    F -->|"一般消費"| H["Status: PENDING\n待用戶確認"]
+
+    G --> I["PendingTransaction.bulkCreate"]
+    H --> I
+```
+
+**分期比對邏輯** (`batchMatchInstallments`)：
+
+- 只對 `isInstallment = true` 的交易做比對
+- 查詢範圍：往前 2 年 ~ 往後 30 天
+- 比對條件：`paymentFrequency === INSTALLMENT` + `description iLike` + `amount 完全相同`
+- 匹配到既有交易 → 自動標記為 `SKIPPED`，避免帳單匯入造成重複記帳
+
+---
+
+## 7. 涉及檔案清單 (File Inventory)
+
+| 層級               | 檔案                                                                        | 角色                        |
+| ------------------ | --------------------------------------------------------------------------- | --------------------------- |
+| Shared Types       | `packages/shared/src/types/accountTypes.ts`                                 | CreditCardDetailType 定義   |
+| Shared Types       | `packages/shared/src/types/transactionTypes.ts`                             | InstallmentPlanType 定義    |
+| Backend Model      | `apps/backend/src/models/CreditCardDetail.ts`                               | Sequelize Model             |
+| Backend Model      | `apps/backend/src/models/InstallmentPlan.ts`                                | Sequelize Model             |
+| Backend Controller | `apps/backend/src/controllers/accountController.ts`                         | 建立帳戶 + CreditCardDetail |
+| Backend Service    | `apps/backend/src/services/transactionServices.ts`                          | 交易建立 + 分期邏輯核心     |
+| Backend Service    | `apps/backend/src/services/billParseService.ts`                             | 帳單匯入 + 分期比對         |
+| Backend Utils      | `apps/backend/src/utils/creditCardUtils.ts`                                 | 帳單週期計算                |
+| Frontend           | `apps/frontend/src/components/accounts/accountForm.tsx`                     | 建立信用卡帳戶 UI           |
+| Frontend           | `apps/frontend/src/components/transactions/transactionSheet.tsx`            | 建立交易/分期 UI            |
+| Frontend           | `apps/frontend/src/app/(main)/bill-import/page.tsx`                         | 帳單匯入 UI                 |
+| Migration          | `apps/backend/database/migrations/20260114042020-add_credit_card_tables.js` | DB Schema 建立              |
+| Tests              | `apps/backend/tests/unit/installment_service.test.ts`                       | 分期邏輯單元測試            |
+
+---
+
+## 8. 注意事項 (Known Issues & Caveats)
+
+- **小月溢出**：結帳日設 30/31 號時，2 月份 `setDate(feb, 30)` 會自動進位到 3 月，目前未特別處理 clamp 至月底的邏輯。
+- **`isCreditCardAccount` 尚無呼叫者**：此 utility function 目前未被任何業務流程使用，為預留功能。

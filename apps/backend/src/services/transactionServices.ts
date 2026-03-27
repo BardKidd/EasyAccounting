@@ -626,14 +626,59 @@ export const updateIncomeExpense = async (
       { transaction: t },
     );
 
-    // Linked Transaction Update Logic
-    if (transaction.linkId && data.date) {
+    // Linked Transaction Update Logic (轉帳同步)
+    if (transaction.linkId) {
       const linkedTransaction = await Transaction.findOne({
         where: { id: transaction.linkId, userId },
+        include: [{ model: TransactionExtra, as: 'transactionExtra' }],
         transaction: t,
       });
+
       if (linkedTransaction) {
-        await linkedTransaction.update({ date: data.date }, { transaction: t });
+        // 1. 沖銷對向帳戶的舊餘額
+        const linkedAccount = await Account.findOne({
+          where: { id: linkedTransaction.accountId!, userId },
+          transaction: t,
+        });
+        if (!linkedAccount) throw new Error('Linked account not found');
+
+        const linkedExtra = (linkedTransaction as any).transactionExtra;
+        const linkedOldExtraAdd = Number(linkedExtra?.extraAdd || 0);
+        const linkedOldExtraMinus = Number(linkedExtra?.extraMinus || 0);
+
+        const linkedRevertType =
+          linkedTransaction.type === RootType.INCOME
+            ? RootType.EXPENSE
+            : RootType.INCOME;
+        await calcAccountBalance(
+          linkedAccount,
+          linkedRevertType,
+          Number(linkedTransaction.amount),
+          linkedOldExtraMinus, // Swap for revert
+          linkedOldExtraAdd, // Swap for revert
+        );
+
+        // 2. 同步更新關聯交易的金額、日期、描述
+        const linkedUpdateData: Record<string, any> = {
+          amount: newAmount,
+        };
+        if (data.date) linkedUpdateData.date = data.date;
+        if (data.date) linkedUpdateData.billingDate = data.date;
+        if (data.description !== undefined)
+          linkedUpdateData.description = data.description;
+
+        await linkedTransaction.update(linkedUpdateData, { transaction: t });
+
+        // 3. 重新計算對向帳戶的新餘額
+        // 對向交易 (收入方) 不含手續費，依照 createTransfer 的邏輯
+        await calcAccountBalance(
+          linkedAccount,
+          linkedTransaction.type!,
+          newAmount,
+          0, // 收入方不記錄 extraAdd
+          0, // 收入方不記錄 extraMinus
+        );
+        await linkedAccount.save({ transaction: t });
       }
     }
 
