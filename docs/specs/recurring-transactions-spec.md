@@ -73,6 +73,51 @@
 5. 若 `currentOccurrence >= totalOccurrences`，將 `status` 設為 `COMPLETED`。
 6. `Template` 更新與 `Transaction` 寫入必須在同一個 **DB Transaction** 中，確保原子性。
 
+**業務邏輯流程圖：**
+
+```mermaid
+flowchart TD
+    A([Cron Job 每日 00:00 UTC+8]) --> B[尋找狀態為 ACTIVE 且\n nextExecutionDate <= 今天的 Template]
+    B --> C{有符合的 Template 嗎？}
+    C -- 否 --> EndNode([結束])
+    C -- 是 --> D[迴圈處理每一個 Template]
+
+    D --> E[開啟 DB Transaction]
+    E --> F{類型是轉帳\nOPERATE?}
+
+    F -- 是 --> G[刪除 Template]
+    G --> H[Commit DB]
+    H --> NextNode[處理下一個 Template]
+
+    F -- 否 --> I{有額外折扣\n或手續費嗎?}
+    I -- 是 --> J[建立 TransactionExtra]
+    I -- 否 --> K[取得 currentOccurrence + 1]
+    J --> K
+
+    K --> L[根據 baseTransactionAttrs\n建立 Transaction 紀錄]
+    L --> M[取得關聯 Account]
+
+    M --> N{交易類型}
+    N -- 收入 --> O[餘額 = 餘額 + 金額 - 手續費 + 折扣]
+    N -- 支出 --> P[餘額 = 餘額 - 金額 - 手續費 + 折扣]
+
+    O --> Q[更新 Account 餘額]
+    P --> Q
+
+    Q --> R[計算下一次執行日期\ncalcNextExecutionDate]
+    R --> S{已達總次數?}
+
+    S -- 是 --> T[更新 Template:\n次數 + 1, 更新下次日期\n狀態 = COMPLETED]
+    S -- 否 --> U[更新 Template:\n次數 + 1, 更新下次日期\n狀態 = ACTIVE]
+
+    T --> V[Commit DB]
+    U --> V
+
+    V --> NextNode
+    NextNode -- 還有未處理的 --> D
+    NextNode -- 全部處理完畢 --> EndNode
+```
+
 ## 4. Edge Cases Handling
 
 ### 4.1 日期推算邏輯 (Date Math)
