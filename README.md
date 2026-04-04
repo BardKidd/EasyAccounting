@@ -4,20 +4,29 @@ EasyAccounting 是一個現代化的個人記帳與資產管理應用程式，�
 
 ## ✨ 特色功能
 
-- **全方位記帳功能**：
+- **全方位記帳功能**
   - 支援收入、支出、轉帳等多種交易類型
+  - **定期交易 (Recurring Transactions)**：支援設定週期性收支，自動產生未來交易紀錄
+  - **階層式的自訂分類系統**：彈性的分類管理
+- **資產與帳戶管理**
   - 支援多帳戶管理與資產追蹤
-  - 階層式的自訂分類系統
-- **強大的報表分析**：
-  - 互動式圖表 (基於 ECharts) 展示資產趨勢與消費分佈
+  - **對帳系統 (Reconciliation)**：幫助使用者核對實際資產與系統紀錄
+- **AI 與智慧化輔助**
+  - **PDF 帳單解析**：支援上傳信用卡或銀行 PDF 帳單，自動解析並匯入交易
+  - **AI 智能客服 / 助手**：透過對話方式提供帳務查詢與協助
+- **預算控制 (Budget System)**
+  - 設定整體或特定分類的預算，並追蹤達成率與超支警告
+- **強大的報表分析**
+  - 互動式圖表 (基於 ECharts) 展示資產趨勢、消費分佈與排行榜
   - 支援 Excel 匯入與匯出功能，方便資料備份與遷移
-- **自動化通知**：
-  - 每日記帳提醒
+- **自動化與系統通知**
+  - 每日記帳提醒、對帳提醒
+  - 系統公告 (Announcements) 推播
   - 每週／每月財務報表自動寄送 (整合 Resend 與 React Email)
-- **現代化介面**：
+- **現代化介面與體驗**
   - 簡潔美觀的 UI 設計 (基於 Tailwind CSS 與 Radix UI)
   - 支援淺色/深色模式
-  - 響應式設計，適配各種裝置
+  - 提供訪客模式 (Guest Login)，無痛體驗系統功能
 
 ## 🛠️ 技術棧 (Tech Stack)
 
@@ -28,8 +37,8 @@ EasyAccounting 是一個現代化的個人記帳與資產管理應用程式，�
 - **Framework**: [Next.js](https://nextjs.org/)
 - **Language**: TypeScript
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/), `tw-animate-css`
-- **UI Components**: [Shadcn](https://ui.shadcn.com/), [Radix UI](https://www.radix-ui.com/), [Lucide React](https://lucide.dev/) (Icons), [Sonner](https://sonner.emilkowal.ski/) (Toasts)
-- **Forms & Validation**: React Hook Form, Zod (via `@repo/shared`)
+- **UI Components**: [Shadcn/ui](https://ui.shadcn.com/), [Radix UI](https://www.radix-ui.com/), [Lucide React](https://lucide.dev/), [Sonner](https://sonner.emilkowal.ski/)
+- **Forms & Validation**: React Hook Form, Zod
 - **Visualization**: [ECharts for React](https://git.hust.cc/echarts-for-react/)
 - **Testing**: [Playwright](https://playwright.dev/)
 
@@ -40,10 +49,10 @@ EasyAccounting 是一個現代化的個人記帳與資產管理應用程式，�
 - **Email**: [Resend](https://resend.com/), [React Email](https://react.email/)
 - **Authentication**: JWT (JSON Web Tokens)
 - **Job Scheduling**: Node-cron
-- **File Handling**: ExcelJS (Excel 處理), Multer (檔案上傳)
+- **File Handling & PDF**: Multer, ExcelJS, PDF 解析相關套件
 - **Testing**: [Vitest](https://vitest.dev/), [Supertest](https://github.com/ladjs/supertest)
 
-### Shared Packages
+### Shared Packages (`packages/`)
 
 - `@repo/shared`: 共用的 TypeScript 型別定義、Zod Schema 與驗證邏輯
 - `@repo/eslint-config`: 統一的 ESLint 設定
@@ -72,15 +81,14 @@ pnpm install
 
 ## 📜 常用指令
 
-| 指令               | 說明                       |
-| ------------------ | -------------------------- |
-| `pnpm dev`         | 啟動開發模式 (包含前後端)  |
-| `pnpm build`       | 建置所有應用與套件         |
-| `pnpm lint`        | 執行程式碼檢查             |
-| `pnpm format`      | 使用 Prettier 格式化程式碼 |
-| `pnpm format`      | 使用 Prettier 格式化程式碼 |
-| `pnpm check-types` | 執行 TypeScript 型別檢查   |
-| `pnpm test`        | 執行所有測試               |
+| 指令                 | 說明                       |
+| -------------------- | -------------------------- |
+| `pnpm dev`           | 啟動開發模式 (包含前後端)  |
+| `pnpm build`         | 建置所有應用與套件         |
+| `pnpm lint`          | 執行程式碼檢查             |
+| `pnpm format`        | 使用 Prettier 格式化程式碼 |
+| `pnpm check-types`   | 執行 TypeScript 型別檢查   |
+| `pnpm test`          | 執行所有測試               |
 
 ### Backend 特定指令 (需進入 `apps/backend`)
 
@@ -91,9 +99,7 @@ pnpm install
 | `pnpm db:migrate:down` | 還原上一次的遷移        |
 | `pnpm email`           | 預覽電子郵件樣板        |
 
-## � 詳細專案結構 (Project Structure)
-
-本專案為 Monorepo 架構，主要分為 Backend (Express) 與 Frontend (Next.js)。
+## 📂 詳細專案結構 (Project Structure)
 
 ### Backend (`apps/backend`)
 
@@ -116,24 +122,15 @@ apps/backend/src
 ```
 apps/frontend/src
 ├── app/            # Next.js App Router 頁面與 Layout
-├── components/     # React UI 元件
-│   ├── landing/    # 首頁相關元件
-│   ├── ui/         # 共用 UI 元件 (Shadcn/UI)
-│   └── ...
+├── components/     # React UI 元件 (包含 landing, ui 等)
 ├── hooks/          # Custom React Hooks
 ├── lib/            # 工具函式與第三方庫設定
 ├── services/       # 前端 API 呼叫封裝
 └── types/          # 前端 TypeScript 型別定義
 ```
 
-### Packages (`packages/`)
-
-- `shared`: 前後端共用的邏輯 (Zod Schemas, Types)。
-- `eslint-config`: 統一的 Lint 規則。
-- `typescript-config`: 統一的 TSConfig。
-
 ---
 
 ## 📝 筆記與備註
 
-- 待開發的功能詳見 `todo.md`
+- 待開發的功能詳見 `apps/backend/todo.md` 與 `docs/specs/` 目錄下的規格文件。

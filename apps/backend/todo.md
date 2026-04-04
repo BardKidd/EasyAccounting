@@ -64,6 +64,7 @@
   - Frontend: Vercel.
   - Backend: Railway.
 - [x] **CI/CD**: Basic Github Actions workflow.
+- [x] **週期性交易**: 設定固定收支 (如房租、訂閱制)，自動建立交易紀錄。
 
 ---
 
@@ -95,7 +96,6 @@
 ### 2. 交易功能增強 (Transaction Enhancements) - Todo only
 
 - [ ] **交易複製**: 快速複製歷史交易。
-- [ ] **週期性交易**: 設定固定收支 (如房租、訂閱制)，自動建立交易紀錄。
 
 ### 3. 多幣別支援 (Multi-currency) - Backlog
 
