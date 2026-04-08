@@ -1,0 +1,10 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: easy-accounting-backend
+    ports:
+      - '3000:3000'
+    env_file:
+      - apps/backend/.env
