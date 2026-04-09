@@ -42,11 +42,11 @@ jobs:
           if [ "$BRANCH" = "product" ]; then
             echo "tag=prod" >> $GITHUB_OUTPUT
             echo "env_name=production" >> $GITHUB_OUTPUT
-            echo "app_name=ca-backend-prod" >> $GITHUB_OUTPUT
+            echo "app_name=easy-accounting-container-prod" >> $GITHUB_OUTPUT
           else
             echo "tag=dev" >> $GITHUB_OUTPUT
             echo "env_name=development" >> $GITHUB_OUTPUT
-            echo "app_name=ca-backend-dev" >> $GITHUB_OUTPUT
+            echo "app_name=easy-accounting-container-dev" >> $GITHUB_OUTPUT
           fi
 
       - name: Build and push
@@ -69,3 +69,6 @@ jobs:
           containerAppName: ${{ steps.vars.outputs.app_name }}
           resourceGroup: EasyAccounting
           imageToDeploy: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          registryUrl: ghrc.io
+          registryUsername: ${{ github.actor }}
+          registryPassword: ${{ secrets.GITHUB_TOKEN }}
