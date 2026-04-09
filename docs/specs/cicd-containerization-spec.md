@@ -297,8 +297,8 @@ docker compose -f docker-compose.prod.yml down
 
 ```
 Azure Subscription
-└── Resource Group: rg-easyaccounting
-    ├── Container Apps Environment: cae-easyaccounting
+└── Resource Group: EasyAccounting
+    ├── Container Apps Environment: easy-accounting-container
     │   ├── Container App: ca-backend-prod
     │   │   ├── image: ghcr.io/<owner>/easyaccounting-backend:prod
     │   │   ├── resources: 0.25 vCPU / 0.5 GiB
@@ -352,7 +352,7 @@ Azure 不支援「自動停止服務」的硬上限，但可以設定 **Budget A
 1. Azure Portal → **Cost Management + Billing** → **Budgets**
 2. 建立新 Budget：
    - 名稱：`easyaccounting-monthly`
-   - 範圍：Resource Group `rg-easyaccounting`
+   - 範圍：Resource Group `EasyAccounting`
    - 金額：**$5 USD / 月**
    - 重置週期：Monthly
 3. 設定 Alert conditions：
@@ -468,7 +468,7 @@ jobs:
         with:
           azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
           containerAppName: ${{ steps.vars.outputs.app_name }}
-          resourceGroup: rg-easyaccounting
+          resourceGroup: EasyAccounting
           imageToDeploy: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 ```
 
@@ -557,8 +557,8 @@ Prod 和 Dev 各設一份，值換成對應環境的資源。
 ### 8.1 前置準備
 
 1. ✅ 建立 Azure 帳號（如果還沒有的話，你已經有 Azure Blob 所以應該有了）
-2. 建立 Azure Resource Group：`rg-easyaccounting`
-3. 建立 Container Apps Environment：`cae-easyaccounting`
+2. 建立 Azure Resource Group：`EasyAccounting`
+3. 建立 Container Apps Environment：`easy-accounting-container`
 4. 建立 Azure Service Principal 並存入 GitHub Secrets
 5. 確認 GHCR package 的 visibility 設定
 
