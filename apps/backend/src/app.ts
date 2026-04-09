@@ -33,8 +33,8 @@ import { initBillParseWorker } from '@/worker';
 
 const app: express.Application = express();
 
-// Trust proxy — 確保在 Cloudflare 後取得真實 Client IP
-app.set('trust proxy', true);
+// Trust proxy — 確保在 Load Balancer 後方正確取得 Client IP，1 代表信任第一層代理 (Azure 的 Envoy)
+app.set('trust proxy', 1);
 
 // CORS 設定
 app.use(

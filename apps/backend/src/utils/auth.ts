@@ -27,15 +27,6 @@ const isCloudHost =
   !process.env.PG_HOST.includes('127.0.0.1') &&
   !process.env.ORIGIN_URL?.includes('localhost');
 
-const whichDomain = () => {
-  // Local 開發時 (Origin 為 localhost)，不設定 Domain (由瀏覽器自動處理)
-  if (process.env.ORIGIN_URL?.includes('localhost')) return undefined;
-
-  if (isProduction) return '.riinouo-eaccounting.win';
-  if (isCloudHost) return '.dev.riinouo-eaccounting.win';
-  return undefined;
-};
-
 // 在雲端環境 (不論是 Prod 還是 Dev) 都應啟用 Secure
 const isSecure = isProduction || isCloudHost;
 
@@ -44,7 +35,7 @@ const COOKIE_OPTIONS = {
   secure: isSecure,
   sameSite: 'lax' as const,
   path: '/', //! 會鎖定 cookie 在這個路徑底下
-  domain: whichDomain(),
+  domain: undefined, // 使用 host-only cookie，由發布的 API 伺服器綁定自身網域
   maxAge: COOKIE_MAX_AGE,
 };
 
