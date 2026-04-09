@@ -67,5 +67,5 @@ jobs:
         with:
           azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
           containerAppName: ${{ steps.vars.outputs.app_name }}
-          resourceGroup: rg-easyaccounting
+          resourceGroup: EasyAccounting
           imageToDeploy: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
