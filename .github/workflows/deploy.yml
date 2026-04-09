@@ -74,6 +74,6 @@ jobs:
           containerAppName: ${{ steps.vars.outputs.app_name }}
           resourceGroup: EasyAccounting
           imageToDeploy: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          registryUrl: ghrc.io
+          registryUrl: ghcr.io
           registryUsername: ${{ github.actor }}
           registryPassword: ${{ secrets.GITHUB_TOKEN }}
