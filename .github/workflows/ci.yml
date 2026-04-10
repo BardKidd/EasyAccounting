@@ -74,4 +74,4 @@ jobs:
           npx sequelize-cli db:seed:all
 
       - name: Run Backend Tests
-        run: pnpm test --filter backend
+        run: pnpm --filter backend run test:run
