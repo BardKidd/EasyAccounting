@@ -1,9 +1,7 @@
-// Next.js middleware 的進入點，不然我想放到資料夾內...
-
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function proxy(req: NextRequest) {
+export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
   // 不需要驗證的頁面
