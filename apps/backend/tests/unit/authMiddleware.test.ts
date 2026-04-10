@@ -52,8 +52,7 @@ describe('Auth Middleware Unit Test', () => {
 
     await authMiddleware(req as Request, res as Response, next);
 
-    expect(res.clearCookie).toHaveBeenCalledWith('accessToken');
-    expect(res.clearCookie).toHaveBeenCalledWith('refreshToken');
+    expect(AuthUtils.clearAuthCookie).toHaveBeenCalledWith(req, res);
     expect(res.status).toHaveBeenCalledWith(StatusCodes.UNAUTHORIZED);
     expect(next).not.toHaveBeenCalled();
   });
@@ -108,8 +107,7 @@ describe('Auth Middleware Unit Test', () => {
     await authMiddleware(req as Request, res as Response, next);
 
     expect(res.status).toHaveBeenCalledWith(StatusCodes.UNAUTHORIZED);
-    expect(res.clearCookie).toHaveBeenCalledWith('accessToken');
-    expect(res.clearCookie).toHaveBeenCalledWith('refreshToken');
+    expect(AuthUtils.clearAuthCookie).toHaveBeenCalledWith(req, res);
     expect(AuthUtils.verifyToken).toHaveBeenCalledTimes(1); // Only checked access
   });
 
@@ -126,7 +124,6 @@ describe('Auth Middleware Unit Test', () => {
     await authMiddleware(req as Request, res as Response, next);
 
     expect(res.status).toHaveBeenCalledWith(StatusCodes.UNAUTHORIZED);
-    expect(res.clearCookie).toHaveBeenCalledWith('accessToken');
-    expect(res.clearCookie).toHaveBeenCalledWith('refreshToken');
+    expect(AuthUtils.clearAuthCookie).toHaveBeenCalledWith(req, res);
   });
 });
