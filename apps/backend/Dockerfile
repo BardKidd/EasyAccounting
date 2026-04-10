@@ -1,6 +1,6 @@
 FROM node:24.14.1-slim AS deps
 
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ RUN pnpm install --frozen-lockfile --filter backend...
 
 FROM node:24.14.1-slim AS runner
 
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 ENV TZ=Asia/Taipei
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone

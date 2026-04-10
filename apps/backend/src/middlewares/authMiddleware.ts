@@ -4,6 +4,7 @@ import {
   verifyToken,
   generateAccessToken,
   setAccessCookie,
+  clearAuthCookie,
 } from '@/utils/auth';
 import { StatusCodes } from 'http-status-codes';
 import User from '@/models/user';
@@ -42,8 +43,7 @@ export const authMiddleware = async (
 
     // 2. Access Token 無效 (被竄改或格式錯誤) -> 強制登出
     if (accessToken && accessError === 'invalid') {
-      res.clearCookie('accessToken');
-      res.clearCookie('refreshToken');
+      clearAuthCookie(req, res);
       return res
         .status(StatusCodes.UNAUTHORIZED)
         .json(responseHelper(false, null, 'Invalid token', null));
@@ -53,8 +53,7 @@ export const authMiddleware = async (
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
       // 這裡也要清空，因為可能是 Access Token 過期但沒有 Refresh Token 的情況
-      res.clearCookie('accessToken');
-      res.clearCookie('refreshToken');
+      clearAuthCookie(req, res);
       return res
         .status(StatusCodes.UNAUTHORIZED)
         .json(responseHelper(false, null, 'Unauthorized', null));
@@ -63,8 +62,7 @@ export const authMiddleware = async (
     const { payload: refreshPayload } = await verifyToken(refreshToken);
     if (!refreshPayload) {
       // Refresh Token 也掛了 -> 清除 Cookie 並回傳 401
-      res.clearCookie('accessToken');
-      res.clearCookie('refreshToken');
+      clearAuthCookie(req, res);
       return res
         .status(StatusCodes.UNAUTHORIZED)
         .json(responseHelper(false, null, 'Session expired', null));
