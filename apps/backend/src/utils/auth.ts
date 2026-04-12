@@ -35,7 +35,7 @@ const COOKIE_OPTIONS = {
   secure: isSecure,
   sameSite: 'lax' as const,
   path: '/', //! 會鎖定 cookie 在這個路徑底下
-  domain: undefined, // 使用 host-only cookie，由發布的 API 伺服器綁定自身網域
+  domain: isSecure ? '.riinouo-eaccounting.win' : undefined, // 使用 host-only cookie，由發布的 API 伺服器綁定自身網域
   maxAge: COOKIE_MAX_AGE,
 };
 
