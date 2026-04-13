@@ -27,7 +27,11 @@ const getClient = (): OpenAI => {
 };
 
 // ---------- Constants ----------
-const MODEL_ID = 'google/gemini-3.1-flash-lite-preview';
+
+const MODEL_CHAIN = [
+  'google/gemini-3.1-flash-lite-preview',
+  'google/gemini-2.5-flash',
+];
 const MAX_RETRIES = 2;
 
 // ---------- Prompt ----------
@@ -143,85 +147,130 @@ Please parse this page using the same column structure.`;
 
 // ---------- Core ----------
 
+/**
+ * 判斷是否為 403 region block 錯誤
+ */
+const isRegionBlockError = (error: unknown): boolean => {
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    return msg.includes('403') && msg.includes('region');
+  }
+  // OpenAI SDK 會拋出帶 status 的 error object
+  if (
+    error &&
+    typeof error === 'object' &&
+    'status' in error &&
+    (error as any).status === 403
+  ) {
+    return true;
+  }
+  return false;
+};
+
 const callWithRetry = async (
   base64Images: string[],
   headerContext: string | null,
   categoryList: string | null,
-): Promise<string> => {
+  modelOverride?: string,
+): Promise<{ content: string; model: string }> => {
   const client = getClient();
+  const modelsToTry = modelOverride ? [modelOverride] : [...MODEL_CHAIN];
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const imageContents: OpenAI.Chat.Completions.ChatCompletionContentPartImage[] =
-        base64Images.map((b64) => ({
-          type: 'image_url' as const,
-          image_url: { url: `data:image/jpeg;base64,${b64}` },
-        }));
+  for (const modelId of modelsToTry) {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const imageContents: OpenAI.Chat.Completions.ChatCompletionContentPartImage[] =
+          base64Images.map((b64) => ({
+            type: 'image_url' as const,
+            image_url: { url: `data:image/jpeg;base64,${b64}` },
+          }));
 
-      const response = await client.chat.completions.create({
-        model: MODEL_ID,
-        messages: [
-          {
-            role: 'system',
-            content: buildSystemPrompt(headerContext, categoryList),
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Please extract all transactions from this bill image.',
-              },
-              ...imageContents,
-            ],
-          },
-        ],
-        temperature: 0.1,
-        max_tokens: 32768,
-      });
+        const response = await client.chat.completions.create({
+          model: modelId,
+          messages: [
+            {
+              role: 'system',
+              content: buildSystemPrompt(headerContext, categoryList),
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Please extract all transactions from this bill image.',
+                },
+                ...imageContents,
+              ],
+            },
+          ],
+          temperature: 0.1,
+          max_tokens: 32768,
+        });
 
-      const finishReason = response.choices[0]?.finish_reason;
-      if (finishReason !== 'stop') {
-        console.warn(
-          `[OpenRouter] ⚠️ finish_reason=${finishReason} (response may be truncated!)`,
-        );
-      }
+        const finishReason = response.choices[0]?.finish_reason;
+        if (finishReason !== 'stop') {
+          console.warn(
+            `[OpenRouter] ⚠️ finish_reason=${finishReason} (response may be truncated!)`,
+          );
+        }
 
-      if (response.usage) {
+        if (response.usage) {
+          console.log(
+            `[OpenRouter] Token Usage - Prompt: ${response.usage.prompt_tokens}, Completion: ${response.usage.completion_tokens}, Total: ${response.usage.total_tokens} | finish_reason: ${finishReason}`,
+          );
+        }
+
+        if (!response.choices || response.choices.length === 0) {
+          throw new Error(
+            `API returned no choices. Response: ${JSON.stringify(response)}`,
+          );
+        }
+
+        const content = response.choices[0]?.message?.content || '';
         console.log(
-          `[OpenRouter] Token Usage - Prompt: ${response.usage.prompt_tokens}, Completion: ${response.usage.completion_tokens}, Total: ${response.usage.total_tokens} | finish_reason: ${finishReason}`,
+          `[OpenRouter] Raw response length: ${content.length} chars`,
         );
-      }
 
-      if (!response.choices || response.choices.length === 0) {
-        throw new Error(
-          `API returned no choices. Response: ${JSON.stringify(response)}`,
+        if (!content.trim()) {
+          throw new Error(
+            `API returned empty content. finish_reason=${finishReason}. Choices: ${JSON.stringify(response.choices)}`,
+          );
+        }
+
+        return { content, model: modelId };
+      } catch (error) {
+        // 403 region block → 直接跳到下一個 model，不再 retry 同一個
+        if (isRegionBlockError(error)) {
+          console.warn(
+            `[OpenRouter] 🚫 Model ${modelId} region-blocked (403), trying next model...`,
+          );
+          break;
+        }
+
+        if (attempt === MAX_RETRIES) {
+          // 最後一次 retry 也失敗，如果還有下一個 model 就繼續
+          if (modelsToTry.indexOf(modelId) < modelsToTry.length - 1) {
+            console.warn(
+              `[OpenRouter] Model ${modelId} failed after ${MAX_RETRIES + 1} attempts, trying next model...`,
+            );
+            break;
+          }
+          throw error;
+        }
+
+        // 指數退避
+        const delay = Math.pow(2, attempt) * 1000;
+        console.warn(
+          `[OpenRouter] Attempt ${attempt + 1} failed, retrying in ${delay}ms... Error: ${error instanceof Error ? error.message : String(error)}`,
         );
+        await new Promise((r) => setTimeout(r, delay));
       }
-
-      const content = response.choices[0]?.message?.content || '';
-      console.log(`[OpenRouter] Raw response length: ${content.length} chars`);
-
-      if (!content.trim()) {
-        throw new Error(
-          `API returned empty content. finish_reason=${finishReason}. Choices: ${JSON.stringify(response.choices)}`,
-        );
-      }
-
-      return content;
-    } catch (error) {
-      if (attempt === MAX_RETRIES) throw error;
-
-      // 指數退避
-      const delay = Math.pow(2, attempt) * 1000;
-      console.warn(
-        `[OpenRouter] Attempt ${attempt + 1} failed, retrying in ${delay}ms... Error: ${error instanceof Error ? error.message : String(error)}`,
-      );
-      await new Promise((r) => setTimeout(r, delay));
     }
   }
 
-  throw new Error('OpenRouter call failed after all retries');
+  throw new Error(
+    `OpenRouter call failed: all models exhausted (${modelsToTry.join(', ')})`,
+  );
 };
 
 /**
@@ -244,17 +293,30 @@ export const parseImages = async (
 
   console.log(`[OpenRouter] 🔍 Starting parse: ${imageBuffers.length} page(s)`);
 
+  // 追蹤實際使用的 model（第一頁成功後鎖定同一個 model，避免跨 model 解析不一致）
+  let activeModel: string | undefined;
+
   for (let i = 0; i < imageBuffers.length; i++) {
     const base64 = imageBuffers[i]!.toString('base64');
     console.log(
       `[OpenRouter] 📄 Processing page ${i + 1}/${imageBuffers.length} (image size: ${(imageBuffers[i]!.length / 1024).toFixed(0)}KB)`,
     );
 
-    const rawResponse = await callWithRetry(
+    const { content: rawResponse, model: usedModel } = await callWithRetry(
       [base64],
       headerContext,
       categoryList,
+      activeModel,
     );
+
+    // 第一頁成功後鎖定 model
+    if (!activeModel) {
+      activeModel = usedModel;
+      if (usedModel !== MODEL_CHAIN[0]) {
+        console.log(`[OpenRouter] ⚡ Using fallback model: ${usedModel}`);
+      }
+    }
+
     const result = parseLlmResponse(rawResponse);
 
     if (!result.success) {
@@ -291,6 +353,6 @@ export const parseImages = async (
     transactions: allTransactions,
     pageCount: imageBuffers.length,
     provider: 'openrouter',
-    model: MODEL_ID,
+    model: activeModel || MODEL_CHAIN[0]!,
   };
 };
