@@ -145,7 +145,7 @@ function AccountSummaryCard({ accounts }: AccountSummaryCardProps) {
   ];
 
   return (
-    <Card className="h-full flex flex-col border-0 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/40 ring-1 ring-white/50 dark:ring-white/10 dark:shadow-teal-glow relative overflow-hidden">
+    <Card className="h-[460px] flex flex-col border-0 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/40 ring-1 ring-white/50 dark:ring-white/10 dark:shadow-teal-glow relative overflow-hidden">
       <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none" />
       <CardHeader className="pb-4 border-b border-slate-200 dark:border-white/5 relative z-10">
         <CardTitle className="text-lg font-medium flex justify-between items-center text-slate-700 dark:text-slate-200">

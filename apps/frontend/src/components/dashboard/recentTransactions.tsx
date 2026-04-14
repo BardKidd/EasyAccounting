@@ -67,7 +67,7 @@ function RecentTransactions({
   };
 
   return (
-    <Card className="col-span-3 border-0 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/40 ring-1 ring-white/50 dark:ring-white/10 dark:shadow-teal-glow h-full flex flex-col hover:shadow-2xl transition-shadow relative overflow-hidden">
+    <Card className="col-span-3 border-0 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/40 ring-1 ring-white/50 dark:ring-white/10 dark:shadow-teal-glow hover:shadow-2xl transition-shadow relative overflow-hidden h-[460px] flex flex-col">
       <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none" />
       <CardHeader className="border-b border-slate-200 dark:border-white/5 pb-4 relative z-10">
         <CardTitle className="text-lg font-bold font-playfair text-slate-800 dark:text-slate-100">

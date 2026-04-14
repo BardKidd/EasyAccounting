@@ -13,6 +13,7 @@
     "db:seed": "npx sequelize-cli db:seed:all",
     "db:seed:undo": "npx sequelize-cli db:seed:undo:all",
     "db:seed:knowledge": "tsx src/utils/seedKnowledge.ts",
+    "db:seed:demo": "tsx src/utils/seedDemoAccount.ts",
     "email": "email dev --dir src/emails --port 3001",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
