@@ -46,7 +46,7 @@ jobs:
           else
             echo "tag=dev" >> $GITHUB_OUTPUT
             echo "env_name=development" >> $GITHUB_OUTPUT
-            echo "app_name=easy-accounting-container-dev" >> $GITHUB_OUTPUT
+            echo "app_name=easy-accounting-container-dev-jp" >> $GITHUB_OUTPUT
           fi
 
       - name: Build and push
