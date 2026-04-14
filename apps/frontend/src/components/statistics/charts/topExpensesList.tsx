@@ -20,7 +20,7 @@ export function TopExpensesList({
           單筆支出 Top 3
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <div className="space-y-3">
           {items.map((item, index) => {
             const rankConfig =
