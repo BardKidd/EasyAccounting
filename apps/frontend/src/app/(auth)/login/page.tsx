@@ -60,8 +60,8 @@ export default function LoginPage() {
       if (result.isSuccess) {
         toast.success(result.message);
         localStorage.setItem('user', JSON.stringify(result.data));
-        // 不使用 push。直接取代上一次 history 的紀錄，避免用戶來回跳轉。
-        router.replace('/dashboard');
+        // 使用 window.location.href 強制整個應用重新載入，避免 Next.js client-side router cache 暫存了登出狀態的路由
+        window.location.href = '/dashboard';
         // 不關閉 loading — 讓它保持到頁面跳轉完成
         return;
       }
@@ -78,7 +78,7 @@ export default function LoginPage() {
       if (result.isSuccess) {
         toast.success(result.message);
         localStorage.setItem('user', JSON.stringify(result.data));
-        router.replace('/dashboard');
+        window.location.href = '/dashboard';
         // 不關閉 loading — 讓它保持到頁面跳轉完成
         return;
       }

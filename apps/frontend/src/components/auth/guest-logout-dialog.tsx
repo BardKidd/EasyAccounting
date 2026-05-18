@@ -41,7 +41,7 @@ export function GuestLogoutDialog({
       if (result.isSuccess) {
         localStorage.removeItem('user');
         toast.success(result.message);
-        router.push('/login');
+        window.location.href = '/login';
       }
     } catch {
       toast.error('登出失敗，請再試一次');

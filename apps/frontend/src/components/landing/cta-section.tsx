@@ -30,7 +30,7 @@ export function CtaSection() {
           </p>
 
           <div className="pt-8">
-            <Link href="/dashboard">
+            <Link href="/dashboard" prefetch={false}>
               <Button
                 size="lg"
                 className="h-16 px-12 rounded-2xl bg-emerald-500 text-white hover:bg-emerald-400 text-lg tracking-widest font-bold shadow-[0_0_40px_-10px_rgba(16,185,129,0.5)] hover:shadow-[0_0_60px_-15px_rgba(16,185,129,0.7)] transition-all duration-300 hover:-translate-y-1"

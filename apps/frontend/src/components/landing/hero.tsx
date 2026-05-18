@@ -135,7 +135,7 @@ export function Hero() {
               className="h-14 px-8 rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400 text-base font-semibold shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-1"
               asChild
             >
-              <Link href="/dashboard">免費開始使用</Link>
+              <Link href="/dashboard" prefetch={false}>免費開始使用</Link>
             </Button>
             <Button
               variant="outline"

@@ -78,7 +78,7 @@ export function Header() {
       if (result.isSuccess) {
         localStorage.removeItem('user');
         toast.success(result.message);
-        router.push('/login');
+        window.location.href = '/login';
       }
     }, setIsLoading);
   };
