@@ -23,6 +23,7 @@ import {
 import importExportService from '@/services/importExport';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ExcelImportMode } from '@repo/shared';
 
 interface ExcelImportButtonProps {
   shouldRefresh?: boolean;
@@ -44,6 +45,7 @@ export default function ExcelImportButton({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [mode, setMode] = useState<ExcelImportMode>(ExcelImportMode.CREATE);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Reset state when dialog opens/closes
@@ -55,6 +57,7 @@ export default function ExcelImportButton({
         setSelectedFile(null);
         setResult(null);
         setIsLoading(false);
+        setMode(ExcelImportMode.CREATE);
       }, 300);
     }
   };
@@ -111,7 +114,10 @@ export default function ExcelImportButton({
 
     try {
       setIsLoading(true);
-      const res = await importExportService.importTransactions(selectedFile);
+      const res = await importExportService.importTransactions(
+        selectedFile,
+        mode,
+      );
 
       // Parse message to get counts (Assume message format: "成功匯入 X 筆交易紀錄，失敗 Y 筆")
       // Backend return: `成功匯入 ${successRows.length} 筆交易紀錄，失敗 ${errorRows.length} 筆`
@@ -168,10 +174,22 @@ export default function ExcelImportButton({
         <DialogHeader>
           <DialogTitle>匯入交易紀錄</DialogTitle>
           <DialogDescription>
-            請上傳 Excel 檔案以匯入交易， 允許部分成功來上傳交易紀錄 <br />
-            <span className="text-sm text-red-600">
-              若有資料格式錯誤，系統將產生錯誤報告供您下載修正。修正完畢可將該檔案原檔上傳。
-            </span>
+            {mode === ExcelImportMode.EDIT ? (
+              <>
+                請上傳「編輯用」Excel 以批次更新既有交易，允許部分成功 <br />
+                <span className="text-sm text-amber-600">
+                  系統會依隱藏 id 欄逐列更新；沒有 id
+                  的列視為新增。請使用「匯出 Excel → 編輯用」下載的檔案。
+                </span>
+              </>
+            ) : (
+              <>
+                請上傳 Excel 檔案以匯入交易， 允許部分成功來上傳交易紀錄 <br />
+                <span className="text-sm text-red-600">
+                  若有資料格式錯誤，系統將產生錯誤報告供您下載修正。修正完畢可將該檔案原檔上傳。
+                </span>
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -243,9 +261,43 @@ export default function ExcelImportButton({
             </div>
           ) : (
             /* Upload View */
-            <div
-              className={cn(
-                'border-2 border-dashed rounded-xl p-8 transition-colors flex flex-col items-center justify-center gap-4 cursor-pointer',
+            <>
+              {/* 模式切換：新增 / 編輯 */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setMode(ExcelImportMode.CREATE)}
+                  className={cn(
+                    'rounded-lg border px-3 py-2 text-sm font-medium transition-colors cursor-pointer text-center',
+                    mode === ExcelImportMode.CREATE
+                      ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                      : 'border-slate-200 text-slate-500 hover:bg-slate-50',
+                  )}
+                >
+                  新增
+                  <span className="block text-xs font-normal opacity-70">
+                    全部當作新交易
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode(ExcelImportMode.EDIT)}
+                  className={cn(
+                    'rounded-lg border px-3 py-2 text-sm font-medium transition-colors cursor-pointer text-center',
+                    mode === ExcelImportMode.EDIT
+                      ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                      : 'border-slate-200 text-slate-500 hover:bg-slate-50',
+                  )}
+                >
+                  編輯
+                  <span className="block text-xs font-normal opacity-70">
+                    依 id 更新既有交易
+                  </span>
+                </button>
+              </div>
+              <div
+                className={cn(
+                  'border-2 border-dashed rounded-xl p-8 transition-colors flex flex-col items-center justify-center gap-4 cursor-pointer',
                 isDragOver
                   ? 'border-primary bg-primary/5'
                   : 'border-slate-200 hover:border-primary/50 hover:bg-slate-50',
@@ -303,7 +355,8 @@ export default function ExcelImportButton({
                   </div>
                 </>
               )}
-            </div>
+              </div>
+            </>
           )}
         </div>
 
@@ -319,7 +372,7 @@ export default function ExcelImportButton({
             <>
               <Button
                 variant="ghost"
-                onClick={() => handleCloseAndRefresh}
+                onClick={handleCloseAndRefresh}
                 disabled={isLoading}
                 className="cursor-pointer"
               >

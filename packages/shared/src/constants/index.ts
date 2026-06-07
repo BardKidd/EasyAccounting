@@ -205,3 +205,38 @@ export enum RecurringTemplateStatus {
   COMPLETED = 'COMPLETED',
   ARCHIVED = 'ARCHIVED',
 }
+
+// Excel 匯入模式：新增全新交易 / 編輯既有交易（依隱藏 id 欄逐列分流）
+export enum ExcelImportMode {
+  CREATE = 'create',
+  EDIT = 'edit',
+}
+
+// Excel 匯出模式：純匯出（不含 id）/ 編輯用（含最後一欄隱藏 id）
+export enum ExcelExportMode {
+  EXPORT = 'export',
+  EDIT = 'edit',
+}
+
+// 幣別代碼（目前僅用於 Excel 匯入匯出，尚未持久化到 DB）。
+// NOTE: 目前系統一律預設 NTD（新台幣），其餘幣別為後續擴充預留的選項，
+//       等之後支援多幣別時再啟用。
+export enum Currency {
+  NTD = 'NTD', // 新台幣（目前唯一實際使用）
+  // ↓ 以下為後續擴充用，先保留於下拉選單
+  USD = 'USD', // 美元
+  JPY = 'JPY', // 日圓
+  EUR = 'EUR', // 歐元
+  CNY = 'CNY', // 人民幣
+  HKD = 'HKD', // 港幣
+  GBP = 'GBP', // 英鎊
+}
+
+// Excel 預設幣別（目前一律 NTD，後續才會支援其他幣別）
+export const DEFAULT_CURRENCY = Currency.NTD;
+
+// 無小數幣別：金額以整數呈現（不顯示小數點）。NTD / JPY 無小數，其餘可有小數。
+export const ZERO_DECIMAL_CURRENCIES: Currency[] = [Currency.NTD, Currency.JPY];
+
+export const isZeroDecimalCurrency = (currency: string): boolean =>
+  ZERO_DECIMAL_CURRENCIES.includes(currency as Currency);

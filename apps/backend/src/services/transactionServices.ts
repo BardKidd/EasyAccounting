@@ -936,6 +936,219 @@ const createTransfer = async (
   });
 };
 
+/**
+ * 編輯既有轉帳（操作）交易。
+ *
+ * 一筆轉帳由兩筆 Transaction 組成（透過 linkId 互相關聯）：
+ *   - 來源側 (from)：type = EXPENSE，accountId = 來源帳戶，targetAccountId = 目標帳戶
+ *   - 目標側 (to)  ：type = INCOME，accountId = 目標帳戶，targetAccountId = 來源帳戶
+ * Excel 匯出時被動轉帳收入列 (INCOME + targetAccountId) 已被過濾，所以匯出/編輯帶回來的
+ * id 一律是「來源側 (EXPENSE)」那一筆。這裡同時接受傳入 from 或 to 側的 id，內部會自動定位。
+ *
+ * 沖銷邏輯比照 updateIncomeExpense：先還原原本轉帳對來源/目標帳戶的餘額影響，
+ * 再依新資料重新套用，整個過程包在同一個 DB transaction 中確保原子性。
+ */
+const updateTransfer = async (
+  id: string,
+  data: UpdateTransactionSchema & {
+    targetAccountId?: string;
+    extraAdd?: number;
+    extraAddLabel?: string;
+    extraMinus?: number;
+    extraMinusLabel?: string;
+  },
+  userId: string,
+) => {
+  return simplifyTransaction(async (t) => {
+    // 以 where { id, userId } 驗證歸屬，避免越權編輯他人交易
+    const primary = await Transaction.findOne({
+      where: { id, userId },
+      include: [{ model: TransactionExtra, as: 'transactionExtra' }],
+      transaction: t,
+    });
+    if (!primary) throw new Error('Transaction not found');
+    if (!primary.linkId) throw new Error('Not a transfer transaction');
+
+    const linked = await Transaction.findOne({
+      where: { id: primary.linkId, userId },
+      include: [{ model: TransactionExtra, as: 'transactionExtra' }],
+      transaction: t,
+    });
+    if (!linked) throw new Error('Linked transfer transaction not found');
+
+    // 定位來源側 (EXPENSE) 與目標側 (INCOME)，不論傳進來的是哪一側
+    const fromTx = primary.type === RootType.EXPENSE ? primary : linked;
+    const toTx = primary.type === RootType.EXPENSE ? linked : primary;
+
+    // 帳戶快取：同一帳戶可能同時是舊/新的來源或目標，需共用同一 instance 累加餘額
+    const accountCache = new Map<string, any>();
+    const loadAccount = async (accountId: string) => {
+      if (accountCache.has(accountId)) return accountCache.get(accountId);
+      const account = await Account.findOne({
+        where: { id: accountId, userId },
+        transaction: t,
+      });
+      if (!account) throw new Error('Account not found');
+      accountCache.set(accountId, account);
+      return account;
+    };
+
+    // ===== 1. 沖銷舊餘額 =====
+    const fromExtra = (fromTx as any).transactionExtra;
+    const oldFromExtraAdd = Number(fromExtra?.extraAdd || 0);
+    const oldFromExtraMinus = Number(fromExtra?.extraMinus || 0);
+
+    const oldFromAccount = await loadAccount(fromTx.accountId!);
+    // 來源側原本是 EXPENSE，沖銷以 INCOME 並交換 extraAdd / extraMinus 還原 Net Amount
+    await calcAccountBalance(
+      oldFromAccount,
+      RootType.INCOME,
+      Number(fromTx.amount),
+      oldFromExtraMinus,
+      oldFromExtraAdd,
+    );
+
+    const oldToAccount = await loadAccount(toTx.accountId!);
+    // 目標側原本是 INCOME（不含手續費），沖銷以 EXPENSE
+    await calcAccountBalance(
+      oldToAccount,
+      RootType.EXPENSE,
+      Number(toTx.amount),
+      0,
+      0,
+    );
+
+    // ===== 2. 計算新資料 =====
+    let newAmount = Number(data.amount ?? fromTx.amount);
+    if (newAmount < 0) newAmount = Math.abs(newAmount);
+
+    const newSourceId = data.accountId ?? fromTx.accountId!;
+    const newTargetId = data.targetAccountId ?? toTx.accountId!;
+
+    const newDate = data.date ?? (fromTx.date as string);
+    const newTime = data.time ?? (fromTx.time as string);
+    const newDescription =
+      data.description !== undefined ? data.description : fromTx.description;
+    const newCategoryId = data.categoryId ?? fromTx.categoryId;
+    const newReceipt =
+      data.receipt !== undefined ? data.receipt : fromTx.receipt;
+
+    const newFromExtraAdd = Number(data.extraAdd || 0);
+    const newFromExtraMinus = Number(data.extraMinus || 0);
+
+    // ===== 3. 處理來源側 TransactionExtra（更新 / 建立 / 刪除）=====
+    let newFromExtraId = fromTx.transactionExtraId;
+    if (newFromExtraAdd !== 0 || newFromExtraMinus !== 0) {
+      if (fromTx.transactionExtraId) {
+        const extra = await TransactionExtra.findByPk(
+          fromTx.transactionExtraId,
+          { transaction: t },
+        );
+        if (extra) {
+          await extra.update(
+            {
+              extraAdd: newFromExtraAdd,
+              extraAddLabel: data.extraAddLabel || '折扣',
+              extraMinus: newFromExtraMinus,
+              extraMinusLabel: data.extraMinusLabel || '手續費',
+            },
+            { transaction: t },
+          );
+        }
+      } else {
+        const extra = await TransactionExtra.create(
+          {
+            extraAdd: newFromExtraAdd,
+            extraAddLabel: data.extraAddLabel || '折扣',
+            extraMinus: newFromExtraMinus,
+            extraMinusLabel: data.extraMinusLabel || '手續費',
+          },
+          { transaction: t },
+        );
+        newFromExtraId = extra.id;
+      }
+    } else if (fromTx.transactionExtraId) {
+      await TransactionExtra.destroy({
+        where: { id: fromTx.transactionExtraId },
+        transaction: t,
+      });
+      newFromExtraId = null;
+    }
+
+    // ===== 4. 套用新餘額 =====
+    const newFromAccount = await loadAccount(newSourceId);
+    // 來源帳戶：扣除 (金額 + 手續費 - 折扣)
+    await calcAccountBalance(
+      newFromAccount,
+      RootType.EXPENSE,
+      newAmount,
+      newFromExtraAdd,
+      newFromExtraMinus,
+    );
+
+    const newToAccount = await loadAccount(newTargetId);
+    // 目標帳戶：增加金額（無手續費）
+    await calcAccountBalance(newToAccount, RootType.INCOME, newAmount, 0, 0);
+
+    // 每個 distinct 帳戶只存一次（沖銷與套用都在同一 instance 上累加）
+    for (const account of accountCache.values()) {
+      await account.save({ transaction: t });
+    }
+
+    // ===== 5. 更新兩筆交易紀錄 =====
+    const newReconciled =
+      data.isReconciled !== undefined
+        ? data.isReconciled
+        : fromTx.isReconciled;
+    const newReconciliationDate =
+      data.reconciliationDate !== undefined
+        ? data.reconciliationDate
+        : fromTx.reconciliationDate;
+
+    await fromTx.update(
+      {
+        accountId: newSourceId,
+        targetAccountId: newTargetId,
+        amount: newAmount,
+        type: RootType.EXPENSE,
+        date: newDate,
+        time: newTime,
+        billingDate: newDate,
+        description: newDescription,
+        categoryId: newCategoryId,
+        receipt: newReceipt,
+        transactionExtraId: newFromExtraId,
+        isReconciled: newReconciled,
+        reconciliationDate: newReconciliationDate,
+      },
+      { transaction: t },
+    );
+
+    await toTx.update(
+      {
+        accountId: newTargetId,
+        targetAccountId: newSourceId,
+        amount: newAmount,
+        type: RootType.INCOME,
+        date: newDate,
+        time: newTime,
+        billingDate: newDate,
+        description: newDescription,
+        categoryId: newCategoryId,
+        receipt: newReceipt,
+        isReconciled: newReconciled,
+        reconciliationDate: newReconciliationDate,
+      },
+      { transaction: t },
+    );
+
+    return {
+      fromTransaction: fromTx.toJSON(),
+      toTransaction: toTx.toJSON(),
+    };
+  });
+};
+
 export default {
   createTransaction,
   getTransactionsByDate,
@@ -943,5 +1156,6 @@ export default {
   updateIncomeExpense,
   deleteTransaction,
   createTransfer,
+  updateTransfer,
   getTransactionsDashboardSummary,
 };

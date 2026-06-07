@@ -4,7 +4,7 @@ import { app } from '../../src/app';
 import { StatusCodes } from 'http-status-codes';
 import ExcelJS from 'exceljs';
 import { transactionColumns } from '@/excelColumns/transactionColumns';
-import { RootType } from '@repo/shared';
+import { RootType, ExcelImportMode } from '@repo/shared';
 // Import fixtures
 import {
   mockUser,
@@ -13,6 +13,8 @@ import {
   mockCategoryMain,
   mockCategorySub,
   mockTransaction,
+  makeEditableTransaction,
+  makeEditableTransferPair,
 } from '../fixtures/excel_mocks';
 
 // 1. Mock Auth Middleware to bypass login
@@ -44,6 +46,7 @@ vi.mock('@/models', () => {
     Category: createMockModel(),
     Transaction: createMockModel(),
     TransactionExtra: createMockModel(),
+    TransactionBudget: createMockModel(),
     CreditCardDetail: createMockModel(),
     sequelize: {
       transaction: vi.fn(() => ({
@@ -60,6 +63,7 @@ import {
   Category,
   Transaction,
   TransactionExtra,
+  TransactionBudget,
 } from '@/models';
 
 // 3. Mock Azure Blob
@@ -354,6 +358,7 @@ describe('Excel Import/Export API Test (Mocked)', () => {
       '2026-03-01',
       '10:00:00',
       RootType.EXPENSE,
+      'NTD', // 幣別（金額前新增的欄位）
       200,
       mockAccount.name,
       null, // Target
@@ -392,5 +397,402 @@ describe('Excel Import/Export API Test (Mocked)', () => {
     expect(res.status).toBe(StatusCodes.OK);
     // Should return URL
     expect(res.body.data).toContain('https://mock-sas-url.com');
+  });
+
+  // ==========================================
+  // Edit Mode Tests（mode=edit）
+  // ==========================================
+
+  // 建立帶隱藏 id 欄的編輯用 Excel（id 固定在最後一欄）
+  const createEditExcelBuffer = async (rows: any[]) => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Transactions');
+    sheet.columns = [
+      ...transactionColumns.map((col) => ({
+        header: col.header,
+        key: col.key,
+        width: col.width,
+      })),
+      { header: 'id', key: 'id', width: 20 },
+    ];
+    sheet.addRows(rows);
+    const optionSheet = workbook.addWorksheet('_Options');
+    optionSheet.state = 'hidden';
+    return await workbook.xlsx.writeBuffer();
+  };
+
+  // 帳戶查詢同時支援以 name（建立 Map 用）與 id（更新時 where {id,userId}）查找
+  const mockAccountLookupByNameAndId = () => {
+    (Account.findOne as any).mockImplementation(({ where }: any) => {
+      if (where?.name === mockAccount.name) return Promise.resolve(mockAccount);
+      if (where?.name === mockAccount2.name)
+        return Promise.resolve(mockAccount2);
+      if (where?.id === mockAccount.id) return Promise.resolve(mockAccount);
+      if (where?.id === mockAccount2.id) return Promise.resolve(mockAccount2);
+      return Promise.resolve(null);
+    });
+  };
+
+  const mockCategoryLookup = () => {
+    (Category.findOne as any).mockImplementation(({ where }: any) => {
+      if (where?.name === mockCategoryMain.name && where?.parentId === null)
+        return Promise.resolve(mockCategoryMain);
+      if (
+        where?.name === mockCategorySub.name &&
+        where?.parentId === mockCategoryMain.id
+      )
+        return Promise.resolve(mockCategorySub);
+      return Promise.resolve(null);
+    });
+  };
+
+  const validCategory = `${mockCategoryMain.name}-${mockCategorySub.name}`;
+
+  it('編輯模式：依 id 更新既有收入/支出交易（走 updateIncomeExpense）', async () => {
+    mockAccountLookupByNameAndId();
+    mockCategoryLookup();
+    (TransactionBudget.findAll as any).mockResolvedValue([]);
+
+    // 預載：該 User 擁有 editTx1
+    (Transaction.findAll as any).mockResolvedValue([{ id: 'editTx1' }]);
+
+    const editableTx = makeEditableTransaction();
+    (Transaction.findOne as any).mockResolvedValue(editableTx);
+
+    const rows = [
+      {
+        date: '2026-03-15',
+        time: '09:30:00',
+        type: RootType.EXPENSE,
+        amount: 888,
+        account: mockAccount.name,
+        targetAccount: null,
+        category: validCategory,
+        receipt: null,
+        description: '更新後的支出',
+        id: 'editTx1',
+      },
+    ];
+
+    const buffer = await createEditExcelBuffer(rows);
+    const res = await agent
+      .post('/api/excel/import-transactions')
+      .field('mode', ExcelImportMode.EDIT)
+      .attach('file', buffer as any, 'edit_income_expense.xlsx');
+
+    expect(res.status).toBe(StatusCodes.OK);
+    expect(res.body.isSuccess).toBe(true);
+    expect(res.body.data.message).toMatch(/成功匯入 1 筆/);
+    // 應走更新而非新增
+    expect(editableTx.update).toHaveBeenCalled();
+    expect(Transaction.create).not.toHaveBeenCalled();
+  });
+
+  it('編輯模式：依 id 更新既有轉帳交易（走 updateTransfer，兩側同步）', async () => {
+    mockAccountLookupByNameAndId();
+    mockCategoryLookup();
+
+    (Transaction.findAll as any).mockResolvedValue([
+      { id: 'editTransferFrom' },
+    ]);
+
+    const { fromTx, toTx } = makeEditableTransferPair();
+    (Transaction.findOne as any).mockImplementation(({ where }: any) => {
+      if (where?.id === 'editTransferFrom') return Promise.resolve(fromTx);
+      if (where?.id === 'editTransferTo') return Promise.resolve(toTx);
+      return Promise.resolve(null);
+    });
+
+    const rows = [
+      {
+        date: '2026-03-20',
+        time: '15:00:00',
+        type: RootType.OPERATE,
+        amount: 120,
+        account: mockAccount.name,
+        targetAccount: mockAccount2.name,
+        category: validCategory,
+        receipt: null,
+        description: '更新後的轉帳',
+        id: 'editTransferFrom',
+      },
+    ];
+
+    const buffer = await createEditExcelBuffer(rows);
+    const res = await agent
+      .post('/api/excel/import-transactions')
+      .field('mode', ExcelImportMode.EDIT)
+      .attach('file', buffer as any, 'edit_transfer.xlsx');
+
+    expect(res.status).toBe(StatusCodes.OK);
+    expect(res.body.isSuccess).toBe(true);
+    expect(res.body.data.message).toMatch(/成功匯入 1 筆/);
+    // 轉帳兩側都應被更新
+    expect(fromTx.update).toHaveBeenCalled();
+    expect(toTx.update).toHaveBeenCalled();
+    expect(Transaction.create).not.toHaveBeenCalled();
+  });
+
+  it('編輯模式：混合（有 id 更新 + 無 id 新增）', async () => {
+    mockAccountLookupByNameAndId();
+    mockCategoryLookup();
+    (TransactionBudget.findAll as any).mockResolvedValue([]);
+
+    (Transaction.findAll as any).mockResolvedValue([{ id: 'editTx1' }]);
+
+    const editableTx = makeEditableTransaction();
+    (Transaction.findOne as any).mockResolvedValue(editableTx);
+    (Transaction.create as any).mockResolvedValue({
+      ...mockTransaction,
+      id: 'brandNew',
+    });
+
+    const rows = [
+      {
+        // 有 id → 更新
+        date: '2026-03-15',
+        time: '09:30:00',
+        type: RootType.EXPENSE,
+        amount: 200,
+        account: mockAccount.name,
+        targetAccount: null,
+        category: validCategory,
+        description: '更新列',
+        id: 'editTx1',
+      },
+      {
+        // 無 id → 新增
+        date: '2026-03-16',
+        time: '10:00:00',
+        type: RootType.INCOME,
+        amount: 300,
+        account: mockAccount.name,
+        targetAccount: null,
+        category: validCategory,
+        description: '新增列',
+        id: null,
+      },
+    ];
+
+    const buffer = await createEditExcelBuffer(rows);
+    const res = await agent
+      .post('/api/excel/import-transactions')
+      .field('mode', ExcelImportMode.EDIT)
+      .attach('file', buffer as any, 'edit_mixed.xlsx');
+
+    expect(res.status).toBe(StatusCodes.OK);
+    expect(res.body.isSuccess).toBe(true);
+    expect(res.body.data.message).toMatch(/成功匯入 2 筆/);
+    expect(editableTx.update).toHaveBeenCalled(); // 更新那一列
+    expect(Transaction.create).toHaveBeenCalledTimes(1); // 新增那一列
+  });
+
+  it('編輯模式：id 不存在/越權 → 列入錯誤報告，不執行更新', async () => {
+    mockAccountLookupByNameAndId();
+    mockCategoryLookup();
+
+    // 該 User 只擁有 editTx1，Excel 卻帶了別人的 id
+    (Transaction.findAll as any).mockResolvedValue([{ id: 'editTx1' }]);
+
+    const rows = [
+      {
+        date: '2026-03-15',
+        time: '09:30:00',
+        type: RootType.EXPENSE,
+        amount: 200,
+        account: mockAccount.name,
+        targetAccount: null,
+        category: validCategory,
+        description: '越權嘗試',
+        id: 'someone-else-tx',
+      },
+    ];
+
+    const buffer = await createEditExcelBuffer(rows);
+    const res = await agent
+      .post('/api/excel/import-transactions')
+      .field('mode', ExcelImportMode.EDIT)
+      .attach('file', buffer as any, 'edit_unauthorized.xlsx');
+
+    expect(res.status).toBe(StatusCodes.OK);
+    expect(res.body.isSuccess).toBe(true);
+    expect(res.body.data.errorUrl).toBeTruthy();
+    expect(res.body.data.message).toMatch(/失敗 1 筆/);
+    // 不應嘗試查找或更新該交易
+    expect(Transaction.findOne).not.toHaveBeenCalled();
+    expect(Transaction.create).not.toHaveBeenCalled();
+  });
+
+  it('編輯模式：單列 apply 失敗不中斷整批，列入錯誤報告', async () => {
+    mockAccountLookupByNameAndId();
+    mockCategoryLookup();
+    (TransactionBudget.findAll as any).mockResolvedValue([]);
+
+    // 兩筆都是本人的交易
+    (Transaction.findAll as any).mockResolvedValue([
+      { id: 'editTx1' },
+      { id: 'notTransfer' },
+    ]);
+
+    const editableTx = makeEditableTransaction();
+    // notTransfer 是一筆普通支出（linkId = null），卻被當成 OPERATE 編輯 → updateTransfer 應丟錯
+    const nonTransferTx = makeEditableTransaction({
+      id: 'notTransfer',
+      linkId: null,
+    });
+    (Transaction.findOne as any).mockImplementation(({ where }: any) => {
+      if (where?.id === 'editTx1') return Promise.resolve(editableTx);
+      if (where?.id === 'notTransfer') return Promise.resolve(nonTransferTx);
+      return Promise.resolve(null);
+    });
+
+    const rows = [
+      {
+        date: '2026-03-15',
+        time: '09:30:00',
+        type: RootType.EXPENSE,
+        amount: 200,
+        account: mockAccount.name,
+        targetAccount: null,
+        category: validCategory,
+        description: '正常更新',
+        id: 'editTx1',
+      },
+      {
+        // 型別不符：普通交易卻標成操作 → apply 階段丟錯，但不該 500 整批
+        date: '2026-03-16',
+        time: '10:00:00',
+        type: RootType.OPERATE,
+        amount: 300,
+        account: mockAccount.name,
+        targetAccount: mockAccount2.name,
+        category: validCategory,
+        description: '型別不符',
+        id: 'notTransfer',
+      },
+    ];
+
+    const buffer = await createEditExcelBuffer(rows);
+    const res = await agent
+      .post('/api/excel/import-transactions')
+      .field('mode', ExcelImportMode.EDIT)
+      .attach('file', buffer as any, 'edit_partial_fail.xlsx');
+
+    expect(res.status).toBe(StatusCodes.OK);
+    expect(res.body.isSuccess).toBe(true);
+    // 一成功一失敗，整批未中斷
+    expect(res.body.data.message).toMatch(/成功匯入 1 筆/);
+    expect(res.body.data.message).toMatch(/失敗 1 筆/);
+    expect(res.body.data.errorUrl).toBeTruthy();
+    expect(editableTx.update).toHaveBeenCalled();
+  });
+
+  it('編輯模式：更新收入/支出時不覆寫 paymentFrequency', async () => {
+    mockAccountLookupByNameAndId();
+    mockCategoryLookup();
+    (TransactionBudget.findAll as any).mockResolvedValue([]);
+    (Transaction.findAll as any).mockResolvedValue([{ id: 'editTx1' }]);
+
+    const editableTx = makeEditableTransaction();
+    (Transaction.findOne as any).mockResolvedValue(editableTx);
+
+    const rows = [
+      {
+        date: '2026-03-15',
+        time: '09:30:00',
+        type: RootType.EXPENSE,
+        amount: 200,
+        account: mockAccount.name,
+        targetAccount: null,
+        category: validCategory,
+        description: '更新但不動 paymentFrequency',
+        id: 'editTx1',
+      },
+    ];
+
+    const buffer = await createEditExcelBuffer(rows);
+    const res = await agent
+      .post('/api/excel/import-transactions')
+      .field('mode', ExcelImportMode.EDIT)
+      .attach('file', buffer as any, 'edit_no_pf.xlsx');
+
+    expect(res.status).toBe(StatusCodes.OK);
+    // updateIncomeExpense 的 transaction.update 不應帶入 paymentFrequency
+    expect(editableTx.update).toHaveBeenCalledWith(
+      expect.not.objectContaining({ paymentFrequency: expect.anything() }),
+      expect.anything(),
+    );
+  });
+
+  // ==========================================
+  // Currency 幣別欄位 Tests
+  // ==========================================
+  it('幣別欄位：匯出金額為「數字」非文字、含幣別欄、新台幣以整數呈現', async () => {
+    // 模擬 Sequelize DECIMAL 回傳字串金額（圖片中存成文字的根因）
+    (Transaction.findAll as any).mockResolvedValue([
+      {
+        id: 't1',
+        date: '2026-02-01',
+        time: '12:00:00',
+        type: RootType.INCOME,
+        amount: '11000.00000',
+        accountId: mockAccount.id,
+        targetAccountId: null,
+        categoryId: mockCategorySub.id,
+        receipt: '',
+        description: 'x',
+        isReconciled: false,
+        reconciliationDate: null,
+      },
+    ]);
+
+    const res = await agent.get('/api/excel/user-transactions');
+    expect(res.status).toBe(StatusCodes.OK);
+
+    // 取出實際寫入 blob 的 buffer 驗證儲存格內容
+    const calls = (uploadFileToBlob as any).mock.calls;
+    const buffer = calls[calls.length - 1][1];
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buffer);
+    const sheet = wb.getWorksheet('交易紀錄')!;
+
+    // 幣別欄在金額前（第 4 欄），金額在第 5 欄
+    expect(sheet.getRow(1).getCell(4).text).toBe('幣別');
+    expect(sheet.getRow(1).getCell(5).text).toBe('金額*');
+
+    const dataRow = sheet.getRow(2);
+    expect(dataRow.getCell(4).text).toBe('NTD');
+    // 關鍵：金額必須是「數字」而非文字
+    expect(typeof dataRow.getCell(5).value).toBe('number');
+    expect(dataRow.getCell(5).value).toBe(11000);
+    // NTD 套用整數格式 → 不顯示 .00000 小數
+    expect(dataRow.getCell(5).numFmt).toBe('#,##0');
+  });
+
+  it('幣別欄位：不支援的幣別 → 列入錯誤報告', async () => {
+    const rows = [
+      {
+        date: '2026-04-01',
+        time: '12:00:00',
+        type: RootType.EXPENSE,
+        currency: '黃金', // 不支援
+        amount: 100,
+        account: mockAccount.name,
+        targetAccount: null,
+        category: `${mockCategoryMain.name}-${mockCategorySub.name}`,
+        description: '幣別錯誤',
+      },
+    ];
+
+    const buffer = await createExcelBuffer(rows);
+    const res = await agent
+      .post('/api/excel/import-transactions')
+      .attach('file', buffer as any, 'bad_currency.xlsx');
+
+    expect(res.status).toBe(StatusCodes.OK);
+    expect(res.body.isSuccess).toBe(true);
+    expect(res.body.data.errorUrl).toBeTruthy();
+    expect(res.body.data.message).toMatch(/失敗 1 筆/);
+    expect(Transaction.create).not.toHaveBeenCalled();
   });
 });

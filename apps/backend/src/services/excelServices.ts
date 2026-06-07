@@ -7,6 +7,11 @@ import {
   CreateTransferSchema,
   RootType,
   PaymentFrequency,
+  ExcelImportMode,
+  ExcelExportMode,
+  Currency,
+  DEFAULT_CURRENCY,
+  isZeroDecimalCurrency,
 } from '@repo/shared';
 import { format } from 'date-fns';
 import transactionServices from './transactionServices';
@@ -25,6 +30,7 @@ interface ImportTransactionRow {
   date: string;
   time: string;
   type: string;
+  currency?: string;
   amount: number;
   account: string;
   targetAccount?: string | null;
@@ -36,7 +42,30 @@ interface ImportTransactionRow {
   errFields?: string[];
   isReconciled?: string; // Excel 中讀取進來可能是字串
   reconciliationDate?: string;
+  // 編輯用匯出檔的隱藏 id 欄。匯出/錯誤報告含 id 時帶上，純匯出時為 undefined。
+  id?: string;
 }
+
+// 解析後的「成功列」：沿用 create schema，編輯模式額外帶回隱藏 id 欄。
+// _excelRow 保留該列的 Excel 原始呈現，apply 階段若失敗可還原成錯誤報告列。
+type ParsedSuccessRow = (CreateTransactionSchema | CreateTransferSchema) & {
+  id?: string;
+  _excelRow: ImportTransactionRow;
+};
+
+// 以欄位 key 取得在 transactionColumns 中的 1-based 欄號（尚未加上 colOffset）。
+// 用此 helper 而非寫死數字，插入/調整欄位時所有 getCell 計算自動跟著正確。
+const colIndexOf = (key: string): number =>
+  transactionColumns.findIndex((c) => c.key === key) + 1;
+
+// 金額數字格式：新台幣等無小數幣別顯示整數；其餘幣別有小數才顯示小數位。
+const AMOUNT_FORMAT_INT = '#,##0';
+const AMOUNT_FORMAT_DECIMAL = '#,##0.#####';
+const amountNumFmt = (currency: string): string =>
+  isZeroDecimalCurrency(currency) ? AMOUNT_FORMAT_INT : AMOUNT_FORMAT_DECIMAL;
+
+// 幣別下拉清單（inline list，內容固定且少量）
+const CURRENCY_LIST_FORMULA = `"${Object.values(Currency).join(',')}"`;
 
 /**
  * 取得所有類型的 name，並以 - 分隔。e.g. 飲食-早餐
@@ -134,19 +163,30 @@ const getPersonnelAccountsAndCategoriesForExcelDropdown = async (
 const generateTransactionsBuffer = async ({
   userId,
   hasErrorColumn = false,
+  includeIdColumn = false,
   transactions,
 }: {
   userId: string;
   hasErrorColumn: boolean;
+  // 編輯用匯出 / 編輯模式錯誤報告：在最後一欄附加隱藏的 id 欄
+  includeIdColumn?: boolean;
   transactions?: ImportTransactionRow[];
 }) => {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('交易紀錄');
   const colOffset = hasErrorColumn ? 1 : 0;
 
-  worksheet.columns = hasErrorColumn
-    ? [{ header: '錯誤說明', key: 'error', width: 100 }, ...transactionColumns]
-    : transactionColumns;
+  // id 欄一律放最後，避免影響既有 colOffset 與所有 getCell index 計算
+  worksheet.columns = [
+    ...(hasErrorColumn
+      ? [{ header: '錯誤說明', key: 'error', width: 100 }, ...transactionColumns]
+      : transactionColumns),
+    ...(includeIdColumn ? [{ header: 'id', key: 'id', width: 20 }] : []),
+  ];
+
+  if (includeIdColumn) {
+    worksheet.getColumn('id').hidden = true;
+  }
 
   const headerRow = worksheet.getRow(1);
   headerRow.eachCell((cell) => {
@@ -213,6 +253,7 @@ const generateTransactionsBuffer = async ({
       // 記錄一下過程，在 Excel 裡，一天代表 1，所以 1 小時代表 1/24(天)，1 分鐘代表 1/(24*60)(天)，1 秒鐘代表 1/(24*60*60)(天)。
       time: 12 / 24 + 30 / (24 * 60) + 30 / (24 * 60 * 60), // 12:30:30。
       type: '收入',
+      currency: DEFAULT_CURRENCY,
       amount: 10000,
       account: '錢包',
       targetAccount: '',
@@ -226,7 +267,7 @@ const generateTransactionsBuffer = async ({
   for (let row = startRow; row <= 1001; row++) {
     const r = worksheet.getRow(row);
 
-    const dateCell = r.getCell(1 + colOffset);
+    const dateCell = r.getCell(colIndexOf('date') + colOffset);
     dateCell.numFmt = 'yyyy-mm-dd';
     dateCell.dataValidation = {
       type: 'date',
@@ -238,7 +279,7 @@ const generateTransactionsBuffer = async ({
       error: '請輸入有效的日期格式 (YYYY-MM-DD)',
     };
 
-    const timeCell = r.getCell(2 + colOffset);
+    const timeCell = r.getCell(colIndexOf('time') + colOffset);
     timeCell.numFmt = 'hh:mm:ss';
     timeCell.dataValidation = {
       type: 'time' as any, // 這裡查一下是 ts 的問題，沒有定義到 time。
@@ -252,42 +293,58 @@ const generateTransactionsBuffer = async ({
 
     // 類型
     // 只有三筆所以直接手動寫死
-    r.getCell(3 + colOffset).dataValidation = {
+    r.getCell(colIndexOf('type') + colOffset).dataValidation = {
       type: 'list',
       allowBlank: false,
       formulae: ['"收入,支出,操作"'],
     };
 
+    // 幣別（下拉；允許空白，空白時匯入視為新台幣）
+    r.getCell(colIndexOf('currency') + colOffset).dataValidation = {
+      type: 'list',
+      allowBlank: true,
+      formulae: [CURRENCY_LIST_FORMULA],
+    };
+
+    // 金額：已填幣別的列依幣別決定（新台幣等無小數幣別顯示整數，其餘顯示小數）；
+    // 空白範本列保留小數格式，方便使用者改填外幣時仍能輸入小數。
+    const rowCurrency = r
+      .getCell(colIndexOf('currency') + colOffset)
+      .text.trim();
+    r.getCell(colIndexOf('amount') + colOffset).numFmt = rowCurrency
+      ? amountNumFmt(rowCurrency)
+      : AMOUNT_FORMAT_DECIMAL;
+
     // 帳戶
-    r.getCell(5 + colOffset).dataValidation = {
+    r.getCell(colIndexOf('account') + colOffset).dataValidation = {
       type: 'list',
       allowBlank: false,
       formulae: ['AccountList'],
     };
 
     // 目標帳戶
-    r.getCell(6 + colOffset).dataValidation = {
+    r.getCell(colIndexOf('targetAccount') + colOffset).dataValidation = {
       type: 'list',
       allowBlank: true,
       formulae: ['AccountList'],
     };
 
     // 分類
-    r.getCell(7 + colOffset).dataValidation = {
+    r.getCell(colIndexOf('category') + colOffset).dataValidation = {
       type: 'list',
       allowBlank: false,
       formulae: ['CategoryList'],
     };
 
     // 已核對
-    r.getCell(10 + colOffset).dataValidation = {
+    r.getCell(colIndexOf('isReconciled') + colOffset).dataValidation = {
       type: 'list',
       allowBlank: true,
       formulae: ['"是,否"'],
     };
 
     // 核對日期
-    const recDateCell = r.getCell(11 + colOffset);
+    const recDateCell = r.getCell(colIndexOf('reconciliationDate') + colOffset);
     recDateCell.numFmt = 'yyyy-mm-dd';
     recDateCell.dataValidation = {
       type: 'date',
@@ -324,7 +381,11 @@ const exportTransactionsTemplateExcel = async (userId: string) => {
   return generateSasUrl(blobName, 15);
 };
 
-const exportUserTransactionsExcel = async (userId: string) => {
+const exportUserTransactionsExcel = async (
+  userId: string,
+  mode: ExcelExportMode = ExcelExportMode.EXPORT,
+) => {
+  const isEditMode = mode === ExcelExportMode.EDIT;
   const user = await User.findByPk(userId);
   if (!user) {
     throw new Error('User not found');
@@ -347,6 +408,7 @@ const exportUserTransactionsExcel = async (userId: string) => {
   const transactions = await Transaction.findAll({
     where: { userId },
     attributes: [
+      'id',
       'date',
       'time',
       'type',
@@ -366,11 +428,17 @@ const exportUserTransactionsExcel = async (userId: string) => {
     ],
   });
   // 排除被動轉帳收入 (INCOME + 有 targetAccountId)
+  // 編輯模式下，轉帳列匯出的是來源側 (EXPENSE) 那一筆，其 id 也是來源側 id
   const excelTransactions = transactions
     .filter((t) => !(t.type === RootType.INCOME && t.targetAccountId))
     .map((t) => ({
       ...t,
       type: t.targetAccountId ? RootType.OPERATE : t.type,
+      // 目前系統未持久化幣別，一律以預設新台幣匯出
+      currency: DEFAULT_CURRENCY,
+      // amount 在 DB 為 DECIMAL，Sequelize 會回傳字串；轉成真正的數字，
+      // 避免 Excel 存成「文字」(綠色三角形) 並導致重新上傳時金額驗證失敗
+      amount: Number(t.amount),
       account: accountMap.get(t.accountId) || '',
       targetAccount: t.targetAccountId
         ? accountMap.get(t.targetAccountId) || ''
@@ -380,17 +448,22 @@ const exportUserTransactionsExcel = async (userId: string) => {
       reconciliationDate: t.reconciliationDate
         ? format(new Date(t.reconciliationDate), 'yyyy-MM-dd')
         : '',
+      // 純匯出模式不附 id，避免使用者誤用；編輯模式才帶隱藏 id
+      id: isEditMode ? t.id : undefined,
     }));
 
   // 產生檔案
   const buffer = await generateTransactionsBuffer({
     userId,
     hasErrorColumn: false,
+    includeIdColumn: isEditMode,
     transactions: excelTransactions as ImportTransactionRow[],
   });
 
-  // 上傳到 Azure Blob
-  const blobName = `transactions/${userEmail}_transactions.xlsx`;
+  // 上傳到 Azure Blob（編輯用與純匯出用分開 blob，避免互相覆蓋）
+  const blobName = `transactions/${userEmail}_transactions${
+    isEditMode ? '_edit' : ''
+  }.xlsx`;
   await uploadFileToBlob(blobName, buffer);
 
   return generateSasUrl(blobName, 15);
@@ -402,27 +475,35 @@ const validateAndParseRows = async (
   worksheet: ExcelJS.Worksheet,
   accountMap: Map<string, string>,
   categoryMap: Map<string, string>,
+  editMode: boolean = false,
+  validTransactionIds?: Set<string>,
 ): Promise<{
-  successRows: (CreateTransactionSchema | CreateTransferSchema)[];
+  successRows: ParsedSuccessRow[];
   errorRows: ImportTransactionRow[];
 }> => {
   // 正確的 Row 要轉為 DB 格式，錯誤的繼續維持 Excel 的格式
-  const successRows: (CreateTransactionSchema | CreateTransferSchema)[] = [];
+  const successRows: ParsedSuccessRow[] = [];
   const errorRows: ImportTransactionRow[] = [];
 
   const isErrorsExcelFile = worksheet.getRow(1).getCell(1).text === '錯誤說明';
   const colOffset = isErrorsExcelFile ? 1 : 0;
+
+  // 偵測隱藏 id 欄（固定在最後一欄，以 header 文字定位，不依賴 colOffset 計算）
+  let idColNumber: number | undefined;
+  worksheet.getRow(1).eachCell((cell, colNumber) => {
+    if (cell.text === 'id') idColNumber = colNumber;
+  });
 
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
     // 防止用戶輸入奇怪的值導致 format 出錯
     let date = '';
     try {
-      const cellVal = row.getCell(1 + colOffset).value;
+      const cellVal = row.getCell(colIndexOf('date') + colOffset).value;
       const d =
         cellVal instanceof Date
           ? cellVal
-          : new Date(row.getCell(1 + colOffset).text);
+          : new Date(row.getCell(colIndexOf('date') + colOffset).text);
       // 檢查是否為有效日期
       if (!isNaN(d.getTime())) {
         // 確保 d 必須是 new Date
@@ -435,14 +516,14 @@ const validateAndParseRows = async (
     let time = '';
     try {
       // 取得 value，假如 ExcelJS 有幫你轉成 new Date 的話那就可以直接丟進 format 裡面。
-      const cellVal = row.getCell(2 + colOffset).value;
+      const cellVal = row.getCell(colIndexOf('time') + colOffset).value;
       let d: Date | null = null;
 
       if (cellVal instanceof Date) {
         d = cellVal;
       } else {
         // 假如手動輸入然後 ExcelJS 看不懂會走這裡，直接取字串。
-        const text = row.getCell(2 + colOffset).text;
+        const text = row.getCell(colIndexOf('time') + colOffset).text;
         // 嘗試直接 new Date (可能是 ISO)
         const tryD = new Date(text);
         if (!isNaN(tryD.getTime())) {
@@ -460,15 +541,31 @@ const validateAndParseRows = async (
     } catch {
       time = '';
     }
-    const type = row.getCell(3 + colOffset).text as RootType;
-    let amount = row.getCell(4 + colOffset).value;
-    const accountName = row.getCell(5 + colOffset).text;
-    const targetAccountName = row.getCell(6 + colOffset).text;
-    const category = row.getCell(7 + colOffset).text;
-    const receipt = row.getCell(8 + colOffset).text;
-    const description = row.getCell(9 + colOffset).text;
-    const isReconciledText = row.getCell(10 + colOffset).text;
-    const reconciliationDateVal = row.getCell(11 + colOffset).value; // Date or string
+    const type = row.getCell(colIndexOf('type') + colOffset).text as RootType;
+    // 幣別：空白視為預設新台幣
+    const currencyRaw = row
+      .getCell(colIndexOf('currency') + colOffset)
+      .text.trim();
+    const currency = currencyRaw || DEFAULT_CURRENCY;
+    let amount = row.getCell(colIndexOf('amount') + colOffset).value;
+    const accountName = row.getCell(colIndexOf('account') + colOffset).text;
+    const targetAccountName = row
+      .getCell(colIndexOf('targetAccount') + colOffset)
+      .text;
+    const category = row.getCell(colIndexOf('category') + colOffset).text;
+    const receipt = row.getCell(colIndexOf('receipt') + colOffset).text;
+    const description = row.getCell(colIndexOf('description') + colOffset).text;
+    const isReconciledText = row
+      .getCell(colIndexOf('isReconciled') + colOffset)
+      .text;
+    const reconciliationDateVal = row.getCell(
+      colIndexOf('reconciliationDate') + colOffset,
+    ).value; // Date or string
+    // 編輯模式才讀取隱藏 id 欄；空字串代表使用者新增的列（走 create）
+    const rowId =
+      editMode && idColNumber
+        ? String(row.getCell(idColNumber).text || '').trim()
+        : '';
 
     if (
       !date &&
@@ -549,6 +646,20 @@ const validateAndParseRows = async (
       errFields.push('category');
     }
 
+    // 幣別：有填就必須是支援的幣別（空白已預設為新台幣，不會進到這裡）
+    if (
+      currencyRaw &&
+      !(Object.values(Currency) as string[]).includes(currencyRaw)
+    ) {
+      errMsg += `幣別[${currencyRaw}]不支援, `;
+      errFields.push('currency');
+    }
+
+    // 編輯模式：有帶 id 的列必須屬於本人且存在，否則列入錯誤（避免越權編輯）
+    if (editMode && rowId && !validTransactionIds?.has(rowId)) {
+      errMsg += `交易紀錄不存在或無權限編輯, `;
+    }
+
     if (errMsg) {
       const regex = /, $/;
       errorRows.push({
@@ -557,12 +668,15 @@ const validateAndParseRows = async (
         date,
         time,
         type,
+        currency,
         amount: amount as any,
         account: accountName,
         targetAccount: targetAccountName,
         category,
         receipt,
         description,
+        // 保留 id，讓使用者修正錯誤報告後仍能以編輯模式重新上傳
+        id: rowId || undefined,
       });
     } else {
       successRows.push({
@@ -584,6 +698,23 @@ const validateAndParseRows = async (
           const d = new Date(String(reconciliationDateVal));
           return isNaN(d.getTime()) ? null : d;
         })(),
+        // 編輯模式且有 id → 後續走 update；無 id → 走 create
+        id: rowId || undefined,
+        // 保留 Excel 原始呈現，供 apply 失敗時還原成錯誤報告列
+        _excelRow: {
+          date,
+          time,
+          type,
+          currency,
+          amount: amount as number,
+          account: accountName,
+          targetAccount: targetAccountName,
+          category,
+          receipt,
+          description,
+          isReconciled: isReconciledText,
+          id: rowId || undefined,
+        },
       });
     }
   });
@@ -591,26 +722,67 @@ const validateAndParseRows = async (
   return { successRows, errorRows };
 };
 
-const insertTransactions = async (
+// 逐列套用：編輯模式且有 id → 依型別走 update；否則走 create。
+// 每列獨立 try/catch，單列失敗不中斷整批，並回傳失敗列（Excel 格式）以併入錯誤報告，
+// 維持「部分成功 + 錯誤報告」的承諾。
+const applyTransactions = async (
   userId: string,
-  successRows: (CreateTransactionSchema | CreateTransferSchema)[],
-) => {
+  successRows: ParsedSuccessRow[],
+  editMode: boolean,
+): Promise<ImportTransactionRow[]> => {
+  const failedRows: ImportTransactionRow[] = [];
+
   for (const row of successRows) {
-    if (row.type === RootType.OPERATE) {
-      await transactionServices.createTransfer(
-        row as CreateTransferSchema,
-        userId,
-      );
-    } else {
-      await transactionServices.createTransaction(row as any, userId);
+    // 剝離 id 與內部欄位，避免後續 service 以 {...data} 展開時誤寫主鍵或塞入未知欄位
+    const { id, _excelRow, ...payload } = row;
+    try {
+      if (editMode && id) {
+        // 有 id → 編輯既有交易，依 Excel 型別分流。
+        // Excel 沒有 paymentFrequency 欄，更新時不可覆寫（否則會把分期/週期交易改成單次）。
+        const { paymentFrequency: _pf, ...updatePayload } = payload;
+        if (row.type === RootType.OPERATE) {
+          await transactionServices.updateTransfer(
+            id,
+            updatePayload as any,
+            userId,
+          );
+        } else {
+          await transactionServices.updateIncomeExpense(
+            id,
+            updatePayload as any,
+            userId,
+          );
+        }
+      } else {
+        // 無 id（或新增模式）→ 建立新交易
+        if (row.type === RootType.OPERATE) {
+          await transactionServices.createTransfer(
+            payload as CreateTransferSchema,
+            userId,
+          );
+        } else {
+          await transactionServices.createTransaction(payload as any, userId);
+        }
+      }
+    } catch (err) {
+      // 單列失敗 → 還原成錯誤報告列，繼續處理其餘列
+      const message = err instanceof Error ? err.message : '處理失敗';
+      failedRows.push({
+        ..._excelRow,
+        error: `${editMode && id ? '更新' : '新增'}失敗：${message}`,
+      });
     }
   }
+
+  return failedRows;
 };
 
 const importNewTransactionsExcel = async (
   userId: string,
   fileBuffer: Buffer,
+  mode: ExcelImportMode = ExcelImportMode.CREATE,
 ) => {
+  const editMode = mode === ExcelImportMode.EDIT;
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(fileBuffer as any);
   const worksheet = workbook.getWorksheet(1);
@@ -661,32 +833,57 @@ const importNewTransactionsExcel = async (
       );
     }
   });
+  // 編輯模式：預載該 User 的所有交易 id，用來驗證 Excel 帶回的 id 確實屬於本人
+  let validTransactionIds: Set<string> | undefined;
+  if (editMode) {
+    const userTransactions = await Transaction.findAll({
+      where: { userId },
+      attributes: ['id'],
+      raw: true,
+    });
+    validTransactionIds = new Set(
+      userTransactions
+        .map((tx) => tx.id)
+        .filter((txId): txId is string => !!txId),
+    );
+  }
+
   const { successRows, errorRows } = await validateAndParseRows(
     worksheet,
     accountMap,
     categoryMap,
+    editMode,
+    validTransactionIds,
   );
 
+  // 先套用，收集 apply 階段（DB 操作）失敗的列；單列失敗不中斷整批
+  const applyFailedRows =
+    successRows.length > 0
+      ? await applyTransactions(userId, successRows, editMode)
+      : [];
+
+  // 驗證錯誤 + apply 失敗合併成同一份錯誤報告
+  const allErrorRows = [...errorRows, ...applyFailedRows];
+  const successCount = successRows.length - applyFailedRows.length;
+
   let errorUrl = '';
-  if (errorRows.length > 0) {
+  if (allErrorRows.length > 0) {
     const buffer = await generateTransactionsBuffer({
       userId,
       hasErrorColumn: true,
-      transactions: errorRows,
+      // 編輯模式的錯誤報告同樣帶隱藏 id 欄，使用者修正後可再以編輯模式上傳
+      includeIdColumn: editMode,
+      transactions: allErrorRows,
     });
     const blobName = `errors/transaction_error_${userId}_${Date.now()}.xlsx`;
     await uploadFileToBlob(blobName, buffer);
     errorUrl = generateSasUrl(blobName, 15);
   }
 
-  if (successRows.length > 0) {
-    await insertTransactions(userId, successRows);
-  }
-
   return {
     isSuccess: true,
     errorUrl,
-    message: `成功匯入 ${successRows.length} 筆交易紀錄，失敗 ${errorRows.length} 筆`,
+    message: `成功匯入 ${successCount} 筆交易紀錄，失敗 ${allErrorRows.length} 筆`,
   };
 };
 
