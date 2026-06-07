@@ -13,6 +13,7 @@ export * from './schemas/transaction.schema';
 export * from './schemas/statistics.schema';
 export * from './schemas/personnelNotification.schema';
 export * from './schemas/recurringTemplate.schema';
+export * from './schemas/chat.schema';
 
 // 匯出所有 types
 export * from './types/categoryTypes';

@@ -1,7 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Bot, User, ExternalLink } from 'lucide-react';
+import {
+  Bot,
+  User,
+  ExternalLink,
+  Check,
+  X as XIcon,
+  Loader2,
+  Wallet,
+  Tag,
+  CalendarDays,
+} from 'lucide-react';
 import { ChatMessage } from '@/services/chatService';
+import { RootType } from '@repo/shared';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Link from 'next/link';
@@ -9,9 +20,135 @@ import Link from 'next/link';
 interface ChatMessageProps {
   message: ChatMessage;
   isStreaming?: boolean;
+  onConfirmDraft?: () => void;
+  onCancelDraft?: () => void;
 }
 
-export const ChatMessageBubble = ({ message, isStreaming }: ChatMessageProps) => {
+/** AI 交易草稿的確認卡片 */
+const DraftCard = ({
+  draft,
+  status = 'pending',
+  onConfirm,
+  onCancel,
+}: {
+  draft: NonNullable<ChatMessage['draft']>;
+  status?: ChatMessage['draftStatus'];
+  onConfirm?: () => void;
+  onCancel?: () => void;
+}) => {
+  const isIncome = draft.type === RootType.INCOME;
+  const isPending = status === 'pending';
+  const isConfirming = status === 'confirming';
+  const isConfirmed = status === 'confirmed';
+  const isCancelled = status === 'cancelled';
+
+  return (
+    <div className="mt-2 w-full rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-500/30 dark:bg-emerald-500/5">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+          交易草稿
+        </span>
+        <span
+          className={cn(
+            'rounded-full px-2 py-0.5 text-[11px] font-medium',
+            isIncome
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+              : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300',
+          )}
+        >
+          {draft.type}
+        </span>
+      </div>
+
+      <div
+        className={cn(
+          'mb-2 text-2xl font-bold tabular-nums',
+          isIncome
+            ? 'text-emerald-600 dark:text-emerald-400'
+            : 'text-rose-600 dark:text-rose-400',
+        )}
+      >
+        {isIncome ? '+' : '-'}
+        {draft.amount.toLocaleString()} 元
+      </div>
+
+      <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
+        <div className="flex items-center gap-1.5">
+          <Tag className="h-3.5 w-3.5 shrink-0" />
+          <span>{draft.categoryName}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Wallet className="h-3.5 w-3.5 shrink-0" />
+          <span>{draft.accountName}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+          <span>{draft.date}</span>
+        </div>
+        {draft.description && (
+          <div className="pt-1 text-slate-500 dark:text-slate-500">
+            備註：{draft.description}
+          </div>
+        )}
+      </div>
+
+      {/* 動作區：依狀態切換 */}
+      <div className="mt-3">
+        {isPending && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
+            >
+              <Check className="h-3.5 w-3.5" />
+              確認記帳
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              <XIcon className="h-3.5 w-3.5" />
+              取消
+            </button>
+          </div>
+        )}
+        {isConfirming && (
+          <div className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            記帳中…
+          </div>
+        )}
+        {isConfirmed && (
+          <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+            <Check className="h-3.5 w-3.5" />
+            已完成記帳
+          </div>
+        )}
+        {isCancelled && (
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400">
+              <XIcon className="h-3.5 w-3.5" />
+              已取消，未記帳
+            </div>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500">
+              想修改的話，直接告訴我要改什麼即可（例如「改用現金」「金額改成
+              300」）。
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const ChatMessageBubble = ({
+  message,
+  isStreaming,
+  onConfirmDraft,
+  onCancelDraft,
+}: ChatMessageProps) => {
   const isUser = message.role === 'user';
   
   return (
@@ -96,6 +233,16 @@ export const ChatMessageBubble = ({ message, isStreaming }: ChatMessageProps) =>
              <span className="inline-block w-1.5 h-4 bg-emerald-500 animate-pulse ml-1 align-middle" />
           )}
         </div>
+
+        {/* AI 交易草稿確認卡片 */}
+        {!isUser && message.draft && (
+          <DraftCard
+            draft={message.draft}
+            status={message.draftStatus}
+            onConfirm={onConfirmDraft}
+            onCancel={onCancelDraft}
+          />
+        )}
       </div>
 
        {/* Avatar for User */}

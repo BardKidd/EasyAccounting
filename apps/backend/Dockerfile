@@ -10,6 +10,7 @@ COPY apps/backend/package.json ./apps/backend/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/typescript-config/ ./packages/typescript-config/
 
+# 後面的 ... 是 pnpm 的語法糖，專門用來處理 monorepo 的多專案套件。這裡指的是除了 backend 的以外還要順便安裝 shared, utils...
 RUN pnpm install --frozen-lockfile --filter backend...
 
 FROM node:24.14.1-slim AS runner

@@ -7,6 +7,14 @@ export const handleChat = async (
 ): Promise<void> => {
   const { message, history } = req.body;
 
+  // userId 一律取自 authMiddleware 設定的 req.user，作為所有 tool 查詢的唯一身分依據。
+  // 未登入或缺少 userId 時直接擋下，避免在沒有身分的情況下執行任何使用者資料查詢。
+  const userId = req.user?.userId;
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
   if (!message || (typeof message !== 'string' && !Array.isArray(message))) {
     res
       .status(400)
@@ -35,13 +43,23 @@ export const handleChat = async (
   });
 
   try {
-    await streamChatResponse(message, chatHistory, (chunk: string) => {
-      if (isClientDisconnected) {
-        // You could throw an abort error here if the service layer supported it
-        return;
-      }
-      res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
-    });
+    await streamChatResponse(
+      message,
+      chatHistory,
+      userId,
+      (chunk: string) => {
+        if (isClientDisconnected) {
+          // You could throw an abort error here if the service layer supported it
+          return;
+        }
+        res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
+      },
+      (event) => {
+        // 結構化事件（例如交易草稿）：前端收到 type:'draft' 後彈出確認卡片。
+        if (isClientDisconnected) return;
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      },
+    );
 
     if (!isClientDisconnected) {
       res.write('data: [DONE]\n\n');

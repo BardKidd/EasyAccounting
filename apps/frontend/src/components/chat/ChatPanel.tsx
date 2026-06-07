@@ -13,8 +13,15 @@ interface ChatPanelProps {
 }
 
 export const ChatPanel = ({ isOpen, onClose, className }: ChatPanelProps) => {
-  const { messages, isGenerating, error, sendMessage, stopGenerating } =
-    useChat();
+  const {
+    messages,
+    isGenerating,
+    error,
+    sendMessage,
+    stopGenerating,
+    confirmDraft,
+    cancelDraft,
+  } = useChat();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
@@ -104,6 +111,10 @@ export const ChatPanel = ({ isOpen, onClose, className }: ChatPanelProps) => {
                   idx === messages.length - 1 &&
                   msg.role === 'ai'
                 }
+                onConfirmDraft={
+                  confirmDraft ? () => confirmDraft(idx) : undefined
+                }
+                onCancelDraft={cancelDraft ? () => cancelDraft(idx) : undefined}
               />
             ))
           )}
