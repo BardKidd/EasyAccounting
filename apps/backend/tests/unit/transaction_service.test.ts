@@ -39,12 +39,6 @@ vi.mock('@/models', () => {
     create: vi.fn(),
   };
 
-  const TransactionBudgetMock = {
-    bulkCreate: vi.fn(),
-    destroy: vi.fn(),
-    findAll: vi.fn().mockResolvedValue([]),
-  };
-
   const UserMock = {
     findByPk: vi.fn().mockResolvedValue({ baseCurrencyCode: 'TWD' }),
   };
@@ -54,7 +48,6 @@ vi.mock('@/models', () => {
     TransactionExtra: TransactionExtraMock,
     Account: AccountMock,
     InstallmentPlan: InstallmentPlanMock,
-    TransactionBudget: TransactionBudgetMock,
     User: UserMock,
     // Add other models if needed
   };
@@ -65,7 +58,6 @@ import {
   TransactionExtra,
   Account,
   InstallmentPlan,
-  TransactionBudget,
 } from '@/models';
 import sequelize from '@/utils/postgres';
 

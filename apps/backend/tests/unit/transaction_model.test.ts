@@ -22,7 +22,6 @@ vi.mock('@/models', () => {
     InstallmentPlan: {},
     CreditCardDetail: {},
     Category: {},
-    Budget: {}, // Add other models as needed
   };
 });
 

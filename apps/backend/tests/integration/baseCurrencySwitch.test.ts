@@ -4,7 +4,6 @@
  * 場景：本位 TWD → 切換成 USD。
  *   - TWD 帳戶交易 3200 → amountInBase 由 3200（TWD）重算為 100（USD，rate TWD→USD=0.03125）。
  *   - USD 帳戶交易 100 → amountInBase 由 3200（TWD）重算為 100（USD，rate USD→USD=1）。
- *   - 預算 1000（舊本位 TWD）→ 用今日匯率換算為 31.25（USD）。
  *   - 缺匯率時整批中止（另一個 case 驗證）。
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -18,9 +17,7 @@ import {
   Transaction,
   ExchangeRate,
   Category,
-  Budget,
 } from '@/models';
-import { BudgetCycleType } from '@/models/budget';
 import transactionServices from '@/services/transactionServices';
 import { changeBaseCurrency } from '@/services/baseCurrencyService';
 import { clearRateCache } from '@/services/exchangeRateService';
@@ -34,7 +31,6 @@ describe('本位幣切換 真實 DB 整合（Q1 歷史重算）', () => {
   let categoryId: string;
   let twdTxId: string;
   let usdTxId: string;
-  let budgetId: string;
   const RD = '2000-01-03';
 
   beforeAll(async () => {
@@ -83,18 +79,10 @@ describe('本位幣切換 真實 DB 整合（Q1 歷史重算）', () => {
       userId,
     );
     usdTxId = (usdRes as any).createdTransactions?.[0]?.id || (await Transaction.findOne({ where: { userId, accountId: usdAcc.id } }) as any).id;
-
-    const budget = await Budget.create({
-      userId, name: 'B', amount: 1000,
-      cycleType: BudgetCycleType.MONTH, cycleStartDay: 1,
-      startDate: '2026-05-01', isRecurring: false, rollover: false, isActive: true,
-    } as any);
-    budgetId = (budget as any).id;
   });
 
   afterAll(async () => {
     await Transaction.destroy({ where: { userId }, force: true });
-    await Budget.destroy({ where: { userId }, force: true });
     await Account.destroy({ where: { userId }, force: true });
     await ExchangeRate.destroy({ where: { rateDate: RD }, force: true });
     await User.destroy({ where: { id: userId }, force: true });
@@ -106,7 +94,7 @@ describe('本位幣切換 真實 DB 整合（Q1 歷史重算）', () => {
     expect(Number((await reload(usdTxId)).amountInBase)).toBe(3200);
   });
 
-  it('切換 TWD→USD：歷史 amountInBase 重算、預算換算、user 本位更新', async () => {
+  it('切換 TWD→USD：歷史 amountInBase 重算、user 本位更新', async () => {
     const result = await changeBaseCurrency(userId, 'USD');
     expect(result.changed).toBe(true);
     expect(result.oldBaseCode).toBe('TWD');
@@ -121,10 +109,6 @@ describe('本位幣切換 真實 DB 整合（Q1 歷史重算）', () => {
     const usdTx = await reload(usdTxId);
     expect(Number(usdTx.baseRate)).toBe(1);
     expect(Number(usdTx.amountInBase)).toBeCloseTo(100, 5);
-
-    // 預算 1000 TWD × 0.03125 = 31.25 USD
-    const budget = await Budget.findByPk(budgetId);
-    expect(Number((budget as any).amount)).toBeCloseTo(31.25, 5);
 
     // user 本位幣已更新
     const user = await User.findByPk(userId);

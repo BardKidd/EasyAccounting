@@ -61,7 +61,6 @@ export const createTransactionSchema = baseSchema.and(
           .default(RewardsType.EVERY),
       })
       .optional(),
-    budgetIds: z.array(z.string().uuid()).optional(),
   }),
 );
 
@@ -83,7 +82,6 @@ export const updateTransactionSchema = baseSchema
       .enum([RootType.INCOME, RootType.EXPENSE, RootType.OPERATE])
       .optional(),
     billingDate: z.string().optional(),
-    budgetIds: z.array(z.string().uuid()).optional(),
     targetAccountId: z.string().uuid().optional(),
     // 跨幣轉帳編輯：目標帳戶實收金額（目標幣計價）；同幣可省。
     // 後端依交易 linkId 路由到 updateTransfer，由它用各 leg 自己的幣別/金額重算。
@@ -163,6 +161,5 @@ export const transactionFormSchema = z.object({
         .default(RewardsType.EVERY),
     })
     .optional(),
-  budgetIds: z.array(z.string().uuid()).optional(),
 });
 export type TransactionFormSchema = z.input<typeof transactionFormSchema>;

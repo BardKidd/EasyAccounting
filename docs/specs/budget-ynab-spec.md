@@ -1,0 +1,342 @@
+# 預算系統規格 v2 — YNAB 模式
+
+> **文件狀態**: ✅ 設計定案（B1–B5 已於 2026-06-10 由使用者拍板，全採推薦選項），實作進行中
+> **最後更新**: 2026-06-10
+> **取代**: 舊版 `budget-system-spec.md` 與 `budget-system-tasks.md` 已刪除（git 歷史可查）。舊預算功能將**整個拆除重做**，不做資料遷移。
+
+---
+
+## 給接手 session 的指示
+
+1. **決策 B1–B5 已由使用者拍板（2026-06-10，全採推薦選項，見 §3.1），不可自行更改**；認為有問題先問使用者。
+2. **§3.2 的已定案事項不要重新討論**。
+3. 依 **Phase 0（拆除）→ Phase 1（MVP）→ Phase 2** 順序進行，完成項目即更新 §9 勾選框。
+4. 多幣別約束以 `docs/multicurrency-implementation-plan.md` 為準——特別是 **D5：預算一律本位幣、消耗用 `amountInBase` 累計**（使用者拍板，不可改）。本設計與 D5 完全相容。
+5. 遵守 CLAUDE.md 的 GitNexus 流程：編輯任何 symbol 前先 `gitnexus_impact`，commit 前 `gitnexus_detect_changes`。
+
+---
+
+## 0. 核心理念（與舊版的根本差異）
+
+舊版是「多個預算專案、各自設額度、比對花費」；YNAB 是「**單一預算、把真實帳戶裡的錢分配到分類信封**」。
+
+| 面向 | 舊版（已拆除） | YNAB 模式（本設計） |
+| --- | --- | --- |
+| 預算實體 | 多個 Budget 專案，各有 amount/週期 | **單一預算**，分類即信封（envelope） |
+| 額度來源 | 使用者憑空輸入 | **真實 on-budget 帳戶的錢**（起始餘額 + 收入） |
+| 週期 | 年/月/週/日自訂 | **固定日曆月** |
+| 儲存的狀態 | Budget + BudgetCategory + Snapshot + TransactionBudget | **只有一張分配表** `budget_assignment`，其餘全是推導值 |
+| 結轉 | Snapshot 物化 + queue 重算 | Available 跨月遞迴推導，**每次請求全量重算，零失效狀態** |
+| 交易耦合 | create/update/delete 都呼叫 `handleBudgetImpact` | **完全解耦**，交易寫入路徑不含任何預算邏輯 |
+
+---
+
+## 1. Glossary
+
+| 術語 | 說明 |
+| --- | --- |
+| **Envelope（信封）** | 一個支出分類的預算容器。本設計掛在支出 Main 分類層（B1） |
+| **Assigned** | 某月分配給某信封的金額，唯一由使用者輸入並儲存的預算資料。可為負（搬錢修正） |
+| **Activity** | 該月該信封的交易淨額（支出為負），用 `amountInBase` 累計，**即時推導不儲存** |
+| **Available** | `max(0, 上月 Available) + Assigned + Activity`，跨月遞迴推導 |
+| **RTA（Ready to Assign）** | 還沒分配給信封的錢。流水推導：起始部位 + 累計收入 − 累計已分配 − 前月 cash overspending |
+| **On-budget 帳戶** | 參與預算的帳戶（現金/銀行/信用卡）。其收入進 RTA、支出計 Activity |
+| **Tracking 帳戶** | 不參與預算的帳戶（證券戶等），只進淨值 |
+| **Move Money** | 信封之間（或與 RTA 之間）搬 Assigned |
+| **Cash overspending** | 信封 Available 為負（現金已花掉）→ 月底歸零並從下月 RTA 扣除 |
+| **startMonth** | 預算起始月。之前的歷史交易不參與預算 |
+
+---
+
+## 2. YNAB 機制與採用範圍
+
+（YNAB 行為已對照官方文件查證，2026-06）
+
+| # | 機制 | YNAB 優先級 | 本專案 |
+| --- | --- | --- | --- |
+| 1 | 單一預算 + RTA 來自真實帳戶 + zero-based 恆等式 | 核心 | **Phase 1** |
+| 2 | Assigned per (category, month)、Available 跨月結轉 | 核心 | **Phase 1** |
+| 3 | Assigned / Activity / Available 三數字推導 | 核心 | **Phase 1** |
+| 4 | Cash overspending：負 Available 歸零 + 扣下月 RTA | 核心 | **Phase 1** |
+| 5 | On-budget vs Tracking + 轉帳邊界規則 | 核心 | **Phase 1** |
+| 6 | Move Money / Cover Overspending | 核心 | **Phase 1** |
+| 7 | 收入進 RTA、不分月 | 核心 | **Phase 1**（規則式，B3） |
+| 8 | 未來月份預先分配（即時扣全域 RTA） | 重要 | Phase 2（複用 `budget_assignment`，無 schema 變更） |
+| 9 | Credit overspending 與 cash 區分 | 重要 | Phase 2 |
+| 10 | Credit Card Payment category 自動搬錢 | 重要 | Phase 2（Phase 1 信用卡採現金式，B2） |
+| 11 | Targets（Set Aside / Refill / Balance by Date）+ Underfunded | 重要 | Phase 2（`budget_target` 表已預留設計 §4.5） |
+| 12 | Auto-Assign 快速按鈕（Underfunded / Assigned Last Month） | 重要→可略 | Phase 2 |
+| 13 | Weekly cadence target、snooze、還款 target | 可略 | 不做 |
+| 14 | Age of Money | 可略 | 不做 |
+| 15 | 預算專屬報表 | 可略 | 不做（既有 dashboard 足夠） |
+
+**Phase 2 機制備忘**（屆時不必重新研究）：
+
+- **信用卡完整機制**：每張卡自動產生 `Credit Card Payment` category；刷卡時 `covered = min(金額, 信封 Available 正值)` 自動搬到 CC Payment（推導值，非寫入）；還卡費 = 銀行→卡轉帳，扣 CC Payment 的 Available；未覆蓋部分 = credit overspending，月底歸零但**不扣 RTA**（留在卡債）。
+- **Targets 計算**：`Set Aside Another X` → Underfunded = `max(0, X − Assigned)`；`Refill Up To X` → `max(0, X − carryIn − Assigned)`；`Balance of X by date` → 剩餘缺口 ÷ 剩餘月數攤提。Target 只產生提示，不自動動錢。
+
+---
+
+## 3. 設計決策
+
+### 3.1 使用者已拍板（B1–B5，2026-06-10，不可自行更改）
+
+| # | 決策 | 拍板結論 | 理由 |
+| --- | --- | --- | --- |
+| B1 | **Envelope 掛哪一層** | **(a) Main 層**、Sub 自動 roll-up（約 11+ 個信封） | YNAB 實務粒度即 10–20 個；Sub 層 60+ 列逐月分配太繁瑣，且要處理交易直接掛 Main 的幽靈信封 |
+| B2 | **信用卡 MVP 處理** | **(a) on-budget 現金式**：刷卡即扣信封、還款零影響、起始卡債扣 RTA | pay-in-full 心智模型；當 tracking 會讓信用卡消費完全進不了預算 |
+| B3 | **收入怎麼進 RTA** | **(a) 規則式**：on-budget 帳戶所有收入（`type=收入` 且 `linkId IS NULL`）一律進 RTA | 零 schema 變更、零遷移、不改記帳習慣；特殊分類會汙染統計頁 |
+| B4 | **預算起始月語意** | **(a) 啟用時選 startMonth**（預設當月），之前交易不參與 | 全歷史參與會要求補分配多年歷史 |
+| B5 | **跨邊界轉帳的分類（MVP）** | **(a) 系統虛擬列「轉出（未分類）」** | 零 schema 變更，Phase 2 再加選填分類 |
+
+### 3.2 已定案（不重新討論）
+
+| 決策 | 內容 | 理由 |
+| --- | --- | --- |
+| **RTA 採流水推導，放棄與帳戶現值對帳** | RTA 完全由 `amountInBase` 流水推導，恆等式 `起始部位 + Σ流入 = RTA + Σ Available` 由構造保證成立。外幣帳戶的匯率漂移不進預算（淨值功能已涵蓋現值） | D5 已定 Activity 用 `amountInBase` 固定快照值，強行對帳現值只能引入使用者無法理解的「FX 調整項」。外幣帳戶一律 tracking 則等於閹割剛做完的多幣別 |
+| **計算採每次請求全量推導，無快照** | 唯一儲存狀態 = `budget_assignment`。2 條聚合 SQL + JS fold；回溯補帳/改交易/刪除/切本位幣**自動正確** | 個人應用幾萬筆交易在 PG 聚合是毫秒級；舊版 Snapshot + `isRecalculating` + queue 被認定過度設計 |
+| **本位幣切換時 `assigned` 用該月 1 號歷史匯率換算，缺匯率整批中止** | 整合進 `baseCurrencyService.changeCurrency`，取代舊預算換匯區塊 | Activity 被逐筆按交易日歷史匯率重算，assigned 用同月歷史匯率才不會讓過去月份出現假超支（會串扣後續 RTA） |
+| **startRTA 動態推導，不落庫** | `帳戶起始日餘額 = 現在 balance − Σ(起始日後交易的有號影響)`，再乘起始日匯率 | 回溯補帳（含補在起始日前）與本位幣切換自動一致 |
+| **轉帳判定用 `linkId IS NOT NULL`** | 兩端皆 on-budget → 零影響；on-budget→tracking 的 from leg → 視同支出；tracking→on-budget 的 to leg → 視同 RTA 流入 | codebase 中轉帳 = 兩筆互指 `linkId` 的交易（from leg `type=支出`、to leg `type=收入`），`linkId` 是唯一可靠依據 |
+| **Activity 用 `date` 不用 `billingDate`** | 月份歸屬依交易日期 | 與 YNAB 一致 |
+| **分類被刪時 assignment CASCADE，RTA 自動回升** | — | 推導式架構的自然結果 |
+| **舊 4 表直接 drop，不轉換資料** | — | 使用者已定案取代重做 |
+
+---
+
+## 4. 資料模型
+
+### 4.1 新表 `budget_assignment`（唯一儲存的預算狀態）
+
+| 欄位 | 型別 | 約束 | 說明 |
+| --- | --- | --- | --- |
+| `id` | UUID | PK, default UUIDV4 | |
+| `userId` | UUID | NOT NULL, FK→`user.id` | `User.afterDestroy` hook 串接清理（沿用既有模式） |
+| `categoryId` | UUID | NOT NULL, FK→`category.id`, ON DELETE CASCADE | 限支出 Main 層（service 層驗證 parent 為 Root 支出） |
+| `month` | DATEONLY | NOT NULL | 該月 1 號（如 `2026-06-01`） |
+| `assigned` | DECIMAL(20,5) | NOT NULL, default 0 | 本位幣（D5）。可為負 |
+| `createdAt` / `updatedAt` | DATE | NOT NULL | **`paranoid: false`**（soft-delete 殘留列會撞 unique 約束；assigned=0 即等同不存在，永不刪列） |
+
+- `UNIQUE(userId, categoryId, month)`（upsert 錨點）
+- `INDEX(userId, month)`
+
+### 4.2 既有表加欄
+
+| 表 | 欄位 | 型別 | 說明 |
+| --- | --- | --- | --- |
+| `account` | `onBudget` | BOOLEAN NOT NULL DEFAULT true | migration 回填：現金/銀行/信用卡→true，證券戶/其他→false。歸檔帳戶不影響此語意 |
+| `user` | `budgetStartMonth` | DATEONLY NULL | null = 未啟用預算（沿用 `baseCurrencyCode` 直接加在 user 的慣例） |
+
+### 4.3 補索引
+
+| 表 | 索引 | 理由 |
+| --- | --- | --- |
+| `transaction` | `INDEX(userId, date)` | activity 聚合主查詢路徑，目前缺 |
+
+### 4.4 刪除的表（Phase 0）
+
+`budget`、`budget_category`、`transaction_budget`、`budget_period_snapshot` 四表，一支 migration drop（down 重建空表結構維持可逆）。原建表 migration：`20260119133000-create-budget-system.js`。
+
+### 4.5 Phase 2 預留：`budget_target`（本次不建表）
+
+`id`, `userId`, `categoryId UNIQUE`, `type ENUM('SET_ASIDE','REFILL','BALANCE_BY_DATE')`, `amount DECIMAL(20,5)`, `dueDate DATEONLY NULL`, timestamps。Underfunded 為推導值不落庫。
+
+---
+
+## 5. 計算邏輯
+
+### 5.1 恆等式（寫成測試的不變量）
+
+1. `startRTA + Σ累計流入(Base) = RTA + Σ Available（歸零前） + |已沖銷的 cash overspending|` —— 任意月份、由構造恆成立。
+2. `Available(c,m) = max(0, Available(c,m−1)) + Assigned(c,m) + Activity(c,m)`，全鏈可從 startMonth 重放交易重建。
+3. 上月 cash overspending 總和 = 本月 RTA 的扣減量。
+4. on-budget 內部轉帳對所有預算數字零影響。
+5. 編輯/刪除/改日期/改分類/改帳戶 `onBudget` 任一操作後，結果與「從頭重放」一致（全推導架構天然滿足，仍須測試覆蓋）。
+6. 本位幣切換後：assigned 按該月歷史匯率換算、Activity 隨 `amountInBase` 重算，恆等式仍成立。
+
+### 5.2 月份視圖（虛擬碼）
+
+```
+# ============ getMonthView(userId, targetMonth) ============
+start = user.budgetStartMonth                  # 必須非 null
+assert start <= targetMonth <= currentMonth    # MVP 不開放未來月
+
+# --- (1) startRTA：動態推導，不落庫 ---
+startRTA = 0
+for acc in accounts where onBudget:            # 含 isArchived
+  # 有號影響 = 收入 leg：+(amount + extraAdd − extraMinus)
+  #            支出 leg：−(amount + extraMinus − extraAdd)   （帳戶幣別，= calcAccountBalance 的逆運算）
+  deltaSince = SQL_SUM(signedEffect of txns: accountId=acc, date >= start)
+  balanceAtStart = acc.balance − deltaSince
+  startRTA += roundToBase(balanceAtStart × getRate(acc.currencyCode, base, start))
+  # 缺匯率 → 整批拋錯要求補匯率（沿用 changeBaseCurrency 語意）
+
+# --- (2) Activity：一條聚合 SQL，roll-up 到 Main ---
+# 範圍：on-budget 帳戶、date ∈ [start, targetMonth 月末]、支出側、amountInBase
+# 含一般支出（linkId IS NULL AND type='支出'）
+# 含跨邊界轉出 from leg（linkId NOT NULL AND 對端帳戶 onBudget=false）→ 歸入虛擬列 UNCLASSIFIED_OUT
+# 排除 on-budget 內部轉帳
+SELECT date_trunc('month', t.date)                        AS month,
+       CASE WHEN t."linkId" IS NOT NULL THEN 'UNCLASSIFIED_OUT'
+            WHEN p."parentId" IS NULL   THEN c.id          -- 交易掛 Main
+            ELSE c."parentId" END                          AS mainCategoryId,
+       SUM(t."amountInBase"
+           + COALESCE(e."extraMinusInBase",0) − COALESCE(e."extraAddInBase",0)) AS outflow
+...GROUP BY 1, 2
+# activity[c][m] = −outflow
+
+# --- (3) Inflow：一條聚合 SQL，by month ---
+# 一般收入（linkId IS NULL AND type='收入'，on-budget 帳戶）
+# + tracking→on-budget 轉入 to leg
+inflow[m] = SUM(amountInBase + extraAddInBase − extraMinusInBase)
+
+# --- (4) 純函式 fold（logic/budgetLogic.ts 重寫，可無 DB 單元測試）---
+envelopes = 支出 Main 分類（全域 + 自建）∪ {UNCLASSIFIED_OUT}
+carry = {c: 0}; cumAssigned = 0; cumInflow = 0; priorOverspend = 0
+for m in start .. targetMonth:
+  for c in envelopes:
+    available[c] = max(0, carry[c]) + assigned[c][m] + activity[c][m]
+  if m < targetMonth:
+    priorOverspend += Σ_c min(0, available[c])   # cash overspending 扣下月 RTA
+    carry = available
+  cumAssigned += Σ_c assigned[c][m]
+  cumInflow   += inflow[m]
+
+RTA = startRTA + cumInflow − cumAssigned + priorOverspend
+```
+
+### 5.3 寫入操作
+
+```
+# assign(userId, month, categoryId, amount)
+驗證 categoryId 為支出 Main 層 → UPSERT budget_assignment SET assigned = amount（絕對值）
+
+# moveMoney(userId, month, from?, to?, amount)    # from/to 任一為 null = RTA
+DB transaction { from 非 null → assigned −= amount；to 非 null → assigned += amount }
+
+# changeBaseCurrency 整合（取代舊預算換匯區塊）
+for row in budget_assignment where userId:
+  row.assigned ×= getRate(oldBase, newBase, row.month 的 1 號)   # 缺匯率 → 整批中止
+```
+
+---
+
+## 6. API 設計
+
+單一預算，故無 `/budgets/:id`。對齊既有 `/api` + `authMiddleware` 風格；schema 放 `@repo/shared`（新增 `budget.schema.ts`）。
+
+| Method | Path | 用途 |
+| --- | --- | --- |
+| GET | `/api/budget` | 預算狀態 `{ enabled, startMonth, baseCurrencyCode }` |
+| POST | `/api/budget/init` | 啟用 `{ startMonth, accountOverrides?: [{accountId, onBudget}] }` |
+| PUT | `/api/budget/settings` | 改 startMonth（全推導架構下改完自動正確） |
+| GET | `/api/budget/months/:month` | 月份視圖一次回傳全部（shape 見下） |
+| PUT | `/api/budget/months/:month/assignments/:categoryId` | `{ assigned }` 絕對值 upsert |
+| POST | `/api/budget/months/:month/move` | `{ fromCategoryId\|null, toCategoryId\|null, amount }`，原子搬錢 |
+| PUT | `/api/accounts/:id`（既有） | account schema 加 `onBudget` 欄位即可 |
+
+`GET /months/:month` 回應：
+
+```ts
+{
+  month: '2026-06', startMonth: '2026-01', readyToAssign: number,
+  rtaBreakdown: { startingBalance, cumulativeInflow, cumulativeAssigned, priorOverspending },
+  rows: [{ categoryId, name, icon, color, assigned, activity, available, isOverspent }],
+  unclassifiedTransferOut: { activity, available } | null,   // 虛擬列，無流出時為 null
+  totals: { assigned, activity, available }
+}
+```
+
+---
+
+## 7. 前端頁面結構
+
+`app/(main)/budget`（單數，取代舊 `budgets`），SWR key `/budget/months/${month}`：
+
+- `page.tsx` — 未啟用時渲染 `InitBudgetDialog`（選 startMonth + 帳戶 onBudget 核對清單）
+- `BudgetMonthNav` — 月份切換（start..當月）
+- `ReadyToAssignCard` — RTA 大數字，負值紅色；Popover 顯示 rtaBreakdown
+- `BudgetTable` — Main 信封列表（含「轉出（未分類）」虛擬列）；欄：分類 / Assigned / Activity / Available
+  - `AssignedCell` — 行內編輯 Input，blur/Enter 送 PUT，optimistic mutate
+  - `AvailablePill` — Badge：正=綠、零=灰、負=紅
+  - `MoveMoneyPopover` — 點 Available 開啟：金額 + 目的地（含 RTA），RHF + Zod
+- `CategoryActivitySheet` — 點 Activity 開 Sheet，用既有 transactions API 按分類+月份列交易
+- `OverspendingBanner` — 本月有負 Available 時提示「月底將自下月 RTA 扣除」
+
+---
+
+## 8. Phase 0：舊系統拆除清單
+
+（盤點於 2026-06-10，共 26 個純 budget 檔案 + 7 個混合檔案 + 4 張表）
+
+### 8.1 整檔刪除 — 後端
+
+- `apps/backend/src/models/budget.ts`、`budgetCategory.ts`、`budgetPeriodSnapshot.ts`、`transactionBudget.ts`
+- `apps/backend/src/services/budgetService.ts`
+- `apps/backend/src/logic/budgetLogic.ts`（Phase 1 重寫同名檔）
+- `apps/backend/src/controllers/budgetController.ts`、`budgetCategoryController.ts`
+- `apps/backend/src/routes/budgetRoute.ts`
+- `apps/backend/database/seeders/20260119134500-demo-budget.js`
+- `apps/backend/tests/unit/budget_controller.test.ts`、`budget_service.test.ts`、`budget_impact.test.ts`
+
+### 8.2 整檔刪除 — 前端
+
+- `apps/frontend/src/types/budget.ts`、`lib/budget-utils.ts`、`services/budget.ts`
+- `apps/frontend/src/components/budgets/`（全部 7 個元件）
+- `apps/frontend/src/components/dashboard/BudgetWidget.tsx`
+- `apps/frontend/src/app/(main)/budgets/`（兩頁）
+
+### 8.3 混合檔案局部修改
+
+| 檔案 | 修改內容 |
+| --- | --- |
+| `apps/backend/src/models/index.ts` | 移除 Budget 系列 import、所有關聯定義、`User.afterDestroy` 的 `Budget.destroy` 區塊（⚠️ 訪客清理 cron 依賴此 hook，Phase 1 換成 `BudgetAssignment.destroy`） |
+| `apps/backend/src/services/transactionServices.ts` | 移除 `TransactionBudget` / `handleBudgetImpact` import、create/update/delete 三處呼叫點、`budgetIds` 參數處理 |
+| `apps/backend/src/services/baseCurrencyService.ts` | 移除預算換匯區塊與 `budgetsConverted` 回傳（Phase 1 改為換算 `budget_assignment`） |
+| `apps/backend/src/app.ts` | 移除 `budgetRoute` import 與掛載 |
+| `apps/frontend/src/components/layout/sidebar.tsx` | 刪除已註解的 `/budgets` 導覽項 |
+| `apps/frontend/src/components/transactions/transactionSheet.tsx` | 刪除已註解的 budget 相關程式碼（state / useEffect / budgetIds） |
+| `apps/frontend/src/services/authService.ts` | 移除 `budgetsConverted` 回傳型別欄位 |
+| dashboard 組合處 | 移除 `BudgetWidget` 引用 |
+
+### 8.4 Migration
+
+新增一支 drop migration（drop 4 表；down 重建空表結構）。
+
+---
+
+## 9. 進度追蹤
+
+### Phase 0 — 拆除舊系統 ✅（2026-06-10 完成）
+
+- [x] 後端純 budget 檔案刪除（§8.1）
+- [x] 前端純 budget 檔案刪除（§8.2）
+- [x] 混合檔案局部修改（§8.3；實際範圍比盤點多了 9 個混合測試檔的 budget mock 清理 + `@repo/shared` `transaction.schema.ts` 三處 `budgetIds` 欄位移除 + `baseCurrencySwitch.test.ts` 預算斷言移除）
+- [x] drop migration（§8.4，`20260610120000-drop-budget-system.js`）+ up/down/up 可逆性驗證通過
+- [x] 型別檢查（backend/frontend/shared 無新增錯誤）+ 後端 138 測試全綠（原 158，−20 為刪除的 budget 測試）+ 前端 29 全綠
+
+### Phase 1 — YNAB MVP
+
+- [ ] migration：`budget_assignment` 表 + `account.onBudget` + `user.budgetStartMonth` + `transaction(userId, date)` 索引
+- [ ] runtime 模型（`src/models/budgetAssignment.ts` + index.ts 關聯 + `User.afterDestroy` 清理）
+- [ ] `@repo/shared`：`budget.schema.ts`（月份視圖 / assign / move / init schemas）
+- [ ] `logic/budgetLogic.ts` 重寫：純函式 fold（無 DB 單元測試覆蓋恆等式 §5.1）
+- [ ] `budgetService` 重寫：startRTA 推導 + 兩條聚合 SQL + getMonthView / assign / moveMoney / init
+- [ ] `baseCurrencyService` 整合：assigned 按月歷史匯率換算
+- [ ] routes / controllers + `validate` middleware
+- [ ] 前端 `app/(main)/budget` 全套（§7）+ sidebar 導覽
+- [ ] 測試：後端單元（fold 恆等式、轉帳邊界、startRTA、本位幣切換）+ 前端元件
+
+### Phase 2 —（拍板後再展開）
+
+- [ ] 未來月份預先分配
+- [ ] Credit overspending 區分 + Credit Card Payment category
+- [ ] `budget_target` + Underfunded + Auto-Assign
+- [ ] 跨邊界轉帳選填預算分類
+- [ ] 退款回補信封 UI
+
+---
+
+## 10. 參考來源
+
+YNAB 機制查證（2026-06）：官方支援文件 Overspending guide、Month rollover guide、Credit card overspending、Ready to Assign negative、Targets guide、Auto-Assign guide、Assigning future income、Age of Money。

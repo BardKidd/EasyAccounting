@@ -37,7 +37,6 @@ vi.mock('@/models', () => ({
     hasMany: vi.fn(),
     hasOne: vi.fn(),
   },
-  TransactionBudget: { create: vi.fn(), destroy: vi.fn() },
   User: {
     findByPk: vi.fn().mockResolvedValue({ baseCurrencyCode: 'TWD' }),
   },

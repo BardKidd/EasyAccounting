@@ -58,7 +58,6 @@ export const changeBaseCurrency = async (
     oldBaseCode: string;
     newBaseCode: string;
     transactionsRecomputed: number;
-    budgetsConverted: number;
   }>
 > => {
   return await apiHandler('/user/base-currency', 'patch', {

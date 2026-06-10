@@ -85,10 +85,6 @@ import { z } from '@repo/shared';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
-// [HIDDEN] 預算功能暫時停用
-// import { budgetService } from '@/services/budget';
-// import { Budget } from '@/types/budget';
-// import { Badge } from '@/components/ui/badge'; // [HIDDEN] 預算功能暫時停用
 import { TRANSACTION_COLORS } from '@/lib/transactionColors';
 
 interface TransactionSheetProps {
@@ -116,9 +112,6 @@ export function TransactionSheet({
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showExtra, setShowExtra] = useState(false);
-  // [HIDDEN] 預算功能暫時停用
-  // const [budgets, setBudgets] = useState<Budget[]>([]);
-  // const [selectedBudgetIds, setSelectedBudgetIds] = useState<string[]>([]);
   const isEditMode = !!transaction;
   const isRecurring = !!transaction?.recurringTemplateId;
 
@@ -140,15 +133,6 @@ export function TransactionSheet({
   const [pendingData, setPendingData] = useState<TransactionFormSchema | null>(
     null,
   );
-
-  // [HIDDEN] 預算功能暫時停用
-  // useEffect(() => {
-  //   const fetchBudgets = async () => {
-  //     const res = await budgetService.getBudgets();
-  //     if (res.isSuccess) setBudgets(res.data.filter((b) => b.isActive));
-  //   };
-  //   fetchBudgets();
-  // }, []);
 
   const findCategoryPath = (
     categoryId: string,
@@ -399,7 +383,6 @@ export function TransactionSheet({
             rewardsType: RewardsType.EVERY,
           },
         });
-        // setSelectedBudgetIds([]); // [HIDDEN] 預算功能暫時停用
         setShowExtra(false);
       }
     }
@@ -523,7 +506,6 @@ export function TransactionSheet({
         extraAddLabel: data.extraAddLabel,
         extraMinus: data.extraMinus,
         extraMinusLabel: data.extraMinusLabel,
-        // budgetIds: selectedBudgetIds, // [HIDDEN] 預算功能暫時停用
       };
       const result = await services.addTransaction(payload);
       if (result?.isSuccess) {
@@ -560,7 +542,6 @@ export function TransactionSheet({
         Number(data.targetAmount) > 0
           ? Number(data.targetAmount)
           : undefined,
-      // budgetIds: selectedBudgetIds, // [HIDDEN] 預算功能暫時停用
       // Update other fields as supported by schema
       paymentFrequency: data.paymentFrequency, // Ensure Schema supports
       extraAdd: data.extraAdd,
@@ -923,86 +904,6 @@ export function TransactionSheet({
                   />
                 )}
               </div>
-
-              {/* [HIDDEN] 預算功能暫時停用 — Budget Selection UI */}
-              {/* {watchedType === RootType.EXPENSE && (
-                <div className="space-y-2">
-                  <FormLabel>歸入預算</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal min-h-10 h-auto py-2 cursor-pointer"
-                      >
-                        {selectedBudgetIds.length === 0 ? (
-                          <span className="text-muted-foreground">
-                            無預算專案
-                          </span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {selectedBudgetIds.map((id) => {
-                              const b = budgets.find((x) => x.id === id);
-                              if (!b) return null;
-                              return (
-                                <Badge
-                                  key={id}
-                                  variant="secondary"
-                                  className="cursor-pointer"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedBudgetIds((prev) =>
-                                      prev.filter((p) => p !== id),
-                                    );
-                                  }}
-                                >
-                                  {b.name} <X className="ml-1 h-3 w-3" />
-                                </Badge>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-2">
-                      <div className="space-y-1">
-                        {budgets.map((b) => (
-                          <div
-                            key={b.id}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
-                            onClick={() => {
-                              setSelectedBudgetIds((prev) =>
-                                prev.includes(b.id)
-                                  ? prev.filter((p) => p !== b.id)
-                                  : [...prev, b.id],
-                              );
-                            }}
-                          >
-                            <div
-                              className={cn(
-                                'h-4 w-4 rounded border flex items-center justify-center',
-                                selectedBudgetIds.includes(b.id)
-                                  ? 'bg-primary border-primary'
-                                  : 'border-input',
-                              )}
-                            >
-                              {selectedBudgetIds.includes(b.id) && (
-                                <Check className="h-3 w-3 text-primary-foreground" />
-                              )}
-                            </div>
-                            <span className="text-sm">{b.name}</span>
-                          </div>
-                        ))}
-                        {budgets.length === 0 && (
-                          <div className="text-sm text-muted-foreground py-2 text-center">
-                            尚無預算專案
-                          </div>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              )} */}
 
               {/* Amount */}
               <div className="pt-2 pb-4">

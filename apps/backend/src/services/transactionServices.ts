@@ -22,10 +22,8 @@ import {
   Account,
   InstallmentPlan,
   TransactionExtra,
-  TransactionBudget,
   User,
 } from '@/models';
-import { handleBudgetImpact, BudgetImpact } from './budgetService';
 import { getRate } from './exchangeRateService';
 import sequelize from '@/utils/postgres';
 import { Op, Transaction as SequelizeTransaction } from 'sequelize';
@@ -415,7 +413,6 @@ export const createTransaction = async (
     extraAddLabel?: string;
     extraMinus?: number;
     extraMinusLabel?: string;
-    budgetIds?: string[];
   },
   userId: string,
 ) => {
@@ -461,7 +458,6 @@ export const createTransaction = async (
       transactionExtraId = extra.id;
     }
 
-    const createdTransactions: { id: string; date: string }[] = [];
     let result = null;
 
     // Handle Installment Plan
@@ -531,7 +527,7 @@ export const createTransaction = async (
 
         const date = addMonths(new Date(data.date), i - 1);
 
-        const newInstallmentTransaction = await Transaction.create(
+        await Transaction.create(
           {
             ...data,
             userId,
@@ -554,11 +550,6 @@ export const createTransaction = async (
           },
           { transaction },
         );
-
-        createdTransactions.push({
-          id: newInstallmentTransaction.id!,
-          date: newInstallmentTransaction.date as string,
-        });
       }
 
       await calcAccountBalance(account, type, amount, extraAdd, extraMinus);
@@ -587,37 +578,10 @@ export const createTransaction = async (
       await calcAccountBalance(account, type, amount, extraAdd, extraMinus);
       await account.save({ transaction });
 
-      createdTransactions.push({
-        id: newTransaction.id!,
-        date: newTransaction.date as string,
-      });
-
       result = newTransaction.toJSON();
     }
 
-    // 統一寫入 TransactionBudget 關聯
-    if (data.budgetIds?.length && createdTransactions.length > 0) {
-      const budgetAssociations = createdTransactions.flatMap((tx) =>
-        data.budgetIds!.map((budgetId) => ({
-          transactionId: tx.id,
-          budgetId,
-        })),
-      );
-      await TransactionBudget.bulkCreate(budgetAssociations, { transaction });
-    }
-
     await transaction.commit();
-
-    // 統一觸發預算檢查 (Impact)
-    if (data.budgetIds?.length && createdTransactions.length > 0) {
-      const impacts: BudgetImpact[] = createdTransactions.flatMap((tx) =>
-        data.budgetIds!.map((budgetId) => ({
-          budgetId,
-          date: tx.date,
-        })),
-      );
-      await handleBudgetImpact(userId, impacts);
-    }
 
     return result;
   } catch (error) {
@@ -633,7 +597,6 @@ export const updateIncomeExpense = async (
     extraAddLabel?: string;
     extraMinus?: number;
     extraMinusLabel?: string;
-    budgetIds?: string[];
   },
   userId: string,
 ) => {
@@ -794,61 +757,10 @@ export const updateIncomeExpense = async (
     // 轉帳（含跨幣）已於函式入口依 linkId 委派給 updateTransfer，
     // 走到這裡的交易必為非轉帳（linkId == null），故不再有對向同步邏輯。
 
-    // 同步 TransactionBudget 關聯
-    if (data.budgetIds !== undefined) {
-      // 先刪除舊關聯
-      await TransactionBudget.destroy({
-        where: { transactionId: id },
-        transaction: t,
-      });
-      // 再建立新關聯
-      if (data.budgetIds.length) {
-        await TransactionBudget.bulkCreate(
-          data.budgetIds.map((budgetId) => ({
-            transactionId: id,
-            budgetId,
-          })),
-          { transaction: t },
-        );
-      }
-    }
-
-    const result = transaction.toJSON();
-    // 捕捉影響
-    const impacts: BudgetImpact[] = [];
-    // 舊的影響（如果有的話）
-    const oldTransactionBudgets = await TransactionBudget.findAll({
-      where: { transactionId: id },
-      transaction: t,
-    });
-    oldTransactionBudgets.forEach((tb) => {
-      impacts.push({ budgetId: tb.budgetId, date: transaction.date });
-    });
-
-    // 新的影響
-    if (data.budgetIds) {
-      data.budgetIds.forEach((bid) => {
-        impacts.push({ budgetId: bid, date: data.date || transaction.date });
-      });
-    } else {
-      // 如果 update 中未提供 budgetIds，通常表示不變更關聯。
-      // 但若日期變更，我們需要重新評估現有預算的影響！
-      if (data.date && data.date !== transaction.date) {
-        oldTransactionBudgets.forEach((tb) => {
-          impacts.push({ budgetId: tb.budgetId, date: data.date as string });
-        });
-      }
-    }
-
-    return { result, impacts };
+    return transaction.toJSON();
   });
 
-  // 在交易完成後執行影響評估
-  if (responseData?.impacts?.length) {
-    await handleBudgetImpact(userId, responseData.impacts);
-  }
-
-  return responseData.result;
+  return responseData;
 };
 
 export const deleteTransaction = async (id: string, userId: string) => {
@@ -935,25 +847,10 @@ export const deleteTransaction = async (id: string, userId: string) => {
       });
     }
 
-    // 在刪除前捕捉影響
-    const impacts: BudgetImpact[] = [];
-    const transactionBudgets = await TransactionBudget.findAll({
-      where: { transactionId: id },
-      transaction: t,
-    });
-    transactionBudgets.forEach((tb) => {
-      impacts.push({ budgetId: tb.budgetId, date: transaction.date });
-    });
-
-    return { result: transaction.toJSON(), impacts };
+    return transaction.toJSON();
   });
 
-  // 執行影響評估
-  if (responseData?.impacts?.length) {
-    await handleBudgetImpact(userId, responseData.impacts);
-  }
-
-  return responseData.result;
+  return responseData;
 };
 
 const createTransfer = async (

@@ -61,12 +61,6 @@ const sidebarItems = [
     href: '/reconciliation',
     icon: FileCheck,
   },
-  // [HIDDEN] 預算功能暫時停用
-  // {
-  //   title: '預算管理',
-  //   href: '/budgets',
-  //   icon: Calculator,
-  // },
   {
     title: '設定',
     href: '/settings',

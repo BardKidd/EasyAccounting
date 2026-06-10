@@ -46,7 +46,6 @@ vi.mock('@/models', () => {
     Category: createMockModel(),
     Transaction: createMockModel(),
     TransactionExtra: createMockModel(),
-    TransactionBudget: createMockModel(),
     CreditCardDetail: createMockModel(),
     sequelize: {
       transaction: vi.fn(() => ({
@@ -63,7 +62,6 @@ import {
   Category,
   Transaction,
   TransactionExtra,
-  TransactionBudget,
 } from '@/models';
 
 // 3. Mock Azure Blob
@@ -451,7 +449,6 @@ describe('Excel Import/Export API Test (Mocked)', () => {
   it('編輯模式：依 id 更新既有收入/支出交易（走 updateIncomeExpense）', async () => {
     mockAccountLookupByNameAndId();
     mockCategoryLookup();
-    (TransactionBudget.findAll as any).mockResolvedValue([]);
 
     // 預載：該 User 擁有 editTx1
     (Transaction.findAll as any).mockResolvedValue([{ id: 'editTx1' }]);
@@ -536,7 +533,6 @@ describe('Excel Import/Export API Test (Mocked)', () => {
   it('編輯模式：混合（有 id 更新 + 無 id 新增）', async () => {
     mockAccountLookupByNameAndId();
     mockCategoryLookup();
-    (TransactionBudget.findAll as any).mockResolvedValue([]);
 
     (Transaction.findAll as any).mockResolvedValue([{ id: 'editTx1' }]);
 
@@ -626,7 +622,6 @@ describe('Excel Import/Export API Test (Mocked)', () => {
   it('編輯模式：單列 apply 失敗不中斷整批，列入錯誤報告', async () => {
     mockAccountLookupByNameAndId();
     mockCategoryLookup();
-    (TransactionBudget.findAll as any).mockResolvedValue([]);
 
     // 兩筆都是本人的交易
     (Transaction.findAll as any).mockResolvedValue([
@@ -690,7 +685,6 @@ describe('Excel Import/Export API Test (Mocked)', () => {
   it('編輯模式：更新收入/支出時不覆寫 paymentFrequency', async () => {
     mockAccountLookupByNameAndId();
     mockCategoryLookup();
-    (TransactionBudget.findAll as any).mockResolvedValue([]);
     (Transaction.findAll as any).mockResolvedValue([{ id: 'editTx1' }]);
 
     const editableTx = makeEditableTransaction();

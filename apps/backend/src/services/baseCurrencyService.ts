@@ -3,7 +3,6 @@ import {
   Transaction,
   TransactionExtra,
   Account,
-  Budget,
   Currency,
 } from '@/models';
 import sequelize from '@/utils/postgres';
@@ -14,7 +13,7 @@ import { roundToBaseCurrency } from '@repo/shared';
  * 切換使用者本位幣（決策 Q1：用歷史匯率一次性重算）。
  *
  * 對每筆交易，用「交易當下日期」的 帳戶幣別 → 新本位幣 匯率重算 baseRate / amountInBase，
- * 並連帶重算其 TransactionExtra 的 base 快照；預算（本位幣計價）用「今日」匯率由舊本位幣換算。
+ * 並連帶重算其 TransactionExtra 的 base 快照。
  * 任一所需匯率缺漏即整批中止並回報缺漏清單（避免落庫錯誤快照）。整個過程包在 DB transaction。
  */
 export const changeBaseCurrency = async (
@@ -25,7 +24,6 @@ export const changeBaseCurrency = async (
   oldBaseCode: string;
   newBaseCode: string;
   transactionsRecomputed: number;
-  budgetsConverted: number;
 }> => {
   const user = await User.findByPk(userId);
   if (!user) throw new Error('User not found');
@@ -37,7 +35,6 @@ export const changeBaseCurrency = async (
       oldBaseCode,
       newBaseCode,
       transactionsRecomputed: 0,
-      budgetsConverted: 0,
     };
   }
 
@@ -94,24 +91,13 @@ export const changeBaseCurrency = async (
       plans.push(plan);
     }
 
-    // 3. 預算（本位幣計價）用今日匯率由舊本位幣換算到新本位幣
-    const budgets = await Budget.findAll({
-      where: { userId },
-      transaction: t,
-    });
-    const budgetRate =
-      budgets.length > 0 ? await getRate(oldBaseCode, newBaseCode) : 1;
-    if (budgets.length > 0 && budgetRate == null) {
-      missing.add(`${oldBaseCode}->${newBaseCode}@today(budget)`);
-    }
-
     if (missing.size > 0) {
       throw new Error(
         `缺少下列匯率，無法切換本位幣（請先補匯率）：${Array.from(missing).join(', ')}`,
       );
     }
 
-    // 4. 套用：交易 + extra
+    // 3. 套用：交易 + extra
     for (const p of plans) {
       await p.tx.update(
         { baseRate: p.baseRate, amountInBase: p.amountInBase },
@@ -128,23 +114,7 @@ export const changeBaseCurrency = async (
       }
     }
 
-    // 5. 套用：預算金額換算
-    let budgetsConverted = 0;
-    for (const b of budgets) {
-      const newAmount = roundToBaseCurrency(
-        (Number((b as any).amount) || 0) * (budgetRate as number),
-      );
-      const update: Record<string, any> = { amount: newAmount };
-      if ((b as any).pendingAmount != null) {
-        update.pendingAmount = roundToBaseCurrency(
-          Number((b as any).pendingAmount) * (budgetRate as number),
-        );
-      }
-      await b.update(update, { transaction: t });
-      budgetsConverted += 1;
-    }
-
-    // 6. 更新使用者本位幣
+    // 4. 更新使用者本位幣
     await user.update({ baseCurrencyCode: newBaseCode }, { transaction: t });
 
     return {
@@ -152,7 +122,6 @@ export const changeBaseCurrency = async (
       oldBaseCode,
       newBaseCode,
       transactionsRecomputed: plans.length,
-      budgetsConverted,
     };
   });
 };

@@ -30,7 +30,6 @@ vi.mock('@/models/user', () => ({ default: createMockModel() }));
 vi.mock('@/models/transaction', () => ({ default: createMockModel() }));
 vi.mock('@/models/TransactionExtra', () => ({ default: createMockModel() }));
 vi.mock('@/models/category', () => ({ default: createMockModel() }));
-vi.mock('@/models/budget', () => ({ default: createMockModel() }));
 vi.mock('@/models/installmentPlan', () => ({ default: createMockModel() }));
 vi.mock('@/models/installmentDetail', () => ({ default: createMockModel() }));
 vi.mock('@/models/RecurringTemplate', () => ({ default: createMockModel() }));
