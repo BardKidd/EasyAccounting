@@ -61,4 +61,10 @@ router.get(
   statisticsController.getAssetTrend
 );
 
+router.get(
+  '/statistics/net-worth',
+  authMiddleware,
+  statisticsController.getNetWorth
+);
+
 export default router;

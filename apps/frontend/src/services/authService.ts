@@ -45,3 +45,23 @@ export const resetPassword = async (data: {
 }): Promise<ResponseHelper<null>> => {
   return await apiHandler('/reset-password', 'post', data);
 };
+
+/**
+ * 切換本位幣（多幣別）。後端會用歷史匯率一次性重算所有 amountInBase；
+ * 缺匯率時回傳失敗並帶缺漏清單訊息。
+ */
+export const changeBaseCurrency = async (
+  baseCurrencyCode: string,
+): Promise<
+  ResponseHelper<{
+    changed: boolean;
+    oldBaseCode: string;
+    newBaseCode: string;
+    transactionsRecomputed: number;
+    budgetsConverted: number;
+  }>
+> => {
+  return await apiHandler('/user/base-currency', 'patch', {
+    baseCurrencyCode,
+  });
+};

@@ -8,6 +8,12 @@ export const createUserSchema = z.object({
 
 export const updateUserSchema = createUserSchema;
 
+// 切換本位幣（多幣別）
+export const changeBaseCurrencySchema = z.object({
+  baseCurrencyCode: z.string().length(3, '幣別代碼需為 3 碼'),
+});
+
 // 轉成 TypeScript 看比較看得懂的 type
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
+export type ChangeBaseCurrencyInput = z.infer<typeof changeBaseCurrencySchema>;

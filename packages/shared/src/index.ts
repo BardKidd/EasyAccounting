@@ -10,6 +10,7 @@ export * from './schemas/user.schema';
 export * from './schemas/announcement.schema';
 export * from './schemas/account.schema';
 export * from './schemas/transaction.schema';
+export * from './schemas/currency.schema';
 export * from './schemas/statistics.schema';
 export * from './schemas/personnelNotification.schema';
 export * from './schemas/recurringTemplate.schema';

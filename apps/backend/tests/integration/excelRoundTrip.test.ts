@@ -194,7 +194,7 @@ describe('Excel 匯入匯出 真實 DB 端到端', () => {
     await User.destroy({ where: { id: hoisted.userId }, force: true });
   });
 
-  it('1. 兩種匯出模式：匯出用無 id、編輯用含隱藏 id，金額為數字、幣別 NTD', async () => {
+  it('1. 兩種匯出模式：匯出用無 id、編輯用含隱藏 id，金額為數字、幣別 TWD', async () => {
     // 編輯用
     const editRes = await agent.get(
       `/api/excel/user-transactions?mode=${ExcelExportMode.EDIT}`,
@@ -215,7 +215,7 @@ describe('Excel 匯入匯出 真實 DB 端到端', () => {
         incomeRow = row;
     });
     expect(incomeRow).toBeTruthy();
-    expect(incomeRow!.getCell(currencyCol).text).toBe(Currency.NTD);
+    expect(incomeRow!.getCell(currencyCol).text).toBe(Currency.TWD);
     expect(typeof incomeRow!.getCell(amountCol).value).toBe('number');
     expect(String(incomeRow!.getCell(idCol).text)).toBe(incomeTxId);
 

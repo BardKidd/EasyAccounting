@@ -9,7 +9,7 @@ import {
   CategoryTabDataType,
   RankingTabDataType,
   AccountTabDataType,
-  FinalResult,
+  AssetTrendResult,
 } from '@repo/shared';
 import { toast } from 'sonner';
 
@@ -175,15 +175,40 @@ export const getAccountTabData = async (
   }
 };
 
-export const getAssetTrend = async (): Promise<FinalResult[]> => {
+export const getAssetTrend = async (): Promise<AssetTrendResult> => {
   try {
     const result = await apiHandler('/statistics/asset-trend', 'GET', null);
     if (result.isSuccess) {
       return result.data;
     }
-    return [];
+    return { trend: [], hasMultiCurrency: false };
   } catch (error) {
     console.error(error);
-    return [];
+    return { trend: [], hasMultiCurrency: false };
+  }
+};
+
+export interface NetWorthByCurrency {
+  currencyCode: string;
+  balance: number;
+  inBase: number | null;
+  rateMissing: boolean;
+}
+export interface NetWorthResult {
+  baseCurrencyCode: string;
+  byCurrency: NetWorthByCurrency[];
+  totalInBase: number;
+}
+
+export const getNetWorth = async (): Promise<NetWorthResult | null> => {
+  try {
+    const result = await apiHandler('/statistics/net-worth', 'GET', null);
+    if (result.isSuccess) {
+      return result.data as NetWorthResult;
+    }
+    return null;
+  } catch (error) {
+    console.error(error);
+    return null;
   }
 };

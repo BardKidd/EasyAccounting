@@ -6,7 +6,65 @@ import { CategoryTabDataType, RootType } from '@repo/shared';
 import { Op, QueryTypes } from 'sequelize';
 import sequelize from '@/utils/postgres';
 import { eachMonthOfInterval, format } from 'date-fns';
-import { EachMonthNetFlow, FinalResult } from '@repo/shared';
+import {
+  EachMonthNetFlow,
+  FinalResult,
+  AssetTrendResult,
+  roundToBaseCurrency,
+} from '@repo/shared';
+import { getRate } from './exchangeRateService';
+
+export interface NetWorthByCurrency {
+  currencyCode: string;
+  balance: number; // 該幣別餘額小計（原幣）
+  inBase: number | null; // 換算回本位幣（缺匯率時為 null）
+  rateMissing: boolean;
+}
+
+export interface NetWorthResult {
+  baseCurrencyCode: string;
+  byCurrency: NetWorthByCurrency[];
+  totalInBase: number;
+}
+
+/**
+ * 淨值：各幣別餘額小計 + 用「目前匯率」換算回本位幣的總和。
+ * Phase 1 只有 TWD（本位亦 TWD），故 totalInBase === SUM(balance)，結果與改寫前逐位相同。
+ */
+const getNetWorth = async (userId: string): Promise<NetWorthResult> => {
+  // 用 raw SQL 取本位幣，避免將 User model 拉進此 service（降低耦合、利於單元測試 mock）
+  const userRows: { baseCurrencyCode: string }[] = await sequelize.query(
+    `SELECT "baseCurrencyCode" FROM "accounting"."user" WHERE "id" = :userId LIMIT 1`,
+    { replacements: { userId }, type: QueryTypes.SELECT },
+  );
+  const baseCurrencyCode = userRows[0]?.baseCurrencyCode || 'TWD';
+
+  const rows: { currencyCode: string; balance: string }[] =
+    await sequelize.query(
+      `SELECT "currencyCode", SUM("balance") AS "balance"
+         FROM "accounting"."account"
+        WHERE "userId" = :userId AND "deletedAt" IS NULL
+        GROUP BY "currencyCode"`,
+      { replacements: { userId }, type: QueryTypes.SELECT },
+    );
+
+  const byCurrency: NetWorthByCurrency[] = [];
+  let totalInBase = 0;
+  for (const r of rows) {
+    const balance = Number(r.balance) || 0;
+    const rate = await getRate(r.currencyCode, baseCurrencyCode);
+    const inBase = rate == null ? null : roundToBaseCurrency(balance * rate);
+    if (inBase != null) totalInBase = roundToBaseCurrency(totalInBase + inBase);
+    byCurrency.push({
+      currencyCode: r.currencyCode,
+      balance,
+      inBase,
+      rateMissing: rate == null,
+    });
+  }
+
+  return { baseCurrencyCode, byCurrency, totalInBase };
+};
 
 const getOverviewTrend = async (body: any, userId: string) => {
   const { startDate, endDate } = body;
@@ -17,7 +75,7 @@ const getOverviewTrend = async (body: any, userId: string) => {
         [Op.between]: [startDate, endDate],
       },
     },
-    attributes: ['amount', 'type', 'targetAccountId'],
+    attributes: ['amount', 'amountInBase', 'type', 'targetAccountId'],
     include: [
       {
         model: TransactionExtra,
@@ -31,9 +89,10 @@ const getOverviewTrend = async (body: any, userId: string) => {
   const result = transactions.reduce(
     (total, t: any) => {
       const data = t;
-      const amount = Number(data.amount);
-      const extraAdd = Number(data.transactionExtra?.extraAdd || 0);
-      const extraMinus = Number(data.transactionExtra?.extraMinus || 0);
+      // 一律以本位幣快照聚合（單幣時 amountInBase === amount，零回歸）
+      const amount = Number(data.amountInBase);
+      const extraAdd = Number(data.transactionExtra?.extraAddInBase || 0);
+      const extraMinus = Number(data.transactionExtra?.extraMinusInBase || 0);
 
       if (data.targetAccountId) {
         if (data.type === RootType.INCOME) {
@@ -159,7 +218,7 @@ const getOverviewTop3Categories = async (body: any, userId: string) => {
         WHEN "MC"."parentId" IS NOT NULL THEN "MC"."icon"
         ELSE "SC"."icon"
       END AS "categoryIcon",
-      SUM("t"."amount" + COALESCE("te"."extraMinus", 0) - COALESCE("te"."extraAdd", 0)) AS "amount"
+      SUM("t"."amountInBase" + COALESCE("te"."extraMinusInBase", 0) - COALESCE("te"."extraAddInBase", 0)) AS "amount"
     FROM "accounting"."transaction" AS "t"
     -- 連接到子類別(SubCategory)
     LEFT OUTER JOIN "accounting"."category" AS "SC"
@@ -237,6 +296,7 @@ const getOverviewTop3Expenses = async (body: any, userId: string) => {
     attributes: [
       'categoryId',
       'amount',
+      'amountInBase',
       'id',
       'date',
       'description',
@@ -261,9 +321,10 @@ const getOverviewTop3Expenses = async (body: any, userId: string) => {
 
   return transactions.map((t: any) => {
     const data = t;
-    const amount = Number(data.amount);
-    const extraAdd = Number(data.transactionExtra?.extraAdd || 0);
-    const extraMinus = Number(data.transactionExtra?.extraMinus || 0);
+    // 以本位幣快照計算淨額（單幣時 === 原幣，零回歸）
+    const amount = Number(data.amountInBase);
+    const extraAdd = Number(data.transactionExtra?.extraAddInBase || 0);
+    const extraMinus = Number(data.transactionExtra?.extraMinusInBase || 0);
 
     return {
       ...data,
@@ -376,11 +437,11 @@ const getCategoryTabData = async (
       "t"."type",
       SUM(
         CASE
-          WHEN "t"."type" = '支出' THEN ("t"."amount" + COALESCE("te"."extraMinus", 0) - COALESCE("te"."extraAdd", 0))
-          WHEN "t"."type" = '收入' THEN ("t"."amount" - COALESCE("te"."extraMinus", 0) + COALESCE("te"."extraAdd", 0))
-          ELSE "t"."amount"
+          WHEN "t"."type" = '支出' THEN ("t"."amountInBase" + COALESCE("te"."extraMinusInBase", 0) - COALESCE("te"."extraAddInBase", 0))
+          WHEN "t"."type" = '收入' THEN ("t"."amountInBase" - COALESCE("te"."extraMinusInBase", 0) + COALESCE("te"."extraAddInBase", 0))
+          ELSE "t"."amountInBase"
         END
-      )::integer AS "amount",
+      )::float8 AS "amount",
       COUNT("t"."id")::integer AS "count"
     FROM "accounting"."transaction" AS "t"
     LEFT JOIN "accounting"."category" AS "sc" ON "t"."categoryId" = "sc"."id"
@@ -447,6 +508,7 @@ const getRankingTabData = async (body: any, userId: string) => {
     attributes: [
       'id',
       'amount',
+      'amountInBase',
       'description',
       'type',
       'targetAccountId',
@@ -477,9 +539,10 @@ const getRankingTabData = async (body: any, userId: string) => {
 
   return result.map((t: any) => {
     const data = t;
-    const amount = Number(data.amount);
-    const extraAdd = Number(data.transactionExtra?.extraAdd || 0);
-    const extraMinus = Number(data.transactionExtra?.extraMinus || 0);
+    // 以本位幣快照計算淨額（單幣時 === 原幣，零回歸）
+    const amount = Number(data.amountInBase);
+    const extraAdd = Number(data.transactionExtra?.extraAddInBase || 0);
+    const extraMinus = Number(data.transactionExtra?.extraMinusInBase || 0);
 
     let netAmount = amount;
     if (data.type === RootType.INCOME) {
@@ -520,11 +583,11 @@ const getAccountTabData = async (body: any, userId: string) => {
       "t"."type",
       SUM(
         CASE
-          WHEN "t"."type" = '支出' THEN ("t"."amount" + COALESCE("te"."extraMinus", 0) - COALESCE("te"."extraAdd", 0))
-          WHEN "t"."type" = '收入' THEN ("t"."amount" - COALESCE("te"."extraMinus", 0) + COALESCE("te"."extraAdd", 0))
-          ELSE "t"."amount"
+          WHEN "t"."type" = '支出' THEN ("t"."amountInBase" + COALESCE("te"."extraMinusInBase", 0) - COALESCE("te"."extraAddInBase", 0))
+          WHEN "t"."type" = '收入' THEN ("t"."amountInBase" - COALESCE("te"."extraMinusInBase", 0) + COALESCE("te"."extraAddInBase", 0))
+          ELSE "t"."amountInBase"
         END
-      )::integer AS "amount",
+      )::float8 AS "amount",
       COUNT("t"."id")::integer AS "count"
     FROM "accounting"."transaction" AS "t"
     LEFT JOIN "accounting"."account" AS "a" ON "t"."accountId" = "a"."id"
@@ -567,7 +630,15 @@ const getAccountTabData = async (body: any, userId: string) => {
   }));
 };
 
-const getAssetTrend = async (userId: string) => {
+const getAssetTrend = async (userId: string): Promise<AssetTrendResult> => {
+  // 多幣別旗標與淨值起點共用同一次 getNetWorth（零額外查詢）。
+  // hasMultiCurrency：使用者持有非本位幣帳戶時，歷史資產曲線為近似值
+  // （起點用今日匯率現值、歷史 netFlow 用交易當下快照匯率，兩者口徑不同）。單幣恆 false。
+  const netWorth = await getNetWorth(userId);
+  const hasMultiCurrency = netWorth.byCurrency.some(
+    (c) => c.currencyCode !== netWorth.baseCurrencyCode,
+  );
+
   const userDateRange: { startDate: string; endDate: string }[] =
     await sequelize.query(
       `
@@ -595,23 +666,23 @@ const getAssetTrend = async (userId: string) => {
         to_char("t"."date", 'MM') AS "month",
         SUM(
           CASE
-            WHEN "t"."type" = '支出' THEN ("t"."amount" + COALESCE("te"."extraMinus", 0) - COALESCE("te"."extraAdd", 0))
+            WHEN "t"."type" = '支出' THEN ("t"."amountInBase" + COALESCE("te"."extraMinusInBase", 0) - COALESCE("te"."extraAddInBase", 0))
             ELSE 0
           END
-        )::integer as "expense",
+        )::float8 as "expense",
         SUM(
           CASE
-            WHEN "t"."type" = '收入' THEN ("t"."amount" - COALESCE("te"."extraMinus", 0) + COALESCE("te"."extraAdd", 0))
+            WHEN "t"."type" = '收入' THEN ("t"."amountInBase" - COALESCE("te"."extraMinusInBase", 0) + COALESCE("te"."extraAddInBase", 0))
             ELSE 0
           END
-        )::integer as "income",
+        )::float8 as "income",
         SUM(
           CASE
-            WHEN "t"."type" = '收入' THEN ("t"."amount" - COALESCE("te"."extraMinus", 0) + COALESCE("te"."extraAdd", 0))
-            WHEN "t"."type" = '支出' THEN - ("t"."amount" + COALESCE("te"."extraMinus", 0) - COALESCE("te"."extraAdd", 0))
+            WHEN "t"."type" = '收入' THEN ("t"."amountInBase" - COALESCE("te"."extraMinusInBase", 0) + COALESCE("te"."extraAddInBase", 0))
+            WHEN "t"."type" = '支出' THEN - ("t"."amountInBase" + COALESCE("te"."extraMinusInBase", 0) - COALESCE("te"."extraAddInBase", 0))
             ELSE 0
           END
-        )::integer as net_flow
+        )::float8 as net_flow
       FROM accounting."transaction" t 
       LEFT JOIN accounting."transaction_extra" te ON t."transactionExtraId" = te."id"
       WHERE "t"."userId" = :userId
@@ -638,10 +709,9 @@ const getAssetTrend = async (userId: string) => {
       netFlow: item?.net_flow,
     }));
 
-    const balance = await Account.sum('balance', {
-      where: { userId },
-    });
-    let currentBalance = Number(balance) || 0;
+    // 起點用 mark-to-market 現值（對齊帳戶頁淨值卡）；歷史月份 netFlow 用快照匯率，
+    // 多幣別下兩口徑不同 → 歷史曲線為近似（hasMultiCurrency 已於函式開頭算出供前端標註）。
+    let currentBalance = netWorth.totalInBase;
 
     const monthMap = new Map(
       sortedResult.map((item) => [`${item.year}-${item.month}`, item]),
@@ -678,9 +748,9 @@ const getAssetTrend = async (userId: string) => {
       currentBalance = currentBalance - netFlow;
     }
 
-    return finalResult.reverse(); // 在顛倒一次
+    return { trend: finalResult.reverse(), hasMultiCurrency }; // 再顛倒一次
   } else {
-    return [];
+    return { trend: [], hasMultiCurrency };
   }
 };
 
@@ -693,4 +763,5 @@ export default {
   getRankingTabData,
   getAccountTabData,
   getAssetTrend,
+  getNetWorth,
 };

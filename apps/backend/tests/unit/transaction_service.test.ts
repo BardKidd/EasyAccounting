@@ -45,12 +45,17 @@ vi.mock('@/models', () => {
     findAll: vi.fn().mockResolvedValue([]),
   };
 
+  const UserMock = {
+    findByPk: vi.fn().mockResolvedValue({ baseCurrencyCode: 'TWD' }),
+  };
+
   return {
     Transaction: TransactionMock,
     TransactionExtra: TransactionExtraMock,
     Account: AccountMock,
     InstallmentPlan: InstallmentPlanMock,
     TransactionBudget: TransactionBudgetMock,
+    User: UserMock,
     // Add other models if needed
   };
 });
@@ -239,16 +244,24 @@ describe('Transaction Service Logic', () => {
   });
 
   describe('Update Transaction - LinkId Sync', () => {
-    it('should update linked transaction date when updating source transaction', async () => {
+    // 轉帳（含跨幣）編輯改由 updateIncomeExpense 依 linkId 委派給 updateTransfer 處理，
+    // 由它用各 leg 自己的幣別/金額/baseRate 同步雙邊；這裡驗證「委派 + 兩側日期同步」。
+    it('should delegate transfer edits to updateTransfer and sync both legs', async () => {
       const sourceTx = {
         id: 'tx1',
         amount: 100,
         type: RootType.EXPENSE,
         date: '2026-02-01',
+        time: '12:00:00',
         linkId: 'tx2',
         accountId: 'acc1',
         userId: 'user1',
         transactionExtraId: null,
+        isReconciled: false,
+        reconciliationDate: null,
+        description: '轉帳',
+        categoryId: 'cat1',
+        receipt: '',
         toJSON: () => ({ id: 'tx1', linkId: 'tx2' }),
         update: vi.fn(),
       };
@@ -258,20 +271,25 @@ describe('Transaction Service Logic', () => {
         amount: 100,
         type: RootType.INCOME,
         date: '2026-02-01',
+        time: '12:00:00',
         linkId: 'tx1',
         accountId: 'acc2',
         userId: 'user1',
+        transactionExtraId: null,
         toJSON: () => ({ id: 'tx2', linkId: 'tx1' }),
         update: vi.fn(),
       };
 
       (Transaction.findOne as any)
-        .mockResolvedValueOnce(sourceTx) // 1. Find source
-        .mockResolvedValueOnce(linkedTx); // 2. Find linked
+        .mockResolvedValueOnce(sourceTx) // 1. 入口輕量探測（取 linkId）
+        .mockResolvedValueOnce(sourceTx) // 2. updateTransfer 載入 primary
+        .mockResolvedValueOnce(linkedTx); // 3. updateTransfer 載入 linked
 
+      // 兩個帳戶皆本位幣（TWD）→ baseRate=1，不會呼叫 getRate
       (Account.findOne as any).mockResolvedValue({
-        id: 'acc1',
+        id: 'acc',
         balance: 1000,
+        currencyCode: 'TWD',
         save: vi.fn(),
       });
 
@@ -285,6 +303,7 @@ describe('Transaction Service Logic', () => {
         'user1',
       );
 
+      // 委派後由 updateTransfer 同步：來源側（EXPENSE）與目標側（INCOME）日期都更新
       expect(sourceTx.update).toHaveBeenCalledWith(
         expect.objectContaining({ date: '2026-02-10' }),
         expect.anything(),

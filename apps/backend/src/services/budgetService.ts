@@ -81,7 +81,8 @@ export async function calculateUsage(
 
   // 計算已花費
   const spent = transactions.reduce((sum, tx) => {
-    const amount = Number(tx.amount);
+    // D5：預算消耗以本位幣快照累計（單幣時 amountInBase === amount，零回歸）
+    const amount = Number(tx.amountInBase);
     return sum + Math.abs(amount);
   }, 0);
 
@@ -176,7 +177,8 @@ function calculateBudgetCategoriesUsage(
       // 檢查交易分類是否屬於該子預算 (或是其子分類)
       const isMatch = targetCategoryIds.has(tx.categoryId);
       if (isMatch) {
-        return sum + Math.abs(Number(tx.amount));
+        // D5：子預算消耗同以本位幣快照累計
+        return sum + Math.abs(Number(tx.amountInBase));
       }
       return sum;
     }, 0);
@@ -490,7 +492,8 @@ async function createSnapshot(
   });
 
   const spentAmount = transactions.reduce((sum, tx) => {
-    const amount = Number(tx.amount);
+    // D5：快照花費以本位幣快照累計
+    const amount = Number(tx.amountInBase);
     return sum + Math.abs(amount);
   }, 0);
 
@@ -674,7 +677,8 @@ async function recalculateSnapshots(
       });
 
       const spentAmount = transactions.reduce((sum, tx) => {
-        return sum + Math.abs(Number(tx.amount));
+        // D5：回溯重算花費同以本位幣快照累計
+        return sum + Math.abs(Number(tx.amountInBase));
       }, 0);
 
       // 2. 重新計算結轉移入

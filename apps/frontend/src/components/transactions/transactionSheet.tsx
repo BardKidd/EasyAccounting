@@ -80,6 +80,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import services from '@/services';
+import { getSuggestedRate } from '@/services/currency';
 import { z } from '@repo/shared';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -258,10 +259,55 @@ export function TransactionSheet({
   const watchedAccountId = form.watch('accountId');
   const watchedPaymentFrequency = form.watch('paymentFrequency');
 
+  const watchedTargetAccountId = form.watch('targetAccountId');
+
   const selectedAccount = useMemo(
     () => accounts.find((a) => a.id === watchedAccountId),
     [watchedAccountId, accounts],
   );
+
+  const targetAccount = useMemo(
+    () => accounts.find((a) => a.id === watchedTargetAccountId),
+    [watchedTargetAccountId, accounts],
+  );
+
+  // 跨幣轉帳：來源與目標帳戶幣別不同時，需讓使用者輸入目標帳戶實收金額
+  const isCrossCurrencyTransfer =
+    watchedType === RootType.OPERATE &&
+    !!selectedAccount?.currencyCode &&
+    !!targetAccount?.currencyCode &&
+    selectedAccount.currencyCode !== targetAccount.currencyCode;
+
+  // API 建議匯率（來源幣→目標幣）：協助使用者填寫目標金額
+  const watchedDate = form.watch('date');
+  const [suggestedFxRate, setSuggestedFxRate] = useState<number | null>(null);
+  useEffect(() => {
+    if (
+      !isCrossCurrencyTransfer ||
+      !selectedAccount?.currencyCode ||
+      !targetAccount?.currencyCode
+    ) {
+      setSuggestedFxRate(null);
+      return;
+    }
+    let active = true;
+    const d = watchedDate ? format(watchedDate, 'yyyy-MM-dd') : undefined;
+    getSuggestedRate(
+      selectedAccount.currencyCode,
+      targetAccount.currencyCode,
+      d,
+    ).then((r) => {
+      if (active) setSuggestedFxRate(r);
+    });
+    return () => {
+      active = false;
+    };
+  }, [
+    isCrossCurrencyTransfer,
+    selectedAccount?.currencyCode,
+    targetAccount?.currencyCode,
+    watchedDate,
+  ]);
 
   const isCreditCard = selectedAccount?.type === Account.CREDIT_CARD;
 
@@ -404,6 +450,11 @@ export function TransactionSheet({
         receipt: data.receipt,
         paymentFrequency: data.paymentFrequency,
         targetAccountId: data.targetAccountId as string,
+        // 跨幣轉帳：目標帳戶實收額（目標幣）；同幣省略時後端預設 = amount
+        targetAmount:
+          data.targetAmount != null && Number(data.targetAmount) > 0
+            ? Number(data.targetAmount)
+            : undefined,
         extraAdd: data.extraAdd,
         extraAddLabel: data.extraAddLabel,
         extraMinus: data.extraMinus,
@@ -501,6 +552,14 @@ export function TransactionSheet({
       // But we can only send a value if we have one.
       targetAccountId:
         data.type === RootType.OPERATE ? data.targetAccountId : undefined,
+      // 跨幣轉帳編輯：帶目標帳戶實收額（目標幣）；後端依 linkId 路由到 updateTransfer。
+      // 留空則後端沿用原目標金額（同幣轉帳會自動跟著來源金額連動）。
+      targetAmount:
+        data.type === RootType.OPERATE &&
+        data.targetAmount != null &&
+        Number(data.targetAmount) > 0
+          ? Number(data.targetAmount)
+          : undefined,
       // budgetIds: selectedBudgetIds, // [HIDDEN] 預算功能暫時停用
       // Update other fields as supported by schema
       paymentFrequency: data.paymentFrequency, // Ensure Schema supports
@@ -1549,6 +1608,62 @@ export function TransactionSheet({
                           })}
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {/* 跨幣轉帳：目標帳戶實收金額（目標幣計價） */}
+              {isCrossCurrencyTransfer && (
+                <FormField
+                  control={form.control}
+                  name="targetAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        目標金額（{targetAccount?.currencyCode} 實收）
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          className={cn(
+                            'text-lg font-semibold h-12 rounded-2xl bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors',
+                            currentTypeStyle.focus,
+                          )}
+                          type="number"
+                          step="any"
+                          placeholder={`對方帳戶實際收到的 ${targetAccount?.currencyCode} 金額`}
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <span>
+                          來源 {selectedAccount?.currencyCode} →{' '}
+                          {targetAccount?.currencyCode}：請填對方實收金額；留空則視為等額。
+                        </span>
+                        {suggestedFxRate != null && (
+                          <>
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              建議匯率 1 {selectedAccount?.currencyCode} ≈{' '}
+                              {suggestedFxRate} {targetAccount?.currencyCode}
+                            </span>
+                            <button
+                              type="button"
+                              className="underline hover:text-emerald-600 dark:hover:text-emerald-400"
+                              onClick={() => {
+                                const amt = Number(form.getValues('amount')) || 0;
+                                field.onChange(
+                                  Math.round(amt * suggestedFxRate * 100000) /
+                                    100000,
+                                );
+                              }}
+                            >
+                              套用建議
+                            </button>
+                          </>
+                        )}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}

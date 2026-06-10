@@ -5,6 +5,7 @@ import {
   CreateRecurringTemplateSchema,
   UpdateRecurringTemplateFutureSchema,
   RootType,
+  roundToBaseCurrency,
 } from '@repo/shared';
 import {
   addMonths,
@@ -24,7 +25,9 @@ import {
   Transaction,
   Account,
   TransactionExtra,
+  User,
 } from '@/models';
+import { getRate } from './exchangeRateService';
 
 // ---------------------------------------------------------------------------
 // Date Math
@@ -452,6 +455,9 @@ export const processRecurringTemplates = async () => {
     `[RecurringCron] Found ${templates.length} templates to process.`,
   );
 
+  // 多幣別：快取 userId → 本位幣，避免逐筆查 User
+  const baseCurrencyCache = new Map<string, string>();
+
   for (const template of templates) {
     const t = await sequelize.transaction();
     try {
@@ -467,6 +473,42 @@ export const processRecurringTemplates = async () => {
         continue;
       }
 
+      // 先載入帳戶並解析多幣別 baseRate（帳戶幣別 → 本位幣 當日匯率）。
+      // 外幣帳戶若沿用寫死的 baseRate 1 會落錯 base 快照；同幣或缺匯率時 fallback 1 並告警。
+      const account = await Account.findByPk(attrs.accountId, {
+        transaction: t,
+      });
+      if (!account)
+        throw new Error(
+          `Account ${attrs.accountId} not found for template ${template.id}`,
+        );
+
+      let baseCurrencyCode = baseCurrencyCache.get(template.userId);
+      if (!baseCurrencyCode) {
+        const user = await User.findByPk(template.userId, {
+          attributes: ['baseCurrencyCode'],
+          transaction: t,
+        });
+        baseCurrencyCode = (user as any)?.baseCurrencyCode || 'TWD';
+        baseCurrencyCache.set(template.userId, baseCurrencyCode);
+      }
+      const accountCurrency = (account as any).currencyCode || baseCurrencyCode;
+      let baseRate = 1;
+      if (accountCurrency !== baseCurrencyCode) {
+        const r = await getRate(
+          accountCurrency,
+          baseCurrencyCode,
+          template.nextExecutionDate,
+        );
+        if (r == null) {
+          console.warn(
+            `[RecurringCron] 缺 ${accountCurrency}->${baseCurrencyCode} (${template.nextExecutionDate}) 匯率，template ${template.id} baseRate 暫用 1`,
+          );
+        } else {
+          baseRate = r;
+        }
+      }
+
       // 建立 TransactionExtra（若有 extraAdd/extraMinus）
       let transactionExtraId: string | null = null;
       const extraAdd = Number(attrs.extraAdd || 0);
@@ -478,6 +520,9 @@ export const processRecurringTemplates = async () => {
             extraAddLabel: attrs.extraAddLabel || '折扣',
             extraMinus,
             extraMinusLabel: attrs.extraMinusLabel || '手續費',
+            // 本位幣快照 = 原值 × baseRate（單幣 baseRate=1 時 = 原值）
+            extraAddInBase: roundToBaseCurrency(extraAdd * baseRate),
+            extraMinusInBase: roundToBaseCurrency(extraMinus * baseRate),
           },
           { transaction: t },
         );
@@ -487,13 +532,14 @@ export const processRecurringTemplates = async () => {
       // currentOccurrence 還未 +1，所以這筆是第 currentOccurrence+1 筆
       const newSequence = template.currentOccurrence + 1;
 
-      // 建立 Transaction
+      // 建立 Transaction（baseRate 驅動 model hook 算 amountInBase = amount × baseRate）
       await Transaction.create(
         {
           userId: template.userId,
           accountId: attrs.accountId,
           categoryId: attrs.categoryId,
           amount: attrs.amount,
+          baseRate,
           type: attrs.type as RootType,
           description: attrs.description,
           date: template.nextExecutionDate,
@@ -509,15 +555,7 @@ export const processRecurringTemplates = async () => {
         { transaction: t },
       );
 
-      // 更新帳戶餘額
-      const account = await Account.findByPk(attrs.accountId, {
-        transaction: t,
-      });
-      if (!account)
-        throw new Error(
-          `Account ${attrs.accountId} not found for template ${template.id}`,
-        );
-
+      // 更新帳戶餘額（account 已於上方載入）
       if (attrs.type === RootType.INCOME) {
         const net = Number(attrs.amount) - extraMinus + extraAdd;
         account.balance = Number(account.balance) + net;

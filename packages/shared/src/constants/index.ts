@@ -218,12 +218,11 @@ export enum ExcelExportMode {
   EDIT = 'edit',
 }
 
-// 幣別代碼（目前僅用於 Excel 匯入匯出，尚未持久化到 DB）。
-// NOTE: 目前系統一律預設 NTD（新台幣），其餘幣別為後續擴充預留的選項，
-//       等之後支援多幣別時再啟用。
+// 幣別代碼。正式值一律使用 ISO 4217（新台幣為 TWD）。
+// 歷史相容：使用者先前匯出的 Excel 檔可能含舊代碼 'NTD'，匯入端以
+// normalizeCurrencyCode() 映射為 'TWD'（見下方），不在 enum 保留 NTD 成員。
 export enum Currency {
-  NTD = 'NTD', // 新台幣（目前唯一實際使用）
-  // ↓ 以下為後續擴充用，先保留於下拉選單
+  TWD = 'TWD', // 新台幣
   USD = 'USD', // 美元
   JPY = 'JPY', // 日圓
   EUR = 'EUR', // 歐元
@@ -232,11 +231,61 @@ export enum Currency {
   GBP = 'GBP', // 英鎊
 }
 
-// Excel 預設幣別（目前一律 NTD，後續才會支援其他幣別）
-export const DEFAULT_CURRENCY = Currency.NTD;
+// 預設幣別（本位幣預設亦為 TWD）。
+export const DEFAULT_CURRENCY = Currency.TWD;
 
-// 無小數幣別：金額以整數呈現（不顯示小數點）。NTD / JPY 無小數，其餘可有小數。
-export const ZERO_DECIMAL_CURRENCIES: Currency[] = [Currency.NTD, Currency.JPY];
+// 無小數幣別：金額以整數呈現（不顯示小數點）。TWD / JPY 無小數，其餘可有小數。
+export const ZERO_DECIMAL_CURRENCIES: Currency[] = [Currency.TWD, Currency.JPY];
 
 export const isZeroDecimalCurrency = (currency: string): boolean =>
   ZERO_DECIMAL_CURRENCIES.includes(currency as Currency);
+
+// 幣別代碼正規化：統一所有寫入入口（Excel 匯入、未來表單/匯率寫入）的幣別字串。
+// 目前唯一需要處理的歷史別名是 'NTD' → 'TWD'；其餘代碼原樣回傳（大寫去空白）。
+export const normalizeCurrencyCode = (code: string): string => {
+  const normalized = (code ?? '').trim().toUpperCase();
+  if (normalized === 'NTD') return Currency.TWD;
+  return normalized;
+};
+
+// 幣別維度表 seed 清單（migration seeder 與前端下拉共用）。
+// decimalPlaces 對齊 ZERO_DECIMAL_CURRENCIES（TWD/JPY = 0，其餘 = 2）。
+export interface CurrencySeed {
+  code: string;
+  name: string;
+  symbol: string;
+  decimalPlaces: number;
+  isCrypto: boolean;
+  isActive: boolean;
+}
+
+export const SEED_CURRENCIES: CurrencySeed[] = [
+  { code: 'TWD', name: '新台幣', symbol: 'NT$', decimalPlaces: 0, isCrypto: false, isActive: true },
+  { code: 'JPY', name: '日圓', symbol: '¥', decimalPlaces: 0, isCrypto: false, isActive: true },
+  { code: 'USD', name: '美元', symbol: '$', decimalPlaces: 2, isCrypto: false, isActive: true },
+  { code: 'EUR', name: '歐元', symbol: '€', decimalPlaces: 2, isCrypto: false, isActive: true },
+  { code: 'CNY', name: '人民幣', symbol: '¥', decimalPlaces: 2, isCrypto: false, isActive: true },
+  { code: 'HKD', name: '港幣', symbol: 'HK$', decimalPlaces: 2, isCrypto: false, isActive: true },
+  { code: 'GBP', name: '英鎊', symbol: '£', decimalPlaces: 2, isCrypto: false, isActive: true },
+];
+
+// 本位幣金額統一精度（決策 Q2）：四捨五入到小數 5 位，對齊 DECIMAL(20,5)。
+// 跨幣 SUM 時各項先 round 再相加。
+export const BASE_CURRENCY_DECIMALS = 5;
+
+export const roundToBaseCurrency = (value: number): number => {
+  if (!Number.isFinite(value)) return 0;
+  const factor = 10 ** BASE_CURRENCY_DECIMALS;
+  return Math.round((value + Number.EPSILON) * factor) / factor;
+};
+
+// 匯率精度：四捨五入到小數 10 位，對齊 exchange_rate.rate DECIMAL(20,10)。
+// 反向匯率（取倒數）等匯率運算不可套用本位幣的 5 位精度，否則小匯率會掉精度
+// （例：1/157.5 = 0.0063492…，5 位會被截成 0.00635）。
+export const EXCHANGE_RATE_DECIMALS = 10;
+
+export const roundRate = (value: number): number => {
+  if (!Number.isFinite(value)) return 0;
+  const factor = 10 ** EXCHANGE_RATE_DECIMALS;
+  return Math.round((value + Number.EPSILON) * factor) / factor;
+};

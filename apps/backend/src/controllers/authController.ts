@@ -323,6 +323,7 @@ const me = (req: Request, res: Response) => {
       name: user.name,
       email: user.email,
       isGuest: user.isGuest,
+      baseCurrencyCode: (user as any).baseCurrencyCode ?? 'TWD',
     };
 
     return res

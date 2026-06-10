@@ -29,6 +29,9 @@ export interface TransactionExtraType {
   extraAddLabel: string;
   extraMinus: number;
   extraMinusLabel: string;
+  // 本位幣快照（model hook 由 extraAdd/extraMinus × 交易 baseRate 算出；單幣時 = 原值）
+  extraAddInBase?: number;
+  extraMinusInBase?: number;
 }
 
 export interface TransactionType {
@@ -46,6 +49,14 @@ export interface TransactionType {
   id?: string;
   targetAccountId?: string | null;
   linkId?: string | null;
+
+  // 多幣別欄位（金額語意見 docs/multicurrency-implementation-plan.md §金額語意）
+  // amountInBase = amount × baseRate（本位幣快照），由 model hook 自動算出，呼叫端勿手動設
+  amountInBase?: number;
+  originalCurrencyCode?: string | null; // 原幣代碼（選填，記錄「我實際刷了 100 JPY」）
+  originalAmount?: number | null; // 原幣金額（選填）
+  exchangeRate?: number | null; // 原幣 → 帳戶幣別 匯率快照
+  baseRate?: number | null; // 帳戶幣別 → 本位幣 匯率快照（單幣時 = 1）
 
   // New fields
   billingDate?: string;

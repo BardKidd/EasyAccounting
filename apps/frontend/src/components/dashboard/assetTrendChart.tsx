@@ -18,11 +18,13 @@ interface AssetTrendData {
 interface AssetTrendChartProps {
   data: AssetTrendData[];
   isLoading?: boolean;
+  hasMultiCurrency?: boolean;
 }
 
 export default function AssetTrendChart({
   data,
   isLoading,
+  hasMultiCurrency,
 }: AssetTrendChartProps) {
   const isDark = useDark();
 
@@ -236,6 +238,14 @@ export default function AssetTrendChart({
             收支與資產趨勢分析
           </p>
         </div>
+        {hasMultiCurrency && (
+          <span
+            title="此圖含外幣帳戶：目前總資產以今日匯率計算，歷史月份以交易當下匯率估算，兩者口徑不同，故歷史資產曲線為近似值。"
+            className="shrink-0 cursor-help rounded-full border border-amber-300/60 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-300"
+          >
+            ≈ 近似
+          </span>
+        )}
       </CardHeader>
       <CardContent className="h-[370px] pt-4 relative z-10">
         {isLoading ? (

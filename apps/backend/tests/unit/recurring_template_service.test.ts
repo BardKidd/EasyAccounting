@@ -26,11 +26,15 @@ vi.mock('@/models', () => {
     create: vi.fn(),
     destroy: vi.fn(),
   };
+  const UserMock = {
+    findByPk: vi.fn(),
+  };
   return {
     RecurringTemplate: RecurringTemplateMock,
     Transaction: TransactionMock,
     Account: AccountMock,
     TransactionExtra: TransactionExtraMock,
+    User: UserMock,
   };
 });
 
@@ -58,6 +62,7 @@ import {
   Transaction,
   Account,
   TransactionExtra,
+  User,
 } from '@/models';
 
 describe('calcNextExecutionDate', () => {
@@ -128,6 +133,8 @@ describe('calcNextExecutionDate', () => {
 describe('processRecurringTemplates', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // 單幣：本位幣 TWD；account mock 無 currencyCode → baseRate 1（不呼叫 getRate）
+    (User.findByPk as any).mockResolvedValue({ baseCurrencyCode: 'TWD' });
   });
 
   it('找到到期 ACTIVE template 時應建立 Transaction 並更新 template', async () => {

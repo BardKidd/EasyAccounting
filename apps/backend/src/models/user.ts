@@ -8,6 +8,7 @@ type UserAttributes = {
   password: string;
   isGuest: boolean;
   lastActivityAt: Date | null;
+  baseCurrencyCode: string;
 };
 
 export interface UserInstance extends Model<UserAttributes>, UserAttributes {}
@@ -43,6 +44,15 @@ const User = sequelize.define<UserInstance>(
       type: Sequelize.DATE,
       allowNull: true,
       defaultValue: null,
+    },
+    // 本位幣（報表 / 淨值呈現的個人偏好）。Phase 1 一律 'TWD'。
+    baseCurrencyCode: {
+      type: Sequelize.STRING(3),
+      allowNull: false,
+      defaultValue: 'TWD',
+      references: { model: 'currency', key: 'code' },
+      onDelete: 'RESTRICT',
+      onUpdate: 'CASCADE',
     },
   },
   TABLE_DEFAULT_SETTING,

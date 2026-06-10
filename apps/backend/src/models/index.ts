@@ -16,6 +16,8 @@ import PendingTransaction from './PendingTransaction';
 import BillParseTelemetry from './BillParseTelemetry';
 import RecurringTemplate from './RecurringTemplate';
 import PasswordResetToken from './PasswordResetToken';
+import Currency from './currency';
+import ExchangeRate from './exchangeRate';
 
 // -----------------------------------------------------------------------------
 // Soft Delete Hooks (Cascade)
@@ -266,6 +268,27 @@ User.hasMany(PasswordResetToken, {
 });
 PasswordResetToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+// -----------------------------------------------------------------------------
+// Currency / ExchangeRate（共用維度表）
+// ⚠️ 刻意不加入任何 User.afterDestroy cascade：刪 User 不可波及共用幣別/匯率表。
+//    FK 一律 RESTRICT 再加一層保護。
+// -----------------------------------------------------------------------------
+
+// Account / User → Currency（計價幣別 / 本位幣）
+Currency.hasMany(Account, { foreignKey: 'currencyCode', as: 'accounts' });
+Account.belongsTo(Currency, { foreignKey: 'currencyCode', as: 'currency' });
+Currency.hasMany(User, { foreignKey: 'baseCurrencyCode', as: 'baseUsers' });
+User.belongsTo(Currency, { foreignKey: 'baseCurrencyCode', as: 'baseCurrency' });
+
+// ExchangeRate → Currency（base / quote）
+Currency.hasMany(ExchangeRate, { foreignKey: 'baseCode', as: 'baseRates' });
+ExchangeRate.belongsTo(Currency, { foreignKey: 'baseCode', as: 'baseCurrency' });
+Currency.hasMany(ExchangeRate, { foreignKey: 'quoteCode', as: 'quoteRates' });
+ExchangeRate.belongsTo(Currency, {
+  foreignKey: 'quoteCode',
+  as: 'quoteCurrency',
+});
+
 // Export everything
 export {
   Account,
@@ -286,4 +309,6 @@ export {
   BillParseTelemetry,
   RecurringTemplate,
   PasswordResetToken,
+  Currency,
+  ExchangeRate,
 };

@@ -7,12 +7,21 @@ export interface TransactionExtraAttributes {
   extraAddLabel: string;
   extraMinus: number;
   extraMinusLabel: string;
+  // 本位幣快照：extra{Add,Minus} × 交易 baseRate（單幣時 = 原值）。由 service 層顯式寫入（非 model hook）。
+  extraAddInBase: number;
+  extraMinusInBase: number;
 }
 
 export interface TransactionExtraCreationAttributes
   extends Optional<
     TransactionExtraAttributes,
-    'id' | 'extraAdd' | 'extraAddLabel' | 'extraMinus' | 'extraMinusLabel'
+    | 'id'
+    | 'extraAdd'
+    | 'extraAddLabel'
+    | 'extraMinus'
+    | 'extraMinusLabel'
+    | 'extraAddInBase'
+    | 'extraMinusInBase'
   > {}
 
 export interface TransactionExtraInstance
@@ -47,6 +56,16 @@ const TransactionExtra = sequelize.define<TransactionExtraInstance>(
       type: Sequelize.STRING,
       allowNull: false,
       defaultValue: '手續費',
+    },
+    extraAddInBase: {
+      type: Sequelize.DECIMAL(20, 5),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    extraMinusInBase: {
+      type: Sequelize.DECIMAL(20, 5),
+      allowNull: false,
+      defaultValue: 0,
     },
   },
   TABLE_DEFAULT_SETTING

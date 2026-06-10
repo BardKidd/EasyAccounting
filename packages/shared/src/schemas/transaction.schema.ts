@@ -28,6 +28,11 @@ const baseSchema = z.object({
   extraAddLabel: z.string().optional(),
   extraMinus: z.number().optional(),
   extraMinusLabel: z.string().optional(),
+  // 多幣別（皆 optional，後端補齊 baseRate/amountInBase）：
+  // originalCurrencyCode/originalAmount 記錄原幣事實；exchangeRate = 原幣→帳戶幣別
+  originalCurrencyCode: z.string().optional(),
+  originalAmount: z.number().optional(),
+  exchangeRate: z.number().optional(),
 });
 
 export const createTransactionSchema = baseSchema.and(
@@ -64,6 +69,9 @@ export const createTransferSchema = baseSchema.and(
   z.object({
     targetAccountId: z.string().uuid(),
     type: z.enum([RootType.OPERATE]), // 前端只能傳 OPERATE 進來，後端會判斷哪個是支出哪個是收入
+    // 跨幣轉帳：targetAmount = 目標帳戶實收金額（目標幣計價）；同幣可省（預設 = amount）。
+    // exchangeRate（來源幣→目標幣）由 baseSchema 帶入，可省（後端可由 amount/targetAmount 推得）。
+    targetAmount: z.number().optional(),
   }),
 );
 
@@ -77,6 +85,9 @@ export const updateTransactionSchema = baseSchema
     billingDate: z.string().optional(),
     budgetIds: z.array(z.string().uuid()).optional(),
     targetAccountId: z.string().uuid().optional(),
+    // 跨幣轉帳編輯：目標帳戶實收金額（目標幣計價）；同幣可省。
+    // 後端依交易 linkId 路由到 updateTransfer，由它用各 leg 自己的幣別/金額重算。
+    targetAmount: z.number().optional(),
   })
   .partial();
 
@@ -118,6 +129,8 @@ export const transactionFormSchema = z.object({
   subCategory: z.string().optional(),
   description: z.string(),
   targetAccountId: z.string().optional(),
+  // 跨幣轉帳：目標帳戶實收金額（目標幣計價）；同幣可省
+  targetAmount: z.coerce.number().optional(),
   receipt: z.string(),
   paymentFrequency: z.enum([
     PaymentFrequency.ONE_TIME,

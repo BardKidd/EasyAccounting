@@ -136,6 +136,17 @@ const getAssetTrend = (req: Request, res: Response) => {
   });
 };
 
+// 淨值：各幣別餘額小計 + 用目前匯率換算回本位幣的總和
+const getNetWorth = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const result = await statisticsServices.getNetWorth(userId);
+    return res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, result, 'Get net worth successfully', null));
+  });
+};
+
 export default {
   getOverviewTrend,
   getOverviewTop3Categories,
@@ -145,4 +156,5 @@ export default {
   getRankingTabData,
   getAccountTabData,
   getAssetTrend,
+  getNetWorth,
 };

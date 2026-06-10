@@ -32,6 +32,7 @@ import {
   CategoryType,
   AccountType,
   RootType,
+  normalizeCurrencyCode,
 } from '@repo/shared';
 import { cn } from '@/lib/utils';
 import { Link, AlertTriangle, MoreHorizontal, X } from 'lucide-react';
@@ -364,6 +365,26 @@ export function PendingTransactionTable({
     [categories],
   );
 
+  // 幣別不符偵測：選定帳戶幣別 vs 各帳單原幣（LLM 解析），不同則提示（後端確認時換算並記原幣）
+  const currencyMismatch = useMemo(() => {
+    const acc = accounts.find((a) => a.id === selectedAccountId);
+    const accCur = acc?.currencyCode;
+    if (!accCur) return null;
+    const mismatched = transactions.filter((tx) => {
+      const c = tx.transactionData?.currency;
+      return c ? normalizeCurrencyCode(c) !== accCur : false;
+    });
+    if (mismatched.length === 0) return null;
+    const currs = Array.from(
+      new Set(
+        mismatched.map((tx) =>
+          normalizeCurrencyCode(tx.transactionData.currency),
+        ),
+      ),
+    );
+    return { accCur, count: mismatched.length, currs };
+  }, [accounts, selectedAccountId, transactions]);
+
   const [mergeDialogOpen, setMergeDialogOpen] = React.useState(false);
   const [mergeSourceTx, setMergeSourceTx] =
     React.useState<PendingTransaction | null>(null);
@@ -464,6 +485,16 @@ export function PendingTransactionTable({
           <span className="text-xs text-red-500">請先選擇帳戶</span>
         )}
       </div>
+
+      {/* 幣別不符提示（外幣帳單 → 不同幣別帳戶） */}
+      {currencyMismatch && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+          選定帳戶幣別為 <b>{currencyMismatch.accCur}</b>，但有{' '}
+          <b>{currencyMismatch.count}</b> 筆帳單原幣為{' '}
+          <b>{currencyMismatch.currs.join('、')}</b>。確認後系統會依匯率換算入帳並記錄原幣；
+          若缺少該幣別匯率，將以原額入帳並標記原幣——建議先到「設定 → 貨幣設定」或匯率資料補上匯率以確保金額正確。
+        </div>
+      )}
 
       {/* Virtualized Table */}
       <div

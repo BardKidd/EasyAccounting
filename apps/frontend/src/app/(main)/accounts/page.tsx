@@ -1,5 +1,6 @@
 import { Container } from '@/components/ui/container';
 import { AccountList } from '@/components/accounts';
+import { NetWorthCard } from '@/components/accounts/netWorthCard';
 import service from '@/services';
 import { AccountType } from '@repo/shared';
 
@@ -20,6 +21,7 @@ export default async function AccountsPage() {
           管理與檢視您的所有資產帳戶
         </p>
       </div>
+      <NetWorthCard />
       <AccountList accounts={accounts} />
     </Container>
   );

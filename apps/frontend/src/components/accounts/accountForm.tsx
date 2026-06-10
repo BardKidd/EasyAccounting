@@ -14,7 +14,12 @@ import {
 import { HexColorPicker } from 'react-colorful';
 import IconPicker from '@/components/ui/icon-picker';
 import { useEffect } from 'react';
-import { Account, CreateAccountInput, UpdateAccountInput } from '@repo/shared';
+import {
+  Account,
+  CreateAccountInput,
+  UpdateAccountInput,
+  SEED_CURRENCIES,
+} from '@repo/shared';
 import {
   Form,
   FormControl,
@@ -48,6 +53,7 @@ const AccountForm = ({
     name: '',
     type: Account.CASH,
     balance: 0,
+    currencyCode: 'TWD',
     icon: 'wallet',
     color: '#aabbcc',
     isArchived: false,
@@ -236,6 +242,44 @@ const AccountForm = ({
                           e.target.value = String(field.value);
                         }}
                       />
+                    </div>
+                  </FormControl>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <div className="col-span-1" />
+                    <FormMessage className="col-span-3" />
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            {/* 幣別：建立時可選；編輯模式停用（改動既有帳戶計價幣別會破壞既有交易語意） */}
+            <FormField
+              control={form.control}
+              name="currencyCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="currencyCode" className="text-right">
+                        幣別
+                      </Label>
+                      <Select
+                        key={field.value}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={isEditMode}
+                      >
+                        <SelectTrigger className="col-span-3 cursor-pointer w-full h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-slate-400">
+                          <SelectValue placeholder="選擇幣別" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SEED_CURRENCIES.filter((c) => c.isActive).map((c) => (
+                            <SelectItem key={c.code} value={c.code}>
+                              {c.code}（{c.name}）
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </FormControl>
                   <div className="grid grid-cols-4 items-center gap-4">

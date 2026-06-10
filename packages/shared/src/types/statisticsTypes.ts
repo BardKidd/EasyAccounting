@@ -117,3 +117,12 @@ export interface EachMonthNetFlow {
 export interface FinalResult extends EachMonthNetFlow {
   balance: number;
 }
+
+// 資產趨勢回傳：trend 為每月序列；hasMultiCurrency 為「使用者持有非本位幣帳戶」旗標。
+// 多幣別時趨勢圖起點用今日匯率（mark-to-market 現值，對齊淨值卡），歷史月份 netFlow
+// 用交易當下快照匯率（amountInBase，符合 D1 歷史不被未來匯率污染）——兩者口徑不同，
+// 故歷史資產曲線在多幣別下為近似值。旗標供前端標註；單幣時恆 false、曲線精確。
+export interface AssetTrendResult {
+  trend: FinalResult[];
+  hasMultiCurrency: boolean;
+}

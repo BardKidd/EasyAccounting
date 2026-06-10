@@ -1,8 +1,11 @@
-export const formatCurrency = (val: number) => {
+import { isZeroDecimalCurrency } from '@repo/shared';
+
+export const formatCurrency = (val: number, currency: string = 'TWD') => {
+  const fractionDigits = isZeroDecimalCurrency(currency) ? 0 : 2;
   return new Intl.NumberFormat('zh-TW', {
     style: 'currency',
-    currency: 'TWD',
-    maximumFractionDigits: 0,
+    currency,
+    maximumFractionDigits: fractionDigits,
   }).format(val);
 };
 

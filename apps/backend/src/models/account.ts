@@ -49,6 +49,15 @@ const Account = sequelize.define<AccountInstance>(
       type: Sequelize.DECIMAL(20, 5),
       allowNull: false,
     },
+    // 帳戶幣別（帳戶內所有交易的計價幣別）。Phase 1 一律 'TWD'。
+    currencyCode: {
+      type: Sequelize.STRING(3),
+      allowNull: false,
+      defaultValue: 'TWD',
+      references: { model: 'currency', key: 'code' },
+      onDelete: 'RESTRICT',
+      onUpdate: 'CASCADE',
+    },
     icon: {
       type: Sequelize.STRING,
       allowNull: false,

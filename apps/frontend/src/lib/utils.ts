@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { toast } from 'sonner';
-import { PeriodType, ResponseHelper, RootType } from '@repo/shared';
+import { PeriodType, ResponseHelper, RootType, isZeroDecimalCurrency } from '@repo/shared';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -139,11 +139,12 @@ export const formatChartLabel = (dateStr: string, type: string) => {
   return dateStr;
 };
 
-export const formatCurrency = (val: number) => {
+export const formatCurrency = (val: number, currency: string = 'TWD') => {
+  const fractionDigits = isZeroDecimalCurrency(currency) ? 0 : 2;
   return new Intl.NumberFormat('zh-TW', {
     style: 'currency',
-    currency: 'TWD',
-    maximumFractionDigits: 0,
+    currency,
+    maximumFractionDigits: fractionDigits,
   }).format(val);
 };
 

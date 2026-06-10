@@ -368,6 +368,24 @@ module.exports = {
       transactions,
       {}
     );
+
+    // bulkInsert 繞過 model 的 beforeSave hook，需手動回填本位幣快照（demo 皆 TWD、本位 TWD）。
+    await queryInterface.sequelize.query(
+      `UPDATE "${schema}"."transaction"
+         SET "amountInBase" = "amount"
+       WHERE "userId" = :userId`,
+      { replacements: { userId } },
+    );
+    await queryInterface.sequelize.query(
+      `UPDATE "${schema}"."transaction_extra" AS te
+         SET "extraAddInBase" = COALESCE(te."extraAdd",0),
+             "extraMinusInBase" = COALESCE(te."extraMinus",0)
+       WHERE te."id" IN (
+         SELECT t."transactionExtraId" FROM "${schema}"."transaction" AS t
+          WHERE t."userId" = :userId AND t."transactionExtraId" IS NOT NULL
+       )`,
+      { replacements: { userId } },
+    );
   },
 
   async down(queryInterface, Sequelize) {

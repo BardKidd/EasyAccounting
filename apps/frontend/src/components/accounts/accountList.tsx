@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn, getErrorMessage } from '@/lib/utils';
+import { cn, getErrorMessage, formatCurrency } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { ACCOUNT_ICONS, IconName } from '@/lib/icon-mapping';
 import AccountDialog from '@/components/accounts/accountDialog';
@@ -198,7 +198,16 @@ function CollapsibleAccountGroup({
                             : 'text-foreground',
                         )}
                       >
-                        ${account.balance.toLocaleString()}
+                        {formatCurrency(
+                          account.balance,
+                          account.currencyCode,
+                        )}
+                        {account.currencyCode &&
+                          account.currencyCode !== 'TWD' && (
+                            <span className="ml-1 text-xs text-slate-400">
+                              {account.currencyCode}
+                            </span>
+                          )}
                       </span>
 
                       <DropdownMenu>

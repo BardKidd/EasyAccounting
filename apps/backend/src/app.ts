@@ -22,6 +22,7 @@ import budgetRoute from '@/routes/budgetRoute';
 import pdfRoute from '@/routes/pdfRoute';
 import recurringTemplateRoute from '@/routes/recurringTemplateRoute';
 import chatRoute from '@/routes/chatRoute';
+import currencyRoute from '@/routes/currencyRoute';
 import {
   startDailyReminderCronJobs,
   startMonthlyAnalysisNoticeCronJobs,
@@ -29,6 +30,7 @@ import {
 } from './cron/notificationCron';
 import { startRecurringTransactionCronJob } from './cron/recurringCron';
 import { startGuestCleanupCronJob } from './cron/guestCleanupCron';
+import { startExchangeRateCronJob } from './cron/exchangeRateCron';
 import { initBillParseWorker } from '@/worker';
 
 const app: express.Application = express();
@@ -79,6 +81,7 @@ app.use('/api', deployHealthRoute);
 app.use('/api', pdfRoute);
 app.use('/api', recurringTemplateRoute);
 app.use('/api', chatRoute);
+app.use('/api', currencyRoute);
 
 // env 沒設定預設直接通過。這樣 PRD DEV 都不用去改了。
 console.log('[App] Starting Cron Jobs...');
@@ -87,6 +90,7 @@ startWeeklySummaryNoticeCronJobs();
 startMonthlyAnalysisNoticeCronJobs();
 startRecurringTransactionCronJob();
 startGuestCleanupCronJob();
+startExchangeRateCronJob();
 
 // 啟動 Bill Parse Worker (同 process)
 // CI / test 環境不需要啟動 Worker

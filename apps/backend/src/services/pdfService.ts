@@ -8,6 +8,8 @@ import {
   TransactionType,
   PaymentFrequency,
   RootType,
+  normalizeCurrencyCode,
+  roundToBaseCurrency,
 } from '@repo/shared';
 import { Op } from 'sequelize';
 
@@ -17,8 +19,11 @@ import {
   TransactionExtra,
   MerchantMapping,
   BillParseTelemetry,
+  Account,
+  User,
 } from '@/models';
 import { PendingTransactionAttributes } from '@/models/PendingTransaction';
+import { getRate } from './exchangeRateService';
 import sequelize from '@/utils/postgres';
 
 //! azureBlob.ts 那邊當初寫的有點死，所以想說不要複用好了...
@@ -288,33 +293,80 @@ export const confirmTransactions = async (
     // 收集 merchantMapping 更新（批次處理）
     const mappingCounts = new Map<string, number>();
 
+    // 多幣別：目標帳戶幣別 + 使用者本位幣（整批同帳戶，先取一次）
+    const targetAccount = await Account.findByPk(accountId, { transaction });
+    const accountCurrency = (targetAccount as any)?.currencyCode || 'TWD';
+    const userRow = await User.findByPk(userId, {
+      attributes: ['baseCurrencyCode'],
+      transaction,
+    });
+    const baseCurrencyCode = (userRow as any)?.baseCurrencyCode || 'TWD';
+
     for (const pt of pendingTransactions) {
       const data = pt.transactionData as any;
       const rawMerchantName = pt.rawMerchantName;
       const finalCategory = data.categoryId;
 
-      // 1. 建立 TransactionExtra (如果有)
+      // 多幣別解析：
+      // - baseRate（帳戶幣別→本位幣）用交易日期匯率，驅動 amountInBase。
+      // - 帳單原幣（LLM 解析的 currency）若與帳戶幣別不同，記為原幣事實；
+      //   data.exchangeRate（原幣→帳戶幣別，前端確認時可補）存在則用它把原幣金額換算成帳戶幣金額。
+      const billCurrency = data.currency
+        ? normalizeCurrencyCode(data.currency)
+        : accountCurrency;
+      const txDate = data.date;
+      const baseRate =
+        accountCurrency === baseCurrencyCode
+          ? 1
+          : (await getRate(accountCurrency, baseCurrencyCode, txDate)) ?? 1;
+
+      let amountInAccountCurrency = Number(data.amount) || 0;
+      let originalCurrencyCode: string | null = null;
+      let originalAmount: number | null = null;
+      let exchangeRate: number | null = null;
+
+      if (billCurrency && billCurrency !== accountCurrency) {
+        originalCurrencyCode = billCurrency;
+        originalAmount = Number(data.amount) || 0;
+        // 原幣→帳戶幣別匯率：優先用前端確認時補的值，否則查匯率表
+        exchangeRate =
+          data.exchangeRate != null
+            ? Number(data.exchangeRate)
+            : await getRate(billCurrency, accountCurrency, txDate);
+        if (exchangeRate != null) {
+          amountInAccountCurrency = roundToBaseCurrency(
+            originalAmount * exchangeRate,
+          );
+        }
+        // 查無匯率時：保留原幣金額為帳戶幣金額（fallback），originalCurrencyCode 仍記錄事實
+      }
+
+      // 1. 建立 TransactionExtra (如果有)；本位幣快照 = 原值 × baseRate
       let transactionExtraId = null;
       if (data.extraAdd > 0 || data.extraMinus > 0) {
+        const extraAdd = data.extraAdd || 0;
+        const extraMinus = data.extraMinus || 0;
         const extra = await TransactionExtra.create(
           {
-            extraAdd: data.extraAdd || 0,
-            extraMinus: data.extraMinus || 0,
+            extraAdd,
+            extraMinus,
             extraAddLabel: '折扣',
             extraMinusLabel: '手續費',
+            extraAddInBase: roundToBaseCurrency(extraAdd * baseRate),
+            extraMinusInBase: roundToBaseCurrency(extraMinus * baseRate),
           },
           { transaction },
         );
         transactionExtraId = extra.id;
       }
 
-      // 2. 建立 Transaction
+      // 2. 建立 Transaction（amountInBase 由 hook 以 amount × baseRate 算出）
       const newTransaction = await Transaction.create(
         {
           userId,
           accountId,
           categoryId: data.categoryId,
-          amount: data.amount,
+          amount: amountInAccountCurrency,
           type: data.type as RootType,
           description: data.description,
           date: data.date,
@@ -322,6 +374,10 @@ export const confirmTransactions = async (
           time: data.time || '00:00:00',
           paymentFrequency: PaymentFrequency.ONE_TIME,
           transactionExtraId,
+          baseRate,
+          originalCurrencyCode,
+          originalAmount,
+          exchangeRate,
         },
         { transaction },
       );

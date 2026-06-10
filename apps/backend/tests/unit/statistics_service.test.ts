@@ -20,6 +20,11 @@ vi.mock('@/models/account', () => ({
 }));
 vi.mock('@/models/TransactionExtra', () => ({ default: {} }));
 
+// getNetWorth 透過 exchangeRateService.getRate 換算；單元測試固定回 1（同/本位幣）
+vi.mock('@/services/exchangeRateService', () => ({
+  getRate: vi.fn().mockResolvedValue(1),
+}));
+
 // Mock sequelize instance
 vi.mock('@/utils/postgres', () => {
   const queryFn = vi.fn();
@@ -43,27 +48,47 @@ describe('Statistics Services', () => {
 
   describe('getOverviewTrend', () => {
     it('should calculate income, expense, transfer and balance correctly', async () => {
+      // 單幣：amountInBase === amount、extra*InBase === extra*（聚合改讀本位幣快照）
       const mockTransactions = [
         {
           amount: 100,
+          amountInBase: 100,
           type: RootType.INCOME,
           targetAccountId: null,
-          transactionExtra: { extraAdd: 10, extraMinus: 5 }, // Net: 100 - 5 + 10 = 105
+          transactionExtra: {
+            extraAdd: 10,
+            extraMinus: 5,
+            extraAddInBase: 10,
+            extraMinusInBase: 5,
+          }, // Net: 100 - 5 + 10 = 105
         },
         {
           amount: 50,
+          amountInBase: 50,
           type: RootType.EXPENSE,
           targetAccountId: null,
-          transactionExtra: { extraAdd: 2, extraMinus: 4 }, // Net: 50 + 4 - 2 = 52
+          transactionExtra: {
+            extraAdd: 2,
+            extraMinus: 4,
+            extraAddInBase: 2,
+            extraMinusInBase: 4,
+          }, // Net: 50 + 4 - 2 = 52
         },
         {
           amount: 200,
+          amountInBase: 200,
           type: RootType.EXPENSE,
           targetAccountId: 'acc-2', // Transfer Out
-          transactionExtra: { extraAdd: 0, extraMinus: 10 }, // Net: 200 + 10 = 210
+          transactionExtra: {
+            extraAdd: 0,
+            extraMinus: 10,
+            extraAddInBase: 0,
+            extraMinusInBase: 10,
+          }, // Net: 200 + 10 = 210
         },
         {
           amount: 200,
+          amountInBase: 200,
           type: RootType.INCOME,
           targetAccountId: 'acc-1', // Transfer In
         },
@@ -129,9 +154,15 @@ describe('Statistics Services', () => {
         {
           id: 1,
           amount: 100,
+          amountInBase: 100,
           type: RootType.EXPENSE,
           category: { name: 'Food' },
-          transactionExtra: { extraAdd: 10, extraMinus: 20 }, // Net: 100 + 20 - 10 = 110
+          transactionExtra: {
+            extraAdd: 10,
+            extraMinus: 20,
+            extraAddInBase: 10,
+            extraMinusInBase: 20,
+          }, // Net: 100 + 20 - 10 = 110
         },
       ];
 
@@ -174,11 +205,14 @@ describe('Statistics Services', () => {
 
   describe('getAssetTrend', () => {
     it('should calculate asset trend correctly', async () => {
-      // Mock date range query
+      // getNetWorth 移至 getAssetTrend 開頭，故 sequelize.query 呼叫序列：
+      // 1) getNetWorth 本位幣 2) getNetWorth 各幣餘額 3) 日期範圍 4) 每月統計
       (sequelize.query as any)
-        .mockResolvedValueOnce([{ startDate: '2023-01-01' }]) // First call for date range
+        .mockResolvedValueOnce([{ baseCurrencyCode: 'TWD' }]) // 1. 本位幣
+        .mockResolvedValueOnce([{ currencyCode: 'TWD', balance: '1000' }]) // 2. 各幣餘額（單幣 getRate=1 → totalInBase=1000）
+        .mockResolvedValueOnce([{ startDate: '2023-01-01' }]) // 3. date range
         .mockResolvedValueOnce([
-          // Second call for monthly stats
+          // 4. monthly stats
           {
             year: '2023',
             month: '01',
@@ -188,39 +222,29 @@ describe('Statistics Services', () => {
           },
         ]);
 
-      // Mock current balance
-      (Account.sum as any).mockResolvedValue(1000);
-
-      // We need to mock new Date() behavior or ensure logic works with real date.
-      // The service uses `new Date()` for endDate.
-      // It iterates backwards from endDate to startDate.
-
       const result = await statisticsServices.getAssetTrend(mockUserId);
 
-      // Code iterates REVERSE from today back to 2023-01.
-      // Current Balance = 1000.
-      // Jan 2023 netFlow = 100.
-      // If today is later than Jan 2023.
-      // The loop will process months.
+      // 2 次（getNetWorth：本位幣 + 各幣餘額）+ 2 次（getAssetTrend 本身）
+      expect(sequelize.query).toHaveBeenCalledTimes(4);
+      // 單幣 → hasMultiCurrency=false、trend 為陣列
+      expect(result.hasMultiCurrency).toBe(false);
+      expect(result.trend).toBeInstanceOf(Array);
 
-      expect(sequelize.query).toHaveBeenCalledTimes(2);
-      expect(result).toBeInstanceOf(Array);
-
-      // Check if Jan 2023 is in result
-      const janRecord = result.find(
+      // Jan 2023 應在 trend 中（row.getMonth()+1 → month='1'）
+      const janRecord = result.trend.find(
         (r: any) => r.year === '2023' && r.month === '1'
       );
-      // Note: implementation uses `row.getMonth() + 1`.
-
-      // If execution works, at least we know logic runs without error.
-      // Validating exact math requires knowing "Today" vs "Jan 2023" and how many months in between.
+      expect(janRecord).toBeDefined();
     });
 
-    it('should return empty array if no transactions', async () => {
-      (sequelize.query as any).mockResolvedValueOnce([]); // No start date
+    it('should return empty trend if no transactions', async () => {
+      (sequelize.query as any)
+        .mockResolvedValueOnce([{ baseCurrencyCode: 'TWD' }]) // getNetWorth 本位幣
+        .mockResolvedValueOnce([]) // getNetWorth 各幣餘額（無帳戶）
+        .mockResolvedValueOnce([]); // date range：無交易
 
       const result = await statisticsServices.getAssetTrend(mockUserId);
-      expect(result).toEqual([]);
+      expect(result).toEqual({ trend: [], hasMultiCurrency: false });
     });
   });
 });

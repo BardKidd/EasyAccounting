@@ -9,6 +9,7 @@ const mockData: AccountType[] = [
     name: '錢包',
     type: Account.CASH,
     balance: 100,
+    currencyCode: 'TWD',
     color: 'red',
     isArchived: false,
     icon: 'wallet',

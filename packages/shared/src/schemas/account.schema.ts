@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Account } from '../constants';
+import { Account, Currency } from '../constants';
 
 const allAccountTypes = [...Object.values(Account)] as const;
 
@@ -9,6 +9,16 @@ export const createAccountSchema = z.object({
     errorMap: () => ({ message: '無效的帳戶類型' }),
   }),
   balance: z.number(), // 可以是負值
+  // 帳戶幣別（Phase 1 閘門：前端尚未開放選擇，預設 TWD）。
+  // 用 string + refine 而非 nativeEnum：輸入型別為 string，與 AccountType.currencyCode 對齊；
+  // 仍驗證必須是已知 Currency，DB 端再有 FK→currency.code 保護。
+  currencyCode: z
+    .string()
+    .refine(
+      (c) => (Object.values(Currency) as string[]).includes(c),
+      { message: '無效的幣別代碼' },
+    )
+    .default(Currency.TWD),
   icon: z.string().min(1, '圖示為必填'),
   color: z.string().min(1, '顏色為必填'),
   isArchived: z.boolean().default(false),

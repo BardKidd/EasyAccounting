@@ -358,7 +358,7 @@ describe('Excel Import/Export API Test (Mocked)', () => {
       '2026-03-01',
       '10:00:00',
       RootType.EXPENSE,
-      'NTD', // 幣別（金額前新增的欄位）
+      'NTD', // 幣別：舊代碼，匯入端 normalizeCurrencyCode 會映射成 TWD（合法別名）
       200,
       mockAccount.name,
       null, // Target
@@ -761,11 +761,11 @@ describe('Excel Import/Export API Test (Mocked)', () => {
     expect(sheet.getRow(1).getCell(5).text).toBe('金額*');
 
     const dataRow = sheet.getRow(2);
-    expect(dataRow.getCell(4).text).toBe('NTD');
+    expect(dataRow.getCell(4).text).toBe('TWD');
     // 關鍵：金額必須是「數字」而非文字
     expect(typeof dataRow.getCell(5).value).toBe('number');
     expect(dataRow.getCell(5).value).toBe(11000);
-    // NTD 套用整數格式 → 不顯示 .00000 小數
+    // TWD 套用整數格式 → 不顯示 .00000 小數
     expect(dataRow.getCell(5).numFmt).toBe('#,##0');
   });
 

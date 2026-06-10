@@ -17,6 +17,8 @@ export interface AccountType {
   name: string;
   type: Account;
   balance: number;
+  // 帳戶幣別（帳戶內所有交易的計價幣別），預設 'TWD'
+  currencyCode: string;
   icon: string;
   color: string;
   isArchived: boolean;

@@ -21,7 +21,6 @@ export interface BudgetAttributes {
   isRecurring: boolean;
   rollover: boolean;
   isActive: boolean;
-  currencyId?: number;
   pendingAmount?: number;
   alert80SentAt?: Date;
   alert100SentAt?: Date;
@@ -66,7 +65,8 @@ const Budget = sequelize.define<BudgetInstance>(
       allowNull: true,
     },
     amount: {
-      type: Sequelize.DECIMAL(15, 2),
+      // 預算一律本位幣（決策 D5）；精度對齊交易 DECIMAL(20,5)。
+      type: Sequelize.DECIMAL(20, 5),
       allowNull: false,
     },
     cycleType: {
@@ -99,10 +99,6 @@ const Budget = sequelize.define<BudgetInstance>(
       type: Sequelize.BOOLEAN,
       allowNull: false,
       defaultValue: true,
-    },
-    currencyId: {
-      type: Sequelize.INTEGER,
-      allowNull: true,
     },
     pendingAmount: {
       type: Sequelize.DECIMAL(15, 2),

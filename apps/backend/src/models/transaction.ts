@@ -1,6 +1,11 @@
 import Sequelize, { Model } from 'sequelize';
 import sequelize, { TABLE_DEFAULT_SETTING } from '@/utils/postgres';
-import { TransactionType, RootType, PaymentFrequency } from '@repo/shared';
+import {
+  TransactionType,
+  RootType,
+  PaymentFrequency,
+  roundToBaseCurrency,
+} from '@repo/shared';
 
 export interface TransactionAttributes extends TransactionType {
   linkId?: string | null;
@@ -49,6 +54,31 @@ const Transaction = sequelize.define<TransactionInstance>(
     amount: {
       type: Sequelize.DECIMAL(20, 5),
       allowNull: false,
+    },
+    // 本位幣快照 = amount × baseRate，由下方 beforeSave hook 自動算出（呼叫端勿手動設）。
+    amountInBase: {
+      type: Sequelize.DECIMAL(20, 5),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    // 原幣事實（選填）：記錄「我實際刷了 100 JPY」
+    originalCurrencyCode: {
+      type: Sequelize.STRING(3),
+      allowNull: true,
+    },
+    originalAmount: {
+      type: Sequelize.DECIMAL(20, 5),
+      allowNull: true,
+    },
+    // 原幣 → 帳戶幣別 匯率快照
+    exchangeRate: {
+      type: Sequelize.DECIMAL(20, 10),
+      allowNull: true,
+    },
+    // 帳戶幣別 → 本位幣 匯率快照（單幣時 = 1 或 null，hook 視 null 為 1）
+    baseRate: {
+      type: Sequelize.DECIMAL(20, 10),
+      allowNull: true,
     },
     type: {
       type: Sequelize.ENUM(RootType.INCOME, RootType.EXPENSE, RootType.OPERATE),
@@ -143,5 +173,15 @@ const Transaction = sequelize.define<TransactionInstance>(
   },
   TABLE_DEFAULT_SETTING,
 );
+
+// 本位幣快照單一真實來源：amountInBase 永遠由 amount × baseRate 推導，呼叫端不得手動設。
+// baseRate 為 null（單幣 / 未提供）時視為 1，故單幣使用者 amountInBase === amount（零回歸）。
+// Phase 2 跨幣時 service 設定 baseRate，hook 自動算出正確本位幣快照。
+const computeAmountInBase = (t: TransactionInstance) => {
+  const amount = Number(t.amount) || 0;
+  const rate = t.baseRate == null ? 1 : Number(t.baseRate);
+  t.amountInBase = roundToBaseCurrency(amount * rate);
+};
+Transaction.addHook('beforeSave', computeAmountInBase);
 
 export default Transaction;

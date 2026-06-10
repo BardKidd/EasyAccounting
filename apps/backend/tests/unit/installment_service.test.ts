@@ -38,6 +38,9 @@ vi.mock('@/models', () => ({
     hasOne: vi.fn(),
   },
   TransactionBudget: { create: vi.fn(), destroy: vi.fn() },
+  User: {
+    findByPk: vi.fn().mockResolvedValue({ baseCurrencyCode: 'TWD' }),
+  },
 }));
 
 // Mock Sequelize Transaction

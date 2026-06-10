@@ -112,15 +112,17 @@ describe('Budget Service - Impact & Backtracking', () => {
     // Mock Transactions for Recalculation
     // April Transactions
     TransactionMock.findAll.mockResolvedValueOnce([
-      { amount: 200 },
-      { amount: 100 }, // Total 300
+      { amount: 200, amountInBase: 200 },
+      { amount: 100, amountInBase: 100 }, // Total 300
     ]);
     // May Transactions
     TransactionMock.findAll.mockResolvedValueOnce([
-      { amount: 500 }, // Total 500
+      { amount: 500, amountInBase: 500 }, // Total 500
     ]);
     // Current Period Transactions (for Alert Check)
-    TransactionMock.findAll.mockResolvedValueOnce([{ amount: 100 }]);
+    TransactionMock.findAll.mockResolvedValueOnce([
+      { amount: 100, amountInBase: 100 },
+    ]);
 
     await handleBudgetImpact('user-1', impacts);
 
@@ -197,7 +199,7 @@ describe('Budget Service - Impact & Backtracking', () => {
     // Mock Transaction.findAll for Alert Check
     // Budget 1000. We want > 80% (800).
     // Let's say spent 850.
-    TransactionMock.findAll.mockResolvedValue([{ amount: 850 }]);
+    TransactionMock.findAll.mockResolvedValue([{ amount: 850, amountInBase: 850 }]);
 
     // Only current period snapshot mocking needed if calculateUsage uses it
     // Let's assume calculateUsage falls back to budget.amount if snapshot generic

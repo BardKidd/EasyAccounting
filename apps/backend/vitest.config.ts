@@ -15,6 +15,10 @@ export default defineConfig({
     ],
     // Disable parallelism to prevent SequelizeDatabaseError during parallel db syncs
     fileParallelism: false,
+    // 整合測試對雲端 DB 跑 beforeAll（建 user/account/匯率）時，預設 10s hook timeout
+    // 在連續整合測試負載下偏緊，放寬以避免偶發 hook 逾時。
+    hookTimeout: 30000,
+    testTimeout: 30000,
     env: {
       RESEND_API_KEY: 're_123_mock',
       AZURE_BLOB_CONNECTION_STRING:

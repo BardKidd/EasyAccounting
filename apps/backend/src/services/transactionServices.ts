@@ -13,6 +13,8 @@ import {
   InterestType,
   CalculationMethod,
   RemainderPlacement,
+  normalizeCurrencyCode,
+  roundToBaseCurrency,
 } from '@repo/shared';
 import { simplifyTransaction } from '@/utils/common';
 import {
@@ -21,8 +23,10 @@ import {
   InstallmentPlan,
   TransactionExtra,
   TransactionBudget,
+  User,
 } from '@/models';
 import { handleBudgetImpact, BudgetImpact } from './budgetService';
+import { getRate } from './exchangeRateService';
 import sequelize from '@/utils/postgres';
 import { Op, Transaction as SequelizeTransaction } from 'sequelize';
 import {
@@ -145,7 +149,7 @@ const getTransactionsDashboardSummary = async (
       userId,
       linkId: null as any,
     },
-    attributes: ['amount', 'date', 'type', 'transactionExtraId'],
+    attributes: ['amount', 'amountInBase', 'date', 'type', 'transactionExtraId'],
     include: [
       {
         model: TransactionExtra,
@@ -229,9 +233,10 @@ const getTransactionsDashboardSummary = async (
 
     const bucket = buckets.find((b) => b.date === key);
     if (bucket) {
-      const extraAdd = Number(data.transactionExtra?.extraAdd || 0);
-      const extraMinus = Number(data.transactionExtra?.extraMinus || 0);
-      const amount = Number(data.amount);
+      // 一律以本位幣快照聚合（單幣時 amountInBase === amount，零回歸）
+      const extraAdd = Number(data.transactionExtra?.extraAddInBase || 0);
+      const extraMinus = Number(data.transactionExtra?.extraMinusInBase || 0);
+      const amount = Number(data.amountInBase);
 
       if (data.type === RootType.INCOME) {
         const netAmount = amount - extraMinus + extraAdd;
@@ -289,6 +294,109 @@ const calcAccountBalance = async (
   }
 };
 
+// ---------------------------------------------------------------------------
+// 多幣別 helper（Phase 2）
+// ---------------------------------------------------------------------------
+
+const getUserBaseCurrency = async (
+  userId: string,
+  t?: SequelizeTransaction,
+): Promise<string> => {
+  const user = await User.findByPk(userId, {
+    attributes: ['baseCurrencyCode'],
+    transaction: t,
+  });
+  return (user as any)?.baseCurrencyCode || 'TWD';
+};
+
+export interface ResolvedCurrencyFields {
+  baseRate: number; // 帳戶幣別 → 本位幣
+  exchangeRate: number | null; // 原幣 → 帳戶幣別
+  originalCurrencyCode: string | null;
+  originalAmount: number | null;
+}
+
+/**
+ * 解析單筆交易的多幣別欄位。
+ * - baseRate：帳戶幣別 → 本位幣（同幣 = 1；查無匯率時 fallback 1 並告警，避免落庫 NaN）。
+ * - 原幣事實（選填）：原幣 == 帳戶幣別時視為無原幣，清空欄位。
+ * amountInBase 由 model beforeSave hook 依 amount × baseRate 算出，這裡不直接算。
+ */
+const resolveCurrencyFields = async (
+  data: {
+    originalCurrencyCode?: string | null;
+    originalAmount?: number | null;
+    exchangeRate?: number | null;
+    date?: string;
+  },
+  account: any,
+  baseCurrencyCode: string,
+): Promise<ResolvedCurrencyFields> => {
+  // 帳戶缺 currencyCode（理論上不會，但防呆）視為本位幣 → baseRate 1、不查匯率
+  const accountCurrency = account?.currencyCode || baseCurrencyCode;
+  const rateDate = data.date;
+
+  let baseRate = 1;
+  if (accountCurrency !== baseCurrencyCode) {
+    const r = await getRate(accountCurrency, baseCurrencyCode, rateDate);
+    if (r == null) {
+      console.warn(
+        `[multicurrency] 缺少 ${accountCurrency}->${baseCurrencyCode} (${rateDate ?? 'today'}) 匯率，baseRate 暫用 1`,
+      );
+    } else {
+      baseRate = r;
+    }
+  }
+
+  let originalCurrencyCode = data.originalCurrencyCode
+    ? normalizeCurrencyCode(data.originalCurrencyCode)
+    : null;
+  let originalAmount =
+    data.originalAmount != null ? Number(data.originalAmount) : null;
+  let exchangeRate = data.exchangeRate != null ? Number(data.exchangeRate) : null;
+
+  // 原幣即帳戶幣別 → 不需記錄原幣事實
+  if (originalCurrencyCode && originalCurrencyCode === accountCurrency) {
+    originalCurrencyCode = null;
+    originalAmount = null;
+    exchangeRate = null;
+  }
+
+  return { baseRate, exchangeRate, originalCurrencyCode, originalAmount };
+};
+
+// 由 extra 原幣值 × baseRate 算本位幣快照（單幣 baseRate=1 時 = 原值）
+const extraBaseSnapshot = (
+  extraAdd: number,
+  extraMinus: number,
+  baseRate: number,
+) => ({
+  extraAddInBase: roundToBaseCurrency((Number(extraAdd) || 0) * baseRate),
+  extraMinusInBase: roundToBaseCurrency((Number(extraMinus) || 0) * baseRate),
+});
+
+/**
+ * 建立 TransactionExtra 並顯式寫入本位幣快照（extra*InBase = 原值 × baseRate）。
+ * 不依賴 model hook，避免 hook 在跨幣時覆寫；單幣時 baseRate=1 → 快照 = 原值。
+ */
+const createExtraWithBase = async (
+  values: {
+    extraAdd: number;
+    extraAddLabel: string;
+    extraMinus: number;
+    extraMinusLabel: string;
+  },
+  baseRate: number,
+  t: SequelizeTransaction,
+) =>
+  TransactionExtra.create(
+    {
+      ...values,
+      ...extraBaseSnapshot(values.extraAdd, values.extraMinus, baseRate),
+    },
+    { transaction: t },
+  );
+
 /**
  * Helper to generate installment description
  */
@@ -319,6 +427,14 @@ export const createTransaction = async (
       throw new Error('Account not found');
     }
 
+    // 多幣別：解析本位幣與本筆交易的 baseRate / 原幣欄位
+    const baseCurrencyCode = await getUserBaseCurrency(userId, transaction);
+    const currencyFields = await resolveCurrencyFields(
+      data,
+      account,
+      baseCurrencyCode,
+    );
+
     // 負數輸入處理：只取絕對值，不反轉類型
     let amount = Number(data.amount);
     let type = data.type;
@@ -332,14 +448,15 @@ export const createTransaction = async (
     const extraMinus = Number(data.extraMinus || 0);
 
     if (extraAdd !== 0 || extraMinus !== 0) {
-      const extra = await TransactionExtra.create(
+      const extra = await createExtraWithBase(
         {
           extraAdd,
           extraAddLabel: data.extraAddLabel || '折扣',
           extraMinus,
           extraMinusLabel: data.extraMinusLabel || '手續費',
         },
-        { transaction },
+        currencyFields.baseRate,
+        transaction,
       );
       transactionExtraId = extra.id;
     }
@@ -429,6 +546,11 @@ export const createTransaction = async (
             date: format(date, 'yyyy-MM-dd'),
             billingDate: format(date, 'yyyy-MM-dd'),
             installmentPlanId: installmentPlan.id,
+            // 多幣別：每期沿用帳戶 baseRate（hook 算 amountInBase）；原幣事實不拆分到各期
+            baseRate: currencyFields.baseRate,
+            exchangeRate: null,
+            originalCurrencyCode: null,
+            originalAmount: null,
           },
           { transaction },
         );
@@ -453,6 +575,11 @@ export const createTransaction = async (
           userId,
           billingDate: data.date,
           transactionExtraId,
+          // 多幣別：baseRate 驅動 hook 算 amountInBase；原幣事實（已正規化/去重）
+          baseRate: currencyFields.baseRate,
+          exchangeRate: currencyFields.exchangeRate,
+          originalCurrencyCode: currencyFields.originalCurrencyCode,
+          originalAmount: currencyFields.originalAmount,
         },
         { transaction },
       );
@@ -510,6 +637,19 @@ export const updateIncomeExpense = async (
   },
   userId: string,
 ) => {
+  // 轉帳（含跨幣）編輯改走 updateTransfer：依 DB 中的 linkId 判定（前端送的 type 不可靠，
+  // 編輯轉帳時會送 EXPENSE）。updateIncomeExpense 的對向同步會把兩 leg 強制同額，
+  // 會破壞「from=來源幣、to=目標幣」的跨幣轉帳，故轉帳一律委派給用各 leg 自己幣別/
+  // 金額/baseRate 重算的 updateTransfer。
+  const existing = await Transaction.findOne({
+    where: { id, userId },
+    attributes: ['id', 'linkId'],
+  });
+  if (!existing) throw new Error('Transaction not found');
+  if (existing.linkId) {
+    return updateTransfer(id, data, userId);
+  }
+
   const responseData = await simplifyTransaction(async (t) => {
     const transaction = await Transaction.findOne({
       where: { id, userId },
@@ -550,7 +690,32 @@ export const updateIncomeExpense = async (
       newAmount = Math.abs(newAmount);
     }
 
-    // Handle TransactionExtra Update/Create/Delete
+    let newAccount = oldAccount;
+    // 支援部分更新：只有當 accountId 有提供且與現有不同時才切換帳戶
+    if (data.accountId && data.accountId !== transaction.accountId) {
+      const account = await Account.findOne({
+        where: { id: data.accountId, userId },
+        transaction: t,
+      });
+      if (!account) throw new Error('New account not found');
+      newAccount = account;
+    }
+
+    // 多幣別：依新帳戶幣別重算 baseRate 與原幣欄位（換帳戶可能換幣別）
+    const baseCurrencyCode = await getUserBaseCurrency(userId, t);
+    const newDate = data.date ?? (transaction.date as string);
+    const currencyFields = await resolveCurrencyFields(
+      {
+        originalCurrencyCode: data.originalCurrencyCode,
+        originalAmount: data.originalAmount,
+        exchangeRate: data.exchangeRate,
+        date: newDate,
+      },
+      newAccount,
+      baseCurrencyCode,
+    );
+
+    // Handle TransactionExtra Update/Create/Delete（帶 baseRate 算本位幣快照）
     let newTransactionExtraId = transaction.transactionExtraId;
     const newExtraAdd = Number(data.extraAdd || 0);
     const newExtraMinus = Number(data.extraMinus || 0);
@@ -569,19 +734,25 @@ export const updateIncomeExpense = async (
               extraAddLabel: data.extraAddLabel || '折扣',
               extraMinus: newExtraMinus,
               extraMinusLabel: data.extraMinusLabel || '手續費',
+              ...extraBaseSnapshot(
+                newExtraAdd,
+                newExtraMinus,
+                currencyFields.baseRate,
+              ),
             },
             { transaction: t },
           );
         }
       } else {
-        const extra = await TransactionExtra.create(
+        const extra = await createExtraWithBase(
           {
             extraAdd: newExtraAdd,
             extraAddLabel: data.extraAddLabel || '折扣',
             extraMinus: newExtraMinus,
             extraMinusLabel: data.extraMinusLabel || '手續費',
           },
-          { transaction: t },
+          currencyFields.baseRate,
+          t,
         );
         newTransactionExtraId = extra.id;
       }
@@ -594,17 +765,6 @@ export const updateIncomeExpense = async (
         });
         newTransactionExtraId = null;
       }
-    }
-
-    let newAccount = oldAccount;
-    // 支援部分更新：只有當 accountId 有提供且與現有不同時才切換帳戶
-    if (data.accountId && data.accountId !== transaction.accountId) {
-      const account = await Account.findOne({
-        where: { id: data.accountId, userId },
-        transaction: t,
-      });
-      if (!account) throw new Error('New account not found');
-      newAccount = account;
     }
 
     await calcAccountBalance(
@@ -622,65 +782,17 @@ export const updateIncomeExpense = async (
         amount: newAmount,
         type: newType,
         transactionExtraId: newTransactionExtraId,
+        // 多幣別：baseRate 驅動 hook 重算 amountInBase；原幣欄位已正規化/去重
+        baseRate: currencyFields.baseRate,
+        exchangeRate: currencyFields.exchangeRate,
+        originalCurrencyCode: currencyFields.originalCurrencyCode,
+        originalAmount: currencyFields.originalAmount,
       },
       { transaction: t },
     );
 
-    // Linked Transaction Update Logic (轉帳同步)
-    if (transaction.linkId) {
-      const linkedTransaction = await Transaction.findOne({
-        where: { id: transaction.linkId, userId },
-        include: [{ model: TransactionExtra, as: 'transactionExtra' }],
-        transaction: t,
-      });
-
-      if (linkedTransaction) {
-        // 1. 沖銷對向帳戶的舊餘額
-        const linkedAccount = await Account.findOne({
-          where: { id: linkedTransaction.accountId!, userId },
-          transaction: t,
-        });
-        if (!linkedAccount) throw new Error('Linked account not found');
-
-        const linkedExtra = (linkedTransaction as any).transactionExtra;
-        const linkedOldExtraAdd = Number(linkedExtra?.extraAdd || 0);
-        const linkedOldExtraMinus = Number(linkedExtra?.extraMinus || 0);
-
-        const linkedRevertType =
-          linkedTransaction.type === RootType.INCOME
-            ? RootType.EXPENSE
-            : RootType.INCOME;
-        await calcAccountBalance(
-          linkedAccount,
-          linkedRevertType,
-          Number(linkedTransaction.amount),
-          linkedOldExtraMinus, // Swap for revert
-          linkedOldExtraAdd, // Swap for revert
-        );
-
-        // 2. 同步更新關聯交易的金額、日期、描述
-        const linkedUpdateData: Record<string, any> = {
-          amount: newAmount,
-        };
-        if (data.date) linkedUpdateData.date = data.date;
-        if (data.date) linkedUpdateData.billingDate = data.date;
-        if (data.description !== undefined)
-          linkedUpdateData.description = data.description;
-
-        await linkedTransaction.update(linkedUpdateData, { transaction: t });
-
-        // 3. 重新計算對向帳戶的新餘額
-        // 對向交易 (收入方) 不含手續費，依照 createTransfer 的邏輯
-        await calcAccountBalance(
-          linkedAccount,
-          linkedTransaction.type!,
-          newAmount,
-          0, // 收入方不記錄 extraAdd
-          0, // 收入方不記錄 extraMinus
-        );
-        await linkedAccount.save({ transaction: t });
-      }
-    }
+    // 轉帳（含跨幣）已於函式入口依 linkId 委派給 updateTransfer，
+    // 走到這裡的交易必為非轉帳（linkId == null），故不再有對向同步邏輯。
 
     // 同步 TransactionBudget 關聯
     if (data.budgetIds !== undefined) {
@@ -854,38 +966,6 @@ const createTransfer = async (
   return simplifyTransaction(async (t) => {
     if (data.type !== RootType.OPERATE) throw new Error('Must be operate type');
 
-    const extraAdd = Number(data.extraAdd || 0);
-    const extraMinus = Number(data.extraMinus || 0);
-    let fromExtraId: string | null = null;
-    if (extraAdd !== 0 || extraMinus !== 0) {
-      const extra = await TransactionExtra.create(
-        {
-          extraAdd,
-          extraAddLabel: data.extraAddLabel || '折扣',
-          extraMinus,
-          extraMinusLabel: data.extraMinusLabel || '手續費',
-        },
-        { transaction: t },
-      );
-      fromExtraId = extra.id;
-    }
-
-    const fromData = {
-      ...data,
-      type: RootType.EXPENSE,
-      billingDate: data.date,
-      transactionExtraId: fromExtraId,
-    };
-
-    const toData = {
-      ...data,
-      targetAccountId: data.accountId,
-      accountId: data.targetAccountId,
-      type: RootType.INCOME,
-      billingDate: data.date,
-      transactionExtraId: null, // 接收方通常不記錄手續費 (依簡單模型)
-    };
-
     const fromAccount = await Account.findByPk(data.accountId, {
       transaction: t,
     });
@@ -895,6 +975,77 @@ const createTransfer = async (
       transaction: t,
     });
     if (!toAccount) throw new Error('To account not found');
+
+    // 跨幣：from leg = 來源幣金額；to leg = 目標幣實收額（同幣時 targetAmount 省略 = amount）
+    const fromAmount = Math.abs(Number(data.amount));
+    const toAmount =
+      data.targetAmount != null
+        ? Math.abs(Number(data.targetAmount))
+        : fromAmount;
+
+    // 各 leg 用各自帳戶幣別 → 本位幣 的匯率算 amountInBase（由 hook 完成）
+    const baseCurrencyCode = await getUserBaseCurrency(userId, t);
+    const fromCur = (fromAccount as any).currencyCode || baseCurrencyCode;
+    const toCur = (toAccount as any).currencyCode || baseCurrencyCode;
+    const fromBaseRate =
+      fromCur === baseCurrencyCode
+        ? 1
+        : (await getRate(fromCur, baseCurrencyCode, data.date)) ?? 1;
+    const toBaseRate =
+      toCur === baseCurrencyCode
+        ? 1
+        : (await getRate(toCur, baseCurrencyCode, data.date)) ?? 1;
+
+    // 隱含 FX（來源幣 → 目標幣）：優先用使用者輸入，否則由 toAmount/fromAmount 推得
+    const fxRate =
+      data.exchangeRate != null
+        ? Number(data.exchangeRate)
+        : fromAmount !== 0
+          ? roundToBaseCurrency(toAmount / fromAmount)
+          : null;
+
+    const extraAdd = Number(data.extraAdd || 0);
+    const extraMinus = Number(data.extraMinus || 0);
+    let fromExtraId: string | null = null;
+    if (extraAdd !== 0 || extraMinus !== 0) {
+      const extra = await createExtraWithBase(
+        {
+          extraAdd,
+          extraAddLabel: data.extraAddLabel || '折扣',
+          extraMinus,
+          extraMinusLabel: data.extraMinusLabel || '手續費',
+        },
+        fromBaseRate,
+        t,
+      );
+      fromExtraId = extra.id;
+    }
+
+    const fromData = {
+      ...data,
+      type: RootType.EXPENSE,
+      amount: fromAmount,
+      billingDate: data.date,
+      transactionExtraId: fromExtraId,
+      baseRate: fromBaseRate,
+      exchangeRate: fxRate,
+      originalCurrencyCode: null,
+      originalAmount: null,
+    };
+
+    const toData = {
+      ...data,
+      targetAccountId: data.accountId,
+      accountId: data.targetAccountId,
+      type: RootType.INCOME,
+      amount: toAmount,
+      billingDate: data.date,
+      transactionExtraId: null, // 接收方通常不記錄手續費 (依簡單模型)
+      baseRate: toBaseRate,
+      exchangeRate: fxRate,
+      originalCurrencyCode: null,
+      originalAmount: null,
+    };
 
     const fromTransaction = await Transaction.create(
       { ...fromData, userId },
@@ -906,16 +1057,16 @@ const createTransfer = async (
       { transaction: t },
     );
 
-    // 來源帳戶：扣除 (金額 + 手續費 - 折扣)
+    // 來源帳戶（來源幣）：扣除 (金額 + 手續費 - 折扣)
     await calcAccountBalance(
       fromAccount,
       fromData.type,
-      fromData.amount,
+      fromAmount,
       extraAdd,
       extraMinus,
     );
-    // 目的帳戶：增加 金額 (無手續費)
-    await calcAccountBalance(toAccount, toData.type, toData.amount, 0, 0);
+    // 目的帳戶（目標幣）：增加 目標實收額 (無手續費)
+    await calcAccountBalance(toAccount, toData.type, toAmount, 0, 0);
 
     await fromAccount.save({ transaction: t });
     await toAccount.save({ transaction: t });
@@ -952,6 +1103,7 @@ const updateTransfer = async (
   id: string,
   data: UpdateTransactionSchema & {
     targetAccountId?: string;
+    targetAmount?: number;
     extraAdd?: number;
     extraAddLabel?: string;
     extraMinus?: number;
@@ -1018,9 +1170,15 @@ const updateTransfer = async (
       0,
     );
 
-    // ===== 2. 計算新資料 =====
-    let newAmount = Number(data.amount ?? fromTx.amount);
-    if (newAmount < 0) newAmount = Math.abs(newAmount);
+    // ===== 2. 計算新資料（跨幣：from / to 各自金額與匯率）=====
+    const newFromAmount = Math.abs(Number(data.amount ?? fromTx.amount));
+    const newToAmount =
+      data.targetAmount != null
+        ? Math.abs(Number(data.targetAmount))
+        : // 未指定 targetAmount：金額有變且原為同額（同幣）時跟著變，否則沿用 to leg 原額
+          data.amount != null && Number(fromTx.amount) === Number(toTx.amount)
+          ? newFromAmount
+          : Math.abs(Number(toTx.amount));
 
     const newSourceId = data.accountId ?? fromTx.accountId!;
     const newTargetId = data.targetAccountId ?? toTx.accountId!;
@@ -1036,7 +1194,28 @@ const updateTransfer = async (
     const newFromExtraAdd = Number(data.extraAdd || 0);
     const newFromExtraMinus = Number(data.extraMinus || 0);
 
-    // ===== 3. 處理來源側 TransactionExtra（更新 / 建立 / 刪除）=====
+    // 先載入新來源/目標帳戶並算各自 baseRate（hook 算 amountInBase；extra 也需 from baseRate）
+    const newFromAccount = await loadAccount(newSourceId);
+    const newToAccount = await loadAccount(newTargetId);
+    const baseCurrencyCode = await getUserBaseCurrency(userId, t);
+    const newFromCur = (newFromAccount as any).currencyCode || baseCurrencyCode;
+    const newToCur = (newToAccount as any).currencyCode || baseCurrencyCode;
+    const newFromBaseRate =
+      newFromCur === baseCurrencyCode
+        ? 1
+        : (await getRate(newFromCur, baseCurrencyCode, newDate)) ?? 1;
+    const newToBaseRate =
+      newToCur === baseCurrencyCode
+        ? 1
+        : (await getRate(newToCur, baseCurrencyCode, newDate)) ?? 1;
+    const newFxRate =
+      data.exchangeRate != null
+        ? Number(data.exchangeRate)
+        : newFromAmount !== 0
+          ? roundToBaseCurrency(newToAmount / newFromAmount)
+          : null;
+
+    // ===== 3. 處理來源側 TransactionExtra（更新 / 建立 / 刪除；帶 from baseRate）=====
     let newFromExtraId = fromTx.transactionExtraId;
     if (newFromExtraAdd !== 0 || newFromExtraMinus !== 0) {
       if (fromTx.transactionExtraId) {
@@ -1051,19 +1230,25 @@ const updateTransfer = async (
               extraAddLabel: data.extraAddLabel || '折扣',
               extraMinus: newFromExtraMinus,
               extraMinusLabel: data.extraMinusLabel || '手續費',
+              ...extraBaseSnapshot(
+                newFromExtraAdd,
+                newFromExtraMinus,
+                newFromBaseRate,
+              ),
             },
             { transaction: t },
           );
         }
       } else {
-        const extra = await TransactionExtra.create(
+        const extra = await createExtraWithBase(
           {
             extraAdd: newFromExtraAdd,
             extraAddLabel: data.extraAddLabel || '折扣',
             extraMinus: newFromExtraMinus,
             extraMinusLabel: data.extraMinusLabel || '手續費',
           },
-          { transaction: t },
+          newFromBaseRate,
+          t,
         );
         newFromExtraId = extra.id;
       }
@@ -1075,20 +1260,17 @@ const updateTransfer = async (
       newFromExtraId = null;
     }
 
-    // ===== 4. 套用新餘額 =====
-    const newFromAccount = await loadAccount(newSourceId);
-    // 來源帳戶：扣除 (金額 + 手續費 - 折扣)
+    // ===== 4. 套用新餘額（各帳戶用各自幣金額）=====
+    // 來源帳戶（來源幣）：扣除 (金額 + 手續費 - 折扣)
     await calcAccountBalance(
       newFromAccount,
       RootType.EXPENSE,
-      newAmount,
+      newFromAmount,
       newFromExtraAdd,
       newFromExtraMinus,
     );
-
-    const newToAccount = await loadAccount(newTargetId);
-    // 目標帳戶：增加金額（無手續費）
-    await calcAccountBalance(newToAccount, RootType.INCOME, newAmount, 0, 0);
+    // 目標帳戶（目標幣）：增加目標實收額（無手續費）
+    await calcAccountBalance(newToAccount, RootType.INCOME, newToAmount, 0, 0);
 
     // 每個 distinct 帳戶只存一次（沖銷與套用都在同一 instance 上累加）
     for (const account of accountCache.values()) {
@@ -1109,7 +1291,7 @@ const updateTransfer = async (
       {
         accountId: newSourceId,
         targetAccountId: newTargetId,
-        amount: newAmount,
+        amount: newFromAmount,
         type: RootType.EXPENSE,
         date: newDate,
         time: newTime,
@@ -1120,6 +1302,9 @@ const updateTransfer = async (
         transactionExtraId: newFromExtraId,
         isReconciled: newReconciled,
         reconciliationDate: newReconciliationDate,
+        // 多幣別：重設 baseRate（hook 重算 amountInBase）與隱含 FX
+        baseRate: newFromBaseRate,
+        exchangeRate: newFxRate,
       },
       { transaction: t },
     );
@@ -1128,7 +1313,7 @@ const updateTransfer = async (
       {
         accountId: newTargetId,
         targetAccountId: newSourceId,
-        amount: newAmount,
+        amount: newToAmount,
         type: RootType.INCOME,
         date: newDate,
         time: newTime,
@@ -1138,6 +1323,8 @@ const updateTransfer = async (
         receipt: newReceipt,
         isReconciled: newReconciled,
         reconciliationDate: newReconciliationDate,
+        baseRate: newToBaseRate,
+        exchangeRate: newFxRate,
       },
       { transaction: t },
     );

@@ -29,6 +29,7 @@ import {
   getRankingTabData,
   getAccountTabData,
   getAssetTrend,
+  getNetWorth,
 } from './statistics';
 import {
   getPersonnelNotification,
@@ -76,6 +77,7 @@ export default {
   getTransactionTemplateUrl,
   getTransactionsExcelUrl,
   getAssetTrend,
+  getNetWorth,
   getRecurringTemplates,
   createRecurringTemplate,
   updateRecurringTemplateFuture,

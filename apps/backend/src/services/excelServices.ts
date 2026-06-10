@@ -12,9 +12,11 @@ import {
   Currency,
   DEFAULT_CURRENCY,
   isZeroDecimalCurrency,
+  normalizeCurrencyCode,
 } from '@repo/shared';
 import { format } from 'date-fns';
 import transactionServices from './transactionServices';
+import { getRate } from './exchangeRateService';
 import { transactionColumns } from '@/excelColumns/transactionColumns';
 
 interface SimplifyCategory {
@@ -546,7 +548,10 @@ const validateAndParseRows = async (
     const currencyRaw = row
       .getCell(colIndexOf('currency') + colOffset)
       .text.trim();
-    const currency = currencyRaw || DEFAULT_CURRENCY;
+    // 正規化（'NTD' → 'TWD' 等歷史別名容錯）；空白視為預設本位幣
+    const currency = currencyRaw
+      ? normalizeCurrencyCode(currencyRaw)
+      : DEFAULT_CURRENCY;
     let amount = row.getCell(colIndexOf('amount') + colOffset).value;
     const accountName = row.getCell(colIndexOf('account') + colOffset).text;
     const targetAccountName = row
@@ -646,10 +651,11 @@ const validateAndParseRows = async (
       errFields.push('category');
     }
 
-    // 幣別：有填就必須是支援的幣別（空白已預設為新台幣，不會進到這裡）
+    // 幣別：有填就必須是支援的幣別（空白已預設為本位幣，不會進到這裡）。
+    // 以正規化後的值驗證（舊 'NTD' 會映射成 'TWD' 視為合法別名），錯誤訊息仍顯示使用者原輸入。
     if (
       currencyRaw &&
-      !(Object.values(Currency) as string[]).includes(currencyRaw)
+      !(Object.values(Currency) as string[]).includes(currency)
     ) {
       errMsg += `幣別[${currencyRaw}]不支援, `;
       errFields.push('currency');
@@ -777,6 +783,48 @@ const applyTransactions = async (
   return failedRows;
 };
 
+/**
+ * 匯入外幣前置檢查：對「帳戶幣別 != 本位幣」的列，確認該幣別→本位幣於交易日期有匯率。
+ * Excel 匯入是批次、無互動 UI，缺匯率時若硬匯入會落庫錯誤的 amountInBase（baseRate fallback=1），
+ * 故改為「不匯入該列、列入錯誤報告並提示補匯率」。轉帳同時檢查來源與目標帳戶幣別。
+ */
+const partitionByMissingRate = async (
+  rows: ParsedSuccessRow[],
+  accountCurrencyById: Map<string, string>,
+  baseCode: string,
+): Promise<{ ok: ParsedSuccessRow[]; missing: ImportTransactionRow[] }> => {
+  const ok: ParsedSuccessRow[] = [];
+  const missing: ImportTransactionRow[] = [];
+
+  for (const row of rows) {
+    const needed: [string, string][] = []; // [accountCurrency, date]
+    const accCur = accountCurrencyById.get(row.accountId) || baseCode;
+    if (accCur !== baseCode) needed.push([accCur, row.date]);
+    const targetAccountId = (row as any).targetAccountId as string | undefined;
+    if (targetAccountId) {
+      const tCur = accountCurrencyById.get(targetAccountId) || baseCode;
+      if (tCur !== baseCode) needed.push([tCur, row.date]);
+    }
+
+    let missMsg = '';
+    for (const [cur, date] of needed) {
+      const r = await getRate(cur, baseCode, date);
+      if (r == null) missMsg += `${cur}→${baseCode}(${date}) `;
+    }
+
+    if (missMsg) {
+      missing.push({
+        ...row._excelRow,
+        error: `缺匯率：${missMsg.trim()}，請先於系統補上該幣別匯率再匯入`,
+      });
+    } else {
+      ok.push(row);
+    }
+  }
+
+  return { ok, missing };
+};
+
 const importNewTransactionsExcel = async (
   userId: string,
   fileBuffer: Buffer,
@@ -792,7 +840,7 @@ const importNewTransactionsExcel = async (
     where: {
       userId,
     },
-    attributes: ['id', 'name'],
+    attributes: ['id', 'name', 'currencyCode'],
     raw: true,
   });
   if (accounts.length === 0) throw new Error('User 沒有帳號');
@@ -856,15 +904,27 @@ const importNewTransactionsExcel = async (
     validTransactionIds,
   );
 
+  // 外幣前置檢查：缺匯率的列不匯入，列入錯誤報告（避免落庫錯誤的本位幣快照）
+  const accountCurrencyById = new Map<string, string>(
+    accounts.map((a) => [a.id, (a as any).currencyCode || DEFAULT_CURRENCY]),
+  );
+  const userRow = await User.findByPk(userId, {
+    attributes: ['baseCurrencyCode'],
+    raw: true,
+  });
+  const baseCode = (userRow as any)?.baseCurrencyCode || DEFAULT_CURRENCY;
+  const { ok: rowsToApply, missing: missingRateRows } =
+    await partitionByMissingRate(successRows, accountCurrencyById, baseCode);
+
   // 先套用，收集 apply 階段（DB 操作）失敗的列；單列失敗不中斷整批
   const applyFailedRows =
-    successRows.length > 0
-      ? await applyTransactions(userId, successRows, editMode)
+    rowsToApply.length > 0
+      ? await applyTransactions(userId, rowsToApply, editMode)
       : [];
 
-  // 驗證錯誤 + apply 失敗合併成同一份錯誤報告
-  const allErrorRows = [...errorRows, ...applyFailedRows];
-  const successCount = successRows.length - applyFailedRows.length;
+  // 驗證錯誤 + 缺匯率 + apply 失敗合併成同一份錯誤報告
+  const allErrorRows = [...errorRows, ...missingRateRows, ...applyFailedRows];
+  const successCount = rowsToApply.length - applyFailedRows.length;
 
   let errorUrl = '';
   if (allErrorRows.length > 0) {
