@@ -22,6 +22,7 @@ export interface AccountType {
   icon: string;
   color: string;
   isArchived: boolean;
+  onBudget: boolean;
   creditCardDetail?: CreditCardDetailType;
   createdAt?: string | Date;
   updatedAt?: string | Date;

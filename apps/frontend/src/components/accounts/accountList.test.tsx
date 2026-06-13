@@ -12,6 +12,7 @@ const mockData: AccountType[] = [
     currencyCode: 'TWD',
     color: 'red',
     isArchived: false,
+    onBudget: true,
     icon: 'wallet',
     createdAt: new Date(),
     updatedAt: new Date(),

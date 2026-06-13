@@ -9,6 +9,7 @@ type UserAttributes = {
   isGuest: boolean;
   lastActivityAt: Date | null;
   baseCurrencyCode: string;
+  budgetStartMonth: string | null;
 };
 
 export interface UserInstance extends Model<UserAttributes>, UserAttributes {}
@@ -53,6 +54,11 @@ const User = sequelize.define<UserInstance>(
       references: { model: 'currency', key: 'code' },
       onDelete: 'RESTRICT',
       onUpdate: 'CASCADE',
+    },
+    budgetStartMonth: {
+      type: Sequelize.DATEONLY,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   TABLE_DEFAULT_SETTING,

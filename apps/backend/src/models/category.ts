@@ -60,7 +60,12 @@ const Category = sequelize.define<CategoryInstance>(
       allowNull: true,
     },
   },
-  { ...TABLE_DEFAULT_SETTING, paranoid: false } // 目前覺得類別被刪除就被刪除了，反正只能刪除自己建立的資料
+  // soft-delete（paranoid:true，沿用 TABLE_DEFAULT_SETTING）：
+  // 預算需保留已刪分類的歷史信封並標註「（已刪除）」(budget-ynab §9)，
+  // 且 transaction.categoryId FK 為 onDelete:CASCADE——若硬刪分類會連帶物理刪除其交易（資料遺失）。
+  // soft-delete 不觸發 DB CASCADE，故交易得以保留、activity 維持沖銷。
+  // 連帶子分類的刪除改由 models/index.ts 的 Category.afterDestroy hook 串接。
+  { ...TABLE_DEFAULT_SETTING },
 );
 
 export default Category;

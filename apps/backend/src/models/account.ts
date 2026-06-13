@@ -72,6 +72,11 @@ const Account = sequelize.define<AccountInstance>(
       allowNull: false,
       defaultValue: false,
     },
+    onBudget: {
+      type: Sequelize.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
   },
   TABLE_DEFAULT_SETTING
 );

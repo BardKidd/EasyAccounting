@@ -1,7 +1,7 @@
 # 預算系統規格 v2 — YNAB 模式
 
-> **文件狀態**: ✅ 設計定案（B1–B5 已於 2026-06-10 由使用者拍板，全採推薦選項），實作進行中
-> **最後更新**: 2026-06-10
+> **文件狀態**: ✅ 設計定案（B1–B5 已於 2026-06-10 由使用者拍板，全採推薦選項）；Phase 0 + Phase 1 MVP 已完成
+> **最後更新**: 2026-06-11
 > **取代**: 舊版 `budget-system-spec.md` 與 `budget-system-tasks.md` 已刪除（git 歷史可查）。舊預算功能將**整個拆除重做**，不做資料遷移。
 
 ---
@@ -147,7 +147,7 @@
 
 ### 5.1 恆等式（寫成測試的不變量）
 
-1. `startRTA + Σ累計流入(Base) = RTA + Σ Available（歸零前） + |已沖銷的 cash overspending|` —— 任意月份、由構造恆成立。
+1. **資金守恆**：`startRTA + Σ累計流入(Base) + Σ累計 Activity(Base) = RTA + Σ Available（歸零前）` —— 任意月份、由構造恆成立。（Activity 支出為負，故移項後等價於「進來的錢 = 已花費 + 信封結餘 + 未分配」。⚠️ 原稿漏列 `Σ Activity` 項，字面不成立；測試須以此修正式撰寫，且兩側取自獨立來源——左側用輸入與 Activity、右側獨立加總 `rows[].available`——否則會退化成套套邏輯。）
 2. `Available(c,m) = max(0, Available(c,m−1)) + Assigned(c,m) + Activity(c,m)`，全鏈可從 startMonth 重放交易重建。
 3. 上月 cash overspending 總和 = 本月 RTA 的扣減量。
 4. on-budget 內部轉帳對所有預算數字零影響。
@@ -315,17 +315,34 @@ for row in budget_assignment where userId:
 - [x] drop migration（§8.4，`20260610120000-drop-budget-system.js`）+ up/down/up 可逆性驗證通過
 - [x] 型別檢查（backend/frontend/shared 無新增錯誤）+ 後端 138 測試全綠（原 158，−20 為刪除的 budget 測試）+ 前端 29 全綠
 
-### Phase 1 — YNAB MVP
+### Phase 1 — YNAB MVP ✅（2026-06-11 完成）
 
-- [ ] migration：`budget_assignment` 表 + `account.onBudget` + `user.budgetStartMonth` + `transaction(userId, date)` 索引
-- [ ] runtime 模型（`src/models/budgetAssignment.ts` + index.ts 關聯 + `User.afterDestroy` 清理）
-- [ ] `@repo/shared`：`budget.schema.ts`（月份視圖 / assign / move / init schemas）
-- [ ] `logic/budgetLogic.ts` 重寫：純函式 fold（無 DB 單元測試覆蓋恆等式 §5.1）
-- [ ] `budgetService` 重寫：startRTA 推導 + 兩條聚合 SQL + getMonthView / assign / moveMoney / init
-- [ ] `baseCurrencyService` 整合：assigned 按月歷史匯率換算
-- [ ] routes / controllers + `validate` middleware
-- [ ] 前端 `app/(main)/budget` 全套（§7）+ sidebar 導覽
-- [ ] 測試：後端單元（fold 恆等式、轉帳邊界、startRTA、本位幣切換）+ 前端元件
+- [x] migration：`budget_assignment` 表 + `account.onBudget` + `user.budgetStartMonth` + `transaction(userId, date)` 索引（`20260611000000-create-budget-phase1.js`，up/down/up 可逆性驗證通過；down 的索引刪除須用 schema 限定 raw SQL——`removeIndex` 在 accounting schema 下會靜默跳過）
+- [x] runtime 模型（`src/models/budgetAssignment.ts` 含唯一索引宣告 + index.ts 關聯 + `User.afterDestroy` 清理 + `Category.afterDestroy` 硬刪 assignment + 串接 soft-delete 子分類——分類已於 review 後改為 soft-delete，見下方「Code review 修正」）
+- [x] `@repo/shared`：`budget.schema.ts`（月份格式強制 `YYYY-MM-01`；params schemas 含 categoryId uuid 驗證）
+- [x] `logic/budgetLogic.ts` 重寫：純函式 fold（12 個單元測試覆蓋恆等式 1–3、UNCLASSIFIED 沖銷、結轉、負 assigned）
+- [x] `budgetService` 重寫：startRTA 推導 + 兩條聚合 SQL + getMonthView / assign / moveMoney / init（assign/move 驗證月份在 [start, 當月]；聚合 SQL 的 CASE 須 `::text`——uuid 欄位混文字常數會被 PG 推斷成 uuid 而炸）
+- [x] `baseCurrencyService` 整合：assigned 按該月 1 號歷史匯率換算（plans 模式，缺匯率整批中止）
+- [x] routes / controllers + `validate` middleware（body + params 雙重驗證）
+- [x] 前端 `app/(main)/budget` 全套（§7，SWR + optimistic mutate + CategoryActivitySheet 客端 Main roll-up）+ sidebar 導覽
+- [x] 測試：後端單元 12 + 整合 6（startRTA 回推、三種轉帳邊界、Sub roll-up、跨月沖銷、分類刪除、本位幣切換含缺匯率中止）+ 前端元件 9
+
+**實作補充決策**（Phase 1 落地時定，未動 B1–B5）：
+
+- **已刪帳戶視同 YNAB closed account**：帳戶 soft-delete 後交易仍保留（codebase 既有慣例，統計頁同此），startRTA 與聚合 SQL 一致地包含其歷史，預算數字不漂移。
+- **已刪分類若仍有 activity/assigned，信封保留並標註「（已刪除）」**：歷史支出維持沖銷（負 available 計入 overspending），否則已花掉的錢會從預算憑空消失；assignment 本身由 `Category.afterDestroy` 硬刪，RTA 回升。
+- **新帳戶 `onBudget` 未指定時由後端依類型預設**（現金/銀行/信用卡→true，其餘→false，同 migration 回填語意）；schema 改 optional，避免前端表單恆送 true。
+- **已知邊角（Phase 2 候選）**：on-budget 內部轉帳帶手續費（from leg extraMinus）整腿被排除，手續費不進任何信封——屬流水推導已接受的漂移，金額極小；若要精確可在 Phase 2 把內部轉帳的 extra 計入 activity。
+
+**Code review 修正（2026-06-13，多代理 review 後）**：
+
+- **[H] 本位幣切換漏算已刪帳戶交易**：`baseCurrencyService` 重算交易時 `include` Account 未帶 `paranoid:false`，已刪外幣帳戶的交易幣別 fallback 成舊本位幣 → activity 失真假超支串扣 RTA（違反恆等式 6）。已加 `paranoid:false`。
+- **[H] 分類刪除資料遺失 + 信封保留死碼**：原 `Category` 實為**硬刪**（`paranoid:false`）且 `transaction.categoryId` FK 為 `ON DELETE CASCADE`——刪有交易的分類會連帶物理刪除其交易，且本節「保留已刪分類信封」的承諾為不可達死碼。**已將 `Category` 改為 soft-delete**（migration `20260613000000-category-soft-delete.js` 加 `deletedAt`），DB CASCADE 不再觸發、交易保留、orphan 信封標註「（已刪除）」生效；子分類連帶刪除改由 `Category.afterDestroy` hook 串接 soft-delete。
+- **[M] startMonth 不可為未來**：`init`/`updateSettings` 補驗證，否則預算頁永久卡載入。
+- **[M] controller 業務錯誤回 4xx**：`budgetController` 統一以 400 + responseHelper 回業務錯誤（沿用 `changeBaseCurrency` 語意），缺匯率等提示才到得了前端。
+- **[M] 當月以伺服器為準**：`GET /budget` 回傳 `currentMonth`，前端 clamp 上界與預設選月改用之，消除月初瀏覽器/伺服器時區落差。
+- **[M] 前端**：OverspendingBanner 納入虛擬列負 available；assign optimistic mutate 回寫樂觀視圖避免閃值；CategoryActivitySheet 過濾 off-budget 帳戶並計入 extra 欄位。
+- **[L] 其他**：`assign` 改原子 upsert；測試補恆等式 1 真守恆、恆等式 5 回放、moveMoney 失敗路徑、onBudget true 分支、MoveMoneyPopover/InitBudgetDialog；整合測試改假時鐘（移除 `skipIf` 時間耦合）+ 切換當日誘餌匯率；本節恆等式 1 公式補回 `Σ Activity` 項（§5.1）。
 
 ### Phase 2 —（拍板後再展開）
 

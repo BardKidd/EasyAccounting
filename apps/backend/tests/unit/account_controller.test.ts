@@ -159,6 +159,7 @@ describe('Account Controller (Mocked)', () => {
           name: 'Cash',
           type: '一般',
           userId: 'user-123',
+          onBudget: false, // 未指定時依類型預設：非 現金/銀行/信用卡 → false
         },
         { transaction },
       );
@@ -191,6 +192,7 @@ describe('Account Controller (Mocked)', () => {
           name: 'My Card',
           type: AccountEnum.CREDIT_CARD,
           userId: 'user-123',
+          onBudget: true, // 信用卡未指定時依類型預設 → true（§9，驗證 true 分支不被改壞成 false）
         }),
         expect.objectContaining({ transaction }),
       );

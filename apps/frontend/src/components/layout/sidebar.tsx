@@ -14,7 +14,7 @@ import {
   Command,
   FileCheck,
   Repeat,
-  // Calculator, // [HIDDEN] 預算功能暫時停用
+  Calculator,
 } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import {
@@ -50,6 +50,11 @@ const sidebarItems = [
     title: '統計報表',
     href: '/statistics',
     icon: PieChart,
+  },
+  {
+    title: '預算',
+    href: '/budget',
+    icon: Calculator,
   },
   {
     title: '週期性交易',

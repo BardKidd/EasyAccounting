@@ -62,11 +62,18 @@ const getAccountsByUser = (req: Request, res: Response) => {
   });
 };
 
+// onBudget 未指定時依帳戶類型預設（與 budget phase1 migration 回填語意一致）
+const defaultOnBudget = (type: string) =>
+  type === AccountEnum.CASH ||
+  type === AccountEnum.BANK ||
+  type === AccountEnum.CREDIT_CARD;
+
 const addAccount = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const { userId } = req.user;
     const data = {
       ...req.body,
+      onBudget: req.body.onBudget ?? defaultOnBudget(req.body.type),
       userId,
     };
 

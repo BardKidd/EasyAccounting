@@ -14,6 +14,7 @@ import RecurringTemplate from './RecurringTemplate';
 import PasswordResetToken from './PasswordResetToken';
 import Currency from './currency';
 import ExchangeRate from './exchangeRate';
+import BudgetAssignment from './budgetAssignment';
 
 // -----------------------------------------------------------------------------
 // Soft Delete Hooks (Cascade)
@@ -42,6 +43,25 @@ User.addHook('afterDestroy', async (user: any, options: any) => {
   await PersonnelNotification.destroy({ where: { userId }, transaction });
   await InstallmentPlan.destroy({ where: { userId }, transaction });
   await RecurringTemplate.destroy({ where: { userId }, transaction });
+  await BudgetAssignment.destroy({ where: { userId }, transaction });
+});
+
+// Category 為 soft-delete（paranoid:true）：DB 層的 ON DELETE CASCADE 不會觸發，
+// 故在此 hook 串接原本靠 FK CASCADE 處理的連帶刪除。
+Category.addHook('afterDestroy', async (category: any, options: any) => {
+  const transaction = options.transaction;
+  // (1) 串接 soft-delete 子分類（維持「刪父分類連帶刪整棵子樹」語意）；
+  //     individualHooks 讓每個子分類也走此 hook 清自己的 assignment。
+  await Category.destroy({
+    where: { parentId: category.id },
+    transaction,
+    individualHooks: true,
+  });
+  // (2) 硬刪 budget_assignment（模型 paranoid:false），RTA 自動回升（spec §3.2）。
+  await BudgetAssignment.destroy({
+    where: { categoryId: category.id },
+    transaction,
+  });
 });
 
 Transaction.addHook('afterDestroy', async (instance: any, options: any) => {
@@ -220,6 +240,23 @@ ExchangeRate.belongsTo(Currency, {
   as: 'quoteCurrency',
 });
 
+// BudgetAssignment & User
+User.hasMany(BudgetAssignment, {
+  foreignKey: 'userId',
+  as: 'budgetAssignments',
+});
+BudgetAssignment.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+// BudgetAssignment & Category
+Category.hasMany(BudgetAssignment, {
+  foreignKey: 'categoryId',
+  as: 'budgetAssignments',
+});
+BudgetAssignment.belongsTo(Category, {
+  foreignKey: 'categoryId',
+  as: 'category',
+});
+
 // Export everything
 export {
   Account,
@@ -238,4 +275,5 @@ export {
   PasswordResetToken,
   Currency,
   ExchangeRate,
+  BudgetAssignment,
 };

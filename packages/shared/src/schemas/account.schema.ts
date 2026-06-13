@@ -22,6 +22,8 @@ export const createAccountSchema = z.object({
   icon: z.string().min(1, '圖示為必填'),
   color: z.string().min(1, '顏色為必填'),
   isArchived: z.boolean().default(false),
+  // 未提供時由後端依帳戶類型預設（現金/銀行/信用卡→true，證券戶/其他→false，同 migration 回填語意）
+  onBudget: z.boolean().optional(),
   creditCardDetail: z
     .object({
       statementDate: z.coerce.number().min(1).max(31),

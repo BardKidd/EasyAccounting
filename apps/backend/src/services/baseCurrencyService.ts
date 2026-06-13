@@ -4,6 +4,7 @@ import {
   TransactionExtra,
   Account,
   Currency,
+  BudgetAssignment,
 } from '@/models';
 import sequelize from '@/utils/postgres';
 import { getRate } from './exchangeRateService';
@@ -14,6 +15,7 @@ import { roundToBaseCurrency } from '@repo/shared';
  *
  * 對每筆交易，用「交易當下日期」的 帳戶幣別 → 新本位幣 匯率重算 baseRate / amountInBase，
  * 並連帶重算其 TransactionExtra 的 base 快照。
+ * 預算 assigned 另按「該月 1 號」oldBase→newBase 歷史匯率換算（spec budget-ynab §3.2/§5.3）。
  * 任一所需匯率缺漏即整批中止並回報缺漏清單（避免落庫錯誤快照）。整個過程包在 DB transaction。
  */
 export const changeBaseCurrency = async (
@@ -48,7 +50,15 @@ export const changeBaseCurrency = async (
     const txns = await Transaction.findAll({
       where: { userId },
       include: [
-        { model: Account, as: 'account', attributes: ['currencyCode'] },
+        // paranoid:false — 已軟刪帳戶的交易仍須以「該帳戶幣別」重算 amountInBase；
+        // 否則 account 關聯被濾成 null、幣別 fallback 成舊本位幣 → 外幣金額錯算、
+        // 預算 activity 失真造成假超支串扣 RTA（budget-ynab §5.1 恆等式 6）。
+        {
+          model: Account,
+          as: 'account',
+          attributes: ['currencyCode'],
+          paranoid: false,
+        },
         { model: TransactionExtra, as: 'transactionExtra' },
       ],
       transaction: t,
@@ -91,6 +101,24 @@ export const changeBaseCurrency = async (
       plans.push(plan);
     }
 
+    // 2b. 預算 assigned 匯率檢查：按該月 1 號歷史匯率（spec budget-ynab §3.2，缺漏即中止）
+    const assignments = await BudgetAssignment.findAll({
+      where: { userId },
+      transaction: t,
+    });
+    const assignmentPlans: { row: any; assigned: number }[] = [];
+    for (const row of assignments) {
+      const rate = await getRate(oldBaseCode, newBaseCode, row.month);
+      if (rate == null) {
+        missing.add(`${oldBaseCode}->${newBaseCode}@${row.month}`);
+        continue;
+      }
+      assignmentPlans.push({
+        row,
+        assigned: roundToBaseCurrency(Number(row.assigned) * rate),
+      });
+    }
+
     if (missing.size > 0) {
       throw new Error(
         `缺少下列匯率，無法切換本位幣（請先補匯率）：${Array.from(missing).join(', ')}`,
@@ -112,6 +140,11 @@ export const changeBaseCurrency = async (
           { where: { id: p.extra.id }, transaction: t },
         );
       }
+    }
+
+    // 3b. 套用預算 assigned 換算
+    for (const p of assignmentPlans) {
+      await p.row.update({ assigned: p.assigned }, { transaction: t });
     }
 
     // 4. 更新使用者本位幣

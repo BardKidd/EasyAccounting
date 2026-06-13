@@ -47,6 +47,13 @@ import {
   archiveRecurringTemplate,
   resumeRecurringTemplate,
 } from './recurringTemplate';
+import {
+  getBudgetStatus,
+  initBudget,
+  getBudgetMonth,
+  assignBudget,
+  moveBudgetMoney,
+} from './budget';
 
 export default {
   getCategories,
@@ -84,4 +91,9 @@ export default {
   cancelRecurringTemplate,
   archiveRecurringTemplate,
   resumeRecurringTemplate,
+  getBudgetStatus,
+  initBudget,
+  getBudgetMonth,
+  assignBudget,
+  moveBudgetMoney,
 };
