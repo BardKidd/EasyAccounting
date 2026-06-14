@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import type { BudgetMonthView, AccountType } from '@repo/shared';
 import { Account as AccountEnum } from '@repo/shared';
 import { AvailablePill } from './AvailablePill';
@@ -9,6 +9,7 @@ import { ReadyToAssignCard } from './ReadyToAssignCard';
 import { AssignedCell } from './AssignedCell';
 import { BudgetTable } from './BudgetTable';
 import { MoveMoneyPopover } from './MoveMoneyPopover';
+import { CreditCardPaymentSection } from './CreditCardPaymentSection';
 import { InitBudgetDialog } from './InitBudgetDialog';
 
 // CategoryActivitySheet 內部用 SWR + services，整合層測試不在此涵蓋
@@ -37,29 +38,116 @@ describe('AvailablePill', () => {
 });
 
 describe('OverspendingBanner', () => {
-  it('顯示月底沖銷提示', () => {
+  it('顯示月底沖銷提示（預設 cash）', () => {
     render(<OverspendingBanner />);
     expect(screen.getByText(/下月可分配金額扣除/)).toBeInTheDocument();
+  });
+
+  it('Phase 2 ④：credit 變體顯示卡債提示、both 兩段皆顯示', () => {
+    const { rerender } = render(<OverspendingBanner kind="credit" />);
+    expect(screen.getByText(/累積為卡債/)).toBeInTheDocument();
+    expect(screen.queryByText(/下月可分配金額扣除/)).toBeNull();
+
+    rerender(<OverspendingBanner kind="both" />);
+    expect(screen.getByText(/下月可分配金額扣除/)).toBeInTheDocument();
+    expect(screen.getByText(/累積為卡債/)).toBeInTheDocument();
+  });
+});
+
+describe('CreditCardPaymentSection', () => {
+  it('無卡時不渲染；有卡時列出撥備/可付與卡債標籤（Phase 2 ④）', () => {
+    const { container, rerender } = render(
+      <CreditCardPaymentSection
+        rows={[]}
+        baseCurrencyCode="TWD"
+        onAssign={vi.fn()}
+      />,
+    );
+    expect(container.firstChild).toBeNull();
+
+    const onAssign = vi.fn().mockResolvedValue(undefined);
+    rerender(
+      <CreditCardPaymentSection
+        rows={[
+          {
+            accountId: 'visa',
+            name: 'Visa',
+            assigned: 0,
+            activity: -30,
+            available: -600,
+            covered: 0,
+            payments: 30,
+            isDebt: true,
+          },
+        ]}
+        baseCurrencyCode="TWD"
+        onAssign={onAssign}
+      />,
+    );
+    expect(screen.getByText('信用卡付款')).toBeInTheDocument();
+    expect(screen.getByText('Visa')).toBeInTheDocument();
+    expect(screen.getByText('卡債')).toBeInTheDocument();
+    // 撥備：點 cell 的 button 進入編輯、送出
+    const cell = screen.getByTestId('cc-assigned-cell');
+    fireEvent.click(within(cell).getByRole('button'));
+    const input = screen.getByRole('spinbutton');
+    fireEvent.change(input, { target: { value: '500' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onAssign).toHaveBeenCalledWith('visa', 500);
   });
 });
 
 describe('BudgetMonthNav', () => {
-  it('邊界月份停用對應按鈕（start..當月）', () => {
+  it('邊界月份停用對應按鈕（start..maxMonth）', () => {
     const onChange = vi.fn();
     render(
       <BudgetMonthNav
         startMonth="2026-05-01"
         currentMonth="2026-06-01"
+        maxMonth="2027-06-01"
         value="2026-05-01"
         onChange={onChange}
       />,
     );
     const buttons = screen.getAllByRole('button');
-    expect(buttons[0]).toBeDisabled(); // 不可再往前
+    expect(buttons[0]).toBeDisabled(); // 起始月不可再往前
     expect(buttons[1]).not.toBeDisabled();
 
     fireEvent.click(buttons[1]!);
     expect(onChange).toHaveBeenCalledWith('2026-06-01');
+  });
+
+  it('Phase 2：可導覽至未來月份，並標示「未來」徽章', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <BudgetMonthNav
+        startMonth="2026-05-01"
+        currentMonth="2026-06-01"
+        maxMonth="2027-06-01"
+        value="2026-06-01"
+        onChange={onChange}
+      />,
+    );
+    const buttons = screen.getAllByRole('button');
+    // 當月時下一步仍可按（未來月份開放）
+    expect(buttons[1]).not.toBeDisabled();
+    fireEvent.click(buttons[1]!);
+    expect(onChange).toHaveBeenCalledWith('2026-07-01');
+    // 當月不顯示未來徽章
+    expect(screen.queryByTestId('future-badge')).toBeNull();
+
+    // 切到未來月份顯示徽章，且抵達上界時停用下一步
+    rerender(
+      <BudgetMonthNav
+        startMonth="2026-05-01"
+        currentMonth="2026-06-01"
+        maxMonth="2027-06-01"
+        value="2027-06-01"
+        onChange={onChange}
+      />,
+    );
+    expect(screen.getByTestId('future-badge')).toBeInTheDocument();
+    expect(screen.getAllByRole('button')[1]).toBeDisabled(); // 已達 maxMonth
   });
 });
 
@@ -144,6 +232,9 @@ const mockView: BudgetMonthView = {
       activity: 0,
       available: 300,
       isOverspent: false,
+      target: null,
+      underfunded: 0,
+      overspendKind: null,
     },
     {
       categoryId: 'cat-b',
@@ -154,9 +245,14 @@ const mockView: BudgetMonthView = {
       activity: -1500,
       available: -300,
       isOverspent: true,
+      target: { type: 'REFILL', amount: 500, dueDate: null },
+      underfunded: 300,
+      overspendKind: 'cash',
     },
   ],
   unclassifiedTransferOut: { activity: -2000, available: -2000 },
+  creditCardPayments: [],
+  creditOverspending: 0,
   totals: { assigned: 500, activity: -3500, available: 0 },
 };
 
@@ -169,6 +265,8 @@ describe('BudgetTable', () => {
         baseCurrencyCode="TWD"
         onAssign={vi.fn()}
         onMove={vi.fn()}
+        onUpsertTarget={vi.fn()}
+        onDeleteTarget={vi.fn()}
       />,
     );
     expect(screen.getByText('飲食')).toBeInTheDocument();
@@ -185,9 +283,33 @@ describe('BudgetTable', () => {
         baseCurrencyCode="TWD"
         onAssign={vi.fn()}
         onMove={vi.fn()}
+        onUpsertTarget={vi.fn()}
+        onDeleteTarget={vi.fn()}
       />,
     );
     expect(screen.queryByText('轉出（未分類）')).not.toBeInTheDocument();
+  });
+
+  it('Phase 2 ③：有 target 的列顯示摘要與 underfunded 缺口，點缺口快速補足到 assigned+underfunded', () => {
+    const onAssign = vi.fn().mockResolvedValue(undefined);
+    render(
+      <BudgetTable
+        data={mockView}
+        month="2026-06-01"
+        baseCurrencyCode="TWD"
+        onAssign={onAssign}
+        onMove={vi.fn()}
+        onUpsertTarget={vi.fn()}
+        onDeleteTarget={vi.fn()}
+      />,
+    );
+    // cat-b（交通）target=REFILL 500、underfunded 300
+    expect(screen.getByText(/補滿到/)).toBeInTheDocument();
+    const fill = screen.getByTestId('underfunded-fill');
+    expect(fill).toHaveTextContent('差');
+    fireEvent.click(fill);
+    // assigned 200 + underfunded 300 = 500
+    expect(onAssign).toHaveBeenCalledWith('cat-b', 500);
   });
 });
 

@@ -7,6 +7,10 @@ import {
   moveMoneySchema,
   monthParamSchema,
   monthCategoryParamsSchema,
+  monthCreditParamsSchema,
+  categoryParamSchema,
+  upsertTargetSchema,
+  autoAssignSchema,
 } from '@repo/shared';
 import budgetController from '@/controllers/budgetController';
 import { authMiddleware } from '@/middlewares/authMiddleware';
@@ -56,6 +60,41 @@ router.post(
   validate(monthParamSchema, 'params'),
   validate(moveMoneySchema),
   budgetController.moveMoney,
+);
+
+// CC Payment 信封分配（Phase 2 ④）
+router.put(
+  '/budget/months/:month/cc-assignments/:accountId',
+  authMiddleware,
+  validate(monthCreditParamsSchema, 'params'),
+  validate(assignSchema),
+  budgetController.assignCreditPayment,
+);
+
+// 設定/更新信封 target（Phase 2 ③）
+router.put(
+  '/budget/categories/:categoryId/target',
+  authMiddleware,
+  validate(categoryParamSchema, 'params'),
+  validate(upsertTargetSchema),
+  budgetController.upsertTarget,
+);
+
+// 刪除信封 target
+router.delete(
+  '/budget/categories/:categoryId/target',
+  authMiddleware,
+  validate(categoryParamSchema, 'params'),
+  budgetController.deleteTarget,
+);
+
+// Auto-Assign（補足 underfunded / 沿用上月）
+router.post(
+  '/budget/months/:month/auto-assign',
+  authMiddleware,
+  validate(monthParamSchema, 'params'),
+  validate(autoAssignSchema),
+  budgetController.autoAssign,
 );
 
 export default router;

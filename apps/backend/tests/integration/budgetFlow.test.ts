@@ -27,6 +27,7 @@ import {
   Category,
   ExchangeRate,
   BudgetAssignment,
+  BudgetTarget,
 } from '@/models';
 import transactionServices from '@/services/transactionServices';
 import budgetService from '@/services/budgetService';
@@ -118,6 +119,16 @@ describe('YNAB 預算 真實 DB 整合（Phase 1）', () => {
     subA = await Category.findOne({ where: { parentId: mainA.id } });
     expect(subA).not.toBeNull();
 
+    // 真實收入須掛「收入 root」分類（否則 P2-D7 會把它判為退款回補信封而非 RTA inflow）
+    const incomeRoot = await Category.findOne({
+      where: { type: RootType.INCOME, parentId: null },
+    });
+    const incomeCat = await Category.findOne({
+      where: { parentId: (incomeRoot as any).id, userId: null },
+      order: [['createdAt', 'ASC']],
+    });
+    expect(incomeCat).not.toBeNull();
+
     // 使用者自建 Main（分類刪除測試用）
     userMainC = await Category.create({
       name: 'BF-自建分類',
@@ -130,9 +141,9 @@ describe('YNAB 預算 真實 DB 整合（Phase 1）', () => {
 
     // ---- 交易場景 ----
     // 起始月（2026-05）之前：構成起始部位
-    await income(bank.id, mainA.id, 20000, '2026-04-15');
+    await income(bank.id, (incomeCat as any).id, 20000, '2026-04-15');
     // 5 月：收入 + Sub 層支出（roll-up 到 mainA）+ 跨邊界轉出
-    await income(bank.id, mainA.id, 5000, '2026-05-05');
+    await income(bank.id, (incomeCat as any).id, 5000, '2026-05-05');
     await expense(bank.id, (subA as any).id, 3000, '2026-05-10');
     await transfer(bank.id, track.id, 2000, '2026-05-20', mainA.id);
     // 6 月：Main 層支出 + tracking→on-budget 轉入 + on-budget 內部轉帳（應零影響）
@@ -168,7 +179,7 @@ describe('YNAB 預算 真實 DB 整合（Phase 1）', () => {
     expect(status.baseCurrencyCode).toBe('TWD');
   });
 
-  it('5 月視圖：startRTA 回推、Sub roll-up、跨邊界轉出虛擬列', async () => {
+  it('5 月視圖：startRTA 回推、Sub roll-up、跨邊界轉出分類歸信封（P2-D8）', async () => {
     const view = await budgetService.getMonthView(userId, '2026-05-01');
 
     // startRTA：bank 現值 18300 − Σ(起始後 −1700) = 20000；bank2 現值 1000 − 1000 = 0
@@ -179,27 +190,25 @@ describe('YNAB 預算 真實 DB 整合（Phase 1）', () => {
     // RTA = 20000 + 5000 − 3500 = 21500
     expect(view.readyToAssign).toBe(21500);
 
-    // Sub 層支出 roll-up 到 mainA：2500 − 3000 = −500（超支）
+    // mainA：Sub 支出 roll-up −3000 + 跨邊界轉出（分類為 mainA → P2-D8 歸該信封）−2000 = −5000
+    // 2500 − 5000 = −2500（超支）
     const rowA = view.rows.find((r) => r.categoryId === mainA.id)!;
     expect(rowA.assigned).toBe(2500);
-    expect(rowA.activity).toBe(-3000);
-    expect(rowA.available).toBe(-500);
+    expect(rowA.activity).toBe(-5000);
+    expect(rowA.available).toBe(-2500);
     expect(rowA.isOverspent).toBe(true);
 
     const rowB = view.rows.find((r) => r.categoryId === mainB.id)!;
     expect(rowB.available).toBe(1000);
 
-    // on-budget→tracking 轉出 2000 → 虛擬列
-    expect(view.unclassifiedTransferOut).toEqual({
-      activity: -2000,
-      available: -2000,
-    });
+    // 轉出已分類為支出 Main（P2-D8）→ 不再落虛擬未分類列
+    expect(view.unclassifiedTransferOut).toBeNull();
   });
 
   it('6 月視圖：前月 cash overspending 扣 RTA、結轉、tracking 轉入進 RTA、內部轉帳零影響', async () => {
     const view = await budgetService.getMonthView(userId, '2026-06-01');
 
-    // priorOverspending = mainA −500 + 虛擬列 −2000 = −2500
+    // priorOverspending = mainA −2500（含已分類轉出 P2-D8）+ 虛擬列 0 = −2500
     expect(view.rtaBreakdown.priorOverspending).toBe(-2500);
     // cumInflow = 5000 + 800（tracking→on-budget 轉入）；內部轉帳 1000 不出現在任何數字
     expect(view.rtaBreakdown.cumulativeInflow).toBe(5800);
@@ -234,9 +243,9 @@ describe('YNAB 預算 真實 DB 整合（Phase 1）', () => {
     await expect(
       budgetService.getMonthView(userId, '2026-04-01'),
     ).rejects.toThrow(/有效範圍/);
-    // 未來月份（Phase 2 才開放）
+    // 超過未來上界（當月 2026-06 + BUDGET_MAX_FUTURE_MONTHS=12 → 上界 2027-06）仍被拒
     await expect(
-      budgetService.assign(userId, '2026-07-01', mainA.id, 100),
+      budgetService.assign(userId, '2027-07-01', mainA.id, 100),
     ).rejects.toThrow(/有效範圍/);
     // Sub 層分類不可當信封
     await expect(
@@ -250,12 +259,31 @@ describe('YNAB 預算 真實 DB 整合（Phase 1）', () => {
       budgetService.moveMoney(userId, '2026-06-01', null, (subA as any).id, 50),
     ).rejects.toThrow(/Main/);
     await expect(
-      budgetService.moveMoney(userId, '2026-07-01', null, mainA.id, 50),
+      budgetService.moveMoney(userId, '2027-07-01', null, mainA.id, 50),
     ).rejects.toThrow(/有效範圍/);
     // 啟用月之前的月份 assign 也被拒
     await expect(
       budgetService.assign(userId, '2026-04-01', mainA.id, 100),
     ).rejects.toThrow(/有效範圍/);
+  });
+
+  it('Phase 2 未來月份預先分配：可分配到 horizon 內未來月份且即時反映於該月 RTA', async () => {
+    const future = '2026-07-01'; // 當月 2026-06 + 1，在 horizon 內
+    const before = await budgetService.getMonthView(userId, future);
+    const rtaBefore = before.readyToAssign;
+
+    // 分配 500 到 mainB（未來月）→ 即時扣減該月 RTA
+    await budgetService.assign(userId, future, mainB.id, 500);
+    const after = await budgetService.getMonthView(userId, future);
+    expect(after.readyToAssign).toBeCloseTo(rtaBefore - 500, 5);
+
+    // mainB 6 月 available −300 → 結轉 max(0,−300)=0；7 月 = 0 + 500 = 500
+    const rowB = after.rows.find((r) => r.categoryId === mainB.id)!;
+    expect(rowB.assigned).toBe(500);
+    expect(rowB.available).toBeCloseTo(500, 5);
+
+    // 清掉未來月分配，避免污染後續本位幣切換測試（assigned=0 等同不存在）
+    await budgetService.assign(userId, future, mainB.id, 0);
   });
 
   it('分類刪除：assignment 硬刪、RTA 回升（spec §3.2）', async () => {
@@ -447,5 +475,369 @@ describe('YNAB 預算 回放一致性 + 分類刪除資料保全', () => {
     expect(ghost!.activity).toBe(-800);
     expect(ghost!.available).toBe(-800); // assigned 已歸零
     expect(ghost!.isOverspent).toBe(true);
+  });
+});
+
+/**
+ * Phase 2 ② — 退款回補信封（P2-D7）+ 跨邊界轉帳選填分類（P2-D8）。
+ * 自足 fixture：bank(on-budget) / track(off-budget) + 真實收入 + 支出 + 退款（收入掛支出 Main）
+ * + 未分類轉出（操作分類）。驗證退款不進 RTA、轉出依分類 root 歸信封或虛擬列、守恆成立。
+ */
+describe('YNAB 預算 Phase 2②：退款回補（P2-D7）+ 轉帳分類（P2-D8）', () => {
+  let userId: string;
+  let bank: any;
+  let track: any;
+  let mainX: any; // 支出 Main（退款目標）
+  let salaryCat: any; // 收入 Main（真實收入）
+  let transferCat: any; // 操作/轉帳 分類（未分類轉出）
+
+  const baseTx = {
+    description: 'p2b-test',
+    time: '12:00:00',
+    receipt: '',
+    paymentFrequency: PaymentFrequency.ONE_TIME,
+  };
+  const expense = (a: string, c: string, amt: number, d: string) =>
+    transactionServices.createTransaction(
+      { ...baseTx, type: RootType.EXPENSE, accountId: a, categoryId: c, amount: amt, date: d } as any,
+      userId,
+    );
+  const income = (a: string, c: string, amt: number, d: string) =>
+    transactionServices.createTransaction(
+      { ...baseTx, type: RootType.INCOME, accountId: a, categoryId: c, amount: amt, date: d } as any,
+      userId,
+    );
+  const transfer = (a: string, t: string, amt: number, d: string, c: string) =>
+    transactionServices.createTransfer(
+      { ...baseTx, type: RootType.OPERATE, accountId: a, targetAccountId: t, categoryId: c, amount: amt, date: d } as any,
+      userId,
+    );
+
+  beforeAll(async () => {
+    clearRateCache();
+    const uniqueEmail = `p2b-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(FAKE_NOW);
+    const user = await User.create({
+      name: 'P2B Test', email: uniqueEmail, password: 'hashed_pw_for_test',
+      isGuest: false, baseCurrencyCode: 'TWD',
+    } as any);
+    userId = (user as any).id;
+    bank = await Account.create({
+      userId, name: 'P2B-Bank', type: '銀行', balance: 0,
+      currencyCode: 'TWD', icon: 'bank', color: '#000', onBudget: true,
+    } as any);
+    track = await Account.create({
+      userId, name: 'P2B-Track', type: '證券戶', balance: 0,
+      currencyCode: 'TWD', icon: 'chart', color: '#000', onBudget: false,
+    } as any);
+
+    const expenseRoot = await Category.findOne({ where: { type: RootType.EXPENSE, parentId: null } });
+    mainX = await Category.findOne({
+      where: { parentId: (expenseRoot as any).id, userId: null },
+      order: [['createdAt', 'ASC']],
+    });
+    const incomeRoot = await Category.findOne({ where: { type: RootType.INCOME, parentId: null } });
+    salaryCat = await Category.findOne({
+      where: { parentId: (incomeRoot as any).id, userId: null },
+      order: [['createdAt', 'ASC']],
+    });
+    const operateRoot = await Category.findOne({ where: { type: RootType.OPERATE, parentId: null } });
+    transferCat = await Category.findOne({
+      where: { parentId: (operateRoot as any).id, userId: null },
+      order: [['createdAt', 'ASC']],
+    });
+    expect(mainX).not.toBeNull();
+    expect(salaryCat).not.toBeNull();
+    expect(transferCat).not.toBeNull();
+
+    // 交易（皆在 2026-05，startMonth 後）
+    await income(bank.id, salaryCat.id, 5000, '2026-05-05'); // 真實收入 → RTA
+    await expense(bank.id, mainX.id, 1000, '2026-05-10'); // 支出 −1000
+    await income(bank.id, mainX.id, 300, '2026-05-12'); // 退款（收入掛支出 Main）→ +300 回補
+    await transfer(bank.id, track.id, 400, '2026-05-15', transferCat.id); // 未分類轉出（操作分類）→ 虛擬列
+
+    await budgetService.initBudget(userId, '2026-05-01');
+    await budgetService.assign(userId, '2026-05-01', mainX.id, 1500);
+  });
+
+  afterAll(async () => {
+    await BudgetAssignment.destroy({ where: { userId } });
+    await Transaction.destroy({ where: { userId }, force: true });
+    await Account.destroy({ where: { userId }, force: true });
+    await User.destroy({ where: { id: userId }, force: true });
+    clearRateCache();
+    vi.useRealTimers();
+  });
+
+  it('退款回補信封：收入掛支出 Main → 正 activity 回補、不計入 RTA inflow（P2-D7）', async () => {
+    const view = await budgetService.getMonthView(userId, '2026-05-01');
+    const rowX = view.rows.find((r) => r.categoryId === mainX.id)!;
+    // activity = −1000(支出) + 300(退款) = −700
+    expect(rowX.activity).toBe(-700);
+    // available = 1500 − 700 = 800
+    expect(rowX.available).toBe(800);
+    // 退款不進 inflow：只有真實收入 5000
+    expect(view.rtaBreakdown.cumulativeInflow).toBe(5000);
+    // startRTA 0；RTA = 0 + 5000 − 1500 = 3500（若退款誤計 inflow 會是 3800）
+    expect(view.rtaBreakdown.startingBalance).toBe(0);
+    expect(view.readyToAssign).toBe(3500);
+  });
+
+  it('未分類跨邊界轉出（操作分類）仍落虛擬列 UNCLASSIFIED_OUT（P2-D8 反例）', async () => {
+    const view = await budgetService.getMonthView(userId, '2026-05-01');
+    expect(view.unclassifiedTransferOut).toEqual({ activity: -400, available: -400 });
+  });
+
+  it('守恆（含退款 + 未分類轉出）：startRTA + 流入 + ΣActivity = RTA + Σ Available', async () => {
+    const view = await budgetService.getMonthView(userId, '2026-05-01');
+    const sumAvailable =
+      view.rows.reduce((s, r) => s + r.available, 0) +
+      (view.unclassifiedTransferOut?.available ?? 0);
+    const sumActivity =
+      view.rows.reduce((s, r) => s + r.activity, 0) +
+      (view.unclassifiedTransferOut?.activity ?? 0);
+    expect(
+      view.rtaBreakdown.startingBalance +
+        view.rtaBreakdown.cumulativeInflow +
+        sumActivity,
+    ).toBeCloseTo(view.readyToAssign + sumAvailable, 5);
+  });
+});
+
+/**
+ * Phase 2 ③ — Targets + Underfunded + Auto-Assign（P2-D10）。
+ * 自足 fixture：bank(on-budget) + 一個支出 Main（mainT）。無交易（純驗證 target/underfunded/auto-assign）。
+ */
+describe('YNAB 預算 Phase 2③：Targets + Underfunded + Auto-Assign（P2-D10）', () => {
+  let userId: string;
+  let mainT: any;
+  let subT: any;
+
+  beforeAll(async () => {
+    clearRateCache();
+    const uniqueEmail = `p2c-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(FAKE_NOW);
+    const user = await User.create({
+      name: 'P2C Test', email: uniqueEmail, password: 'hashed_pw_for_test',
+      isGuest: false, baseCurrencyCode: 'TWD',
+    } as any);
+    userId = (user as any).id;
+    await Account.create({
+      userId, name: 'P2C-Bank', type: '銀行', balance: 100000,
+      currencyCode: 'TWD', icon: 'bank', color: '#000', onBudget: true,
+    } as any);
+
+    const expenseRoot = await Category.findOne({ where: { type: RootType.EXPENSE, parentId: null } });
+    mainT = await Category.findOne({
+      where: { parentId: (expenseRoot as any).id, userId: null },
+      order: [['createdAt', 'ASC']],
+    });
+    subT = await Category.findOne({ where: { parentId: mainT.id } });
+    expect(mainT).not.toBeNull();
+    expect(subT).not.toBeNull();
+
+    await budgetService.initBudget(userId, '2026-05-01');
+  });
+
+  afterAll(async () => {
+    await BudgetTarget.destroy({ where: { userId } });
+    await BudgetAssignment.destroy({ where: { userId } });
+    await Account.destroy({ where: { userId }, force: true });
+    await User.destroy({ where: { id: userId }, force: true });
+    clearRateCache();
+    vi.useRealTimers();
+  });
+
+  /** 設定 target + 指定 assigned，回傳該月 mainT 的 underfunded */
+  const underfundedFor = async (target: any, assigned: number): Promise<number> => {
+    await budgetService.upsertTarget(userId, mainT.id, target);
+    await budgetService.assign(userId, '2026-05-01', mainT.id, assigned);
+    const view = await budgetService.getMonthView(userId, '2026-05-01');
+    return view.rows.find((r) => r.categoryId === mainT.id)!.underfunded;
+  };
+
+  it('underfunded 三型公式（carryIn=0）', async () => {
+    // SET_ASIDE：amount − assigned
+    expect(await underfundedFor({ type: 'SET_ASIDE', amount: 500 }, 300)).toBe(200);
+    // REFILL：amount − carryIn − assigned
+    expect(await underfundedFor({ type: 'REFILL', amount: 1000 }, 400)).toBe(600);
+    // BALANCE_BY_DATE：缺口(1200) ÷ 剩餘月數(05→07 共 3) − assigned = 400 − 100
+    expect(
+      await underfundedFor(
+        { type: 'BALANCE_BY_DATE', amount: 1200, dueDate: '2026-07-01' },
+        100,
+      ),
+    ).toBe(300);
+  });
+
+  it('Auto-Assign UNDERFUNDED：補足缺口至達標', async () => {
+    await budgetService.upsertTarget(userId, mainT.id, { type: 'REFILL', amount: 1000 } as any);
+    await budgetService.assign(userId, '2026-05-01', mainT.id, 200);
+    await budgetService.autoAssign(userId, '2026-05-01', 'UNDERFUNDED');
+    const view = await budgetService.getMonthView(userId, '2026-05-01');
+    const row = view.rows.find((r) => r.categoryId === mainT.id)!;
+    expect(row.assigned).toBe(1000); // 200 + 缺口 800
+    expect(row.underfunded).toBe(0);
+  });
+
+  it('Auto-Assign LAST_MONTH：本月各信封沿用上月 assigned', async () => {
+    await budgetService.assign(userId, '2026-05-01', mainT.id, 700);
+    await budgetService.autoAssign(userId, '2026-06-01', 'LAST_MONTH');
+    const view = await budgetService.getMonthView(userId, '2026-06-01');
+    const row = view.rows.find((r) => r.categoryId === mainT.id)!;
+    expect(row.assigned).toBe(700);
+  });
+
+  it('target CRUD + 非 Main 拒絕', async () => {
+    await budgetService.upsertTarget(userId, mainT.id, { type: 'SET_ASIDE', amount: 300 } as any);
+    let view = await budgetService.getMonthView(userId, '2026-05-01');
+    expect(view.rows.find((r) => r.categoryId === mainT.id)!.target).not.toBeNull();
+
+    await budgetService.deleteTarget(userId, mainT.id);
+    view = await budgetService.getMonthView(userId, '2026-05-01');
+    const row = view.rows.find((r) => r.categoryId === mainT.id)!;
+    expect(row.target).toBeNull();
+    expect(row.underfunded).toBe(0);
+
+    // Sub 層不可設 target
+    await expect(
+      budgetService.upsertTarget(userId, subT.id, { type: 'REFILL', amount: 100 } as any),
+    ).rejects.toThrow(/Main/);
+  });
+});
+
+/**
+ * Phase 2 ④ — 信用卡完整機制（P2-D1～D6）。
+ * 自足 fixture：bank(on-budget) + visa(on-budget 信用卡) + 一支出 Main。
+ * 場景：5 月收入 1000、刷卡 50（covered）、分配 100；6 月還款 30。
+ */
+describe('YNAB 預算 Phase 2④：信用卡完整機制（P2-D1～D6）', () => {
+  let userId: string;
+  let bank: any;
+  let visa: any;
+  let mainC: any;
+  let salaryCat: any;
+  let transferCat: any;
+
+  const baseTx = {
+    description: 'p2d-test', time: '12:00:00', receipt: '',
+    paymentFrequency: PaymentFrequency.ONE_TIME,
+  };
+  const expense = (a: string, c: string, amt: number, d: string) =>
+    transactionServices.createTransaction(
+      { ...baseTx, type: RootType.EXPENSE, accountId: a, categoryId: c, amount: amt, date: d } as any,
+      userId,
+    );
+  const income = (a: string, c: string, amt: number, d: string) =>
+    transactionServices.createTransaction(
+      { ...baseTx, type: RootType.INCOME, accountId: a, categoryId: c, amount: amt, date: d } as any,
+      userId,
+    );
+  const transfer = (a: string, t: string, amt: number, d: string, c: string) =>
+    transactionServices.createTransfer(
+      { ...baseTx, type: RootType.OPERATE, accountId: a, targetAccountId: t, categoryId: c, amount: amt, date: d } as any,
+      userId,
+    );
+
+  beforeAll(async () => {
+    clearRateCache();
+    const uniqueEmail = `p2d-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(FAKE_NOW);
+    const user = await User.create({
+      name: 'P2D Test', email: uniqueEmail, password: 'hashed_pw_for_test',
+      isGuest: false, baseCurrencyCode: 'TWD',
+    } as any);
+    userId = (user as any).id;
+    bank = await Account.create({
+      userId, name: 'P2D-Bank', type: '銀行', balance: 0,
+      currencyCode: 'TWD', icon: 'bank', color: '#000', onBudget: true,
+    } as any);
+    visa = await Account.create({
+      userId, name: 'P2D-Visa', type: '信用卡', balance: 0,
+      currencyCode: 'TWD', icon: 'card', color: '#000', onBudget: true,
+    } as any);
+
+    const expenseRoot = await Category.findOne({ where: { type: RootType.EXPENSE, parentId: null } });
+    mainC = await Category.findOne({
+      where: { parentId: (expenseRoot as any).id, userId: null },
+      order: [['createdAt', 'ASC']],
+    });
+    const incomeRoot = await Category.findOne({ where: { type: RootType.INCOME, parentId: null } });
+    salaryCat = await Category.findOne({
+      where: { parentId: (incomeRoot as any).id, userId: null },
+      order: [['createdAt', 'ASC']],
+    });
+    const operateRoot = await Category.findOne({ where: { type: RootType.OPERATE, parentId: null } });
+    transferCat = await Category.findOne({
+      where: { parentId: (operateRoot as any).id, userId: null },
+      order: [['createdAt', 'ASC']],
+    });
+
+    await income(bank.id, salaryCat.id, 1000, '2026-05-01'); // 收入 → RTA
+    await expense(visa.id, mainC.id, 50, '2026-05-10'); // 刷卡 50
+    await transfer(bank.id, visa.id, 30, '2026-06-05', transferCat.id); // 還款 30
+
+    await budgetService.initBudget(userId, '2026-05-01');
+    await budgetService.assign(userId, '2026-05-01', mainC.id, 100);
+  });
+
+  afterAll(async () => {
+    await BudgetAssignment.destroy({ where: { userId } });
+    await Transaction.destroy({ where: { userId }, force: true });
+    await Account.destroy({ where: { userId }, force: true });
+    await User.destroy({ where: { id: userId }, force: true });
+    clearRateCache();
+    vi.useRealTimers();
+  });
+
+  it('5 月：刷卡被覆蓋 covered 移入 CC Payment；信用卡不進 RTA', async () => {
+    const view = await budgetService.getMonthView(userId, '2026-05-01');
+    // startRTA 排除 visa：bank 起始 0；RTA = 0 + 1000 − 100 = 900
+    expect(view.rtaBreakdown.startingBalance).toBe(0);
+    expect(view.rtaBreakdown.cumulativeInflow).toBe(1000);
+    expect(view.readyToAssign).toBe(900);
+
+    const rowC = view.rows.find((r) => r.categoryId === mainC.id)!;
+    expect(rowC.activity).toBe(-50);
+    expect(rowC.available).toBe(50); // 100 − 50
+    expect(rowC.overspendKind).toBeNull();
+
+    expect(view.creditCardPayments.length).toBe(1);
+    const cc = view.creditCardPayments[0]!;
+    expect(cc.accountId).toBe(visa.id);
+    expect(cc.covered).toBe(50);
+    expect(cc.available).toBe(50);
+    expect(cc.assigned).toBe(0);
+    expect(cc.isDebt).toBe(false);
+    expect(view.creditOverspending).toBe(0);
+  });
+
+  it('6 月：還款 bank→card 縮減 CC Payment available；不動 RTA', async () => {
+    const view = await budgetService.getMonthView(userId, '2026-06-01');
+    const cc = view.creditCardPayments[0]!;
+    // 5 月 covered 50 結轉 − 6 月還款 30 = 20
+    expect(cc.available).toBe(20);
+    expect(cc.payments).toBe(30);
+    expect(cc.activity).toBe(-30);
+    // 還款為內部轉帳，不進 inflow/activity，RTA 不變
+    expect(view.readyToAssign).toBe(900);
+    const rowC = view.rows.find((r) => r.categoryId === mainC.id)!;
+    expect(rowC.available).toBe(50); // 5 月結轉
+  });
+
+  it('cc-assign：撥備至 CC Payment 即扣 RTA、提升 available', async () => {
+    await budgetService.ccAssign(userId, '2026-05-01', visa.id, 200);
+    const view = await budgetService.getMonthView(userId, '2026-05-01');
+    const cc = view.creditCardPayments[0]!;
+    expect(cc.assigned).toBe(200);
+    expect(cc.available).toBe(250); // 撥備 200 + covered 50
+    expect(view.readyToAssign).toBe(700); // 900 − 200
+    // 還原
+    await budgetService.ccAssign(userId, '2026-05-01', visa.id, 0);
+    const after = await budgetService.getMonthView(userId, '2026-05-01');
+    expect(after.readyToAssign).toBe(900);
   });
 });

@@ -4,6 +4,8 @@ export { BudgetTable } from './BudgetTable';
 export { AssignedCell } from './AssignedCell';
 export { AvailablePill } from './AvailablePill';
 export { MoveMoneyPopover } from './MoveMoneyPopover';
+export { TargetPopover } from './TargetPopover';
+export { CreditCardPaymentSection } from './CreditCardPaymentSection';
 export { OverspendingBanner } from './OverspendingBanner';
 export { InitBudgetDialog } from './InitBudgetDialog';
 export { CategoryActivitySheet } from './CategoryActivitySheet';

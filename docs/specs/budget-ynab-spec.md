@@ -1,7 +1,7 @@
 # 預算系統規格 v2 — YNAB 模式
 
-> **文件狀態**: ✅ 設計定案（B1–B5 已於 2026-06-10 由使用者拍板，全採推薦選項）；Phase 0 + Phase 1 MVP 已完成
-> **最後更新**: 2026-06-11
+> **文件狀態**: ✅ 設計定案（B1–B5）；Phase 0 + Phase 1 MVP 完成；**Phase 2 全部完成**（5 項皆做、含信用卡完整重做覆寫 B2，見 §9 P2-D1…D10）。本機全套測試綠（backend 182 / frontend 46），尚未 commit
+> **最後更新**: 2026-06-14
 > **取代**: 舊版 `budget-system-spec.md` 與 `budget-system-tasks.md` 已刪除（git 歷史可查）。舊預算功能將**整個拆除重做**，不做資料遷移。
 
 ---
@@ -344,13 +344,45 @@ for row in budget_assignment where userId:
 - **[M] 前端**：OverspendingBanner 納入虛擬列負 available；assign optimistic mutate 回寫樂觀視圖避免閃值；CategoryActivitySheet 過濾 off-budget 帳戶並計入 extra 欄位。
 - **[L] 其他**：`assign` 改原子 upsert；測試補恆等式 1 真守恆、恆等式 5 回放、moveMoney 失敗路徑、onBudget true 分支、MoveMoneyPopover/InitBudgetDialog；整合測試改假時鐘（移除 `skipIf` 時間耦合）+ 切換當日誘餌匯率；本節恆等式 1 公式補回 `Σ Activity` 項（§5.1）。
 
-### Phase 2 —（拍板後再展開）
+### Phase 2 — 設計定案（2026-06-14，scope 已拍板：全 5 項，含信用卡完整重做）
 
-- [ ] 未來月份預先分配
-- [ ] Credit overspending 區分 + Credit Card Payment category
-- [ ] `budget_target` + Underfunded + Auto-Assign
-- [ ] 跨邊界轉帳選填預算分類
-- [ ] 退款回補信封 UI
+> 使用者於 2026-06-14 拍板本輪做滿 5 項並**重做信用卡為完整 CC Payment 機制（取代 B2 現金式）**。以下 P2-D1…D10 為承接設計（部分由 design workflow 的 correctness-first 設計案壓力測試後，依 spec §3.2 架構哲學調整）。
+
+| # | 決策 | 定案 |
+| --- | --- | --- |
+| **P2-D1** | CC Payment 儲存表示 | 擴充 `budget_assignment` 加 nullable `creditAccountId` 判別欄（**非新表、非真分類**，維持單一儲存表、不污染分類樹/統計頁，符合 B3）。`categoryId` 改 nullable；CHECK「`categoryId`/`creditAccountId` 恰一非空」；兩個 **partial unique index**（envelope：`(userId,categoryId,month) WHERE creditAccountId IS NULL`；ccpay：`(userId,creditAccountId,month) WHERE creditAccountId IS NOT NULL`）。CC Payment 信封在 fold/回應用虛擬 id `__CCPAY__:<accountId>`（不落庫，比照 `UNCLASSIFIED_OUT`）。清理：`account` 為 soft-delete → 新增 `Account.afterDestroy` hook 硬刪該卡 assignment（比照 `Category.afterDestroy`）。 |
+| **P2-D2** | covered 演算法 | **採聚合公式，不採逐筆事件重放**。design workflow 的 Angle B 主張逐筆最 YNAB-exact，但牴觸 §3.2 已定案的「2 條聚合 SQL + JS fold」哲學（逐筆/物化被判過度設計）、blast radius 最大。每 (envelope, month)：現金/銀行支出先消耗 funded（`max(0,carryIn)+assigned`），餘額再依卡別 cover 刷卡：`covered[card]=min(creditSpend[card], 餘額)` 移入該卡 CC Payment。**已接受漂移**：同月多筆刷卡 + 期中分配/退款的順序相依情形與 YNAB 微小差異（比照 Phase 1 內部轉帳手續費漂移），Phase 2+ 可改逐筆。 |
+| **P2-D3** | 信用卡退出 RTA | startRTA 與 inflow 一律排除 `type=信用卡` 帳戶（YNAB：負債帳戶不貢獻 RTA；卡債由 CC Payment 負 available 追蹤）。**覆寫 B2 的關鍵行為改變**：Phase 1 起始卡債在 startRTA 壓低 RTA，Phase 2 移到 carryCC。全推導無快照可遷移——翻 SQL 排除 + seed carryCC 自動一致。⚠️ 既有有卡債者部署後 RTA 會跳升 + 出現卡債列（需 release note）。 |
+| **P2-D4** | 起始卡債 | `ccStartDebt[card]` 比照 startRTA 推導卡的起始日餘額（負），CC Payment carryCC 初值 = 該負值。不扣 RTA、不建 target；須分配真錢到 CC Payment 並還款清償（YNAB startup debt，守恆）。 |
+| **P2-D5** | 還款偵測（結構式） | 轉帳 from-leg=EXPENSE 於 on-budget 非信用卡帳戶、`targetAccountId` 指向 on-budget 信用卡 → REPAY，扣該卡 CC Payment available（取代 Phase 1「on-budget 內部轉帳零影響」）。純依帳戶型別，不看分類名。 |
+| **P2-D6** | 現金 vs 信用超支 | 信封負 available 月底歸零時：現金超支扣下月 RTA（同 Phase 1）；信用超支（未 cover 的刷卡）**不扣 RTA**、留為卡債。混合月「信用超支 = Σ未cover刷卡」切分、其餘為現金超支。 |
+| **P2-D7** | 退款回補信封 | `type=收入` 且 categoryId roll-up 到**支出 root** = 退款 → 該信封正 activity，且排除於 RTA inflow。零 schema。 |
+| **P2-D8** | 跨邊界轉帳選填分類 | 轉出 from-leg 的 categoryId 若 roll-up 到支出 root 即歸該信封、否則落 `UNCLASSIFIED_OUT`。複用既有交易編輯設定分類，零 schema。 |
+| **P2-D9** | 未來月份預先分配 | 放寬 `assertMonthInRange`/view 上界至 `當月 + BUDGET_MAX_FUTURE_MONTHS(=12)`；fold 對 target>當月 天然正確（未來無收入，RTA 由當月結轉再扣未來 assigned）。前端 nav 開放未來導覽 + 「未來」徽章。 |
+| **P2-D10** | Targets | 新增 `budget_target` 表（§4.5）；Underfunded 純推導（公式見 §2 備忘）；Auto-Assign 兩鈕（Underfunded / Assigned Last Month）。 |
+
+回應 shape 擴充：`BudgetMonthView` 加 `creditCardPayments: CreditCardPaymentRow[]` 與 `creditOverspending` 提示欄；envelope row 加 `overspendKind`；totals 納入 CC Payment；`moveMoney` 端點泛化以接受 CC Payment 為來源/目的地。
+
+**建置順序**（增量交付、逐項驗證、完成即勾選）：① 未來月份 → ② 退款 + 跨邊界分類（純 SQL/logic）→ ③ schema + Targets → ④ 信用卡完整機制（最大、fold 核心改寫，最後做）。
+
+### Phase 2 — 進度
+
+- [x] **① 未來月份預先分配（P2-D9）**（2026-06-14）：`BUDGET_MAX_FUTURE_MONTHS` 共用常數；`budgetService` 放寬 `assertMonthInRange` 上界 + `addMonths`/`maxBudgetMonth`；前端 `BudgetMonthNav` 開放未來 + 「未來」徽章、`page.tsx` clamp 至 maxMonth。測試：整合 +1（未來月分配即時扣該月 RTA）、範圍驗證改超界、前端 nav +1。後端整合 11 綠 + 前端 14 綠 + 型別零新錯。
+- [x] **② 退款回補信封（P2-D7）+ 跨邊界轉帳選填分類（P2-D8）**（2026-06-14）：activity SQL 改帶號 SUM（支出負/退款收入正）+ 納入「收入掛支出 root」退款列；CASE 轉出依 from-leg root 歸信封或虛擬列（加 grandparent join 取 root type）；inflow SQL 排除退款列。零 schema。測試：整合 +3（退款不進 RTA、未分類轉出反例、含退款守恆）+ 既有 5/6 月斷言更新為已分類轉出語意 + fixture 真實收入改掛收入分類。整合 14 綠。⚠️ **行為備忘**：P2-D7 把「`type=收入` 且分類 root 為支出」一律視為退款（不進 RTA、回補信封）——使用者若把真實收入誤掛支出分類會被重判（YNAB 同此語意；正常收入應掛收入分類）。
+- [x] **③ `budget_target` + Underfunded + Auto-Assign（P2-D10）**（2026-06-14）：migration `20260614000000-create-budget-target.js`（up/down/up 通過；down 另 DROP ENUM 型別避免撞名）+ `BudgetTarget` 模型 + User/Category afterDestroy 清理；shared `upsertTargetSchema`/`autoAssignSchema`/`BudgetTargetInfo` + row 加 `target`/`underfunded`；`budgetLogic.computeUnderfunded`（SET_ASIDE/REFILL/BALANCE_BY_DATE 三式 + `monthDiff`）；service `upsertTarget`/`deleteTarget`/`autoAssign`（UNDERFUNDED 補缺口 / LAST_MONTH 沿用上月）；controller/routes（PUT/DELETE `/budget/categories/:categoryId/target`、POST `/budget/months/:month/auto-assign`）；前端 `TargetPopover` + 缺口快速補足 chip + Auto-Assign 兩鈕。測試：後端整合 +4、單元 +7、前端 +1。整合 18 綠 + 單元 18 綠 + 前端 15 綠。
+- [x] **④ 信用卡完整機制（P2-D1～D6）**（2026-06-14）：
+  - migration `20260614010000-budget-credit-card.js`（`budget_assignment` 加 `creditAccountId` + categoryId 改 nullable + 兩 partial unique idx + CHECK；up/down/up 通過）。
+  - 模型：`budgetAssignment` 加 `creditAccountId`/categoryId nullable；`Account.afterDestroy` hook 硬刪該卡 CC Payment assignment。
+  - shared：`CreditCardPaymentRow`、`BudgetMonthView.creditCardPayments`/`creditOverspending`、`BudgetEnvelopeRow.overspendKind`、`moveMoney` 加 cc 端點、`monthCreditParamsSchema`。
+  - **fold 改寫**（聚合公式，向後相容：無卡時退化為原行為）：`availEnv = funded + envActivity`；`creditOverspend = min(TC, max(0,−availEnv))`、`cashOverspend = 餘`、`covered = TC − creditOverspend`（貪婪分配到各卡）；CC Payment available = carryCC(起始卡債) + assignedCC + Σcovered − repay；只有 cashOverspend 扣 RTA。
+  - service：`computeStartPositions`（startRTA 排除信用卡 + ccStartCarry + cards）；card-spend / repay 聚合 SQL；inflow 排除信用卡；assignments 拆 envelope/cc；`ccAssign`；`moveMoney` 泛化（端點可為分類/CC Payment/RTA）。
+  - controller/routes：`PUT /budget/months/:month/cc-assignments/:accountId`；moveMoney 接 cc 欄位。
+  - 前端：`CreditCardPaymentSection`（撥備 cell + 可付 pill + 卡債標籤）；`OverspendingBanner` 現金/信用分流；page 接線。
+  - 測試：單元 +5（covered、信用超支不扣 RTA、起始卡債、mixed、還款）、整合 +3（刷卡 covered、還款、cc-assign）、前端 +2。**後端全套 182 綠、前端全套 46 綠、型別零新錯**。
+  - ⚠️ **覆寫 B2（部署 release note）**：信用卡帳戶退出 RTA、起始卡債移至 CC Payment carry——既有有卡債者部署後 RTA 會跳升 + 出現 CC Payment 卡債列。**已接受漂移**：covered 採聚合（同月多筆刷卡+期中分配/退款的順序相依與 YNAB 微差）；退款入信用卡僅回補信封、未自動降 CC Payment；信用卡跨邊界轉出未計入 cardSpend（視同現金式超支）。
+  - hookTimeout/testTimeout 放寬至 60s（budget 整合 fixture 增至 4 組，雲端延遲變異偶致重型 beforeAll 逾時）。
+
+**Phase 2 全部完成（2026-06-14）。** 後端整合 21 + 單元 23、前端 17（budget 子套件），全套 backend 182 / frontend 46 綠。未 commit（使用者未要求）。
 
 ---
 

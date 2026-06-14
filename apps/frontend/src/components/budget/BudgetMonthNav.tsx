@@ -6,7 +6,10 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface BudgetMonthNavProps {
   startMonth: string;
+  /** 伺服器「當月」——用於標示未來月份 */
   currentMonth: string;
+  /** 可導覽的最遠未來月份（含）= 當月 + BUDGET_MAX_FUTURE_MONTHS */
+  maxMonth: string;
   value: string;
   onChange: (month: string) => void;
 }
@@ -42,11 +45,13 @@ function nextMonth(m: string): string {
 export function BudgetMonthNav({
   startMonth,
   currentMonth,
+  maxMonth,
   value,
   onChange,
 }: BudgetMonthNavProps) {
   const canPrev = value > startMonth;
-  const canNext = value < currentMonth;
+  const canNext = value < maxMonth;
+  const isFuture = value > currentMonth;
 
   return (
     <div className="flex items-center gap-2">
@@ -65,6 +70,14 @@ export function BudgetMonthNav({
         className="text-lg font-semibold min-w-[160px] text-center font-outfit tracking-wide text-slate-800 dark:text-slate-100"
       >
         {formatMonthLabel(value)}
+        {isFuture && (
+          <span
+            data-testid="future-badge"
+            className="ml-2 align-middle text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400"
+          >
+            未來
+          </span>
+        )}
       </span>
       <Button
         variant="ghost"

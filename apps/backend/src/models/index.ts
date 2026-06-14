@@ -15,6 +15,7 @@ import PasswordResetToken from './PasswordResetToken';
 import Currency from './currency';
 import ExchangeRate from './exchangeRate';
 import BudgetAssignment from './budgetAssignment';
+import BudgetTarget from './budgetTarget';
 
 // -----------------------------------------------------------------------------
 // Soft Delete Hooks (Cascade)
@@ -44,6 +45,7 @@ User.addHook('afterDestroy', async (user: any, options: any) => {
   await InstallmentPlan.destroy({ where: { userId }, transaction });
   await RecurringTemplate.destroy({ where: { userId }, transaction });
   await BudgetAssignment.destroy({ where: { userId }, transaction });
+  await BudgetTarget.destroy({ where: { userId }, transaction });
 });
 
 // Category 為 soft-delete（paranoid:true）：DB 層的 ON DELETE CASCADE 不會觸發，
@@ -60,6 +62,22 @@ Category.addHook('afterDestroy', async (category: any, options: any) => {
   // (2) 硬刪 budget_assignment（模型 paranoid:false），RTA 自動回升（spec §3.2）。
   await BudgetAssignment.destroy({
     where: { categoryId: category.id },
+    transaction,
+  });
+  // (3) 硬刪 budget_target（信封消失，target 一併移除）。
+  await BudgetTarget.destroy({
+    where: { categoryId: category.id },
+    transaction,
+  });
+});
+
+// Account 為 soft-delete（paranoid）：DB 層的 ON DELETE CASCADE 不會觸發，
+// 故在此 hook 硬刪該卡的 CC Payment assignment（Phase 2 ④）——RTA 自動回升，
+// 卡債歷史仍由交易保留（同 closed account 語意）。
+Account.addHook('afterDestroy', async (account: any, options: any) => {
+  const transaction = options.transaction;
+  await BudgetAssignment.destroy({
+    where: { creditAccountId: account.id },
     transaction,
   });
 });
@@ -257,6 +275,15 @@ BudgetAssignment.belongsTo(Category, {
   as: 'category',
 });
 
+// BudgetTarget & User / Category
+User.hasMany(BudgetTarget, { foreignKey: 'userId', as: 'budgetTargets' });
+BudgetTarget.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+Category.hasMany(BudgetTarget, {
+  foreignKey: 'categoryId',
+  as: 'budgetTargets',
+});
+BudgetTarget.belongsTo(Category, { foreignKey: 'categoryId', as: 'category' });
+
 // Export everything
 export {
   Account,
@@ -276,4 +303,5 @@ export {
   Currency,
   ExchangeRate,
   BudgetAssignment,
+  BudgetTarget,
 };

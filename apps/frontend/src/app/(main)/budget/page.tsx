@@ -10,6 +10,7 @@ import {
   BudgetMonthNav,
   ReadyToAssignCard,
   BudgetTable,
+  CreditCardPaymentSection,
   OverspendingBanner,
   InitBudgetDialog,
 } from '@/components/budget';
@@ -19,9 +20,19 @@ import {
   initBudget,
   assignBudget,
   moveBudgetMoney,
+  upsertBudgetTarget,
+  deleteBudgetTarget,
+  autoAssignBudget,
+  ccAssignBudget,
 } from '@/services/budget';
 import { getPersonnelAccounts } from '@/services/personnelAccount';
-import type { BudgetMonthView, AccountType } from '@repo/shared';
+import type {
+  BudgetMonthView,
+  AccountType,
+  BudgetTargetType,
+  AutoAssignStrategy,
+} from '@repo/shared';
+import { BUDGET_MAX_FUTURE_MONTHS } from '@repo/shared';
 import { Calculator } from 'lucide-react';
 
 /** 僅作 status 載入前的初始預設值；「當月」上界一律以伺服器回傳的 currentMonth 為準（M3） */
@@ -30,10 +41,20 @@ function currentMonth1st(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
-/** 限制月份在 [start, current]（後端同樣驗證，這裡是 UX 防呆） */
-function clampMonth(month: string, start: string, current: string): string {
+/** 月份字串 +n 個月（n 可負）；回傳該月 1 號 YYYY-MM-01 */
+function addMonths(monthStr: string, n: number): string {
+  const parts = monthStr.split('-').map(Number);
+  let y = parts[0]!;
+  let m = parts[1]! - 1 + n;
+  y += Math.floor(m / 12);
+  m = ((m % 12) + 12) % 12;
+  return `${y}-${String(m + 1).padStart(2, '0')}-01`;
+}
+
+/** 限制月份在 [start, max]（後端同樣驗證，這裡是 UX 防呆） */
+function clampMonth(month: string, start: string, max: string): string {
   if (month < start) return start;
-  if (month > current) return current;
+  if (month > max) return max;
   return month;
 }
 
@@ -86,8 +107,10 @@ export default function BudgetPage() {
   const enabled = !!status?.enabled && !!status.startMonth;
   // 「當月」一律用伺服器回傳值，避免瀏覽器本地時間與伺服器時間在月初落差（M3）
   const serverCurrentMonth = status?.currentMonth ?? currentMonth1st();
+  // Phase 2：可導覽/分配的最遠未來月份（與後端 assertMonthInRange 上界一致）
+  const maxMonth = addMonths(serverCurrentMonth, BUDGET_MAX_FUTURE_MONTHS);
   const month = enabled
-    ? clampMonth(selectedMonth, status.startMonth!, serverCurrentMonth)
+    ? clampMonth(selectedMonth, status.startMonth!, maxMonth)
     : selectedMonth;
 
   const { data: monthView, mutate: mutateMonth } = useSWR(
@@ -139,6 +162,42 @@ export default function BudgetPage() {
   ) => {
     await moveBudgetMoney(month, { fromCategoryId, toCategoryId, amount });
     await mutateMonth();
+  };
+
+  // Target upsert/delete（成功/失敗 toast 由 TargetPopover 負責，這裡 rethrow 讓它捕捉）
+  const handleUpsertTarget = async (
+    categoryId: string,
+    data: { type: BudgetTargetType; amount: number; dueDate: string | null },
+  ) => {
+    await upsertBudgetTarget(categoryId, data);
+    await mutateMonth();
+  };
+  const handleDeleteTarget = async (categoryId: string) => {
+    await deleteBudgetTarget(categoryId);
+    await mutateMonth();
+  };
+
+  // Auto-Assign
+  const handleAutoAssign = async (strategy: AutoAssignStrategy) => {
+    try {
+      await autoAssignBudget(month, strategy);
+      await mutateMonth();
+      toast.success(
+        strategy === 'UNDERFUNDED' ? '已補足不足額' : '已沿用上月分配',
+      );
+    } catch (err: any) {
+      toast.error(err?.message || '自動分配失敗');
+    }
+  };
+
+  // CC Payment 撥備（Phase 2 ④）
+  const handleCcAssign = async (accountId: string, assigned: number) => {
+    try {
+      await ccAssignBudget(month, accountId, assigned);
+      await mutateMonth();
+    } catch (err: any) {
+      toast.error(err?.message || '撥備失敗');
+    }
   };
 
   // Load accounts for init dialog
@@ -205,11 +264,25 @@ export default function BudgetPage() {
     );
   }
 
-  // 含「轉出（未分類）」虛擬列的負 available——它不在 rows 內、卻同樣會計入
-  // priorOverspend 扣下月 RTA，漏掉會讓使用者收不到提示（M4）
-  const hasOverspending =
-    (monthView?.rows.some((r) => r.isOverspent) ?? false) ||
-    (monthView?.unclassifiedTransferOut?.available ?? 0) < 0;
+  // 現金超支（含「轉出（未分類）」虛擬列負 available）→ 扣下月 RTA；
+  // 信用超支（刷卡超出信封）→ 累積卡債、不扣 RTA（Phase 2 ④）。分流提示。
+  const cashOverspend =
+    (monthView?.rows.some(
+      (r) => r.overspendKind === 'cash' || r.overspendKind === 'mixed',
+    ) ?? false) || (monthView?.unclassifiedTransferOut?.available ?? 0) < 0;
+  const creditOverspend =
+    (monthView?.creditOverspending ?? 0) > 0 ||
+    (monthView?.rows.some(
+      (r) => r.overspendKind === 'credit' || r.overspendKind === 'mixed',
+    ) ?? false);
+  const overspendKind: 'cash' | 'credit' | 'both' | null =
+    cashOverspend && creditOverspend
+      ? 'both'
+      : creditOverspend
+        ? 'credit'
+        : cashOverspend
+          ? 'cash'
+          : null;
   const baseCurrency = status?.baseCurrencyCode || 'TWD';
 
   return (
@@ -228,6 +301,7 @@ export default function BudgetPage() {
         <BudgetMonthNav
           startMonth={status?.startMonth || month}
           currentMonth={serverCurrentMonth}
+          maxMonth={maxMonth}
           value={month}
           onChange={setSelectedMonth}
         />
@@ -242,8 +316,30 @@ export default function BudgetPage() {
         />
       )}
 
-      {/* Overspending Banner */}
-      {hasOverspending && <OverspendingBanner />}
+      {/* Overspending Banner（現金/信用分流） */}
+      {overspendKind && <OverspendingBanner kind={overspendKind} />}
+
+      {/* Auto-Assign 工具列 */}
+      {monthView && (
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleAutoAssign('UNDERFUNDED')}
+            className="cursor-pointer"
+          >
+            補足不足額
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleAutoAssign('LAST_MONTH')}
+            className="cursor-pointer"
+          >
+            沿用上月
+          </Button>
+        </div>
+      )}
 
       {/* Budget Table */}
       {monthView ? (
@@ -253,9 +349,20 @@ export default function BudgetPage() {
           baseCurrencyCode={baseCurrency}
           onAssign={handleAssign}
           onMove={handleMove}
+          onUpsertTarget={handleUpsertTarget}
+          onDeleteTarget={handleDeleteTarget}
         />
       ) : (
         <Skeleton className="h-[400px] w-full rounded-2xl" />
+      )}
+
+      {/* 信用卡付款信封（Phase 2 ④） */}
+      {monthView && (monthView.creditCardPayments?.length ?? 0) > 0 && (
+        <CreditCardPaymentSection
+          rows={monthView.creditCardPayments}
+          baseCurrencyCode={baseCurrency}
+          onAssign={handleCcAssign}
+        />
       )}
     </Container>
   );

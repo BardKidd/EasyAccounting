@@ -1,14 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import type { BudgetMonthView } from '@repo/shared';
+import type {
+  BudgetMonthView,
+  BudgetTargetType,
+  BudgetTargetInfo,
+} from '@repo/shared';
 import { formatCurrency } from '@/lib/utils';
 import { AssignedCell } from './AssignedCell';
 import { AvailablePill } from './AvailablePill';
 import { MoveMoneyPopover } from './MoveMoneyPopover';
+import { TargetPopover } from './TargetPopover';
 import { CategoryActivitySheet } from './CategoryActivitySheet';
 import { CategoryIcon } from '@/components/ui/category-icon';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Target } from 'lucide-react';
+
+/** 面向使用者的 target 摘要文案 */
+function targetLabel(t: BudgetTargetInfo, fmt: (n: number) => string): string {
+  if (t.type === 'SET_ASIDE') return `每月存 ${fmt(t.amount)}`;
+  if (t.type === 'REFILL') return `補滿到 ${fmt(t.amount)}`;
+  return `${t.dueDate?.slice(0, 7) ?? ''} 前存到 ${fmt(t.amount)}`;
+}
 
 interface BudgetTableProps {
   data: BudgetMonthView;
@@ -21,6 +33,11 @@ interface BudgetTableProps {
     toCategoryId: string | null,
     amount: number,
   ) => Promise<void>;
+  onUpsertTarget: (
+    categoryId: string,
+    data: { type: BudgetTargetType; amount: number; dueDate: string | null },
+  ) => Promise<void>;
+  onDeleteTarget: (categoryId: string) => Promise<void>;
 }
 
 const GRID_COLS =
@@ -32,6 +49,8 @@ export function BudgetTable({
   baseCurrencyCode,
   onAssign,
   onMove,
+  onUpsertTarget,
+  onDeleteTarget,
 }: BudgetTableProps) {
   const fmt = (v: number) => formatCurrency(v, baseCurrencyCode);
   const [activityTarget, setActivityTarget] = useState<{
@@ -72,9 +91,54 @@ export function BudgetTable({
                   <CategoryIcon iconName={row.icon} />
                 </div>
               )}
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
-                {row.name}
-              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
+                    {row.name}
+                  </span>
+                  <TargetPopover
+                    row={row}
+                    onUpsert={onUpsertTarget}
+                    onDelete={onDeleteTarget}
+                  >
+                    <button
+                      data-testid="target-trigger"
+                      title="設定目標"
+                      className={`shrink-0 rounded p-0.5 cursor-pointer transition-colors ${
+                        row.target
+                          ? 'text-emerald-500 hover:text-emerald-600'
+                          : 'text-slate-300 dark:text-slate-600 hover:text-slate-400'
+                      }`}
+                    >
+                      <Target className="h-3.5 w-3.5" />
+                    </button>
+                  </TargetPopover>
+                </div>
+                {row.target && (
+                  <div className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
+                    {targetLabel(row.target, fmt)}
+                    {' · '}
+                    {row.underfunded > 0 ? (
+                      <button
+                        data-testid="underfunded-fill"
+                        onClick={() =>
+                          onAssign(
+                            row.categoryId,
+                            row.assigned + row.underfunded,
+                          )
+                        }
+                        className="text-amber-600 dark:text-amber-400 font-medium hover:underline cursor-pointer"
+                      >
+                        差 {fmt(row.underfunded)}
+                      </button>
+                    ) : (
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        已達標
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Assigned */}

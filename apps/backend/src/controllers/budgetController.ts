@@ -85,17 +85,73 @@ const moveMoney = (req: Request, res: Response) => {
   runBudget(req, res, async () => {
     const { userId } = req.user;
     const month = req.params.month!;
-    const { fromCategoryId, toCategoryId, amount } = req.body;
-    await budgetService.moveMoney(
-      userId,
-      month,
+    const {
       fromCategoryId,
       toCategoryId,
       amount,
+      fromCreditAccountId,
+      toCreditAccountId,
+    } = req.body;
+    await budgetService.moveMoney(
+      userId,
+      month,
+      fromCategoryId ?? null,
+      toCategoryId ?? null,
+      amount,
+      fromCreditAccountId ?? null,
+      toCreditAccountId ?? null,
     );
     res
       .status(StatusCodes.OK)
       .json(responseHelper(true, null, '搬錢完成', null));
+  });
+};
+
+// CC Payment 信封分配（Phase 2 ④）
+const assignCreditPayment = (req: Request, res: Response) => {
+  runBudget(req, res, async () => {
+    const { userId } = req.user;
+    const month = req.params.month!;
+    const accountId = req.params.accountId!;
+    const { assigned } = req.body;
+    await budgetService.ccAssign(userId, month, accountId, assigned);
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, '信用卡撥備已更新', null));
+  });
+};
+
+const upsertTarget = (req: Request, res: Response) => {
+  runBudget(req, res, async () => {
+    const { userId } = req.user;
+    const categoryId = req.params.categoryId!;
+    await budgetService.upsertTarget(userId, categoryId, req.body);
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, '目標已更新', null));
+  });
+};
+
+const deleteTarget = (req: Request, res: Response) => {
+  runBudget(req, res, async () => {
+    const { userId } = req.user;
+    const categoryId = req.params.categoryId!;
+    await budgetService.deleteTarget(userId, categoryId);
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, '目標已刪除', null));
+  });
+};
+
+const autoAssign = (req: Request, res: Response) => {
+  runBudget(req, res, async () => {
+    const { userId } = req.user;
+    const month = req.params.month!;
+    const { strategy } = req.body;
+    await budgetService.autoAssign(userId, month, strategy);
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, '自動分配完成', null));
   });
 };
 
@@ -105,5 +161,9 @@ export default {
   updateSettings,
   getMonthView,
   assignBudget,
+  assignCreditPayment,
   moveMoney,
+  upsertTarget,
+  deleteTarget,
+  autoAssign,
 };

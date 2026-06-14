@@ -8,7 +8,13 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { computeMonthView, generateMonthRange, UNCLASSIFIED_OUT_ID } from '@/logic/budgetLogic';
+import {
+  computeMonthView,
+  generateMonthRange,
+  UNCLASSIFIED_OUT_ID,
+  computeUnderfunded,
+  monthDiff,
+} from '@/logic/budgetLogic';
 import type { CategoryMeta } from '@/logic/budgetLogic';
 
 // ---------------------------------------------------------------------------
@@ -280,6 +286,25 @@ describe('computeMonthView', () => {
     expect(result.unclassifiedTransferOut).toBeNull();
   });
 
+  it('target + underfunded 隨 row 輸出（Phase 2 ③）', () => {
+    const result = computeMonthView({
+      startMonth: '2026-01-01',
+      targetMonth: '2026-01-01',
+      startRTA: 10000,
+      inflowByMonth: {},
+      assignedByCatMonth: { food: { '2026-01-01': 300 } },
+      activityByCatMonth: {},
+      categories: [cat('food', '飲食')],
+      targetsByCat: {
+        food: { type: 'REFILL', amount: 1000, dueDate: null },
+      },
+    });
+    const row = result.rows.find((r: any) => r.categoryId === 'food')!;
+    expect(row.target).toEqual({ type: 'REFILL', amount: 1000, dueDate: null });
+    // REFILL：1000 − carryIn(0) − assigned(300) = 700
+    expect(row.underfunded).toBe(700);
+  });
+
   it('multi-month carry forward (正結轉)', () => {
     // Month 1: food assigned 5000, activity -2000 → available = 3000
     // Month 2: carry = 3000, assigned 0, activity -1000 → available = 2000
@@ -300,5 +325,167 @@ describe('computeMonthView', () => {
 
     expect(result.rows[0]!.available).toBe(2000);
     expect(result.readyToAssign).toBe(10000 - 5000); // 5000
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeUnderfunded / monthDiff（Phase 2 ③ / P2-D10）
+// ---------------------------------------------------------------------------
+
+describe('monthDiff', () => {
+  it('same month = 0, forward positive, cross-year', () => {
+    expect(monthDiff('2026-05-01', '2026-05-01')).toBe(0);
+    expect(monthDiff('2026-05-01', '2026-07-01')).toBe(2);
+    expect(monthDiff('2025-11-01', '2026-02-01')).toBe(3);
+    expect(monthDiff('2026-07-01', '2026-05-01')).toBe(-2);
+  });
+});
+
+describe('computeMonthView 信用卡（Phase 2 ④）', () => {
+  it('刷卡被信封覆蓋：covered 移入 CC Payment，信封照扣，無超支', () => {
+    const r = computeMonthView({
+      startMonth: '2026-01-01',
+      targetMonth: '2026-01-01',
+      startRTA: 1000,
+      inflowByMonth: {},
+      assignedByCatMonth: { food: { '2026-01-01': 100 } },
+      activityByCatMonth: { food: { '2026-01-01': -50 } },
+      categories: [cat('food', '飲食')],
+      cards: [{ id: 'visa', name: 'Visa' }],
+      cardSpendByEnvCardMonth: { food: { visa: { '2026-01-01': 50 } } },
+    });
+    const food = r.rows.find((x) => x.categoryId === 'food')!;
+    expect(food.available).toBe(50); // 100 − 50
+    expect(food.overspendKind).toBeNull();
+    const cc = r.creditCardPayments.find((c) => c.accountId === 'visa')!;
+    expect(cc.covered).toBe(50);
+    expect(cc.available).toBe(50);
+    expect(cc.activity).toBe(50);
+    expect(cc.isDebt).toBe(false);
+    expect(r.creditOverspending).toBe(0);
+    expect(r.readyToAssign).toBe(900); // 1000 − 100(env assigned)
+  });
+
+  it('信用超支不扣 RTA（留為卡債），信封月底歸零', () => {
+    const r = computeMonthView({
+      startMonth: '2026-01-01',
+      targetMonth: '2026-02-01',
+      startRTA: 1000,
+      inflowByMonth: {},
+      assignedByCatMonth: { food: { '2026-01-01': 100 } },
+      activityByCatMonth: { food: { '2026-01-01': -130 } },
+      categories: [cat('food', '飲食')],
+      cards: [{ id: 'visa', name: 'Visa' }],
+      cardSpendByEnvCardMonth: { food: { visa: { '2026-01-01': 130 } } },
+    });
+    // 1 月 availEnv −30 全為信用超支（TC 130 ≥ 30）→ cash overspend 0
+    expect(r.rtaBreakdown.priorOverspending).toBe(0);
+    expect(r.readyToAssign).toBe(900); // 1000 − 100，未被卡債扣減
+    const food = r.rows.find((x) => x.categoryId === 'food')!;
+    expect(food.available).toBe(0); // 2 月：負結轉歸零
+    const cc = r.creditCardPayments.find((c) => c.accountId === 'visa')!;
+    expect(cc.available).toBe(100); // 1 月 covered 100 結轉
+  });
+
+  it('起始卡債 → CC Payment 起始為負；撥備後縮減；扣 RTA', () => {
+    const r = computeMonthView({
+      startMonth: '2026-01-01',
+      targetMonth: '2026-01-01',
+      startRTA: 1000,
+      inflowByMonth: {},
+      assignedByCatMonth: {},
+      activityByCatMonth: {},
+      categories: [cat('food', '飲食')],
+      cards: [{ id: 'visa', name: 'Visa' }],
+      ccStartCarry: { visa: -1000 },
+      ccAssignedByCardMonth: { visa: { '2026-01-01': 400 } },
+    });
+    const cc = r.creditCardPayments.find((c) => c.accountId === 'visa')!;
+    expect(cc.available).toBe(-600); // −1000 + 400
+    expect(cc.isDebt).toBe(true);
+    expect(cc.assigned).toBe(400);
+    expect(r.readyToAssign).toBe(600); // 1000 − 400(cc assigned)
+  });
+
+  it('現金+信用混合超支：cashOverspend 扣 RTA、creditOverspend 不扣；overspendKind=mixed', () => {
+    const r = computeMonthView({
+      startMonth: '2026-01-01',
+      targetMonth: '2026-01-01',
+      startRTA: 1000,
+      inflowByMonth: {},
+      assignedByCatMonth: { food: { '2026-01-01': 100 } },
+      activityByCatMonth: { food: { '2026-01-01': -150 } }, // 現金120 + 刷卡30
+      categories: [cat('food', '飲食')],
+      cards: [{ id: 'visa', name: 'Visa' }],
+      cardSpendByEnvCardMonth: { food: { visa: { '2026-01-01': 30 } } },
+    });
+    const food = r.rows.find((x) => x.categoryId === 'food')!;
+    expect(food.available).toBe(-50);
+    expect(food.overspendKind).toBe('mixed'); // cash 20 + credit 30
+    expect(r.creditOverspending).toBe(30);
+    const cc = r.creditCardPayments.find((c) => c.accountId === 'visa')!;
+    expect(cc.covered).toBe(0); // 30 − 30
+    expect(cc.available).toBe(0);
+  });
+
+  it('還款 bank→card 縮減 CC Payment available', () => {
+    const r = computeMonthView({
+      startMonth: '2026-01-01',
+      targetMonth: '2026-01-01',
+      startRTA: 1000,
+      inflowByMonth: {},
+      assignedByCatMonth: { food: { '2026-01-01': 100 } },
+      activityByCatMonth: { food: { '2026-01-01': -50 } },
+      categories: [cat('food', '飲食')],
+      cards: [{ id: 'visa', name: 'Visa' }],
+      cardSpendByEnvCardMonth: { food: { visa: { '2026-01-01': 50 } } },
+      repayByCardMonth: { visa: { '2026-01-01': 30 } },
+    });
+    const cc = r.creditCardPayments.find((c) => c.accountId === 'visa')!;
+    // available = covered 50 − repay 30 = 20
+    expect(cc.available).toBe(20);
+    expect(cc.payments).toBe(30);
+    expect(cc.activity).toBe(20); // covered 50 − repay 30
+  });
+});
+
+describe('computeUnderfunded', () => {
+  it('SET_ASIDE = max(0, amount − assigned)', () => {
+    expect(
+      computeUnderfunded({ type: 'SET_ASIDE', amount: 500, dueDate: null }, 0, 300, '2026-05-01'),
+    ).toBe(200);
+    expect(
+      computeUnderfunded({ type: 'SET_ASIDE', amount: 500, dueDate: null }, 999, 500, '2026-05-01'),
+    ).toBe(0); // 已達標（carryIn 不影響 SET_ASIDE）
+  });
+
+  it('REFILL = max(0, amount − carryIn − assigned)', () => {
+    expect(
+      computeUnderfunded({ type: 'REFILL', amount: 1000, dueDate: null }, 200, 400, '2026-05-01'),
+    ).toBe(400); // 1000 − 200 − 400
+    expect(
+      computeUnderfunded({ type: 'REFILL', amount: 1000, dueDate: null }, 1000, 0, '2026-05-01'),
+    ).toBe(0); // carryIn 已足
+  });
+
+  it('BALANCE_BY_DATE = max(0, 缺口÷剩餘月數 − assigned)', () => {
+    // 缺口 1200 − carryIn 0 = 1200；05→07 共 3 月；1200/3=400；− assigned 100 = 300
+    expect(
+      computeUnderfunded(
+        { type: 'BALANCE_BY_DATE', amount: 1200, dueDate: '2026-07-01' },
+        0,
+        100,
+        '2026-05-01',
+      ),
+    ).toBe(300);
+    // 逾期（dueDate < target）→ 剩餘月數最少 1，全額缺口扣 assigned
+    expect(
+      computeUnderfunded(
+        { type: 'BALANCE_BY_DATE', amount: 1000, dueDate: '2026-04-01' },
+        300,
+        100,
+        '2026-05-01',
+      ),
+    ).toBe(600); // 缺口 700 / 1 − 100
   });
 });

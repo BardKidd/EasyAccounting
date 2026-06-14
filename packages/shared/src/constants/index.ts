@@ -289,3 +289,8 @@ export const roundRate = (value: number): number => {
   const factor = 10 ** EXCHANGE_RATE_DECIMALS;
   return Math.round((value + Number.EPSILON) * factor) / factor;
 };
+
+// 預算可分配的最遠未來月份（自「當月」起算的月數上界）。Phase 2「未來月份預先分配」
+// 用此上界限制 view/assign/move 的月份範圍：放寬未來、但避免無界 month 造成 fold 月份迴圈爆炸
+// （generateMonthRange 會從 start 迭代到 target）。前後端共用同一上界避免漂移。
+export const BUDGET_MAX_FUTURE_MONTHS = 12;
