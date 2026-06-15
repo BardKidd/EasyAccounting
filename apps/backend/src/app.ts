@@ -23,6 +23,7 @@ import recurringTemplateRoute from '@/routes/recurringTemplateRoute';
 import chatRoute from '@/routes/chatRoute';
 import currencyRoute from '@/routes/currencyRoute';
 import budgetRoute from '@/routes/budgetRoute';
+import tagRoute from '@/routes/tagRoute';
 import {
   startDailyReminderCronJobs,
   startMonthlyAnalysisNoticeCronJobs,
@@ -82,6 +83,7 @@ app.use('/api', recurringTemplateRoute);
 app.use('/api', chatRoute);
 app.use('/api', currencyRoute);
 app.use('/api', budgetRoute);
+app.use('/api', tagRoute);
 
 // env 沒設定預設直接通過。這樣 PRD DEV 都不用去改了。
 console.log('[App] Starting Cron Jobs...');

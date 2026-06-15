@@ -103,10 +103,11 @@
 #### 2. 拆分交易 + 標籤 (Split Transaction + Tags) — Priority High
 
 > 專業記帳的兩個標配，目前皆無。`TransactionExtra` 只是加減項標籤，非真正 split。
+> 📄 **技術規格**: [split-tags-spec.md](docs/specs/split-tags-spec.md) (設計定案；決策 S1–S9 已拍板；**Phase A Tags → Phase B Split** 順序固定)
 
-- [ ] **拆分交易**: 一筆交易拆成多個分類 (例: 全聯 1200 → 食材 800 + 日用品 400)。
-- [ ] **標籤系統 (Tags)**: 跨分類橫向標記 (例: 「日本旅遊 2026」橫跨交通/飲食/購物)。
-- [ ] 統計與篩選支援 split / tag 維度。
+- [x] **Phase A — 標籤系統 (Tags)** (2026-06-15)：真多對多 `tag`/`transaction_tag`，掛整筆交易；CRUD + 交易套用 + `?tagIds` 篩選 + 前端 chip/列表/篩選/管理頁。本機測試綠 (backend 190 / frontend 49)；**部署需跑 migration**。
+- [ ] **Phase B — 拆分交易 (Split)**: 一筆交易拆成多個分類 (例: 全聯 1200 → 食材 800 + 日用品 400)；父層 `TransactionExtra` 與拆分並存、按比例攤提。
+- [ ] 統計與篩選支援 split / tag 維度 (聚合走單一真實來源 `expandToCategoryActivity`)。
 
 #### 3. 規則引擎 (Auto-categorization Rules) — Priority High
 
@@ -142,3 +143,37 @@
   - **僅更新單筆**: 只修改該期金額 (現行行為)。
   - **連動後續期數**: 修改後自動將剩餘總額重新分配到後續未處理期數。
     > 範例：6000 分六期 (每期 1000)，前 3 期已完成，第 4 期改為 2000 → 剩餘 1000 平分至第 5、6 期 (各 500)。
+
+---
+
+## 🗄️ NoSQL 水平擴展候選分析 (Architecture Planning)
+
+> 目標：未來在本地導入可水平擴展的 NoSQL，承接潛在高流量寫入 / 讀取。本節分析 Roadmap 中哪些功能適合下放至 NoSQL 分片叢集，哪些必須留在 PostgreSQL。
+
+### 指導原則
+
+- **金融帳本永遠留在 PostgreSQL**：交易、帳戶餘額、預算 assignment/target、對帳、持倉成本基礎與已實現損益等需要 **ACID 與強一致性**，不可分片到最終一致 (eventual consistency) 的節點——使用者餘額不容許讀到舊值。PG 自身可用 read replica / 按 userId 分區擴展讀，但帳本不下放 NoSQL。
+- **高流量的來源不是單一使用者，而是「使用者數 × 背景寫入」的總量**。因此 NoSQL 候選的分片鍵 (shard key) 幾乎都是 `userId`（每使用者隔離、無跨片 join）或 `symbol`（行情共享）。
+- NoSQL 只承接這類形狀的資料：**append-only / 寫多 / 廣播讀 / 時序 / 非結構化 / 可按上述鍵乾淨分片**。
+
+### 候選清單（依優先序）
+
+| 優先 | 候選資料 | 為何適合水平擴展 | 分片鍵 | 建議 NoSQL 型態 | 現況 |
+|---|---|---|---|---|---|
+| 🥇 強 | **行情 / 匯率時序 (price & FX feed)** | 寫多、時序、symbol 多 (crypto 24h 連續 tick)；投資持倉 + 即時/crypto 報價落地後是全 app 寫入量最高者 | `symbol` + 時間桶 | 時序集合 (Mongo Time-Series / Influx / Timescale) | `exchangeRate` 現於 PG，日 cron 量小；intraday/crypto 會壓垮關聯庫 → 需遷出 |
+| 🥈 強 | **稽核 / 變更歷史 (audit log)** | append-only、永不更新、無上限成長、寫多、不需 join；shard-by-user 教科書案例 | `userId` | 寬列 / 文件 (Cassandra / Scylla / Mongo sharded) | Tier 3 待辦，未實作 |
+| 🥈 強 | **行為事件流 (analytics events)** | 與 audit log 同形狀的高量 append；為「訂閱偵測 / 現金流預測」的事實來源 | `userId` + 時間 | 同上 / event store | 未實作（依附 Tier 3） |
+| 🥉 強 | **AI Chat 對話歷史 + 向量檢索 (RAG)** | 對話訊息 append-only、可 shard-by-conversation；向量檢索讀多、可加 replica | `userId` / `conversationId` | 文件 + 向量索引 (已用 Mongo) | `knowledgeChunk` 已在 Mongo；對話歷史目前由前端帶入、未持久化 |
+| ◎ 中 | **通知收件匣 / 推播 feed** | fan-out 寫、ephemeral、可用 TTL index 自動清 | `userId` | 文件 + TTL index | 現 `personnel_notification` 只是「偏好開關」，**尚無真正 inbox** |
+| ◎ 中 | **預計算報表 / 儀表板快取** | 昂貴聚合算一次、讀多次 (月報、預算 vs 實際、淨值趨勢) | `userId` + 期間 | 文件 / KV (Mongo / Redis) | 目前即時計算 |
+| ○ 讀放大 | **系統公告廣播讀** | 每使用者每頁讀同一小文件，讀多寫極少 | 全域（不分片） | 文件 + read replica / edge cache | 已在 Mongo（含 TTL index） |
+| ○ 搜尋 | **交易全文搜尋索引** | 讀放大的二級索引；**非真實來源**，需隨 SQL 寫入 reindex（注意一致性落差） | `userId` | 搜尋引擎 (OpenSearch / Mongo Atlas Search) | Tier 2 待辦 |
+
+### 必須留在 SQL（不可遷移）
+
+交易帳本、帳戶餘額、預算 assignment/target、對帳狀態、投資持倉成本基礎與已實現損益——皆需強一致性與跨實體交易，留 PostgreSQL。
+
+### 建議起手式
+
+- **先練「行情/匯率時序」**：寫入量最大、分片鍵最乾淨，且直接銜接既有多幣別 + 投資持倉 roadmap。
+- **想練 per-user 分片 + append-only 模型**：選 **audit log**，風險低（純新增、不影響既有讀路徑）。

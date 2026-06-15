@@ -18,6 +18,7 @@ interface GetTransactionsParams {
   categoryId?: string;
   page?: number;
   limit?: number;
+  tagIds?: string[];
 }
 
 export const getTransactions = async (params: GetTransactionsParams) => {
@@ -30,6 +31,9 @@ export const getTransactions = async (params: GetTransactionsParams) => {
     if (params.categoryId) query.append('categoryId', params.categoryId);
     if (params.page) query.append('page', params.page.toString());
     if (params.limit) query.append('limit', params.limit.toString());
+    if (params.tagIds && params.tagIds.length) {
+      params.tagIds.forEach((id) => query.append('tagIds', id));
+    }
 
     const queryString = query.toString();
     const url = `/transaction/date${queryString ? `?${queryString}` : ''}`;

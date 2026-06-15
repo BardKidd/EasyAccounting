@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CategorySettings } from '@/components/settings/categorySettings';
 import { NotificationSettings } from '@/components/settings/notificationSettings';
 import { CurrencySettings } from '@/components/settings/currencySettings';
+import { TagSettings } from '@/components/settings/tagSettings';
 import service from '@/services';
 // import { ExcelExportButton } from '@/components/common/ExcelExportButton';
 // import ExcelImportButton from '@/components/common/ExcelImportButton';
@@ -48,6 +49,12 @@ export default async function SettingsPage() {
           >
             貨幣設定
           </TabsTrigger>
+          <TabsTrigger
+            value="tags"
+            className="cursor-pointer rounded-full px-8 py-2 md:px-10 text-sm font-medium transition-all duration-300 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/20 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 data-[state=active]:hover:text-white"
+          >
+            標籤管理
+          </TabsTrigger>
         </TabsList>
         <TabsContent
           value="categories"
@@ -66,6 +73,12 @@ export default async function SettingsPage() {
           className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-500"
         >
           <CurrencySettings />
+        </TabsContent>
+        <TabsContent
+          value="tags"
+          className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-500"
+        >
+          <TagSettings />
         </TabsContent>
       </Tabs>
     </Container>

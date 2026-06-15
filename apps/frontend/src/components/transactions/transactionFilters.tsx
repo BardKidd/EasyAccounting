@@ -8,7 +8,9 @@ import {
   Check,
   ChevronsUpDown,
   Search,
+  Tag as TagIcon,
 } from 'lucide-react';
+import { getTags } from '@/services/tagService';
 import { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -28,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Account, AccountType, RootType } from '@repo/shared';
+import { Account, AccountType, RootType, TagType } from '@repo/shared';
 
 interface TransactionFiltersProps {
   accounts: AccountType[];
@@ -53,6 +55,40 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
   const [accountId, setAccountId] = useState(
     searchParams.get('accountId') || 'all',
   );
+
+  const [tags, setTags] = useState<TagType[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(() =>
+    searchParams.getAll('tagIds'),
+  );
+
+  useEffect(() => {
+    let active = true;
+    getTags()
+      .then((d) => {
+        if (active) setTags(d || []);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const updateTagFilter = (ids: string[]) => {
+    setSelectedTagIds(ids);
+    const params = new URLSearchParams(searchParams);
+    params.delete('tagIds');
+    ids.forEach((id) => params.append('tagIds', id));
+    params.delete('page');
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`);
+    });
+  };
+
+  const toggleTag = (id: string) => {
+    if (selectedTagIds.includes(id))
+      updateTagFilter(selectedTagIds.filter((x) => x !== id));
+    else updateTagFilter([...selectedTagIds, id]);
+  };
 
   const updateFilters = (
     newDate?: DateRange,
@@ -198,6 +234,62 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
           })}
         </SelectContent>
       </Select>
+
+      {/* 標籤篩選（match ANY） */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            disabled={isPending}
+            className={cn(
+              'w-full sm:w-[160px] justify-start text-left font-normal cursor-pointer h-10',
+              'rounded-xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow hover:border-slate-300 dark:hover:border-slate-600',
+              selectedTagIds.length === 0 && 'text-slate-500 dark:text-slate-400',
+            )}
+          >
+            <TagIcon className="mr-2 h-4 w-4 text-slate-500" />
+            {selectedTagIds.length > 0
+              ? `標籤 (${selectedTagIds.length})`
+              : '標籤'}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-56 p-2" align="start">
+          {tags.length === 0 ? (
+            <div className="text-sm text-slate-400 px-2 py-3">尚無標籤</div>
+          ) : (
+            <div className="max-h-60 overflow-y-auto space-y-0.5">
+              {tags.map((t) => {
+                const selected = selectedTagIds.includes(t.id);
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => toggleTag(t.id)}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <span
+                      className="h-2.5 w-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: t.color }}
+                    />
+                    <span className="flex-1 text-left truncate">{t.name}</span>
+                    {selected && <Check className="h-4 w-4 text-emerald-500" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {selectedTagIds.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full mt-1 text-xs text-slate-500"
+              onClick={() => updateTagFilter([])}
+            >
+              清除標籤篩選
+            </Button>
+          )}
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

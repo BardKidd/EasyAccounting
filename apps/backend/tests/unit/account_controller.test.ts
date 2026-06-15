@@ -45,6 +45,7 @@ vi.mock('@/utils/postgres', () => {
       belongsTo: vi.fn(),
       belongsToMany: vi.fn(),
       hasOne: vi.fn(),
+      addHook: vi.fn(),
     })),
   };
   return {

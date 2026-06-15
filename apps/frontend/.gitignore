@@ -17,6 +17,9 @@
 /test-results-budget
 /playwright-report-budget
 /budget-e2e-videos
+/test-results-tags
+/playwright-report-tags
+/tags-e2e-videos
 
 # next.js
 /.next/

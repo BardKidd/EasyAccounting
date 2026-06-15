@@ -31,6 +31,7 @@ import {
   RecurringFrequency,
 } from '@repo/shared';
 import { RecurringEditDialog } from './recurringEditDialog';
+import { TagMultiSelect } from './tagMultiSelect';
 import { cn, getErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -227,6 +228,7 @@ export function TransactionSheet({
       extraAddLabel: '折扣',
       extraMinus: 0,
       extraMinusLabel: '手續費',
+      tagIds: [],
       installment: {
         totalInstallments: 3,
         interestType: InterestType.NONE,
@@ -341,6 +343,7 @@ export function TransactionSheet({
           extraAddLabel: (transaction as any).extraAddLabel || '折扣',
           extraMinus: (transaction as any).extraMinus || 0,
           extraMinusLabel: (transaction as any).extraMinusLabel || '手續費',
+          tagIds: transaction.tags?.map((t) => t.id) ?? [],
           installment: {
             totalInstallments: 3,
             interestType: InterestType.NONE,
@@ -374,6 +377,7 @@ export function TransactionSheet({
           extraAddLabel: '折扣',
           extraMinus: 0,
           extraMinusLabel: '手續費',
+          tagIds: [],
           installment: {
             totalInstallments: 3,
             interestType: InterestType.NONE,
@@ -442,6 +446,7 @@ export function TransactionSheet({
         extraAddLabel: data.extraAddLabel,
         extraMinus: data.extraMinus,
         extraMinusLabel: data.extraMinusLabel,
+        tagIds: data.tagIds,
       };
       const result = await services.addTransfer(payload);
       if (result?.isSuccess) {
@@ -506,6 +511,7 @@ export function TransactionSheet({
         extraAddLabel: data.extraAddLabel,
         extraMinus: data.extraMinus,
         extraMinusLabel: data.extraMinusLabel,
+        tagIds: data.tagIds,
       };
       const result = await services.addTransaction(payload);
       if (result?.isSuccess) {
@@ -548,6 +554,7 @@ export function TransactionSheet({
       extraAddLabel: data.extraAddLabel,
       extraMinus: data.extraMinus,
       extraMinusLabel: data.extraMinusLabel,
+      tagIds: data.tagIds,
     };
 
     // Note: updateTransaction schema usually allows partials.
@@ -1610,6 +1617,24 @@ export function TransactionSheet({
                           'rounded-2xl bg-white/50 dark:bg-slate-900/50 border-slate-200/50 dark:border-slate-800/50 shadow-sm hover:bg-white dark:hover:bg-slate-900 transition-colors min-h-[100px] resize-none',
                           currentTypeStyle.focus,
                         )}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Tags */}
+              <FormField
+                control={form.control}
+                name="tagIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>標籤</FormLabel>
+                    <FormControl>
+                      <TagMultiSelect
+                        value={field.value ?? []}
+                        onChange={field.onChange}
                       />
                     </FormControl>
                     <FormMessage />

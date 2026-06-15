@@ -8,6 +8,7 @@ import {
   RecurringFrequency,
   RecurringTemplateStatus,
 } from '../constants';
+import type { TransactionTagBrief } from './tagTypes';
 
 export interface InstallmentPlanType {
   id: string;
@@ -69,6 +70,9 @@ export interface TransactionType {
   // Recurring fields
   recurringTemplateId?: string | null;
   recurringSequence?: number | null;
+
+  // 標籤（多對多；getTransactionsByDate / getTransactionById 回應夾帶）
+  tags?: TransactionTagBrief[];
 }
 
 export interface RecurringTemplateType {

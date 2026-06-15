@@ -271,6 +271,23 @@ function TransactionTable({
                           {transaction.description || '-'}
                         </span>
                       </div>
+                      {transaction.tags && transaction.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {transaction.tags.map((t) => (
+                            <span
+                              key={t.id}
+                              className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium"
+                              style={{ borderColor: t.color, color: t.color }}
+                            >
+                              <span
+                                className="h-1.5 w-1.5 rounded-full"
+                                style={{ backgroundColor: t.color }}
+                              />
+                              {t.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       {formatAmount(transaction)}

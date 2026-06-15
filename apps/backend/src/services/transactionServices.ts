@@ -15,6 +15,7 @@ import {
   RemainderPlacement,
   normalizeCurrencyCode,
   roundToBaseCurrency,
+  TransactionTagBrief,
 } from '@repo/shared';
 import { simplifyTransaction } from '@/utils/common';
 import {
@@ -23,6 +24,8 @@ import {
   InstallmentPlan,
   TransactionExtra,
   User,
+  Tag,
+  TransactionTag,
 } from '@/models';
 import { getRate } from './exchangeRateService';
 import sequelize from '@/utils/postgres';
@@ -38,6 +41,31 @@ import {
   addMonths,
 } from 'date-fns';
 
+// 標籤：另撈一次中介表再貼回各筆，避免在分頁查詢直接 include 多對多造成 row 複製（spec §7）。
+const loadTagsMap = async (
+  transactionIds: string[],
+): Promise<Record<string, TransactionTagBrief[]>> => {
+  if (!transactionIds.length) return {};
+  const rows = await TransactionTag.findAll({
+    where: { transactionId: { [Op.in]: transactionIds } },
+    include: [
+      {
+        model: Tag,
+        as: 'tag',
+        attributes: ['id', 'name', 'color', 'groupName'],
+      },
+    ],
+    raw: true,
+    nest: true,
+  });
+  const map: Record<string, TransactionTagBrief[]> = {};
+  for (const r of rows as any[]) {
+    if (!r.tag || r.tag.id == null) continue;
+    (map[r.transactionId] ||= []).push(r.tag);
+  }
+  return map;
+};
+
 const getTransactionsByDate = async (
   query: GetTransactionsByDateSchema,
   userId: string,
@@ -48,6 +76,7 @@ const getTransactionsByDate = async (
     type,
     page = 1,
     limit: queryLimit,
+    tagIds,
     ...otherFilters
   } = query;
   const limit = queryLimit ?? 10;
@@ -84,12 +113,33 @@ const getTransactionsByDate = async (
     ];
   }
 
+  // 標籤篩選（match ANY）：先查符合任一 tag 的交易 id，再以 id IN (...) 限縮，
+  // 避免在分頁查詢直接 join 多對多破壞 count（spec §7）。
+  let tagFilter: any = {};
+  if (tagIds && tagIds.length) {
+    const tagged = await TransactionTag.findAll({
+      where: { tagId: { [Op.in]: tagIds } },
+      attributes: ['transactionId'],
+      group: ['transactionId'],
+      raw: true,
+    });
+    const ids = (tagged as any[]).map((x) => x.transactionId);
+    if (!ids.length) {
+      return {
+        items: [],
+        pagination: { total: 0, page, limit, totalPages: 0 },
+      };
+    }
+    tagFilter = { id: { [Op.in]: ids } };
+  }
+
   try {
     const { rows, count } = await Transaction.findAndCountAll({
       where: {
         ...otherFilters,
         ...dateFilter,
         ...typeFilter,
+        ...tagFilter,
         userId,
       },
       limit: Number(limit),
@@ -111,8 +161,14 @@ const getTransactionsByDate = async (
       raw: true,
       nest: true,
     });
+    // 貼回標籤（另撈中介表，避免分頁 row 複製）
+    const tagMap = await loadTagsMap((rows as any[]).map((r) => r.id));
+    const items = (rows as any[]).map((r) => ({
+      ...r,
+      tags: tagMap[r.id] || [],
+    }));
     return {
-      items: rows as unknown as TransactionType[],
+      items: items as unknown as TransactionType[],
       pagination: {
         total: count,
         page,
@@ -260,16 +316,17 @@ const getTransactionById = async (id: string, userId: string) => {
   const instance = await Transaction.findOne({
     where: { id, userId },
   });
-  let result: TransactionType | null = null;
 
   if (instance) {
     const data = instance.toJSON() as TransactionType;
+    const txId = data.id as string;
+    const tagMap = await loadTagsMap([txId]);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { id, ...other } = data;
-    return other;
+    const { id: _omitId, ...other } = data;
+    return { ...other, tags: tagMap[txId] || [] };
   }
 
-  return result;
+  return null;
 };
 
 const calcAccountBalance = async (
@@ -413,6 +470,7 @@ export const createTransaction = async (
     extraAddLabel?: string;
     extraMinus?: number;
     extraMinusLabel?: string;
+    tagIds?: string[];
   },
   userId: string,
 ) => {
@@ -527,7 +585,7 @@ export const createTransaction = async (
 
         const date = addMonths(new Date(data.date), i - 1);
 
-        await Transaction.create(
+        const createdInstallment = await Transaction.create(
           {
             ...data,
             userId,
@@ -550,6 +608,12 @@ export const createTransaction = async (
           },
           { transaction },
         );
+        // 標籤：每期交易都掛上相同標籤
+        if (Array.isArray(data.tagIds) && data.tagIds.length) {
+          await (createdInstallment as any).setTags(data.tagIds, {
+            transaction,
+          });
+        }
       }
 
       await calcAccountBalance(account, type, amount, extraAdd, extraMinus);
@@ -577,6 +641,11 @@ export const createTransaction = async (
 
       await calcAccountBalance(account, type, amount, extraAdd, extraMinus);
       await account.save({ transaction });
+
+      // 標籤：套用到整筆交易
+      if (Array.isArray(data.tagIds) && data.tagIds.length) {
+        await (newTransaction as any).setTags(data.tagIds, { transaction });
+      }
 
       result = newTransaction.toJSON();
     }
@@ -753,6 +822,11 @@ export const updateIncomeExpense = async (
       },
       { transaction: t },
     );
+
+    // 標籤：undefined = 不動；[] = 清空；有值 = 取代
+    if (data.tagIds !== undefined) {
+      await (transaction as any).setTags(data.tagIds, { transaction: t });
+    }
 
     // 轉帳（含跨幣）已於函式入口依 linkId 委派給 updateTransfer，
     // 走到這裡的交易必為非轉帳（linkId == null），故不再有對向同步邏輯。
@@ -976,6 +1050,12 @@ const createTransfer = async (
       { linkId: fromTransaction.id },
       { transaction: t },
     );
+
+    // 標籤：轉帳兩 leg 掛相同標籤
+    if (Array.isArray(data.tagIds) && data.tagIds.length) {
+      await (fromTransaction as any).setTags(data.tagIds, { transaction: t });
+      await (toTransaction as any).setTags(data.tagIds, { transaction: t });
+    }
 
     return {
       fromTransaction: fromTransaction.toJSON() as TransactionTypeWhenOperate,
@@ -1225,6 +1305,12 @@ const updateTransfer = async (
       },
       { transaction: t },
     );
+
+    // 標籤：undefined = 不動；有值/空 = 兩 leg 一起取代
+    if (data.tagIds !== undefined) {
+      await (fromTx as any).setTags(data.tagIds, { transaction: t });
+      await (toTx as any).setTags(data.tagIds, { transaction: t });
+    }
 
     return {
       fromTransaction: fromTx.toJSON(),

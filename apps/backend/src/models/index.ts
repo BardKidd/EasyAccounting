@@ -16,6 +16,8 @@ import Currency from './currency';
 import ExchangeRate from './exchangeRate';
 import BudgetAssignment from './budgetAssignment';
 import BudgetTarget from './budgetTarget';
+import Tag from './tag';
+import TransactionTag from './transactionTag';
 
 // -----------------------------------------------------------------------------
 // Soft Delete Hooks (Cascade)
@@ -46,6 +48,10 @@ User.addHook('afterDestroy', async (user: any, options: any) => {
   await RecurringTemplate.destroy({ where: { userId }, transaction });
   await BudgetAssignment.destroy({ where: { userId }, transaction });
   await BudgetTarget.destroy({ where: { userId }, transaction });
+  // Tag（hard-delete）：individualHooks 讓 Tag.afterDestroy 清各自的 transaction_tag。
+  // 須在 Transaction 之後即可（transaction_tag 已隨 Transaction.afterDestroy 清過，
+  // 這裡再清一次無妨——刪 tag 本身與其殘留關聯）。
+  await Tag.destroy({ where: { userId }, transaction, individualHooks: true });
 });
 
 // Category 為 soft-delete（paranoid:true）：DB 層的 ON DELETE CASCADE 不會觸發，
@@ -84,6 +90,11 @@ Account.addHook('afterDestroy', async (account: any, options: any) => {
 
 Transaction.addHook('afterDestroy', async (instance: any, options: any) => {
   const transaction = options.transaction;
+  // 交易（含 soft-delete）→ 清掉其標籤關聯（transaction_tag 無 soft-delete）。
+  await TransactionTag.destroy({
+    where: { transactionId: instance.id },
+    transaction,
+  });
   if (instance.transactionExtraId) {
     await TransactionExtra.destroy({
       where: { id: instance.transactionExtraId },
@@ -99,6 +110,15 @@ Transaction.addHook('afterDestroy', async (instance: any, options: any) => {
       });
     }
   }
+});
+
+// Tag（hard-delete）：刪 tag 串接清 transaction_tag（交易本身不動）。
+Tag.addHook('afterDestroy', async (tag: any, options: any) => {
+  const transaction = options.transaction;
+  await TransactionTag.destroy({
+    where: { tagId: tag.id },
+    transaction,
+  });
 });
 
 // -----------------------------------------------------------------------------
@@ -284,6 +304,35 @@ Category.hasMany(BudgetTarget, {
 });
 BudgetTarget.belongsTo(Category, { foreignKey: 'categoryId', as: 'category' });
 
+// -----------------------------------------------------------------------------
+// Tags（拆分交易+標籤 Phase A）
+// -----------------------------------------------------------------------------
+
+// User & Tag
+User.hasMany(Tag, { foreignKey: 'userId', as: 'tags' });
+Tag.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+// Transaction ⇄ Tag（多對多，through transaction_tag）
+Transaction.belongsToMany(Tag, {
+  through: TransactionTag,
+  foreignKey: 'transactionId',
+  otherKey: 'tagId',
+  as: 'tags',
+});
+Tag.belongsToMany(Transaction, {
+  through: TransactionTag,
+  foreignKey: 'tagId',
+  otherKey: 'transactionId',
+  as: 'transactions',
+});
+
+// 中介表直接關聯（供「另撈一次再貼回」避免分頁 row 複製，spec §7）
+TransactionTag.belongsTo(Tag, { foreignKey: 'tagId', as: 'tag' });
+TransactionTag.belongsTo(Transaction, {
+  foreignKey: 'transactionId',
+  as: 'transaction',
+});
+
 // Export everything
 export {
   Account,
@@ -304,4 +353,6 @@ export {
   ExchangeRate,
   BudgetAssignment,
   BudgetTarget,
+  Tag,
+  TransactionTag,
 };

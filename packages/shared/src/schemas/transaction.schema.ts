@@ -33,6 +33,8 @@ const baseSchema = z.object({
   originalCurrencyCode: z.string().optional(),
   originalAmount: z.number().optional(),
   exchangeRate: z.number().optional(),
+  // 標籤（多對多）：套用到整筆交易。undefined = 不動；[] = 清空（更新時）
+  tagIds: z.array(z.string().uuid()).optional(),
 });
 
 export const createTransactionSchema = baseSchema.and(
@@ -98,6 +100,13 @@ export const getTransactionsByDateSchema = z.object({
   date: z.string().optional(),
   page: z.coerce.number().optional(),
   limit: z.coerce.number().optional(),
+  // 標籤篩選（match ANY）：可重複 query 參數（?tagIds=a&tagIds=b）或單一字串
+  tagIds: z
+    .preprocess(
+      (v) => (v == null ? undefined : Array.isArray(v) ? v : [v]),
+      z.array(z.string().uuid()),
+    )
+    .optional(),
 });
 
 export const getTransactionsDashboardSummarySchema = z.object({
@@ -139,6 +148,8 @@ export const transactionFormSchema = z.object({
   extraAddLabel: z.string().optional(),
   extraMinus: z.coerce.number().optional(),
   extraMinusLabel: z.string().optional(),
+  // 標籤（多對多）：選取的 tag id 陣列
+  tagIds: z.array(z.string()).optional(),
   installment: z
     .object({
       totalInstallments: z.number().int().min(2),

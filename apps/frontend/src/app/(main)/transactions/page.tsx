@@ -52,6 +52,12 @@ async function TransactionsPage(props: PageProps) {
       : undefined;
   const page =
     typeof searchParams.page === 'string' ? parseInt(searchParams.page) : 1;
+  const tagIds =
+    typeof searchParams.tagIds === 'string'
+      ? [searchParams.tagIds]
+      : Array.isArray(searchParams.tagIds)
+        ? searchParams.tagIds
+        : undefined;
 
   // Calendar View Params
   // Default to current month if no date param
@@ -89,6 +95,7 @@ async function TransactionsPage(props: PageProps) {
         type: type === 'all' ? undefined : type,
         accountId: accountId === 'all' ? undefined : accountId,
         page,
+        tagIds,
       }),
       service.getCategories(),
       service.getPersonnelAccounts(),

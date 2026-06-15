@@ -16,6 +16,7 @@ export * from './schemas/personnelNotification.schema';
 export * from './schemas/recurringTemplate.schema';
 export * from './schemas/chat.schema';
 export * from './schemas/budget.schema';
+export * from './schemas/tag.schema';
 
 // 匯出所有 types
 export * from './types/categoryTypes';
@@ -26,6 +27,7 @@ export * from './types/transactionTypes';
 export * from './types/statisticsTypes';
 export * from './types/personnelNotificationTypes';
 export * from './types/pendingTransactionTypes';
+export * from './types/tagTypes';
 
 export * from './utils/transactionUtils';
 
