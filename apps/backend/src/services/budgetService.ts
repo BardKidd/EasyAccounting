@@ -216,16 +216,15 @@ export const getMonthView = async (
       SUM(
         CASE
           WHEN t."type" = :expenseType
-            THEN -(t."amountInBase" + COALESCE(e."extraMinusInBase", 0) - COALESCE(e."extraAddInBase", 0))
-          ELSE  (t."amountInBase" + COALESCE(e."extraAddInBase", 0) - COALESCE(e."extraMinusInBase", 0))
+            THEN -(t."amountInBase" + t."extraMinusInBase" - t."extraAddInBase")
+          ELSE  (t."amountInBase" + t."extraAddInBase" - t."extraMinusInBase")
         END
       ) AS activity
-    FROM "${SCHEMA}"."transaction" t
+    FROM "${SCHEMA}"."transaction_split_unit" t
     JOIN "${SCHEMA}"."account" a ON a."id" = t."accountId"
     JOIN "${SCHEMA}"."category" c ON c."id" = t."categoryId"
     LEFT JOIN "${SCHEMA}"."category" p ON p."id" = c."parentId"
     LEFT JOIN "${SCHEMA}"."category" pp ON pp."id" = p."parentId"
-    LEFT JOIN "${SCHEMA}"."transaction_extra" e ON e."id" = t."transactionExtraId"
     WHERE t."userId" = :userId
       AND t."deletedAt" IS NULL
       AND a."onBudget" = true
@@ -287,15 +286,14 @@ export const getMonthView = async (
       TO_CHAR(DATE_TRUNC('month', t."date"), 'YYYY-MM-DD') AS month,
       SUM(
         t."amountInBase"
-        + COALESCE(e."extraAddInBase", 0)
-        - COALESCE(e."extraMinusInBase", 0)
+        + t."extraAddInBase"
+        - t."extraMinusInBase"
       ) AS inflow
-    FROM "${SCHEMA}"."transaction" t
+    FROM "${SCHEMA}"."transaction_split_unit" t
     JOIN "${SCHEMA}"."account" a ON a."id" = t."accountId"
     JOIN "${SCHEMA}"."category" c ON c."id" = t."categoryId"
     LEFT JOIN "${SCHEMA}"."category" p ON p."id" = c."parentId"
     LEFT JOIN "${SCHEMA}"."category" pp ON pp."id" = p."parentId"
-    LEFT JOIN "${SCHEMA}"."transaction_extra" e ON e."id" = t."transactionExtraId"
     WHERE t."userId" = :userId
       AND t."deletedAt" IS NULL
       AND a."onBudget" = true
@@ -457,12 +455,11 @@ export const getMonthView = async (
         TO_CHAR(DATE_TRUNC('month', t."date"), 'YYYY-MM-DD') AS month,
         CASE WHEN p."parentId" IS NULL THEN c."id"::text ELSE c."parentId"::text END AS "envId",
         t."accountId" AS "cardId",
-        SUM(t."amountInBase" + COALESCE(e."extraMinusInBase", 0) - COALESCE(e."extraAddInBase", 0)) AS spend
-      FROM "${SCHEMA}"."transaction" t
+        SUM(t."amountInBase" + t."extraMinusInBase" - t."extraAddInBase") AS spend
+      FROM "${SCHEMA}"."transaction_split_unit" t
       JOIN "${SCHEMA}"."account" a ON a."id" = t."accountId"
       JOIN "${SCHEMA}"."category" c ON c."id" = t."categoryId"
       LEFT JOIN "${SCHEMA}"."category" p ON p."id" = c."parentId"
-      LEFT JOIN "${SCHEMA}"."transaction_extra" e ON e."id" = t."transactionExtraId"
       WHERE t."userId" = :userId
         AND t."deletedAt" IS NULL
         AND a."onBudget" = true

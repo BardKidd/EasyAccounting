@@ -9,6 +9,55 @@ import {
   RewardsType,
 } from '../constants';
 
+// 拆分子項輸入（Phase B）：amount 為原幣毛額
+export const splitInputSchema = z.object({
+  categoryId: z.string().uuid(),
+  amount: z.number().positive('子項金額須為正數'),
+  note: z.string().nullable().optional(),
+});
+export type SplitInput = z.infer<typeof splitInputSchema>;
+
+// 子項加總與交易金額配平容差（吸收浮點/分位誤差）
+export const SPLIT_BALANCE_EPSILON = 0.01;
+
+// 拆分前置檢查 + 配平（create/update 共用；service 為權威驗證，schema 為前端友善提示）
+const splitRefine = (d: any, ctx: z.RefinementCtx) => {
+  const splits = d.splits as SplitInput[] | undefined;
+  if (!splits || splits.length === 0) return;
+  if (splits.length < 2) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: '拆分至少需 2 個子項',
+      path: ['splits'],
+    });
+  }
+  if (d.type === RootType.OPERATE) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: '轉帳不可拆分',
+      path: ['splits'],
+    });
+  }
+  if (d.installment) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: '分期交易不可拆分',
+      path: ['splits'],
+    });
+  }
+  // amount 缺（部分更新）時跳過配平，由 service 用既有 amount 權威驗證
+  if (d.amount != null) {
+    const sum = splits.reduce((s, x) => s + Number(x.amount), 0);
+    if (Math.abs(sum - Number(d.amount)) > SPLIT_BALANCE_EPSILON) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: '子項金額加總須等於交易金額',
+        path: ['splits'],
+      });
+    }
+  }
+};
+
 const baseSchema = z.object({
   accountId: z.string().uuid(),
   categoryId: z.string().uuid(),
@@ -35,6 +84,9 @@ const baseSchema = z.object({
   exchangeRate: z.number().optional(),
   // 標籤（多對多）：套用到整筆交易。undefined = 不動；[] = 清空（更新時）
   tagIds: z.array(z.string().uuid()).optional(),
+  // 拆分交易（Phase B）：一筆拆成多分類子項；Σ amount 須等於 amount。
+  // undefined/[] = 不拆分；提供時須 ≥2 子項、僅收入/支出、非分期（service 為權威驗證）。
+  splits: z.array(splitInputSchema).optional(),
 });
 
 export const createTransactionSchema = baseSchema.and(
@@ -64,7 +116,7 @@ export const createTransactionSchema = baseSchema.and(
       })
       .optional(),
   }),
-);
+).superRefine(splitRefine);
 
 export const createTransferSchema = baseSchema.and(
   z.object({
@@ -74,7 +126,15 @@ export const createTransferSchema = baseSchema.and(
     // exchangeRate（來源幣→目標幣）由 baseSchema 帶入，可省（後端可由 amount/targetAmount 推得）。
     targetAmount: z.number().optional(),
   }),
-);
+).superRefine((d: any, ctx) => {
+  if (d.splits && d.splits.length > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: '轉帳不可拆分',
+      path: ['splits'],
+    });
+  }
+});
 
 // 更新 schema：允許部分更新（如拖放只更新 date）
 // ZodIntersection 不支援 .partial()，改用 z.object 包裝並設所有欄位為 optional
@@ -89,7 +149,8 @@ export const updateTransactionSchema = baseSchema
     // 後端依交易 linkId 路由到 updateTransfer，由它用各 leg 自己的幣別/金額重算。
     targetAmount: z.number().optional(),
   })
-  .partial();
+  .partial()
+  .superRefine(splitRefine);
 
 export const getTransactionsByDateSchema = z.object({
   accountId: z.string().uuid().optional(),
@@ -132,7 +193,8 @@ export const transactionFormSchema = z.object({
   type: z.enum([RootType.INCOME, RootType.EXPENSE, RootType.OPERATE]),
   date: z.coerce.date(),
   time: z.string(),
-  mainCategory: z.string().min(1, '請選擇主分類'),
+  // 拆分模式不需頂層分類，故改 optional；非拆分時由元件 superRefine 強制必填。
+  mainCategory: z.string().optional(),
   subCategory: z.string().optional(),
   description: z.string(),
   targetAccountId: z.string().optional(),
@@ -150,6 +212,16 @@ export const transactionFormSchema = z.object({
   extraMinusLabel: z.string().optional(),
   // 標籤（多對多）：選取的 tag id 陣列
   tagIds: z.array(z.string()).optional(),
+  // 拆分子項（Phase B）：每列分類 + 金額 + 備註；空陣列/undefined = 不拆分
+  splits: z
+    .array(
+      z.object({
+        categoryId: z.string().min(1, '請選擇分類'),
+        amount: z.coerce.number(),
+        note: z.string().optional(),
+      }),
+    )
+    .optional(),
   installment: z
     .object({
       totalInstallments: z.number().int().min(2),

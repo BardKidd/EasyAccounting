@@ -32,6 +32,7 @@ import {
 } from '@repo/shared';
 import { RecurringEditDialog } from './recurringEditDialog';
 import { TagMultiSelect } from './tagMultiSelect';
+import { SplitEditor, SplitRow } from './splitEditor';
 import { cn, getErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -113,6 +114,7 @@ export function TransactionSheet({
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showExtra, setShowExtra] = useState(false);
+  const [splitMode, setSplitMode] = useState(false);
   const isEditMode = !!transaction;
   const isRecurring = !!transaction?.recurringTemplateId;
 
@@ -160,23 +162,71 @@ export function TransactionSheet({
 
   const formSchema = useMemo(() => {
     return transactionFormSchema.superRefine((data, ctx) => {
-      if (data.type === RootType.OPERATE) return;
-
-      const root = categories.find((c) => c.type === data.type);
-      if (!root?.children) return;
-
-      const mainCategory = root.children.find(
-        (c) => c.id === data.mainCategory,
-      );
-      if (!mainCategory) return;
-
-      if (mainCategory.children && mainCategory.children.length > 0) {
-        if (!data.subCategory) {
+      if (data.type === RootType.OPERATE) {
+        // 轉帳：仍需主分類（mainCategory 已改 optional），不可拆分
+        if (!data.mainCategory) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: '請選擇子分類',
-            path: ['subCategory'],
+            message: '請選擇主分類',
+            path: ['mainCategory'],
           });
+        }
+        return;
+      }
+
+      const isSplitData = !!(data.splits && data.splits.length > 0);
+      if (isSplitData) {
+        // 拆分模式：驗證子項配平，略過頂層主/子分類檢查（spec §9.1）
+        const splits = data.splits!;
+        if (splits.length < 2) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '拆分至少需 2 個子項',
+            path: ['splits'],
+          });
+        }
+        splits.forEach((s, i) => {
+          if (!s.categoryId) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: '請選擇分類',
+              path: ['splits', i, 'categoryId'],
+            });
+          }
+        });
+        const sum = splits.reduce((acc, s) => acc + (Number(s.amount) || 0), 0);
+        if (Math.abs(sum - Number(data.amount || 0)) > 0.01) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '子項加總須等於交易金額',
+            path: ['splits'],
+          });
+        }
+      } else {
+        // 非拆分：主分類必填（schema 已改 optional），子分類視主分類有無子層而定
+        if (!data.mainCategory) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '請選擇主分類',
+            path: ['mainCategory'],
+          });
+        } else {
+          const root = categories.find((c) => c.type === data.type);
+          const mainCategory = root?.children?.find(
+            (c) => c.id === data.mainCategory,
+          );
+          if (
+            mainCategory &&
+            mainCategory.children &&
+            mainCategory.children.length > 0 &&
+            !data.subCategory
+          ) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: '請選擇子分類',
+              path: ['subCategory'],
+            });
+          }
         }
       }
 
@@ -229,6 +279,7 @@ export function TransactionSheet({
       extraMinus: 0,
       extraMinusLabel: '手續費',
       tagIds: [],
+      splits: [],
       installment: {
         totalInstallments: 3,
         interestType: InterestType.NONE,
@@ -344,6 +395,12 @@ export function TransactionSheet({
           extraMinus: (transaction as any).extraMinus || 0,
           extraMinusLabel: (transaction as any).extraMinusLabel || '手續費',
           tagIds: transaction.tags?.map((t) => t.id) ?? [],
+          splits:
+            transaction.splits?.map((s) => ({
+              categoryId: s.categoryId,
+              amount: Number(s.amount),
+              note: s.note ?? '',
+            })) ?? [],
           installment: {
             totalInstallments: 3,
             interestType: InterestType.NONE,
@@ -358,6 +415,7 @@ export function TransactionSheet({
         if ((transaction as any).extraAdd || (transaction as any).extraMinus) {
           setShowExtra(true);
         }
+        setSplitMode(!!transaction.isSplit);
       } else {
         // Create Mode Initialization
         const now = new Date();
@@ -378,6 +436,7 @@ export function TransactionSheet({
           extraMinus: 0,
           extraMinusLabel: '手續費',
           tagIds: [],
+          splits: [],
           installment: {
             totalInstallments: 3,
             interestType: InterestType.NONE,
@@ -388,6 +447,7 @@ export function TransactionSheet({
           },
         });
         setShowExtra(false);
+        setSplitMode(false);
       }
     }
   }, [isOpen, isEditMode, transaction, categories, form]);
@@ -428,7 +488,7 @@ export function TransactionSheet({
     if (data.type === RootType.OPERATE) {
       const payload = {
         accountId: data.accountId,
-        categoryId: data.subCategory || data.mainCategory,
+        categoryId: data.subCategory || data.mainCategory || '',
         amount: Number(data.amount),
         type: RootType.OPERATE as RootType.OPERATE,
         description: data.description,
@@ -459,7 +519,7 @@ export function TransactionSheet({
       const result = await services.createRecurringTemplate({
         baseTransactionAttrs: {
           accountId: data.accountId,
-          categoryId: data.subCategory || data.mainCategory,
+          categoryId: data.subCategory || data.mainCategory || '',
           amount: Number(data.amount),
           type: data.type as RootType.EXPENSE | RootType.INCOME,
           description: data.description ?? null,
@@ -493,9 +553,14 @@ export function TransactionSheet({
         router.refresh();
       }
     } else {
+      const splitRows =
+        splitMode && data.splits?.length ? data.splits : null;
       const payload: CreateTransactionSchema = {
         accountId: data.accountId,
-        categoryId: data.subCategory || data.mainCategory,
+        // 拆分時 categoryId 取第一子項（後端亦會覆寫為第一子項）
+        categoryId: splitRows
+          ? splitRows[0]!.categoryId
+          : data.subCategory || data.mainCategory || '',
         amount: Number(data.amount),
         type: data.type as RootType.EXPENSE | RootType.INCOME,
         description: data.description,
@@ -512,6 +577,13 @@ export function TransactionSheet({
         extraMinus: data.extraMinus,
         extraMinusLabel: data.extraMinusLabel,
         tagIds: data.tagIds,
+        splits: splitRows
+          ? splitRows.map((s) => ({
+              categoryId: s.categoryId,
+              amount: Number(s.amount),
+              note: s.note || undefined,
+            }))
+          : undefined,
       };
       const result = await services.addTransaction(payload);
       if (result?.isSuccess) {
@@ -525,9 +597,21 @@ export function TransactionSheet({
   const handleUpdate = async (data: TransactionFormSchema) => {
     if (!transaction?.id) return;
 
+    const splitRows = splitMode && data.splits?.length ? data.splits : null;
+    const splitsPayload = splitRows
+      ? splitRows.map((s) => ({
+          categoryId: s.categoryId,
+          amount: Number(s.amount),
+          note: s.note || undefined,
+        }))
+      : transaction.isSplit
+        ? [] // 既有為拆分但本次關閉拆分 → 清空子項
+        : undefined;
     const payload = {
       accountId: data.accountId,
-      categoryId: data.subCategory || data.mainCategory,
+      categoryId: splitRows
+        ? splitRows[0]!.categoryId
+        : data.subCategory || data.mainCategory || '',
       amount: Number(data.amount),
       // If type is OPERATE, it's actually an EXPENSE with a target account in the backend
       type: data.type === RootType.OPERATE ? RootType.EXPENSE : data.type,
@@ -555,6 +639,7 @@ export function TransactionSheet({
       extraMinus: data.extraMinus,
       extraMinusLabel: data.extraMinusLabel,
       tagIds: data.tagIds,
+      splits: splitsPayload,
     };
 
     // Note: updateTransaction schema usually allows partials.
@@ -637,7 +722,7 @@ export function TransactionSheet({
           transactionId: transaction.id,
           baseTransactionAttrs: {
             accountId: data.accountId,
-            categoryId: data.subCategory || data.mainCategory,
+            categoryId: data.subCategory || data.mainCategory || '',
             amount: Number(data.amount),
             type: data.type as RootType.EXPENSE | RootType.INCOME,
             description: data.description ?? null,
@@ -833,13 +918,50 @@ export function TransactionSheet({
                 )}
               />
 
-              {/* Category Selection */}
-              <div
-                className={cn(
-                  'grid gap-4',
-                  watchedType !== RootType.OPERATE && ' grid-cols-2',
-                )}
-              >
+              {/* 拆分開關（非轉帳、非分期） */}
+              {watchedType !== RootType.OPERATE && (
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-sm">拆分成多個分類</FormLabel>
+                  <Switch
+                    checked={splitMode}
+                    disabled={
+                      watchedPaymentFrequency === PaymentFrequency.INSTALLMENT
+                    }
+                    onCheckedChange={(checked) => {
+                      setSplitMode(checked);
+                      if (checked) {
+                        const existing = form.getValues('splits') || [];
+                        if (existing.length < 2) {
+                          const amt = Number(form.getValues('amount')) || 0;
+                          form.setValue('splits', [
+                            {
+                              categoryId:
+                                form.getValues('subCategory') ||
+                                form.getValues('mainCategory') ||
+                                '',
+                              amount: amt,
+                              note: '',
+                            },
+                            { categoryId: '', amount: 0, note: '' },
+                          ]);
+                        }
+                      } else {
+                        form.setValue('splits', []);
+                      }
+                      form.clearErrors();
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Category Selection（非拆分） */}
+              {!splitMode && (
+                <div
+                  className={cn(
+                    'grid gap-4',
+                    watchedType !== RootType.OPERATE && ' grid-cols-2',
+                  )}
+                >
                 <FormField
                   control={form.control}
                   name="mainCategory"
@@ -910,7 +1032,32 @@ export function TransactionSheet({
                     )}
                   />
                 )}
-              </div>
+                </div>
+              )}
+
+              {/* 拆分子項編輯（拆分模式） */}
+              {splitMode && watchedType !== RootType.OPERATE && (
+                <FormField
+                  control={form.control}
+                  name="splits"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>拆分子項</FormLabel>
+                      <FormControl>
+                        <SplitEditor
+                          categories={categories}
+                          type={watchedType as RootType}
+                          totalAmount={Number(form.watch('amount')) || 0}
+                          value={(field.value as SplitRow[]) || []}
+                          onChange={field.onChange}
+                          focusClassName={currentTypeStyle.focus}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {/* Amount */}
               <div className="pt-2 pb-4">

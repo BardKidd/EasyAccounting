@@ -105,9 +105,9 @@
 > 專業記帳的兩個標配，目前皆無。`TransactionExtra` 只是加減項標籤，非真正 split。
 > 📄 **技術規格**: [split-tags-spec.md](docs/specs/split-tags-spec.md) (設計定案；決策 S1–S9 已拍板；**Phase A Tags → Phase B Split** 順序固定)
 
-- [x] **Phase A — 標籤系統 (Tags)** (2026-06-15)：真多對多 `tag`/`transaction_tag`，掛整筆交易；CRUD + 交易套用 + `?tagIds` 篩選 + 前端 chip/列表/篩選/管理頁。本機測試綠 (backend 190 / frontend 49)；**部署需跑 migration**。
-- [ ] **Phase B — 拆分交易 (Split)**: 一筆交易拆成多個分類 (例: 全聯 1200 → 食材 800 + 日用品 400)；父層 `TransactionExtra` 與拆分並存、按比例攤提。
-- [ ] 統計與篩選支援 split / tag 維度 (聚合走單一真實來源 `expandToCategoryActivity`)。
+- [x] **Phase A — 標籤系統 (Tags)** (2026-06-15)：真多對多 `tag`/`transaction_tag`，掛整筆交易；CRUD + 交易套用 + `?tagIds` 篩選 + 前端 chip/列表/篩選/管理頁。已 commit。
+- [x] **Phase B — 拆分交易 (Split)** (2026-06-15)：`transaction_split` 子表 + `isSplit`；父層 `TransactionExtra` 與拆分並存、按比例攤提（DB view `transaction_split_unit` 為單一真實來源）；前端 `SplitEditor`（即時加總/配平）。本機測試綠 (backend 198 / frontend 49)；**部署需跑 migration**。
+- [x] 統計與篩選支援 split / tag 維度（聚合走 view，對非拆分零行為變更）。
 
 #### 3. 規則引擎 (Auto-categorization Rules) — Priority High
 

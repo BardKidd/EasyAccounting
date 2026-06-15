@@ -7,7 +7,9 @@ import {
   roundToBaseCurrency,
 } from '@repo/shared';
 
-export interface TransactionAttributes extends TransactionType {
+// tags / splits 為回應專用（非欄位），需自模型屬性排除，否則 update/create 會誤把它們當欄位。
+export interface TransactionAttributes
+  extends Omit<TransactionType, 'tags' | 'splits'> {
   linkId?: string | null;
   targetAccountId?: string | null;
   transactionExtraId?: string | null;
@@ -169,6 +171,13 @@ const Transaction = sequelize.define<TransactionInstance>(
     recurringSequence: {
       type: Sequelize.INTEGER,
       allowNull: true,
+    },
+    // 拆分交易（Phase B）：true 時本筆為容器，分類下放 transaction_split；
+    // 聚合走 view transaction_split_unit，categoryId 僅作列表顯示主分類（spec S3）。
+    isSplit: {
+      type: Sequelize.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   TABLE_DEFAULT_SETTING,

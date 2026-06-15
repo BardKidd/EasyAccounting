@@ -20,6 +20,9 @@
 /test-results-tags
 /playwright-report-tags
 /tags-e2e-videos
+/test-results-split
+/playwright-report-split
+/split-e2e-videos
 
 # next.js
 /.next/

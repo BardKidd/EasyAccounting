@@ -16,6 +16,9 @@ import {
   normalizeCurrencyCode,
   roundToBaseCurrency,
   TransactionTagBrief,
+  TransactionSplitType,
+  SplitInput,
+  SPLIT_BALANCE_EPSILON,
 } from '@repo/shared';
 import { simplifyTransaction } from '@/utils/common';
 import {
@@ -26,6 +29,7 @@ import {
   User,
   Tag,
   TransactionTag,
+  TransactionSplit,
 } from '@/models';
 import { getRate } from './exchangeRateService';
 import sequelize from '@/utils/postgres';
@@ -64,6 +68,66 @@ const loadTagsMap = async (
     (map[r.transactionId] ||= []).push(r.tag);
   }
   return map;
+};
+
+// 拆分子項：另撈再貼回各筆（供編輯預填與列表顯示）。DECIMAL 轉 number。
+const loadSplitsMap = async (
+  transactionIds: string[],
+): Promise<Record<string, TransactionSplitType[]>> => {
+  if (!transactionIds.length) return {};
+  const rows = await TransactionSplit.findAll({
+    where: { transactionId: { [Op.in]: transactionIds } },
+    attributes: [
+      'id',
+      'transactionId',
+      'categoryId',
+      'amount',
+      'amountInBase',
+      'note',
+      'sortOrder',
+    ],
+    order: [['sortOrder', 'ASC']],
+    raw: true,
+  });
+  const map: Record<string, TransactionSplitType[]> = {};
+  for (const r of rows as any[]) {
+    (map[r.transactionId] ||= []).push({
+      ...r,
+      amount: Number(r.amount),
+      amountInBase: Number(r.amountInBase),
+    });
+  }
+  return map;
+};
+
+// 拆分（Phase B）：配平驗證（Σ 子項原幣 = 交易金額；至少 2 子項）
+const assertSplitBalance = (amount: number, splits: SplitInput[]) => {
+  if (splits.length < 2) throw new Error('拆分至少需 2 個子項');
+  const sum = splits.reduce((s, x) => s + Number(x.amount), 0);
+  if (Math.abs(sum - Number(amount)) > SPLIT_BALANCE_EPSILON) {
+    throw new Error('子項金額加總須等於交易金額');
+  }
+};
+
+// 重建子項：先全刪舊、再依輸入建新（amountInBase = amount × baseRate 快照）。
+const writeSplits = async (
+  transactionId: string,
+  splits: SplitInput[],
+  baseRate: number,
+  t: SequelizeTransaction,
+) => {
+  await TransactionSplit.destroy({ where: { transactionId }, transaction: t });
+  await TransactionSplit.bulkCreate(
+    splits.map((s, i) => ({
+      transactionId,
+      categoryId: s.categoryId,
+      amount: Number(s.amount),
+      amountInBase: roundToBaseCurrency(Number(s.amount) * baseRate),
+      note: s.note ?? null,
+      sortOrder: i,
+    })),
+    { transaction: t },
+  );
 };
 
 const getTransactionsByDate = async (
@@ -161,11 +225,14 @@ const getTransactionsByDate = async (
       raw: true,
       nest: true,
     });
-    // 貼回標籤（另撈中介表，避免分頁 row 複製）
-    const tagMap = await loadTagsMap((rows as any[]).map((r) => r.id));
+    // 貼回標籤與拆分子項（另撈，避免分頁 row 複製）
+    const rowIds = (rows as any[]).map((r) => r.id);
+    const tagMap = await loadTagsMap(rowIds);
+    const splitMap = await loadSplitsMap(rowIds);
     const items = (rows as any[]).map((r) => ({
       ...r,
       tags: tagMap[r.id] || [],
+      splits: splitMap[r.id] || [],
     }));
     return {
       items: items as unknown as TransactionType[],
@@ -321,9 +388,14 @@ const getTransactionById = async (id: string, userId: string) => {
     const data = instance.toJSON() as TransactionType;
     const txId = data.id as string;
     const tagMap = await loadTagsMap([txId]);
+    const splitMap = await loadSplitsMap([txId]);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id: _omitId, ...other } = data;
-    return { ...other, tags: tagMap[txId] || [] };
+    return {
+      ...other,
+      tags: tagMap[txId] || [],
+      splits: splitMap[txId] || [],
+    };
   }
 
   return null;
@@ -471,6 +543,7 @@ export const createTransaction = async (
     extraMinus?: number;
     extraMinusLabel?: string;
     tagIds?: string[];
+    splits?: SplitInput[];
   },
   userId: string,
 ) => {
@@ -495,6 +568,14 @@ export const createTransaction = async (
     let type = data.type;
     if (amount < 0) {
       amount = Math.abs(amount);
+    }
+
+    // 拆分（Phase B）：前置檢查 + 配平（僅收入/支出非分期；轉帳走 createTransfer 不會進此）
+    const splits = Array.isArray(data.splits) ? data.splits : null;
+    const isSplit = !!(splits && splits.length);
+    if (isSplit) {
+      if (data.installment) throw new Error('分期交易不可拆分');
+      assertSplitBalance(amount, splits!);
     }
 
     // 額外金額處理：只有當有值時才建立關聯資料
@@ -630,6 +711,9 @@ export const createTransaction = async (
           userId,
           billingDate: data.date,
           transactionExtraId,
+          // 拆分（Phase B）：父為容器；categoryId 取第一個子項分類作列表顯示主分類（spec S3）
+          categoryId: isSplit ? splits![0]!.categoryId : data.categoryId,
+          isSplit,
           // 多幣別：baseRate 驅動 hook 算 amountInBase；原幣事實（已正規化/去重）
           baseRate: currencyFields.baseRate,
           exchangeRate: currencyFields.exchangeRate,
@@ -639,8 +723,19 @@ export const createTransaction = async (
         { transaction },
       );
 
+      // 餘額仍只看父 net（amount + extra）；拆分不改餘額路徑（spec §6.1）
       await calcAccountBalance(account, type, amount, extraAdd, extraMinus);
       await account.save({ transaction });
+
+      // 拆分：寫入子項（amountInBase = 子項原幣 × 父 baseRate 快照）
+      if (isSplit) {
+        await writeSplits(
+          newTransaction.id!,
+          splits!,
+          currencyFields.baseRate,
+          transaction,
+        );
+      }
 
       // 標籤：套用到整筆交易
       if (Array.isArray(data.tagIds) && data.tagIds.length) {
@@ -808,12 +903,41 @@ export const updateIncomeExpense = async (
     );
     await newAccount.save({ transaction: t });
 
+    // 拆分（Phase B）：data.splits !== undefined 才動子項
+    const splits =
+      data.splits === undefined
+        ? undefined
+        : Array.isArray(data.splits)
+          ? data.splits
+          : [];
+    let newIsSplit = (transaction as any).isSplit as boolean;
+    let newCategoryId = data.categoryId ?? transaction.categoryId;
+    if (splits !== undefined) {
+      if (splits.length > 0) {
+        assertSplitBalance(newAmount, splits);
+        newIsSplit = true;
+        newCategoryId = splits[0]!.categoryId; // 父顯示主分類取第一子項（spec S3）
+      } else {
+        newIsSplit = false; // 清空拆分，回到單一分類
+      }
+    } else if ((transaction as any).isSplit) {
+      // 既有為拆分但本次未帶 splits：金額有變會破壞配平 → 擋下；僅改日期等則放行
+      if (
+        data.amount != null &&
+        Number(newAmount) !== Number(transaction.amount)
+      ) {
+        throw new Error('拆分交易金額變動時須一併提供子項分配');
+      }
+    }
+
     await transaction.update(
       {
         ...data,
         amount: newAmount,
         type: newType,
         transactionExtraId: newTransactionExtraId,
+        isSplit: newIsSplit,
+        categoryId: newCategoryId,
         // 多幣別：baseRate 驅動 hook 重算 amountInBase；原幣欄位已正規化/去重
         baseRate: currencyFields.baseRate,
         exchangeRate: currencyFields.exchangeRate,
@@ -822,6 +946,18 @@ export const updateIncomeExpense = async (
       },
       { transaction: t },
     );
+
+    // 拆分：重建（有值）或清空（[]）子項
+    if (splits !== undefined) {
+      if (splits.length > 0) {
+        await writeSplits(id, splits, currencyFields.baseRate, t);
+      } else {
+        await TransactionSplit.destroy({
+          where: { transactionId: id },
+          transaction: t,
+        });
+      }
+    }
 
     // 標籤：undefined = 不動；[] = 清空；有值 = 取代
     if (data.tagIds !== undefined) {

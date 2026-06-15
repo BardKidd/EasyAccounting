@@ -18,6 +18,7 @@ import BudgetAssignment from './budgetAssignment';
 import BudgetTarget from './budgetTarget';
 import Tag from './tag';
 import TransactionTag from './transactionTag';
+import TransactionSplit from './transactionSplit';
 
 // -----------------------------------------------------------------------------
 // Soft Delete Hooks (Cascade)
@@ -90,8 +91,12 @@ Account.addHook('afterDestroy', async (account: any, options: any) => {
 
 Transaction.addHook('afterDestroy', async (instance: any, options: any) => {
   const transaction = options.transaction;
-  // 交易（含 soft-delete）→ 清掉其標籤關聯（transaction_tag 無 soft-delete）。
+  // 交易（含 soft-delete）→ 清掉其標籤關聯與拆分子項（皆無 soft-delete）。
   await TransactionTag.destroy({
+    where: { transactionId: instance.id },
+    transaction,
+  });
+  await TransactionSplit.destroy({
     where: { transactionId: instance.id },
     transaction,
   });
@@ -333,6 +338,26 @@ TransactionTag.belongsTo(Transaction, {
   as: 'transaction',
 });
 
+// -----------------------------------------------------------------------------
+// 拆分交易（Phase B）：Transaction 1—N TransactionSplit
+// -----------------------------------------------------------------------------
+Transaction.hasMany(TransactionSplit, {
+  foreignKey: 'transactionId',
+  as: 'splits',
+});
+TransactionSplit.belongsTo(Transaction, {
+  foreignKey: 'transactionId',
+  as: 'transaction',
+});
+Category.hasMany(TransactionSplit, {
+  foreignKey: 'categoryId',
+  as: 'transactionSplits',
+});
+TransactionSplit.belongsTo(Category, {
+  foreignKey: 'categoryId',
+  as: 'category',
+});
+
 // Export everything
 export {
   Account,
@@ -355,4 +380,5 @@ export {
   BudgetTarget,
   Tag,
   TransactionTag,
+  TransactionSplit,
 };

@@ -218,17 +218,14 @@ const getOverviewTop3Categories = async (body: any, userId: string) => {
         WHEN "MC"."parentId" IS NOT NULL THEN "MC"."icon"
         ELSE "SC"."icon"
       END AS "categoryIcon",
-      SUM("t"."amountInBase" + COALESCE("te"."extraMinusInBase", 0) - COALESCE("te"."extraAddInBase", 0)) AS "amount"
-    FROM "accounting"."transaction" AS "t"
+      SUM("t"."amountInBase" + "t"."extraMinusInBase" - "t"."extraAddInBase") AS "amount"
+    FROM "accounting"."transaction_split_unit" AS "t"
     -- 連接到子類別(SubCategory)
     LEFT OUTER JOIN "accounting"."category" AS "SC"
       ON "t"."categoryId" = "SC"."id"
     -- 連接到父類別(MainCategory)
     LEFT OUTER JOIN "accounting"."category" AS "MC"
       ON "SC"."parentId" = "MC"."id"
-    -- 連接到額外金額
-    LEFT OUTER JOIN "accounting"."transaction_extra" AS "te"
-      ON "t"."transactionExtraId" = "te"."id"
     WHERE "t"."userId" = :userId
     AND "t"."date" BETWEEN :startDate AND :endDate
     AND "t"."targetAccountId" IS NULL
@@ -437,16 +434,15 @@ const getCategoryTabData = async (
       "t"."type",
       SUM(
         CASE
-          WHEN "t"."type" = '支出' THEN ("t"."amountInBase" + COALESCE("te"."extraMinusInBase", 0) - COALESCE("te"."extraAddInBase", 0))
-          WHEN "t"."type" = '收入' THEN ("t"."amountInBase" - COALESCE("te"."extraMinusInBase", 0) + COALESCE("te"."extraAddInBase", 0))
+          WHEN "t"."type" = '支出' THEN ("t"."amountInBase" + "t"."extraMinusInBase" - "t"."extraAddInBase")
+          WHEN "t"."type" = '收入' THEN ("t"."amountInBase" - "t"."extraMinusInBase" + "t"."extraAddInBase")
           ELSE "t"."amountInBase"
         END
       )::float8 AS "amount",
       COUNT("t"."id")::integer AS "count"
-    FROM "accounting"."transaction" AS "t"
+    FROM "accounting"."transaction_split_unit" AS "t"
     LEFT JOIN "accounting"."category" AS "sc" ON "t"."categoryId" = "sc"."id"
     LEFT JOIN "accounting"."category" AS "mc" ON "sc"."parentId" = "mc"."id"
-    LEFT JOIN "accounting"."transaction_extra" AS "te" ON "t"."transactionExtraId" = "te"."id"
     WHERE "t"."userId" = :userId
     AND "t"."date" BETWEEN :startDate AND :endDate
     AND "t"."deletedAt" IS NULL

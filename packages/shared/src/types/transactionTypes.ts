@@ -73,6 +73,22 @@ export interface TransactionType {
 
   // 標籤（多對多；getTransactionsByDate / getTransactionById 回應夾帶）
   tags?: TransactionTagBrief[];
+
+  // 拆分交易（Phase B）：isSplit=true 時父為容器、分類下放各子項（spec S2/S3）。
+  // 聚合（預算/統計）一律走 DB view transaction_split_unit；父本身不計。
+  isSplit?: boolean;
+  splits?: TransactionSplitType[];
+}
+
+// 拆分子項（對應 backend src/models/transactionSplit.ts）
+export interface TransactionSplitType {
+  id: string;
+  transactionId: string;
+  categoryId: string;
+  amount: number; // 原幣毛額
+  amountInBase: number; // amount × 父 baseRate（寫入快照）
+  note: string | null;
+  sortOrder: number;
 }
 
 export interface RecurringTemplateType {

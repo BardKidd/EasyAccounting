@@ -196,6 +196,13 @@ function TransactionTable({
                         <span className="text-sm font-medium text-foreground">
                           {category?.name || '未分類'}
                         </span>
+                        {(transaction as any).isSplit &&
+                          transaction.splits &&
+                          transaction.splits.length > 0 && (
+                            <span className="ml-1 inline-flex items-center rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300 px-1.5 py-0.5 text-[10px] font-medium">
+                              拆分 {transaction.splits.length}
+                            </span>
+                          )}
                       </div>
                     </TableCell>
                     <TableCell>

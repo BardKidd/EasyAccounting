@@ -1,8 +1,8 @@
 # 拆分交易 + 標籤 規格 — Split Transaction & Tags
 
-> **文件狀態**: 🟢 **Phase A（Tags）完成（2026-06-15，未 commit）**；Phase B（Split）待辦。決策 S1–S9 已拍板。
+> **文件狀態**: 🟢 **Phase A（Tags）已 commit；Phase B（Split）完成（2026-06-15）**。決策 S1–S9 已拍板。
 > **最後更新**: 2026-06-15
-> **部署備忘**: migration `20260614020000-create-tags` 已套用本機 dev DB；**部署需於 Railway 跑 migration**（release note）。本機測試綠：backend 190（+8 tagFlow）／frontend 49（+3 tagMultiSelect）。
+> **部署備忘**: migrations `20260614020000-create-tags`、`20260615000000-create-transaction-split`、`20260615010000-create-transaction-split-unit-view` 已套用本機 dev DB；**部署需於 Railway 依序跑 migration**（release note）。本機測試綠：backend 198（+8 splitFlow）／frontend 53（+4 splitEditor）。
 > **對應 Roadmap**: `todo.md` Tier 1 #2「拆分交易 + 標籤 (Split Transaction + Tags) — Priority High」
 > **相依規格**: 預算 `budget-ynab-spec.md`（D5：預算一律本位幣、消耗用 `amountInBase`）、多幣別 `multicurrency-implementation-plan.md`（D1–D9）、交易 `transaction_spec.md`、統計 `statistics_spec.md`。
 
@@ -245,16 +245,18 @@ expandToCategoryActivity(tx) -> Array<{ categoryId, activityInBase }>
 
 > **動工/手測提醒**：改過 `@repo/shared` 後務必重啟後端 dev——`tsx watch` 不重載 workspace 套件，舊 schema 會默默把新欄位（如 `tagIds`）strip 掉，導致存不進去。
 
-### Phase B — Split（S1 後做，碰核心）
-- [ ] `transaction_split` 模型 + migration；`transaction.isSplit` + 關聯
-- [ ] `models/index.ts` afterDestroy 串接刪 split
-- [ ] `logic/expandToCategoryActivity.ts`（S6）+ 單元測試（含尾差、跨幣、收入/支出向）
-- [ ] shared schema：`splits[]` + 配平 refine（`Σ amount === amount`）+ 前置檢查
-- [ ] `transactionServices` create/update/delete 寫入 splits、配平驗證、extra 並存
-- [ ] `budgetService` activity 改走 helper（驗證信封 roll-up 正確）
-- [ ] `statisticsServices` 分類圓餅/排行改走 helper 或 SQL view
-- [ ] 前端拆分 UI（開關、子項列、即時加總、分配/Auto-Distribute、前置檢查 disable）
-- [ ] 測試：不變量（§6.2）、餘額不變、預算 activity、統計聚合、跨幣尾差、刪除串接
+### Phase B — Split（S1 後做，碰核心）✅ 完成（2026-06-15）
+- [x] `transaction_split` 模型 + migration（`20260615000000`）；`transaction.isSplit` + 關聯（皆 paranoid:false）
+- [x] `models/index.ts` afterDestroy 串接刪 split（User→Transaction→split）
+- [x] **S6 落地為 DB view `transaction_split_unit`**（migration `20260615010000`）取代 JS helper（§7 允許）：非拆分=整筆一列、拆分=每子項一列且 extra 按 gross 比例攤提；對非拆分資料與現況逐位相同
+- [x] shared schema：`splits[]`（splitInputSchema）+ 配平/前置 refine（create/update/transfer）+ 前端 form schema（mainCategory 改 optional，元件 superRefine 補必填）
+- [x] `transactionServices` create/update/delete 寫入/重建/串接刪除 splits、配平驗證、extra 並存；list/byId 回應帶 splits
+- [x] `budgetService`（activity/inflow/cardSpend）改走 view（repay 為轉帳不動）
+- [x] `statisticsServices` 分類圓餅/分類分頁改走 view（account/月趨勢為非分類維度不動）
+- [x] 前端拆分 UI：`SplitEditor`（子項列 + 即時加總 + 平均/補剩餘）接入 `transactionSheet`（拆分開關、前置 disable）；列表 `transactionTable` 顯示「拆分 N」標記
+- [x] 測試：backend `tests/integration/splitFlow.test.ts`（8：不變量/餘額不變/view 攤提/更新/取消/跨幣/串接刪除/前置）；既有 budget/stats 全套綠（view 對非拆分零行為變更）。本機 backend 198 / frontend 49 綠
+
+> **S6 取捨備忘**：原 §5.4 規劃 JS helper `expandToCategoryActivity`；因 budget/statistics 皆原生 SQL 聚合，改以 DB view 為單一真實來源（§7 已允許「helper 或 SQL view」），消費端僅將 `FROM transaction+extra` 換成 view、`e.extra` 改 `t.extra`，對既有非拆分資料零行為變更。
 
 ---
 
@@ -307,5 +309,15 @@ cd apps/frontend && pnpm test:e2e:tags
 **示範涵蓋**：交易表單 chip 多選既有標籤 + on-the-fly 即時建立 → 列表彩色 chip → 依標籤篩選。
 （標籤管理頁未入影片，由 `tagFlow.test.ts` + `tagSettings` 測試覆蓋，原因見該 spec §10。）
 
+## 14. 重現 E2E 示範影片（Split Phase B）
+
+前置同 §13（含 migration）。**產生影片（一行指令）**：
+```bash
+cd apps/frontend && pnpm test:e2e:split
+```
+- 透過 `playwright.split.config.ts` 自動啟動後端（:3000，`ORIGIN_URL=:8090`）與前端（:8090），跑 `e2e/split-demo.spec.ts`。
+- 影片輸出於 `apps/frontend/test-results-split/<test>/video.webm`（內嵌中文字幕旁白）。
+- **示範涵蓋**：新增交易輸入總額 → 開啟拆分 → 子項分類/金額 → 即時加總（剩餘→已配平）→ 儲存 → 列表「拆分 N」標記。
+
 > ⚠️ 若剛改過 `@repo/shared` 的 schema，重跑前先重啟後端 dev：`tsx watch` 不重載 workspace 套件，
-> 舊 schema 會默默把新欄位（如 `tagIds`）strip 掉，導致存不進去。
+> 舊 schema 會默默把新欄位（如 `tagIds`/`splits`）strip 掉，導致存不進去。
