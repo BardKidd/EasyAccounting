@@ -15,6 +15,7 @@ import {
   FileCheck,
   Repeat,
   Calculator,
+  History,
 } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import {
@@ -65,6 +66,11 @@ const sidebarItems = [
     title: '信用卡對帳',
     href: '/reconciliation',
     icon: FileCheck,
+  },
+  {
+    title: '變更歷史',
+    href: '/audit-logs',
+    icon: History,
   },
   {
     title: '設定',

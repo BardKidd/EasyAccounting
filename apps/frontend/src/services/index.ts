@@ -54,6 +54,7 @@ import {
   assignBudget,
   moveBudgetMoney,
 } from './budget';
+import { getAuditLogs } from './auditLog';
 
 export default {
   getCategories,
@@ -96,4 +97,5 @@ export default {
   getBudgetMonth,
   assignBudget,
   moveBudgetMoney,
+  getAuditLogs,
 };

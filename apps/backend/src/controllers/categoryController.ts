@@ -2,8 +2,13 @@ import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import Category from '@/models/category';
 import { simplifyTryCatch, responseHelper } from '@/utils/common';
-import { CategoryType } from '@repo/shared';
+import { CategoryType, AuditAction, AuditEntityType } from '@repo/shared';
 import { Op } from 'sequelize';
+import {
+  recordAudit,
+  genericAuditSummary,
+  safeSnapshot,
+} from '@/services/auditLogService';
 
 const getAllCategories = async (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -63,6 +68,20 @@ const postCategory = async (req: Request, res: Response) => {
   const userId = req.user.userId;
   simplifyTryCatch(req, res, async () => {
     const category = await Category.create({ ...req.body, userId });
+
+    void recordAudit({
+      userId,
+      action: AuditAction.CREATE,
+      entityType: AuditEntityType.CATEGORY,
+      entityId: category.id,
+      after: safeSnapshot(category),
+      summary: genericAuditSummary(
+        AuditAction.CREATE,
+        AuditEntityType.CATEGORY,
+        category.name,
+      ),
+    });
+
     res
       .status(StatusCodes.CREATED)
       .json(
@@ -81,7 +100,23 @@ const putCategory = async (req: Request, res: Response) => {
         .status(StatusCodes.NOT_FOUND)
         .json(responseHelper(false, null, 'Category not found', null));
     }
+    const auditBefore = safeSnapshot(category);
     await category.update({ ...req.body, userId }); // 不需要使用 where,因為已經有 category instance 了
+
+    void recordAudit({
+      userId,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.CATEGORY,
+      entityId: category.id,
+      before: auditBefore,
+      after: safeSnapshot(category),
+      summary: genericAuditSummary(
+        AuditAction.UPDATE,
+        AuditEntityType.CATEGORY,
+        category.name,
+      ),
+    });
+
     res
       .status(StatusCodes.OK)
       .json(responseHelper(true, null, 'Category updated successfully', null));
@@ -110,7 +145,22 @@ const deleteCategory = async (req: Request, res: Response) => {
           )
         );
     }
+    const auditBefore = safeSnapshot(category);
     await category.destroy();
+
+    void recordAudit({
+      userId,
+      action: AuditAction.DELETE,
+      entityType: AuditEntityType.CATEGORY,
+      entityId: categoryId!,
+      before: auditBefore,
+      summary: genericAuditSummary(
+        AuditAction.DELETE,
+        AuditEntityType.CATEGORY,
+        category.name,
+      ),
+    });
+
     res
       .status(StatusCodes.OK)
       .json(responseHelper(true, null, 'Category deleted successfully', null));

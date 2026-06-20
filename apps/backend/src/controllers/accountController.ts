@@ -4,11 +4,16 @@ import Account from '@/models/account';
 import CreditCardDetail from '@/models/CreditCardDetail';
 import sequelize from '@/utils/postgres';
 import { StatusCodes } from 'http-status-codes';
-import { Account as AccountEnum } from '@repo/shared';
+import { Account as AccountEnum, AuditAction, AuditEntityType } from '@repo/shared';
 import {
   deleteTemplatesByAccountId,
   archiveTemplatesByAccountId,
 } from '@/services/recurringTemplateService';
+import {
+  recordAudit,
+  genericAuditSummary,
+  safeSnapshot,
+} from '@/services/auditLogService';
 
 const getAccountsByUser = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -98,6 +103,19 @@ const addAccount = (req: Request, res: Response) => {
         include: [{ model: CreditCardDetail, as: 'credit_card_detail' }],
       });
 
+      void recordAudit({
+        userId,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.ACCOUNT,
+        entityId: account.id,
+        after: safeSnapshot(reloadedAccount) ?? safeSnapshot(account),
+        summary: genericAuditSummary(
+          AuditAction.CREATE,
+          AuditEntityType.ACCOUNT,
+          account.name,
+        ),
+      });
+
       return res
         .status(StatusCodes.CREATED)
         .json(
@@ -126,6 +144,10 @@ const editAccount = (req: Request, res: Response) => {
 
     const t = await sequelize.transaction();
     try {
+      const beforeAcc = await Account.findOne({
+        where: { id: accountId, userId },
+        transaction: t,
+      });
       await Account.update(data, {
         where: {
           id: accountId,
@@ -155,6 +177,21 @@ const editAccount = (req: Request, res: Response) => {
       }
       await t.commit();
 
+      const afterAcc = await Account.findByPk(accountId);
+      void recordAudit({
+        userId,
+        action: AuditAction.UPDATE,
+        entityType: AuditEntityType.ACCOUNT,
+        entityId: accountId!,
+        before: safeSnapshot(beforeAcc),
+        after: safeSnapshot(afterAcc),
+        summary: genericAuditSummary(
+          AuditAction.UPDATE,
+          AuditEntityType.ACCOUNT,
+          afterAcc?.name,
+        ),
+      });
+
       return res
         .status(StatusCodes.OK)
         .json(responseHelper(true, null, '該帳戶已更新', null));
@@ -170,8 +207,15 @@ const deleteAccount = (req: Request, res: Response) => {
     const { userId } = req.user;
     const accountId = req.params.accountId as string;
 
+    let auditBefore: any = null;
     const t = await sequelize.transaction();
     try {
+      const beforeAcc = await Account.findOne({
+        where: { id: accountId, userId },
+        transaction: t,
+      });
+      auditBefore = safeSnapshot(beforeAcc);
+
       // 先刪除所有關聯的 ACTIVE/ARCHIVED templates
       await deleteTemplatesByAccountId(accountId, userId, t);
 
@@ -185,6 +229,19 @@ const deleteAccount = (req: Request, res: Response) => {
       await t.rollback();
       throw err;
     }
+
+    void recordAudit({
+      userId,
+      action: AuditAction.DELETE,
+      entityType: AuditEntityType.ACCOUNT,
+      entityId: accountId,
+      before: auditBefore,
+      summary: genericAuditSummary(
+        AuditAction.DELETE,
+        AuditEntityType.ACCOUNT,
+        auditBefore?.name,
+      ),
+    });
 
     return res
       .status(StatusCodes.OK)
@@ -213,6 +270,16 @@ const archiveAccount = (req: Request, res: Response) => {
       throw err;
     }
 
+    void recordAudit({
+      userId,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.ACCOUNT,
+      entityId: accountId,
+      before: { isArchived: false },
+      after: { isArchived: true },
+      summary: '封存帳戶',
+    });
+
     return res
       .status(StatusCodes.OK)
       .json(responseHelper(true, null, '該帳戶已封存', null));
@@ -228,6 +295,16 @@ const unarchiveAccount = (req: Request, res: Response) => {
       { isArchived: false },
       { where: { id: accountId, userId } },
     );
+
+    void recordAudit({
+      userId,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.ACCOUNT,
+      entityId: accountId,
+      before: { isArchived: true },
+      after: { isArchived: false },
+      summary: '解除封存帳戶',
+    });
 
     return res
       .status(StatusCodes.OK)

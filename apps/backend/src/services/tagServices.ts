@@ -2,6 +2,12 @@ import { Op } from 'sequelize';
 import sequelize from '@/utils/postgres';
 import { Tag } from '@/models';
 import type { CreateTagInput, UpdateTagInput } from '@repo/shared';
+import { AuditAction, AuditEntityType } from '@repo/shared';
+import {
+  recordAudit,
+  genericAuditSummary,
+  safeSnapshot,
+} from '@/services/auditLogService';
 
 const DEFAULT_TAG_COLOR = '#6b7280';
 
@@ -29,12 +35,23 @@ const createTag = async (userId: string, input: CreateTagInput) => {
   });
   if (existing) return existing;
 
-  return Tag.create({
+  const created = await Tag.create({
     userId,
     name,
     color: input.color || DEFAULT_TAG_COLOR,
     groupName: input.groupName ?? null,
   });
+
+  void recordAudit({
+    userId,
+    action: AuditAction.CREATE,
+    entityType: AuditEntityType.TAG,
+    entityId: created.id,
+    after: safeSnapshot(created),
+    summary: genericAuditSummary(AuditAction.CREATE, AuditEntityType.TAG, name),
+  });
+
+  return created;
 };
 
 const updateTag = async (
@@ -44,6 +61,7 @@ const updateTag = async (
 ) => {
   const tag = await Tag.findOne({ where: { id, userId } });
   if (!tag) throw new Error('標籤不存在');
+  const auditBefore = safeSnapshot(tag);
 
   if (input.name !== undefined) {
     const name = input.name.trim();
@@ -58,6 +76,21 @@ const updateTag = async (
   if (input.isArchived !== undefined) tag.isArchived = input.isArchived;
 
   await tag.save();
+
+  void recordAudit({
+    userId,
+    action: AuditAction.UPDATE,
+    entityType: AuditEntityType.TAG,
+    entityId: tag.id,
+    before: auditBefore,
+    after: safeSnapshot(tag),
+    summary: genericAuditSummary(
+      AuditAction.UPDATE,
+      AuditEntityType.TAG,
+      tag.name,
+    ),
+  });
+
   return tag;
 };
 
@@ -66,12 +99,29 @@ const updateTag = async (
  * 串接清除；交易本身不動。
  */
 const deleteTag = async (userId: string, id: string) => {
-  return sequelize.transaction(async (t) => {
+  let auditBefore: any = null;
+  const result = await sequelize.transaction(async (t) => {
     const tag = await Tag.findOne({ where: { id, userId }, transaction: t });
     if (!tag) throw new Error('標籤不存在');
+    auditBefore = safeSnapshot(tag);
     await tag.destroy({ transaction: t });
     return { success: true };
   });
+
+  void recordAudit({
+    userId,
+    action: AuditAction.DELETE,
+    entityType: AuditEntityType.TAG,
+    entityId: id,
+    before: auditBefore,
+    summary: genericAuditSummary(
+      AuditAction.DELETE,
+      AuditEntityType.TAG,
+      auditBefore?.name,
+    ),
+  });
+
+  return result;
 };
 
 export default { listTags, createTag, updateTag, deleteTag };

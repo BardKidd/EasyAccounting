@@ -1,0 +1,59 @@
+# 本地 MongoDB sharded cluster — audit log 水平擴展練習環境。
+# 拓撲：1 config server（RS）+ 2 shard（各單節點 RS）+ 1 mongos router。
+# 用法見同目錄 README.md。對應規格 docs/specs/audit-log-sharding-spec.md。
+#
+#   docker compose -f docker/mongo-shard/docker-compose.yml up -d
+#   ./docker/mongo-shard/init-cluster.sh        # 初始化 RS + 加 shard + 開分片
+#
+# app 連線：AUDIT_MONGODB_URL=mongodb://localhost:27017/easyaccounting_audit
+
+services:
+  configsvr:
+    image: mongo:7
+    container_name: ea-audit-configsvr
+    command:
+      ['mongod', '--configsvr', '--replSet', 'cfgrs', '--port', '27019', '--bind_ip_all']
+    ports:
+      - '27019:27019'
+    volumes:
+      - configsvr-data:/data/db
+
+  shard1:
+    image: mongo:7
+    container_name: ea-audit-shard1
+    command:
+      ['mongod', '--shardsvr', '--replSet', 'shard1rs', '--port', '27018', '--bind_ip_all']
+    ports:
+      - '27018:27018'
+    volumes:
+      - shard1-data:/data/db
+
+  shard2:
+    image: mongo:7
+    container_name: ea-audit-shard2
+    command:
+      ['mongod', '--shardsvr', '--replSet', 'shard2rs', '--port', '27028', '--bind_ip_all']
+    ports:
+      - '27028:27028'
+    volumes:
+      - shard2-data:/data/db
+
+  mongos:
+    image: mongo:7
+    container_name: ea-audit-mongos
+    depends_on:
+      - configsvr
+      - shard1
+      - shard2
+    command:
+      ['mongos', '--configdb', 'cfgrs/configsvr:27019', '--port', '27017', '--bind_ip_all']
+    ports:
+      - '27017:27017'
+    volumes:
+      # 把初始化腳本掛進 mongos，供 init-cluster.sh 以 --file 執行。
+      - ./:/scripts:ro
+
+volumes:
+  configsvr-data:
+  shard1-data:
+  shard2-data:

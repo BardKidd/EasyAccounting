@@ -133,7 +133,7 @@
 - [ ] **台灣在地化**: 統一發票對獎、報稅可扣除支出標記 (tax category)。
 - [ ] **現金流預測**: 依週期交易 + 預算預測未來餘額曲線、低餘額預警。
 - [ ] **訂閱偵測**: 自動找出重複扣款的訂閱服務。
-- [ ] **稽核紀錄 / 變更歷史**: 交易修改 log。
+- [x] **稽核紀錄 / 變更歷史** (2026-06-17)：**全實體** CRUD 變更 log（交易/轉帳/帳戶/分類/標籤/預算）。**主目的為 NoSQL 水平擴展練習**——audit log 存獨立 MongoDB（shard key `{userId,createdAt}`），附本地 sharded cluster（Docker）+ seed 腳本供分片實驗。前端 `/audit-logs` 變更歷史檢視（6 類篩選 + 欄位級 diff）。測試 18 cases + 既有 165 unit/29 integration 全綠。📄 **規格**: [audit-log-sharding-spec.md](docs/specs/audit-log-sharding-spec.md)（決策 A1–A9）。本機未 commit；部署需 `AUDIT_MONGODB_URL`。
 - [ ] **銀行同步**: Open Banking / Plaid 類自動匯入 (台灣難度高，長期)。
 
 ### 🔧 既有功能微調 (Backlog — 小項)

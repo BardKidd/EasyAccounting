@@ -294,3 +294,27 @@ export const roundRate = (value: number): number => {
 // 用此上界限制 view/assign/move 的月份範圍：放寬未來、但避免無界 month 造成 fold 月份迴圈爆炸
 // （generateMonthRange 會從 start 迭代到 target）。前後端共用同一上界避免漂移。
 export const BUDGET_MAX_FUTURE_MONTHS = 12;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Audit Log（稽核 / 變更歷史）— 存於 MongoDB（append-only、shard-by-userId）。
+// 詳見 docs/specs/audit-log-sharding-spec.md。前後端共用 action / entityType 枚舉，
+// 避免字串漂移。v1 只有 TRANSACTION 實際接線寫入，其餘為預留（spec §3）。
+// ─────────────────────────────────────────────────────────────────────────────
+export enum AuditAction {
+  CREATE = 'CREATE',
+  UPDATE = 'UPDATE',
+  DELETE = 'DELETE',
+}
+
+export enum AuditEntityType {
+  TRANSACTION = 'TRANSACTION',
+  TRANSFER = 'TRANSFER',
+  ACCOUNT = 'ACCOUNT',
+  CATEGORY = 'CATEGORY',
+  TAG = 'TAG',
+  BUDGET = 'BUDGET',
+}
+
+// audit log 讀取 API 每頁筆數上界（append-only 資料量大，硬性封頂避免一次撈爆）。
+export const AUDIT_LOG_MAX_PAGE_SIZE = 100;
+export const AUDIT_LOG_DEFAULT_PAGE_SIZE = 20;

@@ -17,6 +17,7 @@ export * from './schemas/recurringTemplate.schema';
 export * from './schemas/chat.schema';
 export * from './schemas/budget.schema';
 export * from './schemas/tag.schema';
+export * from './schemas/auditLog.schema';
 
 // 匯出所有 types
 export * from './types/categoryTypes';
@@ -28,6 +29,7 @@ export * from './types/statisticsTypes';
 export * from './types/personnelNotificationTypes';
 export * from './types/pendingTransactionTypes';
 export * from './types/tagTypes';
+export * from './types/auditLogTypes';
 
 export * from './utils/transactionUtils';
 

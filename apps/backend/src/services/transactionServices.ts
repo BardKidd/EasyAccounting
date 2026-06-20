@@ -19,8 +19,11 @@ import {
   TransactionSplitType,
   SplitInput,
   SPLIT_BALANCE_EPSILON,
+  AuditAction,
+  AuditEntityType,
 } from '@repo/shared';
 import { simplifyTransaction } from '@/utils/common';
+import { recordAudit, safeSnapshot } from '@/services/auditLogService';
 import {
   Transaction,
   Account,
@@ -535,6 +538,26 @@ const getInstallmentDescription = (
   return `${originalDesc} (${current}/${total})`;
 };
 
+/**
+ * 由交易快照組出人類可讀的 audit 摘要，例：「新增支出 $1,200・午餐」。
+ * 純顯示用，audit 寫入失敗不影響交易，故不需嚴格。
+ */
+const txAuditSummary = (action: AuditAction, snap: any): string => {
+  const verb =
+    action === AuditAction.CREATE
+      ? '新增'
+      : action === AuditAction.UPDATE
+        ? '修改'
+        : '刪除';
+  const typeLabel = snap?.type ?? '交易';
+  const amount =
+    snap?.amount != null && snap.amount !== ''
+      ? `$${Number(snap.amount).toLocaleString()}`
+      : '';
+  const desc = snap?.description ? `・${snap.description}` : '';
+  return `${verb}${typeLabel} ${amount}${desc}`.trim();
+};
+
 export const createTransaction = async (
   data: TransactionType & {
     installment?: CreateTransactionSchema['installment'];
@@ -598,6 +621,8 @@ export const createTransaction = async (
     }
 
     let result = null;
+    // Audit：commit 後才寫，這裡先捕捉建立的實體（id + 快照）。
+    let auditCreate: { id: string; snapshot: any } | null = null;
 
     // Handle Installment Plan
     if (data.installment && data.installment.totalInstallments > 1) {
@@ -620,6 +645,17 @@ export const createTransaction = async (
         },
         { transaction },
       );
+      auditCreate = {
+        id: installmentPlan.id,
+        snapshot: {
+          installmentPlanId: installmentPlan.id,
+          type,
+          amount,
+          totalInstallments: data.installment.totalInstallments,
+          description: data.description,
+          accountId: data.accountId,
+        },
+      };
 
       // 2. 計算每期金額 (分期邏輯)
       const totalAmount = amount;
@@ -743,9 +779,22 @@ export const createTransaction = async (
       }
 
       result = newTransaction.toJSON();
+      auditCreate = { id: newTransaction.id!, snapshot: result };
     }
 
     await transaction.commit();
+
+    // Audit（best-effort、commit 後 fire-and-forget；失敗不影響回傳）。
+    if (auditCreate) {
+      void recordAudit({
+        userId,
+        action: AuditAction.CREATE,
+        entityType: AuditEntityType.TRANSACTION,
+        entityId: auditCreate.id,
+        after: auditCreate.snapshot,
+        summary: txAuditSummary(AuditAction.CREATE, auditCreate.snapshot),
+      });
+    }
 
     return result;
   } catch (error) {
@@ -777,6 +826,7 @@ export const updateIncomeExpense = async (
     return updateTransfer(id, data, userId);
   }
 
+  let auditBefore: any = null;
   const responseData = await simplifyTransaction(async (t) => {
     const transaction = await Transaction.findOne({
       where: { id, userId },
@@ -784,6 +834,8 @@ export const updateIncomeExpense = async (
       transaction: t,
     });
     if (!transaction) throw new Error('Transaction not found');
+    // Audit：擷取變更前快照（toJSON 為快照副本，後續 mutation 不影響）。
+    auditBefore = safeSnapshot(transaction);
 
     const oldAccount = await Account.findOne({
       where: { id: transaction.accountId!, userId },
@@ -970,6 +1022,17 @@ export const updateIncomeExpense = async (
     return transaction.toJSON();
   });
 
+  // Audit（best-effort、commit 後 fire-and-forget）。
+  void recordAudit({
+    userId,
+    action: AuditAction.UPDATE,
+    entityType: AuditEntityType.TRANSACTION,
+    entityId: id,
+    before: auditBefore,
+    after: responseData,
+    summary: txAuditSummary(AuditAction.UPDATE, responseData),
+  });
+
   return responseData;
 };
 
@@ -1060,6 +1123,16 @@ export const deleteTransaction = async (id: string, userId: string) => {
     return transaction.toJSON();
   });
 
+  // Audit（best-effort、commit 後 fire-and-forget）。before = 被刪除的交易快照。
+  void recordAudit({
+    userId,
+    action: AuditAction.DELETE,
+    entityType: AuditEntityType.TRANSACTION,
+    entityId: id,
+    before: responseData,
+    summary: txAuditSummary(AuditAction.DELETE, responseData),
+  });
+
   return responseData;
 };
 
@@ -1070,7 +1143,7 @@ const createTransfer = async (
   fromTransaction: TransactionTypeWhenOperate;
   toTransaction: TransactionTypeWhenOperate;
 }> => {
-  return simplifyTransaction(async (t) => {
+  const result = await simplifyTransaction(async (t) => {
     if (data.type !== RootType.OPERATE) throw new Error('Must be operate type');
 
     const fromAccount = await Account.findByPk(data.accountId, {
@@ -1198,6 +1271,20 @@ const createTransfer = async (
       toTransaction: toTransaction.toJSON() as TransactionTypeWhenOperate,
     };
   });
+
+  // Audit（best-effort、commit 後 fire-and-forget）。轉帳以來源 leg 為主體記一筆。
+  void recordAudit({
+    userId,
+    action: AuditAction.CREATE,
+    entityType: AuditEntityType.TRANSFER,
+    entityId: result.fromTransaction.id!,
+    after: result,
+    summary: `新增轉帳 $${Number(
+      result.fromTransaction.amount,
+    ).toLocaleString()}`,
+  });
+
+  return result;
 };
 
 /**
@@ -1224,7 +1311,8 @@ const updateTransfer = async (
   },
   userId: string,
 ) => {
-  return simplifyTransaction(async (t) => {
+  let auditBefore: any = null;
+  const result = await simplifyTransaction(async (t) => {
     // 以 where { id, userId } 驗證歸屬，避免越權編輯他人交易
     const primary = await Transaction.findOne({
       where: { id, userId },
@@ -1244,6 +1332,9 @@ const updateTransfer = async (
     // 定位來源側 (EXPENSE) 與目標側 (INCOME)，不論傳進來的是哪一側
     const fromTx = primary.type === RootType.EXPENSE ? primary : linked;
     const toTx = primary.type === RootType.EXPENSE ? linked : primary;
+
+    // Audit：擷取變更前的來源 leg 快照（toJSON 為快照副本，後續 mutation 不影響）。
+    auditBefore = safeSnapshot(fromTx);
 
     // 帳戶快取：同一帳戶可能同時是舊/新的來源或目標，需共用同一 instance 累加餘額
     const accountCache = new Map<string, any>();
@@ -1453,6 +1544,21 @@ const updateTransfer = async (
       toTransaction: toTx.toJSON(),
     };
   });
+
+  // Audit（best-effort、commit 後 fire-and-forget）。以來源 leg 的欄位 diff 呈現。
+  void recordAudit({
+    userId,
+    action: AuditAction.UPDATE,
+    entityType: AuditEntityType.TRANSFER,
+    entityId: result.fromTransaction.id!,
+    before: auditBefore,
+    after: result.fromTransaction,
+    summary: `修改轉帳 $${Number(
+      result.fromTransaction.amount,
+    ).toLocaleString()}`,
+  });
+
+  return result;
 };
 
 export default {
