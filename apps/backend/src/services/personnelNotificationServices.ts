@@ -27,7 +27,13 @@ const getPersonnelNotification = async (userId: string) => {
       'monthlyAnalysisNotice',
     ],
   });
-  if (!result) throw new Error('Get personnel notification failed');
+  if (!result) {
+    return {
+      isDailyNotification: false,
+      isWeeklySummaryNotification: false,
+      isMonthlyAnalysisNotification: false,
+    };
+  }
   return {
     isDailyNotification: result.dailyReminder,
     isWeeklySummaryNotification: result.weeklySummaryNotice,
