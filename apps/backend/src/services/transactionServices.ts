@@ -21,6 +21,7 @@ import {
   SPLIT_BALANCE_EPSILON,
   AuditAction,
   AuditEntityType,
+  BatchTransactionSchema,
 } from '@repo/shared';
 import { simplifyTransaction } from '@/utils/common';
 import { recordAudit, safeSnapshot } from '@/services/auditLogService';
@@ -1592,6 +1593,60 @@ const updateTransfer = async (
   return result;
 };
 
+// 批次操作：一次對多筆交易套用「刪除」或「加標籤」。
+// - delete：逐筆重用 deleteTransaction（含轉帳沖銷 / 拆分串接 / 餘額回滾 / audit），
+//   單筆失敗（找不到 / 非本人）只略過該筆、不中斷整批。
+// - addTags：只 append 屬於本人的 tag，與每筆既有標籤取聯集（不覆蓋、不移除）。
+// 回傳 { affected, skipped }：affected = 成功筆數，skipped = 被略過的 id。
+export const batchTransactions = async (
+  payload: BatchTransactionSchema,
+  userId: string,
+) => {
+  const { ids, action, tagIds } = payload;
+  const skipped: string[] = [];
+  let affected = 0;
+
+  if (action === 'delete') {
+    for (const id of ids) {
+      try {
+        await deleteTransaction(id, userId);
+        affected++;
+      } catch {
+        skipped.push(id);
+      }
+    }
+    return { affected, skipped };
+  }
+
+  // action === 'addTags'
+  const owned = await Tag.findAll({
+    where: { id: { [Op.in]: tagIds ?? [] }, userId },
+    attributes: ['id'],
+    raw: true,
+  });
+  const ownedTagIds = (owned as any[]).map((t) => t.id);
+  if (!ownedTagIds.length) return { affected: 0, skipped: [...ids] };
+
+  for (const id of ids) {
+    const tx = await Transaction.findOne({ where: { id, userId } });
+    if (!tx) {
+      skipped.push(id);
+      continue;
+    }
+    const existing = await TransactionTag.findAll({
+      where: { transactionId: id },
+      attributes: ['tagId'],
+      raw: true,
+    });
+    const merged = Array.from(
+      new Set([...(existing as any[]).map((e) => e.tagId), ...ownedTagIds]),
+    );
+    await (tx as any).setTags(merged);
+    affected++;
+  }
+  return { affected, skipped };
+};
+
 export default {
   createTransaction,
   getTransactionsByDate,
@@ -1601,4 +1656,5 @@ export default {
   createTransfer,
   updateTransfer,
   getTransactionsDashboardSummary,
+  batchTransactions,
 };

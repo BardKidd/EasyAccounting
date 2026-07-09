@@ -181,6 +181,27 @@ export const getTransactionsDashboardSummarySchema = z.object({
   groupBy: z.nativeEnum(PeriodType).optional(),
 });
 
+// 批次操作：對多筆交易一次套用刪除 / 加標籤。改分類尚未納入（需 budget/拆分/轉帳感知的完整更新路徑）。
+export const batchTransactionSchema = z
+  .object({
+    ids: z.array(z.string().uuid()).min(1, '至少選取一筆交易'),
+    action: z.enum(['delete', 'addTags']),
+    // action=addTags 時必填；append 到每筆既有標籤（聯集）
+    tagIds: z.array(z.string().uuid()).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.action === 'addTags' &&
+      (!data.tagIds || data.tagIds.length === 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'addTags 需要至少一個 tagIds',
+        path: ['tagIds'],
+      });
+    }
+  });
+
 export type CreateTransactionSchema = z.infer<typeof createTransactionSchema>;
 export type CreateTransferSchema = z.infer<typeof createTransferSchema>;
 export type UpdateTransactionSchema = z.infer<typeof updateTransactionSchema>;
@@ -190,6 +211,7 @@ export type GetTransactionsByDateSchema = z.infer<
 export type GetTransactionsDashboardSummarySchema = z.infer<
   typeof getTransactionsDashboardSummarySchema
 >;
+export type BatchTransactionSchema = z.infer<typeof batchTransactionSchema>;
 
 // 前端專用的表單 schema，因為後端的 schema 欄位略有不同
 export const transactionFormSchema = z.object({

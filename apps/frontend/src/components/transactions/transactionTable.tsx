@@ -14,13 +14,43 @@ import {
   RootType,
   CategoryType,
   AccountType,
+  TagType,
 } from '@repo/shared';
 import CustomPagination from '@/components/customPagination';
 import { format } from 'date-fns';
-import { ArrowRightLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import {
+  ArrowRightLeft,
+  Trash2,
+  Tag as TagIcon,
+  X,
+  Loader2,
+} from 'lucide-react';
 import { ACCOUNT_ICONS, IconName } from '@/lib/icon-mapping';
 import { CategoryIcon } from '@/components/ui/category-icon';
-import { calculateNetAmount, formatCurrency } from '@/lib/utils'; // Added formatCurrency
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { getTags } from '@/services/tagService';
+import services from '@/services';
+import { calculateNetAmount, formatCurrency, cn } from '@/lib/utils';
 
 interface TransactionTableProps {
   transactions: TransactionResponse;
@@ -33,6 +63,85 @@ function TransactionTable({
   categories,
   accounts,
 }: TransactionTableProps) {
+  const router = useRouter();
+  const items = transactions?.items ?? [];
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [tags, setTags] = useState<TagType[]>([]);
+  const [isBusy, setIsBusy] = useState(false);
+  const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+
+  // 換頁 / 篩選導致清單改變時清空選取
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [transactions]);
+
+  useEffect(() => {
+    let active = true;
+    getTags()
+      .then((d) => {
+        if (active) setTags(d || []);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const allSelected = items.length > 0 && selectedIds.size === items.length;
+  const someSelected = selectedIds.size > 0 && !allSelected;
+
+  const toggleAll = () => {
+    if (allSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(items.map((i) => i.id!)));
+  };
+
+  const toggleOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const runBatchDelete = async () => {
+    if (!selectedIds.size) return;
+    try {
+      setIsBusy(true);
+      const res = await services.batchTransactions({
+        ids: Array.from(selectedIds),
+        action: 'delete',
+      });
+      toast.success(`已刪除 ${res?.data?.affected ?? 0} 筆交易`);
+      setSelectedIds(new Set());
+      router.refresh();
+    } catch {
+      toast.error('批次刪除失敗');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const runAddTag = async (tagId: string) => {
+    if (!selectedIds.size) return;
+    try {
+      setIsBusy(true);
+      const res = await services.batchTransactions({
+        ids: Array.from(selectedIds),
+        action: 'addTags',
+        tagIds: [tagId],
+      });
+      toast.success(`已為 ${res?.data?.affected ?? 0} 筆交易加上標籤`);
+      setTagPopoverOpen(false);
+      setSelectedIds(new Set());
+      router.refresh();
+    } catch {
+      toast.error('批次加標籤失敗');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
   // Helper to find category with color inheritance
   const findCategory = (
     id: string,
@@ -115,11 +224,118 @@ function TransactionTable({
 
   return (
     <div className="space-y-4">
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-200/60 dark:border-emerald-500/20 bg-emerald-50/70 dark:bg-emerald-500/10 px-4 py-2.5 backdrop-blur-md">
+          <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+            已選取 {selectedIds.size} 筆
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isBusy}
+                  className="h-8 gap-1.5"
+                >
+                  <TagIcon className="h-3.5 w-3.5" /> 加標籤
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2" align="end">
+                {tags.length === 0 ? (
+                  <div className="text-sm text-slate-400 px-2 py-3">
+                    尚無標籤
+                  </div>
+                ) : (
+                  <div className="max-h-60 overflow-y-auto space-y-0.5">
+                    {tags.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => runAddTag(t.id)}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+                      >
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: t.color }}
+                        />
+                        <span className="flex-1 text-left truncate">
+                          {t.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isBusy}
+                  className="h-8 gap-1.5 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/30 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                >
+                  {isBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}{' '}
+                  刪除
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    刪除 {selectedIds.size} 筆交易？
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    此操作會刪除選取的交易（轉帳會一併沖銷對應帳戶餘額），無法復原。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={runBatchDelete}
+                    className="bg-rose-600 hover:bg-rose-700"
+                  >
+                    確認刪除
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
       <Card className="rounded-3xl bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border-slate-200/50 dark:border-white/10 shadow-xl overflow-hidden transition-all duration-300">
         <div className="rounded-md">
           <Table data-testid="transaction-table">
             <TableHeader>
               <TableRow className="hover:bg-transparent border-b border-slate-200/50 dark:border-white/10 bg-slate-50/50 dark:bg-white/5">
+                <TableHead className="w-[44px]">
+                  <Checkbox
+                    checked={
+                      allSelected
+                        ? true
+                        : someSelected
+                          ? 'indeterminate'
+                          : false
+                    }
+                    onCheckedChange={toggleAll}
+                    aria-label="全選"
+                  />
+                </TableHead>
                 <TableHead className="w-[120px] text-slate-500 dark:text-slate-400">
                   日期
                 </TableHead>
@@ -150,8 +366,19 @@ function TransactionTable({
                 return (
                   <TableRow
                     key={transaction.id}
-                    className="hover:bg-slate-100/50 dark:hover:bg-slate-800/30 transition-colors border-b border-slate-100 dark:border-slate-800/50 last:border-0"
+                    className={cn(
+                      'hover:bg-slate-100/50 dark:hover:bg-slate-800/30 transition-colors border-b border-slate-100 dark:border-slate-800/50 last:border-0',
+                      selectedIds.has(transaction.id!) &&
+                        'bg-emerald-50/50 dark:bg-emerald-500/5',
+                    )}
                   >
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(transaction.id!)}
+                        onCheckedChange={() => toggleOne(transaction.id!)}
+                        aria-label="選取交易"
+                      />
+                    </TableCell>
                     <TableCell className="font-mono text-sm text-foreground">
                       <div>
                         {format(new Date(transaction.date), 'yyyy-MM-dd')}

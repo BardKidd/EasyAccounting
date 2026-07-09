@@ -174,3 +174,24 @@ export const deleteTransaction = async (id: string) => {
   }
 };
 
+export const batchTransactions = async (payload: {
+  ids: string[];
+  action: 'delete' | 'addTags';
+  tagIds?: string[];
+}) => {
+  try {
+    const result = (await apiHandler(
+      '/transaction/batch',
+      'post',
+      payload
+    )) as ResponseHelper<{ affected: number; skipped: string[] }>;
+
+    if (result.isSuccess) {
+      return result;
+    }
+    return null;
+  } catch (err) {
+    throw err;
+  }
+};
+

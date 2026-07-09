@@ -15,6 +15,7 @@ import {
 import {
   getTransactions,
   addTransaction,
+  batchTransactions,
   addTransfer,
   updateTransaction,
   deleteTransaction,
@@ -69,6 +70,7 @@ export default {
   archiveAccount,
   unarchiveAccount,
   addTransaction,
+  batchTransactions,
   addTransfer,
   updateTransaction,
   deleteTransaction,

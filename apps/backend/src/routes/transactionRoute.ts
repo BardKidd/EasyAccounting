@@ -7,6 +7,7 @@ import {
   getTransactionsByDateSchema,
   createTransferSchema,
   getTransactionsDashboardSummarySchema,
+  batchTransactionSchema,
 } from '@repo/shared';
 import { authMiddleware } from '@/middlewares/authMiddleware';
 const router: Router = express.Router();
@@ -55,6 +56,13 @@ router.post(
   authMiddleware,
   validate(createTransferSchema),
   transactionController.createTransfer
+);
+
+router.post(
+  '/transaction/batch',
+  authMiddleware,
+  validate(batchTransactionSchema),
+  transactionController.batchTransactions
 );
 
 export default router;

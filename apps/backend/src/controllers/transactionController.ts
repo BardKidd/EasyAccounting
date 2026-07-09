@@ -138,6 +138,22 @@ const createTransfer = (req: Request, res: Response) => {
   });
 };
 
+const batchTransactions = (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const result = await transactionServices.batchTransactions(
+      req.body,
+      userId
+    );
+
+    return res
+      .status(StatusCodes.OK)
+      .json(
+        responseHelper(true, result, 'Batch operation successfully', null)
+      );
+  });
+};
+
 export default {
   createTransaction,
   getTransactionsByDate,
@@ -146,4 +162,5 @@ export default {
   deleteTransaction,
   createTransfer,
   getTransactionsSummary,
+  batchTransactions,
 };
