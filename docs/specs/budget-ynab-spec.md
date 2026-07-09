@@ -1,6 +1,6 @@
 # 預算系統規格 v2 — YNAB 模式
 
-> **文件狀態**: ✅ 設計定案（B1–B5）；Phase 0 + Phase 1 MVP 完成；**Phase 2 全部完成**（5 項皆做、含信用卡完整重做覆寫 B2，見 §9 P2-D1…D10）。本機全套測試綠（backend 182 / frontend 46），尚未 commit
+> **文件狀態**: ✅ 設計定案（B1–B5）；Phase 0 + Phase 1 MVP 完成；**Phase 2 全部完成**（5 項皆做、含信用卡完整重做覆寫 B2，見 §9 P2-D1…D10）。本機全套測試綠（backend 182 / frontend 46），Phase 2 已 commit（518e3db，2026-06-14）
 > **最後更新**: 2026-06-14
 > **取代**: 舊版 `budget-system-spec.md` 與 `budget-system-tasks.md` 已刪除（git 歷史可查）。舊預算功能將**整個拆除重做**，不做資料遷移。
 
@@ -382,7 +382,7 @@ for row in budget_assignment where userId:
   - ⚠️ **覆寫 B2（部署 release note）**：信用卡帳戶退出 RTA、起始卡債移至 CC Payment carry——既有有卡債者部署後 RTA 會跳升 + 出現 CC Payment 卡債列。**已接受漂移**：covered 採聚合（同月多筆刷卡+期中分配/退款的順序相依與 YNAB 微差）；退款入信用卡僅回補信封、未自動降 CC Payment；信用卡跨邊界轉出未計入 cardSpend（視同現金式超支）。
   - hookTimeout/testTimeout 放寬至 60s（budget 整合 fixture 增至 4 組，雲端延遲變異偶致重型 beforeAll 逾時）。
 
-**Phase 2 全部完成（2026-06-14）。** 後端整合 21 + 單元 23、前端 17（budget 子套件），全套 backend 182 / frontend 46 綠。未 commit（使用者未要求）。
+**Phase 2 全部完成（2026-06-14）。** 後端整合 21 + 單元 23、前端 17（budget 子套件），全套 backend 182 / frontend 46 綠。Phase 2 已 commit（518e3db，2026-06-14）。
 
 ---
 
