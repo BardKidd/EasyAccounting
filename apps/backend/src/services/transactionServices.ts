@@ -182,10 +182,14 @@ const getTransactionsByDate = async (
 
   // 標籤篩選（match ANY）：先查符合任一 tag 的交易 id，再以 id IN (...) 限縮，
   // 避免在分頁查詢直接 join 多對多破壞 count（spec §7）。
+  // Express 5 的 req.query 為唯讀 getter，validate middleware 對 query 的 transform
+  // 寫不回 req.query，故單一 ?tagIds=x 會以「字串」（非陣列）抵達此處。正規化為陣列，
+  // 避免 Sequelize Op.in 對字串呼叫 .map 而拋 value.map is not a function（單選標籤必爆）。
+  const tagIdList = Array.isArray(tagIds) ? tagIds : tagIds != null ? [tagIds] : [];
   let tagFilter: any = {};
-  if (tagIds && tagIds.length) {
+  if (tagIdList.length) {
     const tagged = await TransactionTag.findAll({
-      where: { tagId: { [Op.in]: tagIds } },
+      where: { tagId: { [Op.in]: tagIdList } },
       attributes: ['transactionId'],
       group: ['transactionId'],
       raw: true,

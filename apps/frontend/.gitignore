@@ -23,6 +23,9 @@
 /test-results-split
 /playwright-report-split
 /split-e2e-videos
+/playwright-report-video
+/e2e/videos/.raw
+/e2e/videos/.pw
 
 # next.js
 /.next/

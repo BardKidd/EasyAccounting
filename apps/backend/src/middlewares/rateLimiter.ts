@@ -10,6 +10,8 @@ export const guestLoginLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
+  // 僅在 production 強制限流；dev/test 跳過，否則本地開發與 E2E/錄影反覆建立訪客會撞 5 次/小時上限。
+  skip: () => process.env.NODE_ENV !== 'production',
   message: responseHelper(false, null, '請求過於頻繁，請稍後再試', null),
 });
 

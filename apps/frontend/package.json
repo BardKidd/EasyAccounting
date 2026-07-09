@@ -15,7 +15,10 @@
     "test:e2e:report": "playwright show-report",
     "test:e2e:codegen": "playwright codegen http://localhost:8080",
     "test:e2e:tags": "playwright test --config=playwright.tags.config.ts tags-demo",
-    "test:e2e:split": "playwright test --config=playwright.split.config.ts split-demo"
+    "test:e2e:split": "playwright test --config=playwright.split.config.ts split-demo",
+    "video:record": "playwright test --config=playwright.video.config.ts",
+    "video:build": "node scripts/build-videos.mjs",
+    "video:make": "playwright test --config=playwright.video.config.ts && node scripts/build-videos.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

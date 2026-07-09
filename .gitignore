@@ -38,3 +38,6 @@ yarn-error.log*
 .gitnexus
 CLAUDE.md
 .claude
+
+# 教學影片成品（mp4 體積大，暫不追蹤；見 docs/specs/tutorial-video-spec.md V13）
+docs/videos/
