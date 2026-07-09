@@ -88,19 +88,9 @@
 
 ### 🔴 Tier 1 — 關鍵缺口 (定義「專業」與否)
 
-#### 1. 投資持倉追蹤 (Investment Holdings) — Priority Highest
+> 定位就是單純的個人記帳軟體，**不做投資持倉 / 證券損益**（2026-07-09 使用者拍板移除）；證券戶維持單一 `balance` 數字即可。
 
-> 產品定位是「資產管理」，但目前證券戶只有單一 `balance` 數字，無持倉概念。這是與專業工具差距最大的破口。
-
-- [ ] **Holdings 模型**: 標的 (股票/ETF/基金/加密貨幣) × 股數 × 成本基礎 × 現價。
-- [ ] **市值與未實現損益**: 現價 × 股數 − 成本。
-- [ ] **已實現損益**: 賣出時計算 (FIFO / 移動平均)。
-- [ ] **股利 / 配息記錄**。
-- [ ] **價格來源**: 手動輸入 → (後續) 接 API (台股證交所 / Yahoo Finance)。
-- [ ] **淨值整合**: `getNetWorth` 即時納入投資市值 (目前只 SUM 帳戶 balance)。
-- [ ] 啟用既有但未使用的 `Currency.isCrypto` 旗標。
-
-#### 2. 拆分交易 + 標籤 (Split Transaction + Tags) — Priority High
+#### 1. 拆分交易 + 標籤 (Split Transaction + Tags) — Priority High
 
 > 專業記帳的兩個標配，目前皆無。`TransactionExtra` 只是加減項標籤，非真正 split。
 > 📄 **技術規格**: [split-tags-spec.md](docs/specs/split-tags-spec.md) (設計定案；決策 S1–S9 已拍板；**Phase A Tags → Phase B Split** 順序固定)
@@ -109,7 +99,7 @@
 - [x] **Phase B — 拆分交易 (Split)** (2026-06-15)：`transaction_split` 子表 + `isSplit`；父層 `TransactionExtra` 與拆分並存、按比例攤提（DB view `transaction_split_unit` 為單一真實來源）；前端 `SplitEditor`（即時加總/配平）。本機測試綠 (backend 198 / frontend 49)；**部署需跑 migration**。
 - [x] 統計與篩選支援 split / tag 維度（聚合走 view，對非拆分零行為變更）。
 
-#### 3. 規則引擎 (Auto-categorization Rules) — Priority High
+#### 2. 規則引擎 (Auto-categorization Rules) — Priority High
 
 > `MerchantMapping` 目前只服務 PDF 解析、使用者不可見。應開放自訂規則讓匯入真正省力。
 
@@ -120,7 +110,7 @@
 ### 🟡 Tier 2 — 次要強化 (投報率高)
 
 - [ ] **負債 / 貸款管理**: 一般貸款/房貸 (本金利息攤還表、剩餘本金)；淨值區分「資產 vs 負債」。
-- [ ] **交易搜尋 / 進階篩選**: 全文搜尋、金額區間、標籤、payee 篩選 (目前僅日期 + 帳戶/分類/type)。
+- [x] **交易搜尋 / 進階篩選** (2026-07-09): 關鍵字搜尋 (description ILIKE) + 金額區間 (minAmount/maxAmount)，疊加既有日期/帳戶/類型/標籤篩選；前端 filter bar 加搜尋框 (debounce) + 金額 popover。8 個真實 DB 整合測試綠。(payee 無此欄位故略；標籤篩選 Phase A 已做。)
 - [ ] **批次操作**: 批次改分類 / 刪除 / 標記。
 - [ ] **預算 vs 實際報表**: 統計頁加「本月各分類 預算 vs 實支 達成率」視圖。
 - [ ] **儲蓄 / 財務目標**: 跨帳戶目標追蹤 (例: 存 50 萬買車)，有別於 YNAB 信封目標。
@@ -160,7 +150,7 @@
 
 | 優先 | 候選資料 | 為何適合水平擴展 | 分片鍵 | 建議 NoSQL 型態 | 現況 |
 |---|---|---|---|---|---|
-| 🥇 強 | **行情 / 匯率時序 (price & FX feed)** | 寫多、時序、symbol 多 (crypto 24h 連續 tick)；投資持倉 + 即時/crypto 報價落地後是全 app 寫入量最高者 | `symbol` + 時間桶 | 時序集合 (Mongo Time-Series / Influx / Timescale) | `exchangeRate` 現於 PG，日 cron 量小；intraday/crypto 會壓垮關聯庫 → 需遷出 |
+| 🥈 中 | **匯率時序 (FX feed)** | 寫多、時序、幣別對多；若未來改抓 intraday 匯率則寫入量放大 | `currencyPair` + 時間桶 | 時序集合 (Mongo Time-Series / Influx / Timescale) | `exchangeRate` 現於 PG，日 cron 量小；改 intraday 才需遷出（已不含投資報價驅動） |
 | 🥈 強 | **稽核 / 變更歷史 (audit log)** | append-only、永不更新、無上限成長、寫多、不需 join；shard-by-user 教科書案例 | `userId` | 寬列 / 文件 (Cassandra / Scylla / Mongo sharded) | Tier 3 待辦，未實作 |
 | 🥈 強 | **行為事件流 (analytics events)** | 與 audit log 同形狀的高量 append；為「訂閱偵測 / 現金流預測」的事實來源 | `userId` + 時間 | 同上 / event store | 未實作（依附 Tier 3） |
 | 🥉 強 | **AI Chat 對話歷史 + 向量檢索 (RAG)** | 對話訊息 append-only、可 shard-by-conversation；向量檢索讀多、可加 replica | `userId` / `conversationId` | 文件 + 向量索引 (已用 Mongo) | `knowledgeChunk` 已在 Mongo；對話歷史目前由前端帶入、未持久化 |
@@ -175,5 +165,5 @@
 
 ### 建議起手式
 
-- **先練「行情/匯率時序」**：寫入量最大、分片鍵最乾淨，且直接銜接既有多幣別 + 投資持倉 roadmap。
-- **想練 per-user 分片 + append-only 模型**：選 **audit log**，風險低（純新增、不影響既有讀路徑）。
+- **per-user 分片 + append-only 模型**已用 **audit log** 練成（見上，已實作）。下一步若要更高寫入量，可做 **行為事件流 (analytics events)**，形狀同 audit、直接餵「訂閱偵測 / 現金流預測」。
+- **匯率時序**僅在改抓 intraday 匯率後才有遷出價值（現為日 cron 量小）；已無投資報價此一高量驅動。

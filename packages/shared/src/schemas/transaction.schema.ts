@@ -161,6 +161,11 @@ export const getTransactionsByDateSchema = z.object({
   date: z.string().optional(),
   page: z.coerce.number().optional(),
   limit: z.coerce.number().optional(),
+  // 關鍵字搜尋：對 description 做不分大小寫的子字串比對（Postgres ILIKE）
+  keyword: z.string().trim().min(1).optional(),
+  // 金額區間：對原幣 amount 做 >= / <= 範圍過濾（皆選填，可只給一端）
+  minAmount: z.coerce.number().optional(),
+  maxAmount: z.coerce.number().optional(),
   // 標籤篩選（match ANY）：可重複 query 參數（?tagIds=a&tagIds=b）或單一字串
   tagIds: z
     .preprocess(

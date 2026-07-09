@@ -19,6 +19,9 @@ interface GetTransactionsParams {
   page?: number;
   limit?: number;
   tagIds?: string[];
+  keyword?: string;
+  minAmount?: number;
+  maxAmount?: number;
 }
 
 export const getTransactions = async (params: GetTransactionsParams) => {
@@ -34,6 +37,11 @@ export const getTransactions = async (params: GetTransactionsParams) => {
     if (params.tagIds && params.tagIds.length) {
       params.tagIds.forEach((id) => query.append('tagIds', id));
     }
+    if (params.keyword) query.append('keyword', params.keyword);
+    if (params.minAmount != null)
+      query.append('minAmount', params.minAmount.toString());
+    if (params.maxAmount != null)
+      query.append('maxAmount', params.maxAmount.toString());
 
     const queryString = query.toString();
     const url = `/transaction/date${queryString ? `?${queryString}` : ''}`;

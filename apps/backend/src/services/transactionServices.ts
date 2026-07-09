@@ -144,9 +144,35 @@ const getTransactionsByDate = async (
     page = 1,
     limit: queryLimit,
     tagIds,
+    keyword,
+    minAmount,
+    maxAmount,
     ...otherFilters
   } = query;
   const limit = queryLimit ?? 10;
+
+  // 關鍵字（description ILIKE）+ 金額區間（amount >= / <=）進階篩選。
+  // 這三個欄位並非資料表欄位，必須從 otherFilters 解構出來，否則會被原封不動
+  // 展開進 where 而被 Sequelize 當成不存在的欄位。
+  // 同 tagIds 的坑：Express 5 req.query 唯讀，validate 的 coerce 寫不回，故金額經
+  // HTTP 進來仍是字串 → 在此自行轉數字（NaN 視為未給），避免對數值欄位丟字串比較。
+  const toNum = (v: unknown): number | undefined => {
+    if (v == null || v === '') return undefined;
+    const n = Number(v);
+    return Number.isNaN(n) ? undefined : n;
+  };
+  const searchFilter: any = {};
+  if (keyword) {
+    searchFilter.description = { [Op.iLike]: `%${keyword}%` };
+  }
+  const min = toNum(minAmount);
+  const max = toNum(maxAmount);
+  if (min != null || max != null) {
+    const amountRange: any = {};
+    if (min != null) amountRange[Op.gte] = min;
+    if (max != null) amountRange[Op.lte] = max;
+    searchFilter.amount = amountRange;
+  }
 
   let dateFilter = {};
   if (startDate && endDate) {
@@ -211,6 +237,7 @@ const getTransactionsByDate = async (
         ...dateFilter,
         ...typeFilter,
         ...tagFilter,
+        ...searchFilter,
         userId,
       },
       limit: Number(limit),

@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import {
   Calendar as CalendarIcon,
   Check,
-  ChevronsUpDown,
+  Coins,
   Search,
   Tag as TagIcon,
 } from 'lucide-react';
@@ -54,6 +54,14 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
   const [type, setType] = useState(searchParams.get('type') || 'all');
   const [accountId, setAccountId] = useState(
     searchParams.get('accountId') || 'all',
+  );
+
+  const [keyword, setKeyword] = useState(searchParams.get('keyword') || '');
+  const [minAmount, setMinAmount] = useState(
+    searchParams.get('minAmount') || '',
+  );
+  const [maxAmount, setMaxAmount] = useState(
+    searchParams.get('maxAmount') || '',
   );
 
   const [tags, setTags] = useState<TagType[]>([]);
@@ -148,8 +156,61 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
     updateFilters(date, type, val);
   };
 
+  // 關鍵字搜尋：debounce 400ms 後寫入 URL（與其他篩選一致走 searchParams）
+  useEffect(() => {
+    const current = searchParams.get('keyword') || '';
+    if (keyword === current) return;
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(searchParams);
+      if (keyword) params.set('keyword', keyword);
+      else params.delete('keyword');
+      params.delete('page');
+      startTransition(() => {
+        router.replace(`${pathname}?${params.toString()}`);
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keyword]);
+
+  const applyAmountFilter = () => {
+    const params = new URLSearchParams(searchParams);
+    if (minAmount !== '') params.set('minAmount', minAmount);
+    else params.delete('minAmount');
+    if (maxAmount !== '') params.set('maxAmount', maxAmount);
+    else params.delete('maxAmount');
+    params.delete('page');
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`);
+    });
+  };
+
+  const clearAmountFilter = () => {
+    setMinAmount('');
+    setMaxAmount('');
+    const params = new URLSearchParams(searchParams);
+    params.delete('minAmount');
+    params.delete('maxAmount');
+    params.delete('page');
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`);
+    });
+  };
+
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch sm:flex-wrap">
+      {/* 關鍵字搜尋（比對備註 description） */}
+      <div className="relative w-full sm:w-[220px]">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+        <Input
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          placeholder="搜尋備註…"
+          disabled={isPending}
+          className="h-10 pl-9 rounded-xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all duration-300"
+        />
+      </div>
+
       <Popover>
         <PopoverTrigger asChild>
           <Button
@@ -288,6 +349,69 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
               清除標籤篩選
             </Button>
           )}
+        </PopoverContent>
+      </Popover>
+
+      {/* 金額區間篩選（原幣 amount >= / <=） */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            disabled={isPending}
+            className={cn(
+              'w-full sm:w-[160px] justify-start text-left font-normal cursor-pointer h-10',
+              'rounded-xl bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow hover:border-slate-300 dark:hover:border-slate-600',
+              minAmount === '' &&
+                maxAmount === '' &&
+                'text-slate-500 dark:text-slate-400',
+            )}
+          >
+            <Coins className="mr-2 h-4 w-4 text-slate-500" />
+            {minAmount !== '' || maxAmount !== ''
+              ? `金額 ${minAmount || '0'}–${maxAmount || '∞'}`
+              : '金額'}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 p-3 space-y-3" align="start">
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              inputMode="decimal"
+              value={minAmount}
+              onChange={(e) => setMinAmount(e.target.value)}
+              placeholder="最低"
+              className="h-9"
+            />
+            <span className="text-slate-400">–</span>
+            <Input
+              type="number"
+              inputMode="decimal"
+              value={maxAmount}
+              onChange={(e) => setMaxAmount(e.target.value)}
+              placeholder="最高"
+              className="h-9"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={applyAmountFilter}
+              disabled={isPending}
+            >
+              套用
+            </Button>
+            {(minAmount !== '' || maxAmount !== '') && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs text-slate-500"
+                onClick={clearAmountFilter}
+              >
+                清除
+              </Button>
+            )}
+          </div>
         </PopoverContent>
       </Popover>
     </div>

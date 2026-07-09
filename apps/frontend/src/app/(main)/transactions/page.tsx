@@ -58,6 +58,20 @@ async function TransactionsPage(props: PageProps) {
       : Array.isArray(searchParams.tagIds)
         ? searchParams.tagIds
         : undefined;
+  const keyword =
+    typeof searchParams.keyword === 'string' ? searchParams.keyword : undefined;
+  const minAmount =
+    typeof searchParams.minAmount === 'string' &&
+    searchParams.minAmount !== '' &&
+    !Number.isNaN(Number(searchParams.minAmount))
+      ? Number(searchParams.minAmount)
+      : undefined;
+  const maxAmount =
+    typeof searchParams.maxAmount === 'string' &&
+    searchParams.maxAmount !== '' &&
+    !Number.isNaN(Number(searchParams.maxAmount))
+      ? Number(searchParams.maxAmount)
+      : undefined;
 
   // Calendar View Params
   // Default to current month if no date param
@@ -96,6 +110,9 @@ async function TransactionsPage(props: PageProps) {
         accountId: accountId === 'all' ? undefined : accountId,
         page,
         tagIds,
+        keyword,
+        minAmount,
+        maxAmount,
       }),
       service.getCategories(),
       service.getPersonnelAccounts(),
