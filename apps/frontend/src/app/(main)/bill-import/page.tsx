@@ -13,7 +13,7 @@ import {
 } from '@repo/shared';
 import { Loader2, Plus, Trash2, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { apiHandler } from '@/lib/utils';
+import { apiHandler, getApiDomain } from '@/lib/utils';
 import service from '@/services';
 
 import { PasswordDialog } from '@/components/bill-import/PasswordDialog';
@@ -169,7 +169,7 @@ export default function BillImportPage() {
     formData.append('notifyEmail', String(notifyEmail));
 
     try {
-      const domain = process.env.NEXT_PUBLIC_API_DOMAIN || '/api';
+      const domain = getApiDomain() || '/api';
       const url = `${domain}/pdf/upload`;
 
       const res = await fetch(url, {

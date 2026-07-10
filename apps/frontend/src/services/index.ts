@@ -39,6 +39,7 @@ import {
 import {
   getTransactionTemplateUrl,
   getTransactionsExcelUrl,
+  getTransactionsCsvUrl,
 } from './importExport';
 import {
   getRecurringTemplates,
@@ -86,6 +87,7 @@ export default {
   updatePersonnelNotification,
   getTransactionTemplateUrl,
   getTransactionsExcelUrl,
+  getTransactionsCsvUrl,
   getAssetTrend,
   getNetWorth,
   getRecurringTemplates,

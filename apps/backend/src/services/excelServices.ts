@@ -383,17 +383,12 @@ const exportTransactionsTemplateExcel = async (userId: string) => {
   return generateSasUrl(blobName, 15);
 };
 
-const exportUserTransactionsExcel = async (
+// 將該 User 的交易轉成匯出列（xlsx 與 csv 共用同一來源，避免兩邊邏輯漂移）。
+// includeId=true（編輯模式）才附 id；純匯出不附，避免使用者誤用。
+const buildExportTransactionRows = async (
   userId: string,
-  mode: ExcelExportMode = ExcelExportMode.EXPORT,
-) => {
-  const isEditMode = mode === ExcelExportMode.EDIT;
-  const user = await User.findByPk(userId);
-  if (!user) {
-    throw new Error('User not found');
-  }
-  const userEmail = user.email;
-
+  includeId: boolean,
+): Promise<ImportTransactionRow[]> => {
   const { accounts, categories } =
     await getPersonnelAccountsAndCategoriesForExcelDropdown(userId);
   const accountMap = new Map(accounts.map((a) => [a.id, a.name]));
@@ -431,7 +426,7 @@ const exportUserTransactionsExcel = async (
   });
   // 排除被動轉帳收入 (INCOME + 有 targetAccountId)
   // 編輯模式下，轉帳列匯出的是來源側 (EXPENSE) 那一筆，其 id 也是來源側 id
-  const excelTransactions = transactions
+  return transactions
     .filter((t) => !(t.type === RootType.INCOME && t.targetAccountId))
     .map((t) => ({
       ...t,
@@ -451,15 +446,32 @@ const exportUserTransactionsExcel = async (
         ? format(new Date(t.reconciliationDate), 'yyyy-MM-dd')
         : '',
       // 純匯出模式不附 id，避免使用者誤用；編輯模式才帶隱藏 id
-      id: isEditMode ? t.id : undefined,
-    }));
+      id: includeId ? t.id : undefined,
+    })) as ImportTransactionRow[];
+};
+
+const exportUserTransactionsExcel = async (
+  userId: string,
+  mode: ExcelExportMode = ExcelExportMode.EXPORT,
+) => {
+  const isEditMode = mode === ExcelExportMode.EDIT;
+  const user = await User.findByPk(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+  const userEmail = user.email;
+
+  const excelTransactions = await buildExportTransactionRows(
+    userId,
+    isEditMode,
+  );
 
   // 產生檔案
   const buffer = await generateTransactionsBuffer({
     userId,
     hasErrorColumn: false,
     includeIdColumn: isEditMode,
-    transactions: excelTransactions as ImportTransactionRow[],
+    transactions: excelTransactions,
   });
 
   // 上傳到 Azure Blob（編輯用與純匯出用分開 blob，避免互相覆蓋）
@@ -467,6 +479,49 @@ const exportUserTransactionsExcel = async (
     isEditMode ? '_edit' : ''
   }.xlsx`;
   await uploadFileToBlob(blobName, buffer);
+
+  return generateSasUrl(blobName, 15);
+};
+
+//============== Export CSV (Numbers 友善) ==============
+// 單一 CSV 欄位轉義（RFC 4180）：含逗號/引號/換行就以雙引號包起，內部引號改雙引號。
+const csvEscape = (val: unknown): string => {
+  if (val === null || val === undefined) return '';
+  const s = String(val);
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+// 將匯出列序列化成 CSV 文字。欄位順序與 xlsx 一致（transactionColumns）；
+// 金額保留純數字（無千分位）；開頭加 UTF-8 BOM，讓 Numbers/Excel 正確辨識中文。
+const rowsToCsv = (rows: ImportTransactionRow[]): string => {
+  const header = transactionColumns.map((c) => csvEscape(c.header)).join(',');
+  const body = rows.map((r) =>
+    transactionColumns
+      .map((c) => csvEscape((r as unknown as Record<string, unknown>)[c.key]))
+      .join(','),
+  );
+  return '﻿' + [header, ...body].join('\r\n');
+};
+
+// 純匯出（不含 id）成 CSV，供 Mac Numbers / Google Sheets / LibreOffice 直接開啟。
+const exportUserTransactionsCsv = async (userId: string) => {
+  const user = await User.findByPk(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+  const userEmail = user.email;
+
+  const rows = await buildExportTransactionRows(userId, false);
+  const buffer = Buffer.from(rowsToCsv(rows), 'utf-8');
+
+  const blobName = `transactions/${userEmail}_transactions.csv`;
+  // CSV 是瀏覽器可內嵌型別，需 attachment 才會觸發下載而非開新分頁
+  await uploadFileToBlob(
+    blobName,
+    buffer,
+    'text/csv; charset=utf-8',
+    'attachment; filename="transactions.csv"',
+  );
 
   return generateSasUrl(blobName, 15);
 };
@@ -952,5 +1007,6 @@ export default {
   generateTransactionsBuffer,
   exportTransactionsTemplateExcel,
   exportUserTransactionsExcel,
+  exportUserTransactionsCsv,
   importNewTransactionsExcel,
 };

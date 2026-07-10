@@ -23,14 +23,19 @@ const containerClient = blobServiceClient.getContainerClient(CONTAINER_NAME);
 
 export const uploadFileToBlob = async (
   blobName: string,
-  buffer: ExcelJS.Buffer,
+  buffer: ExcelJS.Buffer | Buffer,
   contentType: string = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  // CSV 等瀏覽器可內嵌型別需 attachment 才會下載而非開新分頁；xlsx 不需傳。
+  contentDisposition?: string,
 ) => {
   const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
   await blockBlobClient.uploadData(buffer, {
     blobHTTPHeaders: {
       blobContentType: contentType,
+      ...(contentDisposition
+        ? { blobContentDisposition: contentDisposition }
+        : {}),
     },
   });
 

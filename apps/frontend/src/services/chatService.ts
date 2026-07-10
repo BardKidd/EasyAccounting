@@ -1,5 +1,5 @@
 import { ResponseHelper, ChatTransactionDraft } from '@repo/shared';
-import { getErrorMessage } from '@/lib/utils';
+import { getErrorMessage, getApiDomain } from '@/lib/utils';
 
 export type { ChatTransactionDraft } from '@repo/shared';
 
@@ -32,8 +32,7 @@ export const streamChat = async (
   onDraft: (draft: ChatTransactionDraft) => void,
   signal: AbortSignal,
 ): Promise<void> => {
-  const apiUrl =
-    process.env.NEXT_PUBLIC_API_DOMAIN || 'http://localhost:3000/api';
+  const apiUrl = getApiDomain() || 'http://localhost:3000/api';
 
   try {
     const res = await fetch(`${apiUrl}/chat`, {

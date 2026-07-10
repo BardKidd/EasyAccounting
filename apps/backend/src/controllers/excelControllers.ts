@@ -35,6 +35,14 @@ const exportUserTransactionsExcel = async (req: Request, res: Response) => {
   });
 };
 
+const exportUserTransactionsCsv = async (req: Request, res: Response) => {
+  simplifyTryCatch(req, res, async () => {
+    const userId = req.user.userId;
+    const url = await excelServices.exportUserTransactionsCsv(userId);
+    res.status(StatusCodes.OK).json(responseHelper(true, url, 'success', null));
+  });
+};
+
 const importNewTransactionsExcel = async (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const userId = req.user.userId;
@@ -67,5 +75,6 @@ export default {
   getAllCategoriesHyphenString,
   exportTransactionsTemplateExcel,
   exportUserTransactionsExcel,
+  exportUserTransactionsCsv,
   importNewTransactionsExcel,
 };

@@ -20,12 +20,25 @@ export interface TokenPayload {
 }
 
 const isProduction = process.env.NODE_ENV === 'production';
-// 判斷是否為雲端環境 (透過 DB Host 判斷)
+// 判斷是否包含本地端網域或 IP
+const hasLocalOrigin = process.env.ORIGIN_URL?.split(',').some((url) => {
+  const cleanUrl = url.trim().toLowerCase();
+  return (
+    cleanUrl.includes('localhost') ||
+    cleanUrl.includes('127.0.0.1') ||
+    cleanUrl.includes('[::1]') ||
+    cleanUrl.includes('192.168.') ||
+    cleanUrl.includes('10.') ||
+    /172\.(1[6-9]|2[0-9]|3[0-1])\./.test(cleanUrl)
+  );
+});
+
+// 判斷是否為雲端環境 (透過 DB Host 判斷，且 Origin 不能有任何本地端 IP/網域)
 const isCloudHost =
   !!process.env.PG_HOST &&
   !process.env.PG_HOST.includes('localhost') &&
   !process.env.PG_HOST.includes('127.0.0.1') &&
-  !process.env.ORIGIN_URL?.includes('localhost');
+  !hasLocalOrigin;
 
 // 在雲端環境 (不論是 Prod 還是 Dev) 都應啟用 Secure
 const isSecure = isProduction || isCloudHost;

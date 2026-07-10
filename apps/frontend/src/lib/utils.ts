@@ -63,6 +63,23 @@ export async function simplifyTryCatch(
     setIsLoading(false);
   }
 }
+export function getApiDomain(): string {
+  let domain = process.env.NEXT_PUBLIC_API_DOMAIN || '';
+  if (typeof window !== 'undefined') {
+    try {
+      const urlObj = new URL(domain);
+      urlObj.hostname = window.location.hostname;
+      domain = urlObj.origin + urlObj.pathname;
+      if (domain.endsWith('/')) {
+        domain = domain.slice(0, -1);
+      }
+    } catch (e) {
+      console.error('Invalid NEXT_PUBLIC_API_DOMAIN:', e);
+    }
+  }
+  return domain;
+}
+
 // 有針對 Server Components 和 Client Components 兩種寫法差異去做調整
 export async function apiHandler(
   url: string,
@@ -71,7 +88,7 @@ export async function apiHandler(
   headers?: any,
   options?: RequestInit,
 ): Promise<ResponseHelper<any>> {
-  const domain = process.env.NEXT_PUBLIC_API_DOMAIN;
+  const domain = getApiDomain();
   const caseInsensitiveMethod = method.toUpperCase();
 
   const config: RequestInit = {

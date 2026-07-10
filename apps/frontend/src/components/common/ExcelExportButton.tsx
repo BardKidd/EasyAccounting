@@ -9,7 +9,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Download, Loader2, FileDown, FilePen, ChevronDown } from 'lucide-react';
+import {
+  Download,
+  Loader2,
+  FileDown,
+  FilePen,
+  FileSpreadsheet,
+  ChevronDown,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import service from '@/services';
 import { useState } from 'react';
@@ -24,6 +31,15 @@ interface ExcelExportButtonProps {
 export function ExcelExportButton({ type, className }: ExcelExportButtonProps) {
   const [loading, setLoading] = useState(false);
 
+  // 以隱藏的 a 標籤觸發下載。檔名由 Azure Blob 的 SAS URL / Header 決定。
+  const triggerDownload = (url: string) => {
+    const a = document.createElement('a');
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   const handleExport = async (mode: ExcelExportMode) => {
     try {
       setLoading(true);
@@ -35,13 +51,28 @@ export function ExcelExportButton({ type, className }: ExcelExportButtonProps) {
 
       if (type === PageType.TRANSACTIONS) {
         const url = await service.getTransactionsExcelUrl(mode);
-        // 建立隱藏的 a 標籤來觸發下載
-        const a = document.createElement('a');
-        a.href = url;
-        // 檔名會由瀏覽器根據網址或 Header 決定，這裡其實 Azure Blob 的 SAS URL 點擊就會下載
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        triggerDownload(url);
+        toast.success('匯出成功！');
+        return;
+      }
+
+      toast.success('匯出成功！');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('匯出失敗，請稍後再試。');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCsvExport = async () => {
+    try {
+      setLoading(true);
+      toast.info('正在準備 CSV...');
+
+      if (type === PageType.TRANSACTIONS) {
+        const url = await service.getTransactionsCsvUrl();
+        triggerDownload(url);
         toast.success('匯出成功！');
         return;
       }
@@ -70,7 +101,7 @@ export function ExcelExportButton({ type, className }: ExcelExportButtonProps) {
           ) : (
             <Download className="mr-2 h-4 w-4" />
           )}
-          匯出 Excel
+          匯出
           <ChevronDown className="ml-1 h-4 w-4 opacity-70" />
         </Button>
       </DropdownMenuTrigger>
@@ -99,6 +130,19 @@ export function ExcelExportButton({ type, className }: ExcelExportButtonProps) {
           </span>
           <span className="text-xs text-muted-foreground pl-6">
             含隱藏 id，可修改後以「編輯」模式上傳
+          </span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="cursor-pointer flex-col items-start gap-0.5"
+          onClick={handleCsvExport}
+        >
+          <span className="flex items-center gap-2 font-medium">
+            <FileSpreadsheet className="h-4 w-4" />
+            匯出 CSV
+          </span>
+          <span className="text-xs text-muted-foreground pl-6">
+            純資料，Mac Numbers 直接開
           </span>
         </DropdownMenuItem>
       </DropdownMenuContent>

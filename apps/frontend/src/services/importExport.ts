@@ -1,4 +1,4 @@
-import { apiHandler, getErrorMessage } from '@/lib/utils';
+import { apiHandler, getErrorMessage, getApiDomain } from '@/lib/utils';
 import { ResponseHelper, ExcelExportMode, ExcelImportMode } from '@repo/shared';
 
 export const getTransactionTemplateUrl = async () => {
@@ -17,6 +17,15 @@ export const getTransactionsExcelUrl = async (
   return res.data as string;
 };
 
+export const getTransactionsCsvUrl = async () => {
+  const res = await apiHandler(
+    '/excel/user-transactions-csv',
+    'GET',
+    undefined
+  );
+  return res.data as string;
+};
+
 export const importTransactions = async (
   file: File,
   mode: ExcelImportMode = ExcelImportMode.CREATE
@@ -25,7 +34,7 @@ export const importTransactions = async (
   formData.append('file', file);
   formData.append('mode', mode);
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_DOMAIN}/excel/import-transactions`,
+    `${getApiDomain()}/excel/import-transactions`,
     {
       method: 'POST',
       body: formData,
@@ -40,5 +49,6 @@ export const importTransactions = async (
 export default {
   getTransactionTemplateUrl,
   getTransactionsExcelUrl,
+  getTransactionsCsvUrl,
   importTransactions,
 };

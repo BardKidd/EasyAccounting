@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ParseStatus } from '@repo/shared';
 import { toast } from 'sonner';
-import { apiHandler } from '@/lib/utils';
+import { apiHandler, getApiDomain } from '@/lib/utils';
 
 export interface ParseStatusData {
   uploadId: string;
@@ -99,7 +99,7 @@ export function useParseStatus(uploadId: string | null) {
       return;
     }
 
-    const domain = process.env.NEXT_PUBLIC_API_DOMAIN || '/api';
+    const domain = getApiDomain() || '/api';
     const eventSource = new EventSource(`${domain}/pdf/stream/${uploadId}`, {
       withCredentials: true,
     });

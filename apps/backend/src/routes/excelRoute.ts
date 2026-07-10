@@ -27,6 +27,12 @@ router.get(
   excelControllers.exportUserTransactionsExcel
 );
 
+router.get(
+  '/excel/user-transactions-csv',
+  authMiddleware,
+  excelControllers.exportUserTransactionsCsv
+);
+
 router.post(
   '/excel/import-transactions',
   authMiddleware,

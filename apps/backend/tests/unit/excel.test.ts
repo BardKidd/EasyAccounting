@@ -763,6 +763,116 @@ describe('Excel Import/Export API Test (Mocked)', () => {
     expect(dataRow.getCell(5).numFmt).toBe('#,##0');
   });
 
+  // ==========================================
+  // CSV 匯出 Tests（Mac Numbers 友善）
+  // ==========================================
+  // 取出最後一次寫入 blob 的 CSV 文字（去掉開頭 BOM），並回傳原始呼叫參數。
+  const lastCsvUpload = () => {
+    const calls = (uploadFileToBlob as any).mock.calls;
+    const call = calls[calls.length - 1];
+    const buffer = call[1] as Buffer;
+    const raw = buffer.toString('utf-8');
+    return { call, raw, hasBom: raw.charCodeAt(0) === 0xfeff, text: raw.slice(1) };
+  };
+
+  it('CSV 匯出：含 BOM、表頭正確、金額為純數字、傳對 content-type/disposition', async () => {
+    (Transaction.findAll as any).mockResolvedValue([
+      {
+        id: 't1',
+        date: '2026-02-01',
+        time: '12:00:00',
+        type: RootType.INCOME,
+        amount: '11000.00000', // Sequelize DECIMAL 回傳字串
+        accountId: mockAccount.id,
+        targetAccountId: null,
+        categoryId: mockCategorySub.id,
+        receipt: '',
+        description: '一般描述',
+        isReconciled: false,
+        reconciliationDate: null,
+      },
+    ]);
+
+    const res = await agent.get('/api/excel/user-transactions-csv');
+    expect(res.status).toBe(StatusCodes.OK);
+    expect(res.body.isSuccess).toBe(true);
+
+    const { call, hasBom, text } = lastCsvUpload();
+    // BOM 讓 Numbers/Excel 正確辨識 UTF-8 中文
+    expect(hasBom).toBe(true);
+
+    const lines = text.split('\r\n');
+    // 表頭與 transactionColumns 一致
+    expect(lines[0]).toBe(transactionColumns.map((c) => c.header).join(','));
+
+    const cells = lines[1]!.split(',');
+    // 金額欄（第 5 欄，index 4）為純數字：無千分位、無引號、無 .00000
+    expect(cells[4]).toBe('11000');
+    // 幣別欄（第 4 欄）為 TWD
+    expect(cells[3]).toBe('TWD');
+
+    // content-type 與 attachment disposition 需正確帶入
+    expect(call[0]).toMatch(/\.csv$/);
+    expect(call[2]).toMatch(/text\/csv/);
+    expect(call[3]).toMatch(/attachment/);
+  });
+
+  it('CSV 匯出：含逗號/引號/換行的值需以 RFC 4180 方式轉義', async () => {
+    (Transaction.findAll as any).mockResolvedValue([
+      {
+        id: 't1',
+        date: '2026-02-01',
+        time: '12:00:00',
+        type: RootType.EXPENSE,
+        amount: 50,
+        accountId: mockAccount.id,
+        targetAccountId: null,
+        categoryId: mockCategorySub.id,
+        receipt: '',
+        description: 'a,b"c\nd', // 逗號 + 引號 + 換行
+        isReconciled: false,
+        reconciliationDate: null,
+      },
+    ]);
+
+    const res = await agent.get('/api/excel/user-transactions-csv');
+    expect(res.status).toBe(StatusCodes.OK);
+
+    const { text } = lastCsvUpload();
+    // 描述欄含特殊字元 → 整格包雙引號、內部引號變兩個
+    expect(text).toContain('"a,b""c\nd"');
+  });
+
+  it('CSV 匯出：null 的描述/發票欄輸出空字串，非字面 null/undefined', async () => {
+    // Sequelize 對選填欄回傳 null 是常態
+    (Transaction.findAll as any).mockResolvedValue([
+      {
+        id: 't1',
+        date: '2026-02-01',
+        time: '12:00:00',
+        type: RootType.INCOME,
+        amount: 100,
+        accountId: mockAccount.id,
+        targetAccountId: null,
+        categoryId: mockCategorySub.id,
+        receipt: null,
+        description: null,
+        isReconciled: false,
+        reconciliationDate: null,
+      },
+    ]);
+
+    const res = await agent.get('/api/excel/user-transactions-csv');
+    expect(res.status).toBe(StatusCodes.OK);
+
+    const { text } = lastCsvUpload();
+    const cells = text.split('\r\n')[1]!.split(',');
+    // 欄序：... 發票(8) 描述(9) ...；null → 空字串
+    expect(cells[8]).toBe('');
+    expect(cells[9]).toBe('');
+    expect(text).not.toMatch(/null|undefined/);
+  });
+
   it('幣別欄位：不支援的幣別 → 列入錯誤報告', async () => {
     const rows = [
       {
