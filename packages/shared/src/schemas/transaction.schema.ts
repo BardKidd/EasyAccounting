@@ -61,7 +61,8 @@ const splitRefine = (d: any, ctx: z.RefinementCtx) => {
 const baseSchema = z.object({
   accountId: z.string().uuid(),
   categoryId: z.string().uuid(),
-  amount: z.number(),
+  // 安全性修補：金額須為正且有上限，防止 0／負值／極端數值灌入
+  amount: z.number().positive('金額須為正數').max(1e12, '金額超過上限'),
   description: z.string().nullable(),
   date: z.string(),
   time: z.string(),
@@ -73,15 +74,17 @@ const baseSchema = z.object({
   ]),
   isReconciled: z.boolean().optional(),
   reconciliationDate: z.union([z.string(), z.date()]).nullable().optional(),
-  extraAdd: z.number().optional(),
+  // 安全性修補：附加加／減金額須為非負且有上限
+  extraAdd: z.number().min(0, '附加金額須為非負').max(1e12, '附加金額超過上限').optional(),
   extraAddLabel: z.string().optional(),
-  extraMinus: z.number().optional(),
+  extraMinus: z.number().min(0, '附加金額須為非負').max(1e12, '附加金額超過上限').optional(),
   extraMinusLabel: z.string().optional(),
   // 多幣別（皆 optional，後端補齊 baseRate/amountInBase）：
   // originalCurrencyCode/originalAmount 記錄原幣事實；exchangeRate = 原幣→帳戶幣別
   originalCurrencyCode: z.string().optional(),
   originalAmount: z.number().optional(),
-  exchangeRate: z.number().optional(),
+  // 安全性修補：匯率須為正且有上限，防止極端匯率灌入
+  exchangeRate: z.number().positive('匯率須為正數').max(1e9, '匯率超過上限').optional(),
   // 標籤（多對多）：套用到整筆交易。undefined = 不動；[] = 清空（更新時）
   tagIds: z.array(z.string().uuid()).optional(),
   // 拆分交易（Phase B）：一筆拆成多分類子項；Σ amount 須等於 amount。
