@@ -144,6 +144,24 @@ export const validateUploadFiles = (
     }
   }
 
+  // 安全性修補：client 宣告的 mimetype 不可信，額外驗證檔案實際的 magic bytes，
+  // 防止偽造副檔名 / MIME 夾帶非圖片內容。JPEG=FF D8 FF、PNG=89 50 4E 47。
+  for (const file of files) {
+    const b = file.buffer;
+    const isJpeg =
+      !!b && b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+    const isPng =
+      !!b &&
+      b.length >= 4 &&
+      b[0] === 0x89 &&
+      b[1] === 0x50 &&
+      b[2] === 0x4e &&
+      b[3] === 0x47;
+    if (!isJpeg && !isPng) {
+      return { valid: false, error: '只允許 JPEG 或 PNG 格式的圖片' };
+    }
+  }
+
   return validateImageFiles(imageInfos);
 };
 
@@ -321,7 +339,14 @@ export const confirmTransactions = async (
     const mappingCounts = new Map<string, number>();
 
     // 多幣別：目標帳戶幣別 + 使用者本位幣（整批同帳戶，先取一次）
-    const targetAccount = await Account.findByPk(accountId, { transaction });
+    // 安全修正（IDOR）：accountId 來自 client，必須以 userId 過濾，避免把交易寫入他人帳戶
+    const targetAccount = await Account.findOne({
+      where: { id: accountId, userId },
+      transaction,
+    });
+    if (!targetAccount) {
+      throw new Error('Account not found');
+    }
     const accountCurrency = (targetAccount as any)?.currencyCode || 'TWD';
     const userRow = await User.findByPk(userId, {
       attributes: ['baseCurrencyCode'],
@@ -419,7 +444,8 @@ export const confirmTransactions = async (
         userId,
         accountId,
         categoryId: finalCategory,
-        amount: amountInAccountCurrency,
+        // 安全性修補：金額一律取絕對值寫入，避免被竄改的負數金額翻轉交易方向。
+        amount: Math.abs(amountInAccountCurrency),
         type: txType,
         description: data.description,
         date: data.date,

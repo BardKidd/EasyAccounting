@@ -9,7 +9,7 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB per file
+    fileSize: 5 * 1024 * 1024, // [security] 對齊實際每張圖片 5MB 上限，避免驗證前緩衝過大（原為 10MB）
     files: 50, // 最多 50 個檔案（對應 PDF_VALIDATION.maxImageCount）
   },
 });
