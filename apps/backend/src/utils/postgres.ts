@@ -14,6 +14,12 @@ const isCloudHost =
   !process.env.PG_HOST.includes('localhost') &&
   !process.env.PG_HOST.includes('127.0.0.1');
 
+// 安全性(#17)：預設驗證 DB TLS 憑證（防 MITM）。若雲端 provider 憑證鏈不在 Node
+// 內建信任庫，可設 PG_SSL_REJECT_UNAUTHORIZED=false 暫時關閉，或提供 PG_SSL_CA（PEM）。
+const sslRejectUnauthorized =
+  process.env.PG_SSL_REJECT_UNAUTHORIZED !== 'false';
+const sslCa = process.env.PG_SSL_CA;
+
 const sequelize = new Sequelize(
   process.env.PG_DATABASE as string,
   process.env.PG_USER as string,
@@ -25,7 +31,8 @@ const sequelize = new Sequelize(
         ? {
             ssl: {
               require: true,
-              rejectUnauthorized: false, // 雲端(e.g. Neon/Railway) 有時需要這個
+              rejectUnauthorized: sslRejectUnauthorized,
+              ...(sslCa ? { ca: sslCa } : {}),
             },
           }
         : undefined,
