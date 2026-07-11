@@ -17,12 +17,15 @@ export const guestLoginLimiter = rateLimit({
 
 /**
  * Forgot Password Rate Limiter
- * 限制同一 IP 每分鐘最多 10 次忘記密碼請求
+ * 限制同一 IP 每分鐘最多 3 次忘記密碼請求（NFR-4 per-IP 閘門）
  */
 export const forgotPasswordLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 10,
+  max: 3,
   standardHeaders: true,
   legacyHeaders: false,
+  // 僅在 production 強制 per-IP 限流；dev/test 跳過，否則本地與整合測試反覆打此端點會撞上限，
+  // 遮蔽 controller 內的 per-email 閘門（per-email 為應用層邏輯，各環境皆生效）。比照 guestLoginLimiter。
+  skip: () => process.env.NODE_ENV !== 'production',
   message: responseHelper(false, null, '請求過於頻繁，請稍後再試', null),
 });

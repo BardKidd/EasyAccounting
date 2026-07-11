@@ -1,8 +1,13 @@
 # Forgot Password (忘記密碼)
 
-> Status: DRAFT
+> Status: DONE（程式碼完成、三處差異已補強、7.2 安全項由整合測試涵蓋並全綠）
 > Created: 2026-03-19
-> Last Updated: 2026-03-20
+> Last Updated: 2026-07-11（稽核發現三處差異 → 同日補強修復）
+
+> **✅ 三處實作差異已補強（2026-07-11）**：稽核發現的三處實作與規格不符，已全部修復並以真實 DB 整合測試涵蓋（`tests/integration/forgotResetPassword.test.ts`，4 case 全綠）：
+> 1. **NFR-4 rate limit 數字**：已對齊規格 **3/3** — per-IP `forgotPasswordLimiter` `max:3`（非 production 環境 skip，比照 `guestLoginLimiter`）、per-email `MAX_RESET_EMAILS_PER_WINDOW=3`。下方 API 邏輯段的「超過 10 封」亦一併更正為 3。
+> 2. **FR-7 舊 token 自動失效**：已補 — `forgotPassword` 產生新 token 前，於同一交易內把該使用者所有 `usedAt: null` 舊 token 標記失效，同一時間只有最新一封有效。
+> 3. **NFR-3 anti-enum**：per-email 超限路徑改回與正常路徑「完全相同」的 generic 200（不寄信、不洩漏），移除原本外洩 email 存在的明文 429。
 
 ## Summary
 
@@ -72,31 +77,31 @@ sequenceDiagram
 
 ### Functional Requirements
 
-- [ ] FR-1: 登入頁面已有「忘記密碼?」連結 (已存在)，點擊後導向 `/forgot-password` 頁面
-- [ ] FR-2: `/forgot-password` 頁面 — 使用者輸入 email，送出後顯示「已寄出重設信件」提示 (不論 email 是否存在都顯示相同訊息，防止 email 列舉攻擊)
-- [ ] FR-3: 後端產生一次性 reset token (有效期 15 分鐘)，寄送重設密碼信件至使用者信箱
-- [ ] FR-4: 信件內容包含：
+- [x] FR-1: 登入頁面已有「忘記密碼?」連結 (已存在)，點擊後導向 `/forgot-password` 頁面
+- [x] FR-2: `/forgot-password` 頁面 — 使用者輸入 email，送出後顯示「已寄出重設信件」提示 (不論 email 是否存在都顯示相同訊息，防止 email 列舉攻擊)
+- [x] FR-3: 後端產生一次性 reset token (有效期 15 分鐘)，寄送重設密碼信件至使用者信箱
+- [x] FR-4: 信件內容包含：
   - 重設密碼按鈕（Call To Action）/ 連結
   - 觸發此操作的 IP 位址
   - IP 對應的地理位置 (城市/國家)
   - 操作觸發時間
   - 安全提醒：「若此操作非您本人進行，請立即聯繫管理員：{SUPPORT_EMAIL_FROM}」
-- [ ] FR-5: `/reset-password?token=xxx` 頁面 — 使用者輸入新密碼 + 確認新密碼，送出
-- [ ] FR-6: 重設成功後顯示成功訊息頁面，包含「返回登入頁」按鈕
-- [ ] FR-7: Token 只能使用一次，使用後標記 `usedAt`。同一使用者再次申請時產生新 token，舊 token 自動失效
-- [ ] FR-8: 訪客帳號 (isGuest = true) 不允許重設密碼（靜默處理，仍回傳成功）
-- [ ] FR-9: 已登入使用者造訪 `/forgot-password` 或 `/reset-password` 時 replace 回 `/dashboard`
+- [x] FR-5: `/reset-password?token=xxx` 頁面 — 使用者輸入新密碼 + 確認新密碼，送出
+- [x] FR-6: 重設成功後顯示成功訊息頁面，包含「返回登入頁」按鈕
+- [x] FR-7: Token 只能使用一次，使用後標記 `usedAt`。同一使用者再次申請時產生新 token，舊 token 自動失效
+- [x] FR-8: 訪客帳號 (isGuest = true) 不允許重設密碼（靜默處理，仍回傳成功）
+- [x] FR-9: 已登入使用者造訪 `/forgot-password` 或 `/reset-password` 時 replace 回 `/dashboard`
 
 ### Non-Functional Requirements
 
-- [ ] NFR-1: Reset token 使用 **SHA-256** hash 儲存（高亂數 token 不需 bcrypt，可直接 DB 查詢 O(1)）
-- [ ] NFR-2: `token` 欄位建立 **DB Index**，確保 token 驗證為 O(1) 查詢
-- [ ] NFR-3: 前端不洩漏該 email 是否在系統中已註冊 (統一回應)
-- [ ] NFR-4: Rate limit — **雙層限制**：
+- [x] NFR-1: Reset token 使用 **SHA-256** hash 儲存（高亂數 token 不需 bcrypt，可直接 DB 查詢 O(1)）
+- [x] NFR-2: `token` 欄位建立 **DB Index**，確保 token 驗證為 O(1) 查詢
+- [x] NFR-3: 前端不洩漏該 email 是否在系統中已註冊 (統一回應)
+- [x] NFR-4: Rate limit — **雙層限制**：
   - Per-IP：每分鐘最多 3 次
   - Per-Email：同一 email 15 分鐘內最多 3 封信（產生新 token + 重寄信，舊 token 自動失效）
-- [ ] NFR-5: 設定 Express `trust proxy`，確保在 Cloudflare 後能取得真實 Client IP
-- [ ] NFR-6: IP Geolocation 使用 HTTPS API（`ipinfo.io`），避免明文傳輸使用者 IP
+- [x] NFR-5: 設定 Express `trust proxy`，確保在 Cloudflare 後能取得真實 Client IP
+- [x] NFR-6: IP Geolocation 使用 HTTPS API（`ipinfo.io`），避免明文傳輸使用者 IP
 
 ## Technical Design
 
@@ -133,7 +138,8 @@ sequenceDiagram
 - **Response**: `{ isSuccess: true, message: "若此信箱已註冊，您將收到重設密碼的信件" }`
 - **邏輯**:
   1. 查詢使用者（不存在或 isGuest → 不寄信但仍回傳成功）
-  2. 檢查該使用者 15 分鐘內已寄出的 token 數量 → 超過 10 封不寄信但仍回傳成功
+  2. 檢查該使用者 15 分鐘內已寄出的 token 數量 → 達 3 封則不寄信但仍回傳（與正常路徑相同的 generic 200，不洩漏）
+  2a. 產生新 token 前，於同一交易內作廢該使用者所有未使用的舊 token（FR-7）
   3. 產生 raw token (`crypto.randomBytes(32)`) + expiry (15min)
   4. SHA-256 hash token → 寫入 `PasswordResetToken` table
   5. 取得 request IP（透過 `trust proxy`）→ `ipinfo.io` 查詢地理位置

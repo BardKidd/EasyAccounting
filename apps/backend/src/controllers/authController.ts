@@ -60,7 +60,7 @@ const getIpLocation = async (
 };
 
 const RESET_TOKEN_EXPIRY_MINUTES = 15;
-const MAX_RESET_EMAILS_PER_WINDOW = 10;
+const MAX_RESET_EMAILS_PER_WINDOW = 3;
 
 const login = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -349,7 +349,7 @@ const forgotPassword = (req: Request, res: Response) => {
         .json(responseHelper(true, null, genericMessage, null));
     }
 
-    // Per-email rate limiting: 15 分鐘內最多 10 封
+    // Per-email rate limiting: 15 分鐘內最多 3 封（NFR-4 per-email 閘門）
     const windowStart = new Date(
       Date.now() - RESET_TOKEN_EXPIRY_MINUTES * 60 * 1000,
     );
@@ -361,18 +361,11 @@ const forgotPassword = (req: Request, res: Response) => {
     });
 
     if (recentTokenCount >= MAX_RESET_EMAILS_PER_WINDOW) {
-      // 改為回傳實際的上限錯誤訊息（犧牲些微的帳號列舉防護，換取更好的 UX）
-      //! 不過假如該信箱真的存在 DB，改為回傳這個內容的話有可能會被知道該信箱真的存在於 DB。
+      // NFR-3：超限時不寄信，但回傳與正常路徑完全相同的 generic 200，
+      // 不洩漏該 email 是否存在於 DB（防帳號列舉）。
       return res
-        .status(StatusCodes.TOO_MANY_REQUESTS)
-        .json(
-          responseHelper(
-            false,
-            null,
-            `該信箱發送重設連結次數已達上限（15 分鐘內最多 ${MAX_RESET_EMAILS_PER_WINDOW} 次），請稍後再試。`,
-            null,
-          ),
-        );
+        .status(StatusCodes.OK)
+        .json(responseHelper(true, null, genericMessage, null));
     }
 
     // 產生 token
@@ -385,10 +378,21 @@ const forgotPassword = (req: Request, res: Response) => {
       Date.now() + RESET_TOKEN_EXPIRY_MINUTES * 60 * 1000,
     );
 
-    await PasswordResetToken.create({
-      userId: user.id,
-      token: hashedToken,
-      expiresAt,
+    // FR-7：新 token 產生時，先作廢該使用者所有尚未使用的舊 token（同一時間只有最新一封有效），
+    // invalidate + create 包在同一交易，避免中途失敗留下不一致狀態。
+    await sequelize.transaction(async (t) => {
+      await PasswordResetToken.update(
+        { usedAt: new Date() },
+        { where: { userId: user.id, usedAt: null }, transaction: t },
+      );
+      await PasswordResetToken.create(
+        {
+          userId: user.id,
+          token: hashedToken,
+          expiresAt,
+        },
+        { transaction: t },
+      );
     });
 
     // 先取得 IP（同步可用），組合連結

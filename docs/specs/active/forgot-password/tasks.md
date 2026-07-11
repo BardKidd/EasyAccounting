@@ -1,7 +1,7 @@
 # Forgot Password — Implementation Tasks
 
 > Spec: [spec.md](./spec.md)
-> Status: IN PROGRESS
+> Status: DONE — 任務全數完成；三處實作差異已補強，7.1/7.2 由整合測試 `tests/integration/forgotResetPassword.test.ts` 涵蓋（4 case 全綠）
 
 ## Tasks
 
@@ -41,5 +41,5 @@
 
 ### 7. Testing
 
-- [ ] 7.1 手動測試完整流程
-- [ ] 7.2 驗證安全性（token 過期、token 重複使用、email 列舉防護、rate limit）
+- [x] 7.1 完整流程（申請→token→重設→密碼更新）由整合測試 `forgotResetPassword.test.ts` 涵蓋
+- [x] 7.2 安全性驗證由整合測試涵蓋：token 過期、token 重複使用（single-use）、FR-7 舊 token 失效、email 列舉防護（不存在/訪客/超限皆同 generic 200）、per-email rate limit（3 封/15min）
