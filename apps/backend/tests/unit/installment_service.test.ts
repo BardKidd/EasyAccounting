@@ -29,6 +29,7 @@ vi.mock('@/models', () => ({
   },
   Account: {
     findByPk: vi.fn(),
+    findOne: vi.fn(),
     belongsTo: vi.fn(),
     hasMany: vi.fn(),
     hasOne: vi.fn(),
@@ -83,6 +84,8 @@ describe('Installment Service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (Account.findByPk as any).mockResolvedValue(mockAccount);
+    // createTransaction 改用 Account.findOne({where:{id,userId}})，需同樣回傳 mockAccount
+    (Account.findOne as any).mockResolvedValue(mockAccount);
     (InstallmentPlan.create as any).mockResolvedValue({ id: 'inst-1' });
     (Transaction.create as any).mockResolvedValue({
       id: 'tx-i',

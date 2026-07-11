@@ -138,8 +138,10 @@ describe('Excel Import/Export API Test (Mocked)', () => {
 
     // 1. Account Lookup (findByName)
     (Account.findOne as any).mockImplementation(({ where }: any) => {
-      if (where?.name === mockAccount.name) return Promise.resolve(mockAccount);
-      if (where?.name === mockAccount2.name)
+      // 支援名稱查找（excel 帳戶對應）與 id 查找（createTransaction 擁有權 {id,userId}）
+      if (where?.name === mockAccount.name || where?.id === mockAccount.id)
+        return Promise.resolve(mockAccount);
+      if (where?.name === mockAccount2.name || where?.id === mockAccount2.id)
         return Promise.resolve(mockAccount2);
       return Promise.resolve(null);
     });
