@@ -62,6 +62,7 @@
   - 修法：比照 statistics，`findAll` 的 `attributes` 加 `amountInBase`、JS reduce 改讀 `amountInBase` / `extraAddInBase` / `extraMinusInBase`（單幣時 `amountInBase === amount`，零回歸）。影響檔：`transactionServices.ts`。
 - [x] **🟢 已修：預算消耗未用 `amountInBase`，違反 D5。** `budgetService.ts` 原以 `Math.abs(Number(tx.amount))` 累計消耗，D5 明訂「消耗用 `amountInBase` 累計」。Model/migration 已把 `Budget.amount` 改 `DECIMAL(20,5)`、切換本位幣也會換算預算，唯獨消耗端讀取沒改。
   - 修法：4 處消耗累計（`calculateUsage` / `calculateBudgetCategoriesUsage` / `createSnapshot` / `recalculateSnapshots`）一律改讀 `tx.amountInBase`（單幣時等於 `amount`，零回歸）。同步補 `budget_impact.test.ts` mock 交易的 `amountInBase` 欄位（斷言 spent=300、80% 門檻不變，正好驗證零回歸）。影響檔：`budgetService.ts`、`tests/unit/budget_impact.test.ts`。修後後端 158 全綠。
+    > 註（2026-07-11）：此後 budget 系統於 budget-ynab 改版整支重寫，`budget_impact.test.ts` 已不存在（改為 `budget_logic.test.ts` / `budgetFlow.test.ts`）；D5「消耗用 `amountInBase`」行為在現行 `budgetService.ts` 仍正確。此段為當時歷史記錄。
 - [x] 🟢 已修（2026-06-10）雜項四項：
   - **① 過時註解**：`TransactionExtra.ts` 註解「由 beforeSave hook 算出」→「由 service 層顯式寫入（非 model hook）」。
   - **② 反向匯率掉精度**：`@repo/shared` 新增 `roundRate`（10 位，對齊 `DECIMAL(20,10)`）；`exchangeRateService.ts` 反向匯率取倒數改用 `roundRate`（原本誤用本位幣 5 位的 `roundToBaseCurrency`，小匯率如 1/157.5 會被截）。

@@ -1,7 +1,7 @@
 # AI 聊天助手面板 — Implementation Tasks
 
 > Spec: [spec.md](./spec.md)
-> Status: NOT STARTED
+> Status: SHIPPED — 任務 1–4.3 全部完成，僅剩 4.4 手動 E2E（見 spec.md ⚠️ 三處實作差異，尤 FR-5 範圍）
 
 ## Tasks
 

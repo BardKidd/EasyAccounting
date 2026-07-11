@@ -1,8 +1,13 @@
 # AI 聊天助手面板
 
-> Status: DRAFT  
-> Created: 2026-03-11  
-> Last Updated: 2026-03-27
+> Status: IMPLEMENTED / SHIPPED（已完整實作並整合進 app；剩 tasks.md 4.4 手動 E2E）
+> Created: 2026-03-11
+> Last Updated: 2026-07-11（稽核對照程式碼後更新狀態）
+
+> **⚠️ 實作與規格差異（2026-07-11 稽核）**：功能已完整上線（面板／SSE 串流／RAG 全部實作並整合），此規格與 tasks.md 先前誤標 `DRAFT`／`NOT STARTED`。重大差異待確認：
+> 1. **FR-5 範圍炸開**：規格限定「僅回答系統邏輯與操作流程」，Out-of-Scope 也明列「AI 存取使用者個人交易資料」。但實作透過 `chatTools` 查詢使用者財務資料、甚至草擬／建立交易，直接違反 FR-5 與兩條 Out-of-Scope（含「Markdown 渲染」— 實作已用 `ReactMarkdown`）。屬範圍決策：需重寫規格或收回實作。
+> 2. **NFR-1 typewriter 非真逐 token**：後端把整輪回覆緩衝後在單一 `onChunk` 一次送出（刻意隱藏 tool 前導文字），前端逐字打字機效果實質失效。
+> 3. **細節漂移**：聊天模型為 `gemini-2.5-flash-lite`（規格寫 `gemini-2.5-flash`）；embedding `gemini-embedding-2-preview`（Open Question 曾記 `text-embedding-004`）；面板寬 350px（規格 ~250px）；System Prompt 規則 #9「預算功能尚未上線」已過時（預算已上線）。
 
 ## Summary
 
@@ -16,22 +21,22 @@
 
 ### Functional Requirements
 
-- [ ] FR-1: Header 新增 AI 聊天 icon 按鈕（`MessageSquare` 或類似 icon）
-- [ ] FR-2: 點擊按鈕從右側展開聊天面板，再次點擊收起
-- [ ] FR-3: 面板展開時主內容區域自動縮小（非覆蓋），面板寬度與 Sidebar 相當（~250px）
-- [ ] FR-4: 使用者可在面板內輸入問題，AI 即時回覆
-- [ ] FR-5: AI 使用 RAG + 向量資料庫，僅回答系統邏輯與操作流程
-- [ ] FR-6: 對話紀錄在頁面重整或離開時清除（不持久化）
-- [ ] FR-7: 手機版全螢幕顯示聊天面板
-- [ ] FR-8: 訪客和註冊用戶皆可使用
-- [ ] FR-9: AI 回覆進行中時，禁用輸入框（不可發送新訊息）
-- [ ] FR-10: AI 回覆進行中時，顯示「停止」按鈕，按下後中斷串流並保留已生成的內容
+- [x] FR-1: Header 新增 AI 聊天 icon 按鈕（`MessageSquare` 或類似 icon）
+- [x] FR-2: 點擊按鈕從右側展開聊天面板，再次點擊收起
+- [x] FR-3: 面板展開時主內容區域自動縮小（非覆蓋），面板寬度與 Sidebar 相當（~250px）— ⚠️ 實作為 350px
+- [x] FR-4: 使用者可在面板內輸入問題，AI 即時回覆
+- [ ] FR-5: AI 使用 RAG + 向量資料庫，僅回答系統邏輯與操作流程 — ⚠️ **範圍已偏離**：實作另可查使用者交易資料 + 建交易（見上方差異 1，待重寫規格）
+- [x] FR-6: 對話紀錄在頁面重整或離開時清除（不持久化）
+- [x] FR-7: 手機版全螢幕顯示聊天面板
+- [x] FR-8: 訪客和註冊用戶皆可使用
+- [x] FR-9: AI 回覆進行中時，禁用輸入框（不可發送新訊息）
+- [x] FR-10: AI 回覆進行中時，顯示「停止」按鈕，按下後中斷串流並保留已生成的內容
 
 ### Non-Functional Requirements
 
-- [ ] NFR-1: 聊天回覆使用 SSE streaming + typewriter effect（逐字/逐 token 顯示，非全部跑完才貼上）
-- [ ] NFR-2: 面板展開/收起應有平滑動畫 transition
-- [ ] NFR-3: 符合現有深色/淺色模式設計系統
+- [x] NFR-1: 聊天回覆使用 SSE streaming + typewriter effect（逐字/逐 token 顯示，非全部跑完才貼上）— ⚠️ 後端整輪緩衝一次送出，逐字效果實質失效（見上方差異 2）
+- [x] NFR-2: 面板展開/收起應有平滑動畫 transition
+- [x] NFR-3: 符合現有深色/淺色模式設計系統
 
 ## Technical Design
 
