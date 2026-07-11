@@ -494,7 +494,7 @@ export const processRecurringTemplates = async () => {
           `Account ${attrs.accountId} not found for template ${template.id}`,
         );
 
-      let baseCurrencyCode = baseCurrencyCache.get(template.userId);
+      let baseCurrencyCode: string = baseCurrencyCache.get(template.userId) ?? '';
       if (!baseCurrencyCode) {
         const user = await User.findByPk(template.userId, {
           attributes: ['baseCurrencyCode'],

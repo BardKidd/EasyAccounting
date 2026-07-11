@@ -60,7 +60,7 @@ import transactionServices from '@/services/transactionServices';
 const agent = request.agent(app);
 
 // 取最近一次匯出寫入 blob 的 buffer
-const lastBuffer = () => hoisted.uploaded[hoisted.uploaded.length - 1].buffer;
+const lastBuffer = () => hoisted.uploaded[hoisted.uploaded.length - 1]!.buffer;
 
 // 以 header 文字找欄號（1-based）
 const findCol = (sheet: ExcelJS.Worksheet, header: string): number => {
@@ -124,7 +124,7 @@ describe('Excel 匯入匯出 真實 DB 端到端', () => {
     // 3. 取一組有效分類字串 + leaf id（用既有預設分類）
     const { stringCollection, categories } =
       await excelServices.getAllCategoriesHyphenString(hoisted.userId);
-    categoryString = stringCollection[0];
+    categoryString = stringCollection[0]!;
     const [mainName, subName] = categoryString.split('-');
     const mainId = categories.find((c: any) => c.name === mainName)?.id;
     categoryId =

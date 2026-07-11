@@ -21,6 +21,8 @@ export type SplitInput = z.infer<typeof splitInputSchema>;
 export const SPLIT_BALANCE_EPSILON = 0.01;
 
 // 拆分前置檢查 + 配平（create/update 共用；service 為權威驗證，schema 為前端友善提示）
+// 此 refine 同時掛在多個不同 schema（見下方 superRefine），無單一輸入型別可標，故用 any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const splitRefine = (d: any, ctx: z.RefinementCtx) => {
   const splits = d.splits as SplitInput[] | undefined;
   if (!splits || splits.length === 0) return;
@@ -129,6 +131,7 @@ export const createTransferSchema = baseSchema.and(
     // exchangeRate（來源幣→目標幣）由 baseSchema 帶入，可省（後端可由 amount/targetAmount 推得）。
     targetAmount: z.number().optional(),
   }),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ).superRefine((d: any, ctx) => {
   if (d.splits && d.splits.length > 0) {
     ctx.addIssue({
