@@ -16,6 +16,7 @@ import {
   Repeat,
   Calculator,
   History,
+  Store,
 } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import {
@@ -46,6 +47,11 @@ const sidebarItems = [
     title: '帳單匯入',
     href: '/bill-import',
     icon: Command,
+  },
+  {
+    title: '商家分類',
+    href: '/merchant-mappings',
+    icon: Store,
   },
   {
     title: '統計報表',

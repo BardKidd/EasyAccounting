@@ -396,16 +396,17 @@ export const confirmTransactions = async (
     }
 
     // 3. 批次更新 MerchantMapping（用 raw query 做 upsert + increment）
+    //    per-user 隔離：userId 併入 INSERT 與 ON CONFLICT 目標（對齊新 3 欄 unique）。
     for (const [key, count] of mappingCounts) {
       const [merchantName, categoryId] = key.split('::');
       await sequelize.query(
-        `INSERT INTO accounting.merchant_mapping ("id", "merchantName", "categoryId", "matchCount", "createdAt", "updatedAt")
-         VALUES (:id, :merchantName, :categoryId, :count, NOW(), NOW())
-         ON CONFLICT ("merchantName", "categoryId")
+        `INSERT INTO accounting.merchant_mapping ("id", "userId", "merchantName", "categoryId", "matchCount", "createdAt", "updatedAt")
+         VALUES (:id, :userId, :merchantName, :categoryId, :count, NOW(), NOW())
+         ON CONFLICT ("userId", "merchantName", "categoryId")
          DO UPDATE SET "matchCount" = accounting.merchant_mapping."matchCount" + :count,
                        "updatedAt" = NOW()`,
         {
-          replacements: { id: uuidv4(), merchantName, categoryId, count },
+          replacements: { id: uuidv4(), userId, merchantName, categoryId, count },
           transaction,
         },
       );

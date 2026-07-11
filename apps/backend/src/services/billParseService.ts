@@ -27,15 +27,20 @@ const escapeLike = (str: string): string => {
  * 收集所有 unique description，一次查完，避免 N+1
  * 回傳 Map<description, categoryId>
  */
-const batchSuggestCategories = async (
+// export：供整合測試直接驗證 per-user 讀取隔離（洩漏修復）。
+export const batchSuggestCategories = async (
+  userId: string,
   descriptions: string[],
 ): Promise<Map<string, string | null>> => {
   const unique = [...new Set(descriptions)];
   const result = new Map<string, string | null>();
 
-  // 一次查全部，用 OR 條件
+  // 一次查全部，用 OR 條件。per-user 隔離：只查本人、已啟用的對應
+  // （防跨使用者洩漏他人 categoryId；停用的對應不參與匹配）。
   const mappings = await MerchantMapping.findAll({
     where: {
+      userId,
+      isEnabled: true,
       merchantName: {
         [Op.or]: unique.map((desc) => ({
           [Op.iLike]: `%${escapeLike(desc)}%`,
@@ -240,8 +245,9 @@ export const saveParsedResults = async (
   userId: string,
   transactions: ParsedTransaction[],
 ): Promise<number> => {
-  // 一次查完所有類別建議
+  // 一次查完所有類別建議（per-user 隔離）
   const categoryMap = await batchSuggestCategories(
+    userId,
     transactions.map((tx) => tx.description),
   );
 

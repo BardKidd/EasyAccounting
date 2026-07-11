@@ -53,6 +53,8 @@ User.addHook('afterDestroy', async (user: any, options: any) => {
   // 須在 Transaction 之後即可（transaction_tag 已隨 Transaction.afterDestroy 清過，
   // 這裡再清一次無妨——刪 tag 本身與其殘留關聯）。
   await Tag.destroy({ where: { userId }, transaction, individualHooks: true });
+  // MerchantMapping（per-user、hard-delete）：刪 User 連帶清其學到的商家→分類對應。
+  await MerchantMapping.destroy({ where: { userId }, transaction });
 });
 
 // Category 為 soft-delete（paranoid:true）：DB 層的 ON DELETE CASCADE 不會觸發，

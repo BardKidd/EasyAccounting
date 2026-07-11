@@ -102,10 +102,11 @@
 #### 2. 規則引擎 (Auto-categorization Rules) — Priority High
 
 > `MerchantMapping` 目前只服務 PDF 解析、使用者不可見。應開放自訂規則讓匯入真正省力。
+> 📄 **技術規格**: [rules-engine-spec.md](docs/specs/rules-engine-spec.md) (設計定案；決策 R1–R14 已拍板；**選項 B** 定案；**Phase A 修洩漏+自動學習 → Phase B 顯式規則** 順序固定)
 
-- [ ] **使用者自訂規則**: 若 payee 含 X 或金額符合 Y → 自動套分類 / 標籤。
-- [ ] 套用於 PDF 帳單解析、Excel 匯入、手動輸入。
-- [ ] payee / 商家 (Merchant) 成為一級實體 (可管理)。
+- [ ] **Phase A — 修洩漏 + 自動學習 per-user + 管理 UI**：`merchant_mapping` 加 `userId`（修跨使用者 categoryId 洩漏 bug）+ 開放使用者看/改/刪/停用已學到的商家分類。
+- [ ] **Phase B — 顯式規則**: 若 description 含 X 或金額符合 Y → 自動套分類 / 標籤；套用於 PDF 帳單解析、Excel 匯入、手動輸入。
+- [ ] **Phase C（本輪不做）**: payee / 商家 (Merchant) 成為一級實體 (可管理)。
 
 ### 🟡 Tier 2 — 次要強化 (投報率高)
 
