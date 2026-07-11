@@ -5,7 +5,7 @@ import { StatusCodes } from 'http-status-codes';
 
 const postPersonnelNotification = async (req: Request, res: Response) => {
   await simplifyTryCatch(req, res, async () => {
-    const userId = req.body.userId;
+    const userId = req.user.userId; // 安全性修復：改用已驗證身分，勿信任 req.body.userId
     // 預設只打開月報
     const payload = {
       isDailyNotification: false,
