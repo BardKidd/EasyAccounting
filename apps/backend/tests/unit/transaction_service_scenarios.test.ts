@@ -87,7 +87,7 @@ describe('Transaction Service Scenarios', () => {
 
   describe('Zero Amount Logic', () => {
     it('should allow transaction with amount 0', async () => {
-      (Account.findByPk as any).mockResolvedValue(mockAccount);
+      (Account.findOne as any).mockResolvedValue(mockAccount);
       (Transaction.create as any).mockResolvedValue({
         id: 'tx-0',
         amount: 0,
@@ -116,7 +116,7 @@ describe('Transaction Service Scenarios', () => {
   describe('Extra Amount Logic (Fee & Discount)', () => {
     it('should calculate net amount correctly for Expense with Fee and Discount', async () => {
       // Expense: Original 100 + Fee 10 - Discount 5 = Net 105 deduction
-      (Account.findByPk as any).mockResolvedValue(mockAccount);
+      (Account.findOne as any).mockResolvedValue(mockAccount);
       (TransactionExtra.create as any).mockResolvedValue({ id: 'ext-1' });
       (Transaction.create as any).mockResolvedValue({
         id: 'tx-1',
@@ -148,7 +148,7 @@ describe('Transaction Service Scenarios', () => {
     it('should calculate net amount correctly for Income with Bonus and Cost', async () => {
       // Income: Original 100 + Bonus 10 - Cost 5 = Net 105 addition
       const incomeAcc = { ...mockAccount, balance: 1000, save: vi.fn() };
-      (Account.findByPk as any).mockResolvedValue(incomeAcc);
+      (Account.findOne as any).mockResolvedValue(incomeAcc);
       (TransactionExtra.create as any).mockResolvedValue({ id: 'ext-2' });
       (Transaction.create as any).mockResolvedValue({ toJSON: () => ({}) });
 
@@ -174,7 +174,7 @@ describe('Transaction Service Scenarios', () => {
       const fromAcc = { id: 'acc-1', balance: 1000, save: vi.fn() };
       const toAcc = { id: 'acc-2', balance: 500, save: vi.fn() };
 
-      (Account.findByPk as any)
+      (Account.findOne as any)
         .mockResolvedValueOnce(fromAcc) // First call for fromAccount
         .mockResolvedValueOnce(toAcc); // Second call for toAccount
 

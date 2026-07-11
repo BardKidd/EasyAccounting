@@ -123,7 +123,7 @@ describe('Transaction Service Logic', () => {
           toJSON: () => ({ ...data, id: 'tx1' }),
         }),
       );
-      (Account.findByPk as any).mockResolvedValue({
+      (Account.findOne as any).mockResolvedValue({
         id: 'acc1',
         balance: 1000,
         save: vi.fn(),
@@ -169,7 +169,7 @@ describe('Transaction Service Logic', () => {
         toJSON: () => ({ id: 'tx1' }),
       });
       (TransactionExtra.create as any).mockResolvedValue({ id: 'extra1' });
-      (Account.findByPk as any).mockResolvedValue({
+      (Account.findOne as any).mockResolvedValue({
         id: 'acc1',
         balance: 1000,
         save: vi.fn(),

@@ -211,6 +211,9 @@ describe('Account Controller (Mocked)', () => {
       const transaction = { commit: vi.fn(), rollback: vi.fn() };
       (sequelize.transaction as any).mockResolvedValue(transaction);
 
+      // 安全性修補（IDOR）：先以 { id, userId } 查得擁有的帳戶，非 null 才繼續
+      (Account.findOne as any).mockResolvedValue({ id: 'acc-cc', name: 'Old Card' });
+      (Account.findByPk as any).mockResolvedValue({ id: 'acc-cc', name: 'Updated Card' });
       (Account.update as any).mockResolvedValue([1]); // 1 row updated
       (CreditCardDetail.findOne as any).mockResolvedValue(null); // No existing detail, so create
       (CreditCardDetail.create as any).mockResolvedValue({});
@@ -227,7 +230,20 @@ describe('Account Controller (Mocked)', () => {
       await accountController.editAccount(req, res);
       await waitTick();
 
-      expect(Account.update).toHaveBeenCalled();
+      // 擁有權查詢帶 { id, userId }
+      expect(Account.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'acc-cc', userId: 'user-123' },
+        }),
+      );
+      // 安全性修補（IDOR）：更新 WHERE 需含 userId，payload 不得含 userId
+      expect(Account.update).toHaveBeenCalledWith(
+        expect.not.objectContaining({ userId: expect.anything() }),
+        expect.objectContaining({
+          where: { id: 'acc-cc', userId: 'user-123' },
+          transaction,
+        }),
+      );
       expect(CreditCardDetail.create).toHaveBeenCalled();
       expect(transaction.commit).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
