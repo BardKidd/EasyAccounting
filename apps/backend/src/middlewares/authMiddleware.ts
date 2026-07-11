@@ -35,7 +35,9 @@ export const authMiddleware = async (
     }
 
     // 1. Access Token 有效 -> 直接放行
-    if (accessPayload) {
+    // 安全性修復(#37)：refresh token 不得當作 access token 使用；type 為 refresh 時視為無效，落到換證/清除流程。
+    // 對舊 token（type 未定義）維持寬鬆，避免既有 session 被強制登出。
+    if (accessPayload && accessPayload.type !== 'refresh') {
       req.user = accessPayload;
       updateLastActivity(accessPayload.userId as string);
       return next();
@@ -60,8 +62,21 @@ export const authMiddleware = async (
     }
 
     const { payload: refreshPayload } = await verifyToken(refreshToken);
-    if (!refreshPayload) {
+    // 安全性修復(#37)：access token 不得當作 refresh token 使用；type 為 access 時拒絕（type 未定義的舊 token 仍寬鬆放行）。
+    if (!refreshPayload || refreshPayload.type === 'access') {
       // Refresh Token 也掛了 -> 清除 Cookie 並回傳 401
+      clearAuthCookie(req, res);
+      return res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json(responseHelper(false, null, 'Session expired', null));
+    }
+
+    // 安全性(#8)：換證時比對 tokenVersion，改密碼/重設後既有 refresh token 立即失效。
+    const dbUser = await User.findByPk(refreshPayload.userId as string);
+    if (
+      !dbUser ||
+      (refreshPayload.tokenVersion ?? 0) !== (dbUser.tokenVersion ?? 0)
+    ) {
       clearAuthCookie(req, res);
       return res
         .status(StatusCodes.UNAUTHORIZED)
@@ -73,6 +88,7 @@ export const authMiddleware = async (
       userId: refreshPayload.userId as string,
       email: refreshPayload.email as string,
       isGuest: (refreshPayload.isGuest as boolean) || false,
+      tokenVersion: dbUser.tokenVersion ?? 0,
     };
 
     const newAccessToken = await generateAccessToken(newPayload);

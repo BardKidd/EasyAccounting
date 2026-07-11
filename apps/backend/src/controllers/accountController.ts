@@ -137,10 +137,8 @@ const editAccount = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const { userId } = req.user;
     const accountId = req.params.accountId;
-    const data = {
-      ...req.body,
-      userId,
-    };
+    // 安全性修補（IDOR）：不將 userId 放進更新 payload，避免擁有權被竄改接管
+    const { userId: _ignoredUserId, id: _ignoredId, ...data } = req.body;
 
     const t = await sequelize.transaction();
     try {
@@ -148,9 +146,18 @@ const editAccount = (req: Request, res: Response) => {
         where: { id: accountId, userId },
         transaction: t,
       });
+      // 安全性修補（IDOR）：非擁有者查無此帳戶則中止，勿更新他人資料
+      if (!beforeAcc) {
+        await t.rollback();
+        return res
+          .status(StatusCodes.NOT_FOUND)
+          .json(responseHelper(false, null, '該帳戶不存在', null));
+      }
+      // 安全性修補（IDOR）：更新條件加上 userId，限制只能更新自己的帳戶
       await Account.update(data, {
         where: {
           id: accountId,
+          userId,
         },
         transaction: t,
       });

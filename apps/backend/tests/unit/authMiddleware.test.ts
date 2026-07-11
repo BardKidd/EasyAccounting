@@ -7,6 +7,14 @@ import { StatusCodes } from 'http-status-codes';
 // Mock dependencies
 vi.mock('@/utils/auth');
 
+// 安全性(#8)：authMiddleware refresh 路徑會 User.findByPk 比對 tokenVersion，需 mock
+vi.mock('@/models/user', () => ({
+  default: {
+    findByPk: vi.fn().mockResolvedValue({ tokenVersion: 0 }),
+    update: vi.fn().mockResolvedValue([1]),
+  },
+}));
+
 describe('Auth Middleware Unit Test', () => {
   let req: Partial<Request>;
   let res: Partial<Response>;
@@ -87,12 +95,17 @@ describe('Auth Middleware Unit Test', () => {
     expect(AuthUtils.generateAccessToken).toHaveBeenCalledWith({
       ...refreshPayload,
       isGuest: false,
+      tokenVersion: 0,
     });
     expect(AuthUtils.setAccessCookie).toHaveBeenCalledWith(res, newAccessToken);
 
     // Check request mutation
     expect(req.cookies?.accessToken).toBe(newAccessToken);
-    expect(req.user).toEqual({ ...refreshPayload, isGuest: false });
+    expect(req.user).toEqual({
+      ...refreshPayload,
+      isGuest: false,
+      tokenVersion: 0,
+    });
     expect(next).toHaveBeenCalled();
   });
 

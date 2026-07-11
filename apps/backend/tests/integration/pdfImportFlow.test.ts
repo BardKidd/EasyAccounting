@@ -90,6 +90,8 @@ import {
   BillParseTelemetry,
   Transaction,
   TransactionExtra,
+  Account,
+  User,
 } from '@/models';
 
 // 3. Mock External Services
@@ -148,7 +150,11 @@ describe('PDF Import Flow API Test (Mocked)', () => {
   it('2. POST /api/pdf/upload - should upload images and create telemetry', async () => {
     (BillParseTelemetry.create as any).mockResolvedValue({});
 
-    const fakeImageBuffer = Buffer.from('fake-jpeg-data');
+    // magic-byte 驗證要求真實 JPEG 簽章（0xFF 0xD8 0xFF）；<= 5MB。
+    const fakeImageBuffer = Buffer.concat([
+      Buffer.from([0xff, 0xd8, 0xff]),
+      Buffer.from('fake-jpeg-data'),
+    ]);
 
     const res = await agent
       .post('/api/pdf/upload')
@@ -168,8 +174,11 @@ describe('PDF Import Flow API Test (Mocked)', () => {
   });
 
   it('3. POST /api/pdf/parse/:uploadId - should queue parse job', async () => {
+    // triggerParse 現要求 blob 路徑（去掉 container segment 後）以 `${userId}/${uploadId}/` 開頭。
     const res = await agent.post('/api/pdf/parse/upload-123').send({
-      blobUrls: ['https://mock-blob.com/fake.jpg'],
+      blobUrls: [
+        `https://mock-blob.com/bill-images/${mockUser.id}/upload-123/page-1.jpg`,
+      ],
     });
 
     expect(res.status).toBe(StatusCodes.OK);
@@ -199,6 +208,15 @@ describe('PDF Import Flow API Test (Mocked)', () => {
 
     (PendingTransaction.findAll as any).mockResolvedValue([mockPendingTx]);
     (PendingTransaction.count as any).mockResolvedValue(0); // skipped count
+    // confirmTransactions 現以 Account.findOne({ where:{ id, userId } }) 取匯入帳戶並更新餘額
+    (Account.findOne as any).mockResolvedValue({
+      id: 'acc-1',
+      userId: mockUser.id,
+      balance: 1000,
+      currencyCode: 'TWD',
+      save: vi.fn().mockResolvedValue(undefined),
+    });
+    (User.findByPk as any).mockResolvedValue({ baseCurrencyCode: 'TWD' });
     (TransactionExtra.create as any).mockResolvedValue({ id: 'extra-1' });
     (Transaction.create as any).mockResolvedValue({ id: 'tx-1' });
     (BillParseTelemetry.findOne as any).mockResolvedValue({

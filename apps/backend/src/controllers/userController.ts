@@ -34,10 +34,22 @@ const addUser = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const { password, ...otherData } = req.body;
     const hashedPassword = await bcrypt.hash(password, 12);
-    const user = await User.create({
-      ...otherData,
-      password: hashedPassword,
-    });
+    let user;
+    try {
+      user = await User.create({
+        ...otherData,
+        password: hashedPassword,
+      });
+    } catch (error) {
+      // 安全修復：email 重複時攔截 unique constraint 錯誤，回傳統一訊息，
+      // 避免洩漏原始 DB 錯誤內容或透露該 email 是否已存在
+      if (error instanceof Error && error.name === 'SequelizeUniqueConstraintError') {
+        return res
+          .status(StatusCodes.BAD_REQUEST)
+          .json(responseHelper(false, null, '註冊失敗，請確認資料是否正確', null));
+      }
+      throw error;
+    }
 
     // 預設只打開月報
     const payload = {

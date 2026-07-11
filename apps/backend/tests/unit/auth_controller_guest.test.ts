@@ -254,7 +254,7 @@ describe('Auth Controller — Guest Login Features', () => {
   // POST /api/auth/login — Guest Rejection
   // ════════════════════════════════════════
   describe('login — guest rejection (FR-1)', () => {
-    it('should return 403 if user is a guest account', async () => {
+    it('should return 401 (generic) if user is a guest account', async () => {
       const guestUser = {
         id: 'guest-id',
         email: 'guest_xxx@easyaccounting.demo',
@@ -274,7 +274,8 @@ describe('Auth Controller — Guest Login Features', () => {
       await authController.login(req, res);
       await waitTick();
 
-      expect(res.status).toHaveBeenCalledWith(StatusCodes.FORBIDDEN);
+      // SECURITY (#12)：guest 拒絕改回傳與其他失敗相同的 401 generic，避免帳號列舉
+      expect(res.status).toHaveBeenCalledWith(StatusCodes.UNAUTHORIZED);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           isSuccess: false,

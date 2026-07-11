@@ -142,8 +142,8 @@ describe('Statistics Services', () => {
       );
 
       expect(result).toHaveLength(1);
-      expect(result[0].category.name).toBe('Food');
-      expect(result[0].amount).toBe(500);
+      expect(result[0]!.category.name).toBe('Food');
+      expect(result[0]!.amount).toBe(500);
       expect(sequelize.query).toHaveBeenCalled();
     });
   });

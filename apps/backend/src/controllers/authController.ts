@@ -23,6 +23,11 @@ const comparePassword = async (password: string, dbPassword: string) => {
   return compareResult;
 };
 
+// SECURITY (#14 timing attack): 當帳號不存在時，仍以此固定 dummy hash 執行一次 bcrypt.compare，
+// 讓「帳號不存在」與「密碼錯誤」的回應時間相近，避免依耗時列舉出哪些 email 已註冊。
+const DUMMY_PASSWORD_HASH =
+  '$2b$12$miGrDmByOoHeUmgtAudgkOJye.gyTHcujaJQ1lrOh3L15yciqNR4C';
+
 /**
  * IP Geolocation via ipinfo.io (HTTPS)
  * Fallback: 回傳「位置未知」
@@ -65,38 +70,38 @@ const MAX_RESET_EMAILS_PER_WINDOW = 3;
 const login = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const { email, password } = req.body;
+    // SECURITY (#12 帳號列舉): 帳號不存在、訪客帳號、密碼錯誤三種失敗情境
+    // 一律回傳相同的 401 與相同 generic 訊息，不洩漏是哪一個條件失敗。
+    const genericAuthError = '帳號或密碼錯誤';
     const user = await User.findOne({ where: { email } });
     if (!user) {
+      // SECURITY (#14 timing attack): 帳號不存在時仍執行一次 bcrypt.compare，
+      // 使回應時間與帳號存在時相近。
+      await comparePassword(password, DUMMY_PASSWORD_HASH);
       return res
-        .status(StatusCodes.BAD_REQUEST)
-        .json(responseHelper(false, null, '該用戶尚未註冊', null));
+        .status(StatusCodes.UNAUTHORIZED)
+        .json(responseHelper(false, null, genericAuthError, null));
     }
 
-    // FR-1: 禁止透過一般登入形式登入 Guest 帳號
+    // FR-1: 禁止透過一般登入形式登入 Guest 帳號（回傳與其他失敗情境相同的 generic 訊息）
     if (user.isGuest) {
       return res
-        .status(StatusCodes.FORBIDDEN)
-        .json(
-          responseHelper(
-            false,
-            null,
-            '此為訪客帳號，無法透過一般方式登入',
-            null,
-          ),
-        );
+        .status(StatusCodes.UNAUTHORIZED)
+        .json(responseHelper(false, null, genericAuthError, null));
     }
 
     const compareResult = await comparePassword(password, user.password);
     if (!compareResult) {
       return res
-        .status(StatusCodes.BAD_REQUEST)
-        .json(responseHelper(false, null, '帳號或密碼錯誤', null));
+        .status(StatusCodes.UNAUTHORIZED)
+        .json(responseHelper(false, null, genericAuthError, null));
     }
 
     const tokenPayload = {
       userId: user.id,
       email: user.email,
       isGuest: false,
+      tokenVersion: user.tokenVersion ?? 0,
     };
 
     const accessToken = await generateAccessToken(tokenPayload);
@@ -163,6 +168,7 @@ const guestLogin = (req: Request, res: Response) => {
       userId: user.id,
       email: user.email,
       isGuest: true,
+      tokenVersion: user.tokenVersion ?? 0,
     };
 
     const accessToken = await generateAccessToken(tokenPayload);
@@ -259,6 +265,7 @@ const promote = (req: Request, res: Response) => {
       userId: promotedUser.id,
       email: promotedUser.email,
       isGuest: false,
+      tokenVersion: promotedUser.tokenVersion ?? 0,
     };
 
     const accessToken = await generateAccessToken(tokenPayload);
@@ -344,6 +351,24 @@ const forgotPassword = (req: Request, res: Response) => {
     // 不論結果都回傳成功（防止 email 列舉攻擊）
     const user = await User.findOne({ where: { email } });
     if (!user || user.isGuest) {
+      // SECURITY (#29 timing attack): 帳號不存在/訪客時，正常會提早返回，比「真的寄信」路徑
+      // 少跑一次 count 與一次 token 交易，讓攻擊者可用回應耗時列舉出哪些 email 已註冊。
+      // 這裡以等量的唯讀 dummy DB 工作補平：一次 count + 一個交易內兩次 count，
+      // 對齊真實路徑（count + 交易內 update/insert）的往返數，使兩條路徑耗時相近。
+      // 註：per-email 超限路徑仍略快，但需先對同一 email 連發 3 次才觸發，
+      //     對「單次探測是否已註冊」的列舉無實益，故不在此補平（見下方 rate limit 區塊）。
+      const dummyUserId = uuidv4();
+      await PasswordResetToken.count({ where: { userId: dummyUserId } } as any);
+      await sequelize.transaction(async (t) => {
+        await PasswordResetToken.count({
+          where: { userId: dummyUserId },
+          transaction: t,
+        } as any);
+        await PasswordResetToken.count({
+          where: { userId: dummyUserId },
+          transaction: t,
+        } as any);
+      });
       return res
         .status(StatusCodes.OK)
         .json(responseHelper(true, null, genericMessage, null));
@@ -397,7 +422,10 @@ const forgotPassword = (req: Request, res: Response) => {
 
     // 先取得 IP（同步可用），組合連結
     const clientIp = req.ip || '未知';
-    const frontendUrl = process.env.ORIGIN_URL || 'http://localhost:3001';
+    // SECURITY (#30): ORIGIN_URL 可能是逗號分隔的多個 origin（CORS 白名單），
+    // 只取第一個並去除空白，避免產生含逗號的無效重設連結。
+    const frontendUrl =
+      process.env.ORIGIN_URL?.split(',')[0]?.trim() || 'http://localhost:3001';
     const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
     const supportEmail =
       process.env.SUPPORT_EMAIL_FROM || 'support@riinouo-eaccounting.win';
@@ -479,7 +507,14 @@ const resetPassword = (req: Request, res: Response) => {
     // DB Transaction: 密碼更新 + token 標記必須原子性完成
     await sequelize.transaction(async (t) => {
       const hashedPassword = await bcrypt.hash(password, 12);
-      await user.update({ password: hashedPassword }, { transaction: t });
+      // 安全性(#8)：改密碼時 tokenVersion +1，使既有 refresh token 立即失效
+      await user.update(
+        {
+          password: hashedPassword,
+          tokenVersion: (user.tokenVersion ?? 0) + 1,
+        },
+        { transaction: t },
+      );
       await resetRecord.update({ usedAt: new Date() }, { transaction: t });
     });
 

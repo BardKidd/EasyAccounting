@@ -5,9 +5,13 @@ dotenv.config({
   path: process.env.NODE_ENV === 'production' ? '.env.production' : '.env',
 });
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'default_secret_for_dev_only_do_not_use',
-);
+// 安全性修復：移除硬編碼 fallback，避免 JWT_SECRET 未設定時可被偽造 token
+// 於模組載入時 fail-fast：JWT_SECRET 未設或長度不足 32 字元則直接拋錯終止啟動
+if (!process.env.JWT_SECRET?.trim() || process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET environment variable must be set (>=32 chars)');
+}
+
+const SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 const JWT_ACCESS_IN = '15m';
 const JWT_REFRESH_IN = '7d';
@@ -17,6 +21,7 @@ export interface TokenPayload {
   userId: string;
   email: string;
   isGuest?: boolean;
+  tokenVersion?: number;
 }
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -48,12 +53,14 @@ const COOKIE_OPTIONS = {
   secure: isSecure,
   sameSite: 'lax' as const,
   path: '/', //! 會鎖定 cookie 在這個路徑底下
-  domain: isSecure ? '.riinouo-eaccounting.win' : undefined, // 使用 host-only cookie，由發布的 API 伺服器綁定自身網域
+  // 安全性修復(#27)：預設 host-only cookie（不跨全部子網域共享），僅在營運者明確設定 COOKIE_DOMAIN 時才跨子網域
+  domain: process.env.COOKIE_DOMAIN || undefined,
   maxAge: COOKIE_MAX_AGE,
 };
 
 export const generateAccessToken = async (payload: TokenPayload) => {
-  const token = await new SignJWT({ ...payload })
+  // 安全性修復(#37)：標記 type: 'access'，避免 refresh token 被當作 access token 使用
+  const token = await new SignJWT({ ...payload, type: 'access' })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(JWT_ACCESS_IN)
@@ -65,7 +72,8 @@ export const generateAccessToken = async (payload: TokenPayload) => {
 };
 
 export const generateRefreshToken = async (payload: TokenPayload) => {
-  const token = await new SignJWT({ ...payload })
+  // 安全性修復(#37)：標記 type: 'refresh'，避免 access token 被當作 refresh token 使用
+  const token = await new SignJWT({ ...payload, type: 'refresh' })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(JWT_REFRESH_IN)
@@ -78,7 +86,11 @@ export const generateRefreshToken = async (payload: TokenPayload) => {
 
 export const verifyToken = async (token: string) => {
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    // 安全性修復(#36)：釘住演算法為 HS256 並驗證 issuer，拒絕 alg 混淆或偽造 issuer 的 token
+    const { payload } = await jwtVerify(token, SECRET, {
+      algorithms: ['HS256'],
+      issuer: 'easy-accounting',
+    });
     return { payload, error: null };
   } catch (error: any) {
     if (error.code === 'ERR_JWT_EXPIRED') {

@@ -79,6 +79,18 @@ const upload = async (req: Request, res: Response) => {
  */
 const stream = async (req: Request, res: Response) => {
   const uploadId = req.params.uploadId as string;
+  const userId = req.user.userId;
+
+  // 安全性修復 (#22)：訂閱前先確認此 upload 屬於當前使用者，
+  // 否則任何人只要猜到 uploadId 就能竊聽他人的解析狀態。
+  const ownerRecord = await BillParseTelemetry.findOne({
+    where: { uploadBatchId: uploadId },
+  });
+  if (!ownerRecord || ownerRecord.userId !== userId) {
+    return res
+      .status(StatusCodes.FORBIDDEN)
+      .json(responseHelper(false, null, 'Forbidden', null));
+  }
 
   // SSE headers
   res.writeHead(200, {
@@ -160,6 +172,25 @@ const triggerParse = async (req: Request, res: Response) => {
             null,
           ),
         );
+    }
+
+    // 安全性修復 (#11)：驗證每個 blobUrl 都屬於當前使用者的此次上傳，
+    // 防止 IDOR。blob 路徑格式為 {container}/{userId}/{uploadId}/page-N.jpg，
+    // 去掉 container segment 後必須以 `${userId}/${uploadId}/` 開頭。
+    const expectedPrefix = `${userId}/${uploadId}/`;
+    for (const url of blobUrls) {
+      let blobPath = '';
+      try {
+        const segments = new URL(url).pathname.replace(/^\/+/, '').split('/');
+        blobPath = segments.slice(1).join('/'); // 去掉 container segment
+      } catch {
+        blobPath = '';
+      }
+      if (!blobPath.startsWith(expectedPrefix)) {
+        return res
+          .status(StatusCodes.FORBIDDEN)
+          .json(responseHelper(false, null, 'Forbidden blob URL', null));
+      }
     }
 
     // 設定初始狀態

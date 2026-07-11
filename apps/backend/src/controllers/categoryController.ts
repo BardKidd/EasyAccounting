@@ -100,8 +100,21 @@ const putCategory = async (req: Request, res: Response) => {
         .status(StatusCodes.NOT_FOUND)
         .json(responseHelper(false, null, 'Category not found', null));
     }
+    // 安全性修補：加上擁有權檢查，禁止非擁有者編輯他人或全域（userId:null）的 Category
+    if (category.userId !== userId) {
+      return res
+        .status(StatusCodes.FORBIDDEN)
+        .json(
+          responseHelper(
+            false,
+            null,
+            'You are not authorized to update this category',
+            null
+          )
+        );
+    }
     const auditBefore = safeSnapshot(category);
-    await category.update({ ...req.body, userId }); // 不需要使用 where,因為已經有 category instance 了
+    await category.update({ ...req.body }); // 不需要使用 where,因為已經有 category instance 了；不再注入 userId 以免竄改擁有權
 
     void recordAudit({
       userId,

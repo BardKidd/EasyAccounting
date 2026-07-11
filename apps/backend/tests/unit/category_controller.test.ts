@@ -146,8 +146,10 @@ describe('Category Controller (Mocked)', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(Category.findByPk).toHaveBeenCalledWith('cat-1');
-      expect(mockUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'Updated', userId: 'user-123' })
+      // 擁有權修補後 update payload 不再注入 userId，避免竄改擁有權
+      expect(mockUpdate).toHaveBeenCalledWith({ name: 'Updated' });
+      expect(mockUpdate).not.toHaveBeenCalledWith(
+        expect.objectContaining({ userId: expect.anything() })
       );
       expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
     });

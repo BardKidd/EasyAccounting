@@ -14,6 +14,12 @@ const isCloudHost =
   !process.env.PG_HOST.includes('localhost') &&
   !process.env.PG_HOST.includes('127.0.0.1');
 
+// 安全性(#17)：預設驗證 DB TLS 憑證（防 MITM）。若雲端 provider 憑證鏈不在 Node
+// 內建信任庫，可設 PG_SSL_REJECT_UNAUTHORIZED=false 暫時關閉，或提供 PG_SSL_CA（PEM）。
+const sslRejectUnauthorized =
+  process.env.PG_SSL_REJECT_UNAUTHORIZED !== 'false';
+const sslCa = process.env.PG_SSL_CA;
+
 const sequelize = new Sequelize(
   process.env.PG_DATABASE as string,
   process.env.PG_USER as string,
@@ -25,19 +31,22 @@ const sequelize = new Sequelize(
         ? {
             ssl: {
               require: true,
-              rejectUnauthorized: false, // 雲端(e.g. Neon/Railway) 有時需要這個
+              rejectUnauthorized: sslRejectUnauthorized,
+              ...(sslCa ? { ca: sslCa } : {}),
             },
           }
         : undefined,
     host: process.env.PG_HOST,
     port: parseInt(process.env.PG_PORT || '5432', 10),
     logging: false, // 測試時減少 log
-    // 連線池：遠端 Neon 開新連線 ~1.1s，故保留熱連線避免每次請求重開。
-    // 預設 min:0 + idle:10s 會在閒置 10 秒後關光連線，下次請求再吃冷連線成本。
+    // 連線池：Neon serverless 冷連線需喚醒 compute（scale-to-zero）+ 跨區 RTT，
+    // 新連線可達數秒。保留較多熱連線讓 compute 不睡、並吸收首頁並發 burst，
+    // 避免多條冷連線同時喚醒導致部分請求逾時（前端 Failed to fetch）。
     // 測試環境用 min:0，避免測試結束仍有連線影響 teardown。
+    // 可用 PG_POOL_MIN / PG_POOL_MAX 覆寫。
     pool: {
-      max: 10,
-      min: isTest ? 0 : 2,
+      max: Number(process.env.PG_POOL_MAX) || 12,
+      min: isTest ? 0 : Number(process.env.PG_POOL_MIN) || 5,
       idle: 30000,
       acquire: 30000,
     },

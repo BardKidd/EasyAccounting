@@ -23,8 +23,8 @@ describe('llmResponseSchema Parser', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toHaveLength(1);
-        expect(result.data[0].amount).toBe(150);
-        expect(result.data[0].description).toBe('Starbucks');
+        expect(result.data[0]!.amount).toBe(150);
+        expect(result.data[0]!.description).toBe('Starbucks');
       }
     });
 
@@ -61,7 +61,7 @@ Please double check.
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data).toHaveLength(1);
-        expect(result.data[0].description).toBe('7-11');
+        expect(result.data[0]!.description).toBe('7-11');
       }
     });
 
@@ -78,7 +78,7 @@ Please double check.
       const result = parseLlmResponse(commaJson);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data[0].amount).toBe(2400.5);
+        expect(result.data[0]!.amount).toBe(2400.5);
       }
     });
 

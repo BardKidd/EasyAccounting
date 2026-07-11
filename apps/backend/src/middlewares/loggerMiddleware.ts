@@ -37,6 +37,34 @@ const getStatusColor = (status: number) => {
   return colors.reset;
 };
 
+// 安全性修復（CWE-532）：紀錄前先遮蔽敏感欄位，避免密碼 / token 明文寫入 log
+const SENSITIVE_KEYS = new Set([
+  'password',
+  'confirmpassword',
+  'currentpassword',
+  'newpassword',
+  'oldpassword',
+  'token',
+  'accesstoken',
+  'refreshtoken',
+  'resettoken',
+  'otp',
+]);
+
+const redact = (obj: any): any => {
+  if (Array.isArray(obj)) return obj.map(redact);
+  if (obj && typeof obj === 'object') {
+    const clone: any = {};
+    for (const key of Object.keys(obj)) {
+      clone[key] = SENSITIVE_KEYS.has(key.toLowerCase())
+        ? '[REDACTED]'
+        : redact(obj[key]);
+    }
+    return clone;
+  }
+  return obj;
+};
+
 const truncate = (obj: any, lines: number = 10) => {
   try {
     const str = JSON.stringify(obj, null, 2);
@@ -77,7 +105,7 @@ export const loggerMiddleware = (
   }
 
   if (body && Object.keys(body).length > 0) {
-    console.log(`${colors.bold}Body:${colors.reset}`, truncate(body));
+    console.log(`${colors.bold}Body:${colors.reset}`, truncate(redact(body)));
   }
   console.log(
     `${colors.gray}------------------------------------------------${colors.reset}`
@@ -100,7 +128,7 @@ export const loggerMiddleware = (
     console.log(
       `${colors.bold}Status:${colors.reset} ${getStatusColor(res.statusCode)}${res.statusCode}${colors.reset}`
     );
-    console.log(`${colors.bold}Body:${colors.reset}`, truncate(body));
+    console.log(`${colors.bold}Body:${colors.reset}`, truncate(redact(body)));
     console.log(
       `${colors.bold}Duration:${colors.reset} ${durationColor}${duration}ms${colors.reset}`
     );

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { authMiddleware } from '@/middlewares/authMiddleware';
 import * as AuthUtils from '@/utils/auth';
+import User from '@/models/user';
 import { Request, Response, NextFunction } from 'express';
 
 // ─── Mock Models ───
@@ -127,6 +128,8 @@ describe('Auth Middleware — Guest-specific behaviors', () => {
       vi.mocked(AuthUtils.generateAccessToken).mockResolvedValue(
         'new_access_token',
       );
+      // 安全性(#8)：refresh 換證時會 findByPk 比對 tokenVersion，需 mock 相符使用者
+      vi.mocked(User.findByPk).mockResolvedValue({ tokenVersion: 0 } as any);
 
       const { req, res, next } = createReqResMocks({
         accessToken: 'expired_token',
@@ -170,6 +173,7 @@ describe('Auth Middleware — Guest-specific behaviors', () => {
       vi.mocked(AuthUtils.generateAccessToken).mockResolvedValue(
         'new_guest_token',
       );
+      vi.mocked(User.findByPk).mockResolvedValue({ tokenVersion: 0 } as any);
 
       const { req, res, next } = createReqResMocks({
         accessToken: 'expired',
@@ -183,6 +187,7 @@ describe('Auth Middleware — Guest-specific behaviors', () => {
         userId: 'guest-789',
         email: 'guest_xyz@easyaccounting.demo',
         isGuest: true,
+        tokenVersion: 0,
       });
 
       // 驗證 req.user 也包含 isGuest
@@ -207,6 +212,7 @@ describe('Auth Middleware — Guest-specific behaviors', () => {
       });
 
       vi.mocked(AuthUtils.generateAccessToken).mockResolvedValue('new_token');
+      vi.mocked(User.findByPk).mockResolvedValue({ tokenVersion: 0 } as any);
 
       const { req, res, next } = createReqResMocks({
         accessToken: 'expired',

@@ -12,10 +12,17 @@ export const simplifyTryCatch = async (
   try {
     await cb();
   } catch (error) {
+    // 一律於伺服器端記錄完整錯誤
     console.error('Error:', error);
+    // 安全性修正：正式環境不外洩內部錯誤細節（Sequelize/SQL 等），僅回傳通用訊息
+    const isProduction = process.env.NODE_ENV === 'production';
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: isProduction
+        ? 'Internal server error'
+        : error instanceof Error
+          ? error.message
+          : 'Unknown error',
     });
   }
 };

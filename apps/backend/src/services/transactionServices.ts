@@ -606,7 +606,13 @@ export const createTransaction = async (
   const transaction = await sequelize.transaction();
 
   try {
-    const account = await Account.findByPk(data.accountId);
+    // 安全性修復（IDOR）：限定 userId，避免變更他人帳戶餘額
+    // 安全性修復（lost-update/TOCTOU）：FOR UPDATE 鎖住該列，避免併發覆寫餘額
+    const account = await Account.findOne({
+      where: { id: data.accountId, userId },
+      transaction,
+      lock: SequelizeTransaction.LOCK.UPDATE,
+    });
     if (!account) {
       throw new Error('Account not found');
     }
@@ -1201,13 +1207,19 @@ const createTransfer = async (
   const result = await simplifyTransaction(async (t) => {
     if (data.type !== RootType.OPERATE) throw new Error('Must be operate type');
 
-    const fromAccount = await Account.findByPk(data.accountId, {
+    // 安全性修復（IDOR）：限定 userId，避免以他人帳戶轉帳竄改餘額
+    // 安全性修復（lost-update/TOCTOU）：FOR UPDATE 鎖住該列，避免併發覆寫餘額
+    const fromAccount = await Account.findOne({
+      where: { id: data.accountId, userId },
       transaction: t,
+      lock: SequelizeTransaction.LOCK.UPDATE,
     });
     if (!fromAccount) throw new Error('From account not found');
 
-    const toAccount = await Account.findByPk(data.targetAccountId, {
+    const toAccount = await Account.findOne({
+      where: { id: data.targetAccountId, userId },
       transaction: t,
+      lock: SequelizeTransaction.LOCK.UPDATE,
     });
     if (!toAccount) throw new Error('To account not found');
 

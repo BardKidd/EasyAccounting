@@ -10,6 +10,8 @@ type UserAttributes = {
   lastActivityAt: Date | null;
   baseCurrencyCode: string;
   budgetStartMonth: string | null;
+  tokenVersion: number;
+  role: string;
 };
 
 export interface UserInstance extends Model<UserAttributes>, UserAttributes {}
@@ -59,6 +61,18 @@ const User = sequelize.define<UserInstance>(
       type: Sequelize.DATEONLY,
       allowNull: true,
       defaultValue: null,
+    },
+    // 安全性(#8)：session 版本號。改密碼/重設時 +1，refresh 換證時比對使舊 token 失效。
+    tokenVersion: {
+      type: Sequelize.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    // 安全性(#9)：權限角色（'user' | 'admin'）。管理端點（如公告）需 admin。
+    role: {
+      type: Sequelize.STRING,
+      allowNull: false,
+      defaultValue: 'user',
     },
   },
   TABLE_DEFAULT_SETTING,
