@@ -23,6 +23,11 @@ const comparePassword = async (password: string, dbPassword: string) => {
   return compareResult;
 };
 
+// SECURITY (#14 timing attack): 當帳號不存在時，仍以此固定 dummy hash 執行一次 bcrypt.compare，
+// 讓「帳號不存在」與「密碼錯誤」的回應時間相近，避免依耗時列舉出哪些 email 已註冊。
+const DUMMY_PASSWORD_HASH =
+  '$2b$12$miGrDmByOoHeUmgtAudgkOJye.gyTHcujaJQ1lrOh3L15yciqNR4C';
+
 /**
  * IP Geolocation via ipinfo.io (HTTPS)
  * Fallback: 回傳「位置未知」
@@ -65,32 +70,31 @@ const MAX_RESET_EMAILS_PER_WINDOW = 3;
 const login = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
     const { email, password } = req.body;
+    // SECURITY (#12 帳號列舉): 帳號不存在、訪客帳號、密碼錯誤三種失敗情境
+    // 一律回傳相同的 401 與相同 generic 訊息，不洩漏是哪一個條件失敗。
+    const genericAuthError = '帳號或密碼錯誤';
     const user = await User.findOne({ where: { email } });
     if (!user) {
+      // SECURITY (#14 timing attack): 帳號不存在時仍執行一次 bcrypt.compare，
+      // 使回應時間與帳號存在時相近。
+      await comparePassword(password, DUMMY_PASSWORD_HASH);
       return res
-        .status(StatusCodes.BAD_REQUEST)
-        .json(responseHelper(false, null, '該用戶尚未註冊', null));
+        .status(StatusCodes.UNAUTHORIZED)
+        .json(responseHelper(false, null, genericAuthError, null));
     }
 
-    // FR-1: 禁止透過一般登入形式登入 Guest 帳號
+    // FR-1: 禁止透過一般登入形式登入 Guest 帳號（回傳與其他失敗情境相同的 generic 訊息）
     if (user.isGuest) {
       return res
-        .status(StatusCodes.FORBIDDEN)
-        .json(
-          responseHelper(
-            false,
-            null,
-            '此為訪客帳號，無法透過一般方式登入',
-            null,
-          ),
-        );
+        .status(StatusCodes.UNAUTHORIZED)
+        .json(responseHelper(false, null, genericAuthError, null));
     }
 
     const compareResult = await comparePassword(password, user.password);
     if (!compareResult) {
       return res
-        .status(StatusCodes.BAD_REQUEST)
-        .json(responseHelper(false, null, '帳號或密碼錯誤', null));
+        .status(StatusCodes.UNAUTHORIZED)
+        .json(responseHelper(false, null, genericAuthError, null));
     }
 
     const tokenPayload = {
@@ -397,7 +401,10 @@ const forgotPassword = (req: Request, res: Response) => {
 
     // 先取得 IP（同步可用），組合連結
     const clientIp = req.ip || '未知';
-    const frontendUrl = process.env.ORIGIN_URL || 'http://localhost:3001';
+    // SECURITY (#30): ORIGIN_URL 可能是逗號分隔的多個 origin（CORS 白名單），
+    // 只取第一個並去除空白，避免產生含逗號的無效重設連結。
+    const frontendUrl =
+      process.env.ORIGIN_URL?.split(',')[0]?.trim() || 'http://localhost:3001';
     const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
     const supportEmail =
       process.env.SUPPORT_EMAIL_FROM || 'support@riinouo-eaccounting.win';

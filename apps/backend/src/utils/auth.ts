@@ -5,9 +5,13 @@ dotenv.config({
   path: process.env.NODE_ENV === 'production' ? '.env.production' : '.env',
 });
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'default_secret_for_dev_only_do_not_use',
-);
+// 安全性修復：移除硬編碼 fallback，避免 JWT_SECRET 未設定時可被偽造 token
+// 於模組載入時 fail-fast：JWT_SECRET 未設或長度不足 32 字元則直接拋錯終止啟動
+if (!process.env.JWT_SECRET?.trim() || process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET environment variable must be set (>=32 chars)');
+}
+
+const SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 const JWT_ACCESS_IN = '15m';
 const JWT_REFRESH_IN = '7d';

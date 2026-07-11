@@ -10,8 +10,8 @@ export const guestLoginLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  // 僅在 production 強制限流；dev/test 跳過，否則本地開發與 E2E/錄影反覆建立訪客會撞 5 次/小時上限。
-  skip: () => process.env.NODE_ENV !== 'production',
+  // 安全修復 #32：僅在 test 跳過，staging/dev 也需受限流保護（原本 !== 'production' 會讓非正式環境全裸奔）。
+  skip: () => process.env.NODE_ENV === 'test',
   message: responseHelper(false, null, '請求過於頻繁，請稍後再試', null),
 });
 
@@ -24,8 +24,36 @@ export const forgotPasswordLimiter = rateLimit({
   max: 3,
   standardHeaders: true,
   legacyHeaders: false,
-  // 僅在 production 強制 per-IP 限流；dev/test 跳過，否則本地與整合測試反覆打此端點會撞上限，
-  // 遮蔽 controller 內的 per-email 閘門（per-email 為應用層邏輯，各環境皆生效）。比照 guestLoginLimiter。
-  skip: () => process.env.NODE_ENV !== 'production',
+  // 安全修復 #32：僅在 test 跳過（避免遮蔽 controller 內各環境皆生效的 per-email 閘門），
+  // staging/dev 也需受 per-IP 限流保護。比照 guestLoginLimiter。
+  skip: () => process.env.NODE_ENV === 'test',
+  message: responseHelper(false, null, '請求過於頻繁，請稍後再試', null),
+});
+
+/**
+ * Login Rate Limiter
+ * 安全修復 #13：限制同一 IP 每 15 分鐘最多 10 次登入請求，抵禦帳密暴力破解 / 撞庫
+ */
+export const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  // 僅在 test 跳過，staging/dev 亦需受 per-IP 限流保護。比照 guestLoginLimiter。
+  skip: () => process.env.NODE_ENV === 'test',
+  message: responseHelper(false, null, '請求過於頻繁，請稍後再試', null),
+});
+
+/**
+ * Reset Password Rate Limiter
+ * 安全修復 #31：限制同一 IP 每 15 分鐘最多 5 次重設密碼請求，抵禦 token 猜測 / 暴力嘗試
+ */
+export const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  // 僅在 test 跳過，staging/dev 亦需受 per-IP 限流保護。比照 guestLoginLimiter。
+  skip: () => process.env.NODE_ENV === 'test',
   message: responseHelper(false, null, '請求過於頻繁，請稍後再試', null),
 });

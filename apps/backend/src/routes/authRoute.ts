@@ -5,6 +5,8 @@ import { authMiddleware } from '@/middlewares/authMiddleware';
 import {
   guestLoginLimiter,
   forgotPasswordLimiter,
+  loginLimiter,
+  resetPasswordLimiter,
 } from '@/middlewares/rateLimiter';
 import {
   loginSchema,
@@ -15,7 +17,7 @@ import {
 
 const router: Router = express.Router();
 
-router.post('/login', validate(loginSchema), authController.login);
+router.post('/login', loginLimiter, validate(loginSchema), authController.login);
 
 router.post('/logout', authController.logout);
 
@@ -39,6 +41,7 @@ router.post(
 
 router.post(
   '/reset-password',
+  resetPasswordLimiter,
   validate(resetPasswordSchema),
   authController.resetPassword,
 );
