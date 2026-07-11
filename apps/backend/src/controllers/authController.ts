@@ -351,6 +351,24 @@ const forgotPassword = (req: Request, res: Response) => {
     // 不論結果都回傳成功（防止 email 列舉攻擊）
     const user = await User.findOne({ where: { email } });
     if (!user || user.isGuest) {
+      // SECURITY (#29 timing attack): 帳號不存在/訪客時，正常會提早返回，比「真的寄信」路徑
+      // 少跑一次 count 與一次 token 交易，讓攻擊者可用回應耗時列舉出哪些 email 已註冊。
+      // 這裡以等量的唯讀 dummy DB 工作補平：一次 count + 一個交易內兩次 count，
+      // 對齊真實路徑（count + 交易內 update/insert）的往返數，使兩條路徑耗時相近。
+      // 註：per-email 超限路徑仍略快，但需先對同一 email 連發 3 次才觸發，
+      //     對「單次探測是否已註冊」的列舉無實益，故不在此補平（見下方 rate limit 區塊）。
+      const dummyUserId = uuidv4();
+      await PasswordResetToken.count({ where: { userId: dummyUserId } } as any);
+      await sequelize.transaction(async (t) => {
+        await PasswordResetToken.count({
+          where: { userId: dummyUserId },
+          transaction: t,
+        } as any);
+        await PasswordResetToken.count({
+          where: { userId: dummyUserId },
+          transaction: t,
+        } as any);
+      });
       return res
         .status(StatusCodes.OK)
         .json(responseHelper(true, null, genericMessage, null));
