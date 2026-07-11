@@ -43,6 +43,22 @@ const app: express.Application = express();
 // Trust proxy — 確保在 Load Balancer 後方正確取得 Client IP，1 代表信任第一層代理 (Azure 的 Envoy)
 app.set('trust proxy', 1);
 
+// Security fix (fix#28)：隱藏 X-Powered-By，並為所有回應補上基本安全標頭。
+// API-only 服務不需要 CSP；HSTS 僅在 production（HTTPS）啟用。
+app.disable('x-powered-by');
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader(
+      'Strict-Transport-Security',
+      'max-age=15552000; includeSubDomains',
+    );
+  }
+  next();
+});
+
 // CORS 設定
 // prod：僅允許 ORIGIN_URL 白名單（可逗號分隔多筆）做完全比對。
 // dev/test：額外放行任意 localhost / 127.0.0.1 / [::1]（任意埠），
