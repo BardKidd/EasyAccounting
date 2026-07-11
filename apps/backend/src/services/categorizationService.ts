@@ -21,11 +21,19 @@ export interface ResolveCtx {
  * ctx.merchantSuggestedCategoryId 為 undefined 時，resolver 自行以 draft.description
  * 查 merchant_mapping fallback（供手動/Excel 單筆）；billParse 傳入批次結果則不重查。
  */
-export const resolveCategorization = async (
+export interface UserRuleSet {
+  mapped: RuleForMatch[];
+  validCategoryIds?: Set<string>;
+}
+
+/**
+ * 載入使用者「啟用規則（含標籤）+ 有效目標分類集合」一次。
+ * 批次場景（帳單確認多筆）可 hoist 出迴圈，避免每筆重查規則/分類（同 userId 結果相同）。
+ * mapped 依 priority asc、createdAt asc；validCategoryIds = setCategoryId 指向的本人/全域且未軟刪分類。
+ */
+export const loadUserRuleSet = async (
   userId: string,
-  draft: DraftForMatch,
-  ctx: ResolveCtx = {},
-): Promise<CategorizationResult> => {
+): Promise<UserRuleSet> => {
   // 1. 載入使用者啟用規則 + 其標籤（priority asc、createdAt asc）
   const rules = await TransactionRule.findAll({
     where: { userId, isEnabled: true },
@@ -65,6 +73,16 @@ export const resolveCategorization = async (
     });
     validCategoryIds = new Set(live.map((c: any) => c.id));
   }
+
+  return { mapped, validCategoryIds };
+};
+
+export const resolveCategorization = async (
+  userId: string,
+  draft: DraftForMatch,
+  ctx: ResolveCtx = {},
+): Promise<CategorizationResult> => {
+  const { mapped, validCategoryIds } = await loadUserRuleSet(userId);
 
   const { categoryId: ruleCategoryId, tagIds } = applyRules(mapped, draft, {
     validCategoryIds,

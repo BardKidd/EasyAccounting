@@ -11,6 +11,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { v4 as uuidv4 } from 'uuid';
+import { Op } from 'sequelize';
 
 process.env.RESEND_API_KEY = 're_123';
 
@@ -23,6 +24,8 @@ import {
   TransactionRule,
   TransactionRuleTag,
   PendingTransaction,
+  Transaction,
+  TransactionExtra,
 } from '@/models';
 import { confirmTransactions } from '@/services/pdfService';
 import transactionServices from '@/services/transactionServices';
@@ -154,5 +157,67 @@ describe('帳單確認接線（confirmTransactions）真實 DB 整合', () => {
     const tagIds = (tx.tags || []).map((t: any) => t.id);
     expect(tagIds).not.toContain(foreignTag); // 外人 tag 濾掉
     expect(tagIds.length).toBe(0); // 無規則命中、無合法 provided tag
+  });
+
+  it('批次寫入：amountInBase 由 beforeBulkCreate hook 算出（非預設 0）', async () => {
+    // TWD/TWD → baseRate=1 → amountInBase 應等於 amount。
+    // 若 bulkCreate 沒觸發 hook，amountInBase 會落在欄位預設 0（可辨識 hook 是否生效）。
+    const ptId = await mkPending({
+      type: 'expense',
+      description: 'amountInBase check',
+      categoryId: catFood,
+      amount: 250,
+    });
+    await confirmTransactions(userA, [ptId], accountId);
+
+    const row = (await Transaction.findOne({
+      where: { userId: userA, description: 'amountInBase check' },
+    })) as any;
+    expect(row).toBeTruthy();
+    expect(Number(row.amount)).toBe(250);
+    expect(Number(row.amountInBase)).toBe(250); // hook 生效；未生效會是 0
+  });
+
+  it('批次寫入：一次確認多筆 → 全部建立、含 extra 的正確連結', async () => {
+    const pA = await mkPending({
+      type: 'expense',
+      description: 'batch A',
+      categoryId: catFood,
+      amount: 100,
+    });
+    const pB = await mkPending({
+      type: 'expense',
+      description: 'batch B',
+      categoryId: catFood,
+      amount: 200,
+      extraMinus: 15, // 手續費 → 產生 TransactionExtra
+    });
+    const pC = await mkPending({
+      type: 'expense',
+      description: 'batch C',
+      categoryId: catFood,
+      amount: 300,
+    });
+
+    const result: any = await confirmTransactions(userA, [pA, pB, pC], accountId);
+    expect(result.created).toBe(3);
+
+    const rows = (await Transaction.findAll({
+      where: {
+        userId: userA,
+        description: { [Op.in]: ['batch A', 'batch B', 'batch C'] },
+      },
+    })) as any[];
+    expect(rows.length).toBe(3);
+    const byDesc = Object.fromEntries(rows.map((r) => [r.description, r]));
+    expect(Number(byDesc['batch A'].amount)).toBe(100);
+    expect(Number(byDesc['batch C'].amountInBase)).toBe(300);
+
+    // 含 extra 的那筆：transactionExtraId 有連到真實 extra row
+    const b = byDesc['batch B'];
+    expect(b.transactionExtraId).toBeTruthy();
+    const extra = (await TransactionExtra.findByPk(b.transactionExtraId)) as any;
+    expect(extra).toBeTruthy();
+    expect(Number(extra.extraMinus)).toBe(15);
   });
 });

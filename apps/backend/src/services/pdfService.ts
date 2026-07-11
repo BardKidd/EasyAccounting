@@ -17,6 +17,7 @@ import {
   PendingTransaction,
   Transaction,
   TransactionExtra,
+  TransactionTag,
   MerchantMapping,
   BillParseTelemetry,
   Account,
@@ -25,7 +26,8 @@ import {
 } from '@/models';
 import { PendingTransactionAttributes } from '@/models/PendingTransaction';
 import { getRate } from './exchangeRateService';
-import { resolveCategorization } from './categorizationService';
+import { loadUserRuleSet } from './categorizationService';
+import { applyRules } from '@/logic/categorizationLogic';
 import sequelize from '@/utils/postgres';
 
 //! azureBlob.ts 那邊當初寫的有點死，所以想說不要複用好了...
@@ -301,8 +303,19 @@ export const confirmTransactions = async (
       transaction,
     });
 
-    const createdTransactions = [];
     let modifiedCount = 0;
+
+    // 批次化：所有寫入 payload 先在記憶體收集，迴圈後各一次 bulkCreate
+    // （遠端 Neon 每次 round-trip ~170ms，逐筆 create 會 N×）。
+    const extraPayloads: any[] = [];
+    const txPayloads: any[] = [];
+    // 標籤延後到交易建立後一次寫入；先記 (txId, providedTagIds, ruleTagIds)。
+    const rowTagMeta: {
+      txId: string;
+      providedTagIds: string[];
+      ruleTagIds: string[];
+    }[] = [];
+    const allProvidedTagIds = new Set<string>();
 
     // 收集 merchantMapping 更新（批次處理）
     const mappingCounts = new Map<string, number>();
@@ -316,6 +329,10 @@ export const confirmTransactions = async (
     });
     const baseCurrencyCode = (userRow as any)?.baseCurrencyCode || 'TWD';
 
+    // 規則集 hoist 出迴圈：同 userId 全批相同，避免逐筆重查（原本每筆一次 resolveCategorization
+    // → TransactionRule/Category 查詢）。applyRules 為純運算，於記憶體逐筆套用。
+    const ruleSet = await loadUserRuleSet(userId);
+
     for (const pt of pendingTransactions) {
       const data = pt.transactionData as any;
       const rawMerchantName = pt.rawMerchantName;
@@ -325,6 +342,7 @@ export const confirmTransactions = async (
       // - baseRate（帳戶幣別→本位幣）用交易日期匯率，驅動 amountInBase。
       // - 帳單原幣（LLM 解析的 currency）若與帳戶幣別不同，記為原幣事實；
       //   data.exchangeRate（原幣→帳戶幣別，前端確認時可補）存在則用它把原幣金額換算成帳戶幣金額。
+      // getRate 有 process 內快取，相同幣別/日期不重打 DB。
       const billCurrency = data.currency
         ? normalizeCurrencyCode(data.currency)
         : accountCurrency;
@@ -357,84 +375,68 @@ export const confirmTransactions = async (
 
       // 規則引擎（Phase B，rules-engine-spec R9）：帳單確認時套規則。
       // 優先序：使用者在確認頁明確改過的分類 > 規則 > merchant/llm（解析時已合併於
-      // pt.suggestedCategoryId，作為 ctx.merchantSuggestedCategoryId 餵入）> null。
-      // 「明確改過」= data.categoryId 非空且與自動建議不同。標籤取規則命中聯集。
+      // pt.suggestedCategoryId）> null。「明確改過」= data.categoryId 非空且與自動建議不同。
+      // 標籤取規則命中聯集。
       const autoSuggested = pt.suggestedCategoryId ?? null;
       const userPickedCategory =
         data.categoryId != null && data.categoryId !== autoSuggested
           ? data.categoryId
           : null;
-      const categorization = await resolveCategorization(
-        userId,
+      const { categoryId: ruleCategoryId, tagIds: ruleTagIds } = applyRules(
+        ruleSet.mapped,
         {
           description: data.description ?? null,
           amount: amountInAccountCurrency,
           type: txType,
         },
-        { merchantSuggestedCategoryId: autoSuggested },
+        { validCategoryIds: ruleSet.validCategoryIds },
       );
-      const finalCategory = userPickedCategory ?? categorization.categoryId;
-      const ruleTagIds = categorization.tagIds;
+      const finalCategory =
+        userPickedCategory ?? ruleCategoryId ?? autoSuggested;
 
-      // 1. 建立 TransactionExtra (如果有)；本位幣快照 = 原值 × baseRate
-      let transactionExtraId = null;
+      // 1. TransactionExtra：預先產生 id 供 Transaction.transactionExtraId 引用（免序依賴）
+      let transactionExtraId: string | null = null;
       if (data.extraAdd > 0 || data.extraMinus > 0) {
         const extraAdd = data.extraAdd || 0;
         const extraMinus = data.extraMinus || 0;
-        const extra = await TransactionExtra.create(
-          {
-            extraAdd,
-            extraMinus,
-            extraAddLabel: '折扣',
-            extraMinusLabel: '手續費',
-            extraAddInBase: roundToBaseCurrency(extraAdd * baseRate),
-            extraMinusInBase: roundToBaseCurrency(extraMinus * baseRate),
-          },
-          { transaction },
-        );
-        transactionExtraId = extra.id;
-      }
-
-      // 2. 建立 Transaction（amountInBase 由 hook 以 amount × baseRate 算出）
-      const newTransaction = await Transaction.create(
-        {
-          userId,
-          accountId,
-          categoryId: finalCategory,
-          amount: amountInAccountCurrency,
-          type: txType,
-          description: data.description,
-          date: data.date,
-          billingDate: data.date,
-          time: data.time || '00:00:00',
-          paymentFrequency: PaymentFrequency.ONE_TIME,
-          transactionExtraId,
-          baseRate,
-          originalCurrencyCode,
-          originalAmount,
-          exchangeRate,
-        },
-        { transaction },
-      );
-      createdTransactions.push(newTransaction);
-
-      // 規則命中的標籤套到本筆（與確認頁使用者提供者聯集）。
-      // data.tagIds 來自 pt.transactionData（updatePendingTransaction 可被 client 注入任意值），
-      // 故先過濾為本人擁有的 tag，避免把他人 tag 貼到自己交易；ruleTagIds 建立時已驗擁有權。
-      const providedTagIds = [...new Set((data.tagIds as string[]) || [])];
-      let ownedProvidedTagIds: string[] = [];
-      if (providedTagIds.length) {
-        const ownedTags = await Tag.findAll({
-          where: { id: { [Op.in]: providedTagIds }, userId },
-          attributes: ['id'],
-          transaction,
+        const extraId = uuidv4();
+        extraPayloads.push({
+          id: extraId,
+          extraAdd,
+          extraMinus,
+          extraAddLabel: '折扣',
+          extraMinusLabel: '手續費',
+          extraAddInBase: roundToBaseCurrency(extraAdd * baseRate),
+          extraMinusInBase: roundToBaseCurrency(extraMinus * baseRate),
         });
-        ownedProvidedTagIds = ownedTags.map((tg: any) => tg.id);
+        transactionExtraId = extraId;
       }
-      const finalTagIds = [...new Set([...ownedProvidedTagIds, ...ruleTagIds])];
-      if (finalTagIds.length) {
-        await (newTransaction as any).setTags(finalTagIds, { transaction });
-      }
+
+      // 2. Transaction payload（amountInBase 由 beforeBulkCreate hook 以 amount × baseRate 算）
+      const txId = uuidv4();
+      txPayloads.push({
+        id: txId,
+        userId,
+        accountId,
+        categoryId: finalCategory,
+        amount: amountInAccountCurrency,
+        type: txType,
+        description: data.description,
+        date: data.date,
+        billingDate: data.date,
+        time: data.time || '00:00:00',
+        paymentFrequency: PaymentFrequency.ONE_TIME,
+        transactionExtraId,
+        baseRate,
+        originalCurrencyCode,
+        originalAmount,
+        exchangeRate,
+      });
+
+      // 3. 標籤：data.tagIds 可被 client 注入，延後到迴圈外一次做「本人擁有」過濾。
+      const providedTagIds = [...new Set((data.tagIds as string[]) || [])];
+      providedTagIds.forEach((id) => allProvidedTagIds.add(id));
+      rowTagMeta.push({ txId, providedTagIds, ruleTagIds });
 
       // 收集 merchantMapping 計數（學習最終落地的分類）
       if (finalCategory && rawMerchantName) {
@@ -446,6 +448,41 @@ export const confirmTransactions = async (
       if (userPickedCategory !== null) {
         modifiedCount++;
       }
+    }
+
+    // 標籤擁有權過濾：整批 provided tagIds 一次查（原本每筆一次 Tag.findAll）。
+    // ruleTagIds 於規則建立時已驗擁有權，直接聯集。
+    let ownedTagIds = new Set<string>();
+    if (allProvidedTagIds.size > 0) {
+      const ownedRows = await Tag.findAll({
+        where: { id: { [Op.in]: [...allProvidedTagIds] }, userId },
+        attributes: ['id'],
+        transaction,
+      });
+      ownedTagIds = new Set(ownedRows.map((tg: any) => tg.id));
+    }
+    const tagPairs = rowTagMeta.flatMap(
+      ({ txId, providedTagIds, ruleTagIds }) => {
+        const finalTagIds = [
+          ...new Set([
+            ...providedTagIds.filter((id) => ownedTagIds.has(id)),
+            ...ruleTagIds,
+          ]),
+        ];
+        return finalTagIds.map((tagId) => ({ transactionId: txId, tagId }));
+      },
+    );
+
+    // 批次寫入（順序：extra 先，因 Transaction.transactionExtraId 指向它 → transaction
+    //（beforeBulkCreate hook 補算 amountInBase）→ transaction_tag join）。
+    if (extraPayloads.length) {
+      await TransactionExtra.bulkCreate(extraPayloads, { transaction });
+    }
+    if (txPayloads.length) {
+      await Transaction.bulkCreate(txPayloads, { transaction });
+    }
+    if (tagPairs.length) {
+      await TransactionTag.bulkCreate(tagPairs, { transaction });
     }
 
     // 3. 批次更新 MerchantMapping（用 raw query 做 upsert + increment）
@@ -497,7 +534,7 @@ export const confirmTransactions = async (
     await transaction.commit();
 
     return {
-      created: createdTransactions.length,
+      created: txPayloads.length,
       skipped: skippedCount,
     };
   } catch (error) {

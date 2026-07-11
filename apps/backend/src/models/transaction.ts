@@ -192,5 +192,10 @@ const computeAmountInBase = (t: TransactionInstance) => {
   t.amountInBase = roundToBaseCurrency(amount * rate);
 };
 Transaction.addHook('beforeSave', computeAmountInBase);
+// bulkCreate 不觸發 per-row 的 beforeSave，只跑 beforeBulkCreate。帳單批次確認走 bulkCreate，
+// 故在此對每列補算 amountInBase，維持「amountInBase 由 amount × baseRate 推導」單一真實來源。
+Transaction.addHook('beforeBulkCreate', (instances: TransactionInstance[]) => {
+  instances.forEach(computeAmountInBase);
+});
 
 export default Transaction;

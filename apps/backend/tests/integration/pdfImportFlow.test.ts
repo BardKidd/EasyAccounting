@@ -17,6 +17,8 @@ vi.mock('@/services/categorizationService', () => ({
     tagIds: [],
     source: 'none',
   })),
+  // confirmTransactions 批次化後改用 loadUserRuleSet（hoist 規則載入）；回空規則集隔離規則引擎。
+  loadUserRuleSet: vi.fn(async () => ({ mapped: [], validCategoryIds: undefined })),
 }));
 // Import fixtures
 import {
@@ -42,6 +44,7 @@ vi.mock('@/models', () => {
     findAndCountAll: vi.fn(),
     count: vi.fn(),
     create: vi.fn(),
+    bulkCreate: vi.fn(),
     update: vi.fn(),
     destroy: vi.fn(),
     belongsTo: vi.fn(),
@@ -55,6 +58,8 @@ vi.mock('@/models', () => {
     Category: createMockModel(),
     Transaction: createMockModel(),
     TransactionExtra: createMockModel(),
+    TransactionTag: createMockModel(),
+    Tag: createMockModel(),
     PendingTransaction: createMockModel(),
     BillParseTelemetry: createMockModel(),
     MerchantMapping: createMockModel(),
@@ -209,6 +214,7 @@ describe('PDF Import Flow API Test (Mocked)', () => {
     expect(res.status).toBe(StatusCodes.OK);
     expect(res.body.isSuccess).toBe(true);
     expect(res.body.data.created).toBe(1);
-    expect(Transaction.create).toHaveBeenCalled();
+    // 批次化後走 bulkCreate（非逐筆 create）
+    expect(Transaction.bulkCreate).toHaveBeenCalled();
   });
 });
