@@ -59,7 +59,9 @@ jobs:
       PG_PORT: 5432
       NODE_ENV: test
       DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
-      JWT_SECRET: test_secret_key
+      # auth.ts 於載入時 fail-fast：JWT_SECRET 長度須 >= 32 字元，否則 authRoute
+      # 等模組 import 直接拋錯，整批 auth 相關測試會在載入階段失敗
+      JWT_SECRET: ci_test_jwt_secret_must_be_at_least_32_bytes
       RESEND_API_KEY: re_123
       AZURE_STORAGE_CONTAINER_NAME: test_container
       AZURE_BLOB_CONNECTION_STRING: 'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test;EndpointSuffix=core.windows.net'

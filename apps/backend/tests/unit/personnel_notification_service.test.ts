@@ -91,12 +91,20 @@ describe('Personnel Notification Services', () => {
       });
     });
 
-    it('should throw error if settings not found', async () => {
+    // 設定不存在時回傳全關預設值（讓訪客也能開啟 /settings，見 commit fec4930），不再拋錯
+    it('should return default (all-off) prefs when settings not found', async () => {
       (PersonnelNotification.findOne as any).mockResolvedValue(null);
 
-      await expect(
-        personnelNotificationServices.getPersonnelNotification(mockUserId)
-      ).rejects.toThrow('Get personnel notification failed');
+      const result =
+        await personnelNotificationServices.getPersonnelNotification(
+          mockUserId
+        );
+
+      expect(result).toEqual({
+        isDailyNotification: false,
+        isWeeklySummaryNotification: false,
+        isMonthlyAnalysisNotification: false,
+      });
     });
   });
 
