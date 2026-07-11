@@ -38,9 +38,20 @@ type ResetFormInput = z.infer<typeof resetFormSchema>;
 function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  // token 讀進 state 後就不再依賴網址列，方便下方把它從網址移除
+  const [token] = useState(() => searchParams.get('token'));
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // 安全性修正 (#33)：讀到 token 後立即從網址列移除，
+  // 避免重設 token 殘留於瀏覽器歷史 / referrer 而外洩
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!searchParams.get('token')) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('token');
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+  }, [searchParams]);
 
   // Auth guard: 已登入 → replace 到 dashboard
   useEffect(() => {
