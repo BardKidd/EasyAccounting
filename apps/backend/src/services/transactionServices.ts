@@ -611,7 +611,7 @@ export const createTransaction = async (
     const account = await Account.findOne({
       where: { id: data.accountId, userId },
       transaction,
-      lock: transaction.LOCK.UPDATE,
+      lock: SequelizeTransaction.LOCK.UPDATE,
     });
     if (!account) {
       throw new Error('Account not found');
@@ -1212,14 +1212,14 @@ const createTransfer = async (
     const fromAccount = await Account.findOne({
       where: { id: data.accountId, userId },
       transaction: t,
-      lock: t.LOCK.UPDATE,
+      lock: SequelizeTransaction.LOCK.UPDATE,
     });
     if (!fromAccount) throw new Error('From account not found');
 
     const toAccount = await Account.findOne({
       where: { id: data.targetAccountId, userId },
       transaction: t,
-      lock: t.LOCK.UPDATE,
+      lock: SequelizeTransaction.LOCK.UPDATE,
     });
     if (!toAccount) throw new Error('To account not found');
 
