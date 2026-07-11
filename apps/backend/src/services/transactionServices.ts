@@ -36,6 +36,7 @@ import {
   TransactionSplit,
 } from '@/models';
 import { getRate } from './exchangeRateService';
+import { resolveCategorization } from '@/services/categorizationService';
 import sequelize from '@/utils/postgres';
 import { Op, Transaction as SequelizeTransaction } from 'sequelize';
 import {
@@ -633,6 +634,26 @@ export const createTransaction = async (
       assertSplitBalance(amount, splits!);
     }
 
+    // 規則引擎（Phase B，rules-engine-spec R9/R10）：手動新增與 Excel 匯入
+    //（excelServices 亦呼叫本函式）套規則。分類「僅在無明確分類時填入」（不覆蓋使用者選擇），
+    // 標籤與呼叫端提供者取聯集。拆分交易的分類下放子項，故不套。
+    // 轉帳（createTransfer）、週期產生、帳單確認皆走各自路徑不進本函式，天然排除（R10）。
+    let effectiveCategoryId = data.categoryId;
+    let effectiveTagIds = Array.isArray(data.tagIds) ? [...data.tagIds] : [];
+    if (!isSplit) {
+      const resolved = await resolveCategorization(userId, {
+        description: data.description ?? null,
+        amount,
+        type,
+      });
+      if (!effectiveCategoryId && resolved.categoryId) {
+        effectiveCategoryId = resolved.categoryId;
+      }
+      if (resolved.tagIds.length) {
+        effectiveTagIds = [...new Set([...effectiveTagIds, ...resolved.tagIds])];
+      }
+    }
+
     // 額外金額處理：只有當有值時才建立關聯資料
     let transactionExtraId: string | null = null;
     const extraAdd = Number(data.extraAdd || 0);
@@ -741,6 +762,8 @@ export const createTransaction = async (
             id: undefined, // Create new ID
             amount: currentAmount,
             type,
+            // 規則命中分類（fill-when-absent）套到每期
+            categoryId: effectiveCategoryId,
             description: getInstallmentDescription(
               data.description || '',
               i,
@@ -757,9 +780,9 @@ export const createTransaction = async (
           },
           { transaction },
         );
-        // 標籤：每期交易都掛上相同標籤
-        if (Array.isArray(data.tagIds) && data.tagIds.length) {
-          await (createdInstallment as any).setTags(data.tagIds, {
+        // 標籤：每期交易都掛上相同標籤（含規則命中的標籤聯集）
+        if (effectiveTagIds.length) {
+          await (createdInstallment as any).setTags(effectiveTagIds, {
             transaction,
           });
         }
@@ -780,7 +803,7 @@ export const createTransaction = async (
           billingDate: data.date,
           transactionExtraId,
           // 拆分（Phase B）：父為容器；categoryId 取第一個子項分類作列表顯示主分類（spec S3）
-          categoryId: isSplit ? splits![0]!.categoryId : data.categoryId,
+          categoryId: isSplit ? splits![0]!.categoryId : effectiveCategoryId,
           isSplit,
           // 多幣別：baseRate 驅動 hook 算 amountInBase；原幣事實（已正規化/去重）
           baseRate: currencyFields.baseRate,
@@ -805,9 +828,9 @@ export const createTransaction = async (
         );
       }
 
-      // 標籤：套用到整筆交易
-      if (Array.isArray(data.tagIds) && data.tagIds.length) {
-        await (newTransaction as any).setTags(data.tagIds, { transaction });
+      // 標籤：套用到整筆交易（含規則命中的標籤聯集）
+      if (effectiveTagIds.length) {
+        await (newTransaction as any).setTags(effectiveTagIds, { transaction });
       }
 
       result = newTransaction.toJSON();

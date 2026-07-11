@@ -21,9 +21,11 @@ import {
   BillParseTelemetry,
   Account,
   User,
+  Tag,
 } from '@/models';
 import { PendingTransactionAttributes } from '@/models/PendingTransaction';
 import { getRate } from './exchangeRateService';
+import { resolveCategorization } from './categorizationService';
 import sequelize from '@/utils/postgres';
 
 //! azureBlob.ts 那邊當初寫的有點死，所以想說不要複用好了...
@@ -243,6 +245,18 @@ export const createPendingTransaction = async (
   return record;
 };
 
+// 手動新增的待確認交易 type 存為英文 'expense'/'income'（見 createPendingTransaction 與
+// 前端 PendingTransactionTable），而 RootType 為 '支出'/'收入'。落地 Transaction 與規則比對前
+// 統一正規化：否則帶 type 條件的規則對手動 pending 永不命中，且會把無效 type 寫進交易。
+const PENDING_TYPE_TO_ROOT: Record<string, RootType> = {
+  expense: RootType.EXPENSE,
+  income: RootType.INCOME,
+};
+const normalizePendingType = (raw: unknown): RootType => {
+  if (raw === RootType.EXPENSE || raw === RootType.INCOME) return raw;
+  return PENDING_TYPE_TO_ROOT[String(raw)] ?? RootType.EXPENSE;
+};
+
 /**
  * 批次確認交易
  *
@@ -305,7 +319,7 @@ export const confirmTransactions = async (
     for (const pt of pendingTransactions) {
       const data = pt.transactionData as any;
       const rawMerchantName = pt.rawMerchantName;
-      const finalCategory = data.categoryId;
+      const txType = normalizePendingType(data.type);
 
       // 多幣別解析：
       // - baseRate（帳戶幣別→本位幣）用交易日期匯率，驅動 amountInBase。
@@ -341,6 +355,27 @@ export const confirmTransactions = async (
         // 查無匯率時：保留原幣金額為帳戶幣金額（fallback），originalCurrencyCode 仍記錄事實
       }
 
+      // 規則引擎（Phase B，rules-engine-spec R9）：帳單確認時套規則。
+      // 優先序：使用者在確認頁明確改過的分類 > 規則 > merchant/llm（解析時已合併於
+      // pt.suggestedCategoryId，作為 ctx.merchantSuggestedCategoryId 餵入）> null。
+      // 「明確改過」= data.categoryId 非空且與自動建議不同。標籤取規則命中聯集。
+      const autoSuggested = pt.suggestedCategoryId ?? null;
+      const userPickedCategory =
+        data.categoryId != null && data.categoryId !== autoSuggested
+          ? data.categoryId
+          : null;
+      const categorization = await resolveCategorization(
+        userId,
+        {
+          description: data.description ?? null,
+          amount: amountInAccountCurrency,
+          type: txType,
+        },
+        { merchantSuggestedCategoryId: autoSuggested },
+      );
+      const finalCategory = userPickedCategory ?? categorization.categoryId;
+      const ruleTagIds = categorization.tagIds;
+
       // 1. 建立 TransactionExtra (如果有)；本位幣快照 = 原值 × baseRate
       let transactionExtraId = null;
       if (data.extraAdd > 0 || data.extraMinus > 0) {
@@ -365,9 +400,9 @@ export const confirmTransactions = async (
         {
           userId,
           accountId,
-          categoryId: data.categoryId,
+          categoryId: finalCategory,
           amount: amountInAccountCurrency,
-          type: data.type as RootType,
+          type: txType,
           description: data.description,
           date: data.date,
           billingDate: data.date,
@@ -383,14 +418,32 @@ export const confirmTransactions = async (
       );
       createdTransactions.push(newTransaction);
 
-      // 收集 merchantMapping 計數
+      // 規則命中的標籤套到本筆（與確認頁使用者提供者聯集）。
+      // data.tagIds 來自 pt.transactionData（updatePendingTransaction 可被 client 注入任意值），
+      // 故先過濾為本人擁有的 tag，避免把他人 tag 貼到自己交易；ruleTagIds 建立時已驗擁有權。
+      const providedTagIds = [...new Set((data.tagIds as string[]) || [])];
+      let ownedProvidedTagIds: string[] = [];
+      if (providedTagIds.length) {
+        const ownedTags = await Tag.findAll({
+          where: { id: { [Op.in]: providedTagIds }, userId },
+          attributes: ['id'],
+          transaction,
+        });
+        ownedProvidedTagIds = ownedTags.map((tg: any) => tg.id);
+      }
+      const finalTagIds = [...new Set([...ownedProvidedTagIds, ...ruleTagIds])];
+      if (finalTagIds.length) {
+        await (newTransaction as any).setTags(finalTagIds, { transaction });
+      }
+
+      // 收集 merchantMapping 計數（學習最終落地的分類）
       if (finalCategory && rawMerchantName) {
         const key = `${rawMerchantName}::${finalCategory}`;
         mappingCounts.set(key, (mappingCounts.get(key) || 0) + 1);
       }
 
-      // 檢查是否有修改（比較 AI 建議的 category 和最終 category）
-      if (pt.suggestedCategoryId !== finalCategory) {
+      // telemetry：只計「使用者確實改過 AI 建議」，規則自動覆蓋不算 user modified
+      if (userPickedCategory !== null) {
         modifiedCount++;
       }
     }

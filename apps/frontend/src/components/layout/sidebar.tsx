@@ -17,6 +17,7 @@ import {
   Calculator,
   History,
   Store,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import {
@@ -52,6 +53,11 @@ const sidebarItems = [
     title: '商家分類',
     href: '/merchant-mappings',
     icon: Store,
+  },
+  {
+    title: '分類規則',
+    href: '/rules',
+    icon: SlidersHorizontal,
   },
   {
     title: '統計報表',

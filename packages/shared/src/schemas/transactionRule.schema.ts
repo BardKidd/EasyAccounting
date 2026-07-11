@@ -26,7 +26,9 @@ const actionShape = {
   tagIds: z.array(z.string().uuid()).max(20, '至多 20 個標籤').optional(),
 };
 
-const hasCondition = (v: {
+// 規則不變式（單一真實來源）：create refine 與後端 updateRule 合併後重驗共用，
+// 避免部分更新（partial PUT）繞過驗證產出無條件 / 無動作 / 反向金額區間的規則。
+export const ruleHasCondition = (v: {
   descriptionMatch?: string | null;
   amountMin?: number | null;
   amountMax?: number | null;
@@ -37,12 +39,12 @@ const hasCondition = (v: {
   v.amountMax != null ||
   !!v.transactionType;
 
-const hasAction = (v: {
+export const ruleHasAction = (v: {
   setCategoryId?: string | null;
   tagIds?: string[];
 }) => !!v.setCategoryId || (Array.isArray(v.tagIds) && v.tagIds.length > 0);
 
-const amountRangeOk = (v: {
+export const ruleAmountRangeOk = (v: {
   amountMin?: number | null;
   amountMax?: number | null;
 }) =>
@@ -57,11 +59,11 @@ export const createTransactionRuleSchema = z
     ...conditionShape,
     ...actionShape,
   })
-  .refine(hasCondition, {
+  .refine(ruleHasCondition, {
     message: '至少需一個條件（description / 金額 / 類型）',
   })
-  .refine(hasAction, { message: '至少需一個動作（套分類 / 套標籤）' })
-  .refine(amountRangeOk, {
+  .refine(ruleHasAction, { message: '至少需一個動作（套分類 / 套標籤）' })
+  .refine(ruleAmountRangeOk, {
     message: 'amountMin 不可大於 amountMax',
     path: ['amountMin'],
   });
@@ -78,7 +80,7 @@ export const updateTransactionRuleSchema = z
     ...conditionShape,
     ...actionShape,
   })
-  .refine(amountRangeOk, {
+  .refine(ruleAmountRangeOk, {
     message: 'amountMin 不可大於 amountMax',
     path: ['amountMin'],
   });

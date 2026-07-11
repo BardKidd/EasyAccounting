@@ -1,4 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+// 規則引擎 resolver 有自己的測試；此處 stub 為 no-op（回傳 ctx merchant 建議或 null），
+// 讓 createTransaction 的 fill-when-absent 維持既有行為。
+vi.mock('@/services/categorizationService', () => ({
+  resolveCategorization: vi
+    .fn()
+    .mockImplementation((_userId: string, _draft: any, ctx: any = {}) => ({
+      categoryId: ctx.merchantSuggestedCategoryId ?? null,
+      tagIds: [],
+      source: 'none',
+    })),
+}));
 import * as transactionService from '../../src/services/transactionServices';
 
 import { RootType, PaymentFrequency } from '@repo/shared';

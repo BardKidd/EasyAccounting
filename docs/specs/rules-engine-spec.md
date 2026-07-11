@@ -123,16 +123,22 @@ Transaction **無 `payee` 欄、不新增**。規則對 `description` 文字比�
 - [x] 測試：7 真實 DB 整合測試綠（洩漏修復 / per-user 隔離 / isEnabled / 改分類擁有權+撞鍵 / cascade）；後端全套零回歸
 - [x] 對抗式審查（5 維度 workflow）：2 前端缺陷（list error 吞掉→假空狀態；分類非葉節點→Select 空白）已修；後端/migration/洩漏/cascade 零缺陷
 
-### Phase B — 顯式規則引擎（進行中）
+### Phase B — 顯式規則引擎 ✅ 2026-07-11
 
 - [x] model `transactionRule` + `transactionRuleTag` + migration（`20260711010000-create-transaction-rule`；已套用 dev DB）
 - [x] `models/index.ts`：關聯（Rule↔Tag、Rule→setCategory）+ afterDestroy（Rule→ruleTag、Tag→ruleTag、User→rule）
 - [x] `@repo/shared`：rule create/update/reorder/list schema + 型別（`RuleMatchMode` enum）
 - [x] 核心 `resolveCategorization(userId, draft, ctx)`（`logic/categorizationLogic.ts` 純運算 + `services/categorizationService.ts` DB）+ 12 單元 + 7 整合測試綠（優先序 / AND / 標籤聯集 / merchant+llm fallback / 軟刪分類跳過 / per-user 隔離）
-- [ ] 接入三入口（transactionServices / excelServices / billParseService）
-- [ ] 後端 CRUD route→controller→service
-- [ ] 前端規則管理頁（列表 / 建立 / 編輯 / 排序 priority / 啟停）
-- [ ] 三入口 + 不回溯整合測試
+- [x] 接入三入口：`transactionServices.createTransaction`（手動 + Excel，excel 共用此函式）+ `pdfService.confirmTransactions`（帳單確認）。轉帳/週期/拆分子項/編輯天然排除
+- [x] 後端 CRUD route→controller→service（`/rules` list/create/update/delete/reorder；per-user + 分類/標籤擁有權驗證）
+- [x] 前端規則管理頁 `/rules`（列表 + builder Dialog：條件/動作 + 排序 + 啟停 + TagMultiSelect 重用）
+- [x] 三入口 + 不回溯整合測試（4 wiring + 7 CRUD + 7 resolver + 12 unit 全綠）
+- [x] 對抗式審查（4 維度 workflow：CRUD / 接線 / 前端，各對抗式複驗）+ 修復 1 major + 6 minor：
+  - 前端：錯誤訊息被 `instanceof Error` 吞掉 → 改用既有 `getErrorMessage`（apiHandler throw 的是 ResponseHelper）；表單改以共用 `createTransactionRuleSchema` 驗證（R13 單一真實來源）；reorder 於「顯示已停用」關閉時鎖定並防連點；編輯下拉為軟刪/非葉分類補備援選項；金額輸入 `min=0`。
+  - 後端：`updateRule` 對「合併結果」重驗規則不變式（防 partial PUT 清空所有條件 → 命中全部交易）；create/update `tagIds` 去重（避免撞 rule_tag 複合 PK）；帳單確認過濾 client 注入的外人 `tagIds`；手動 pending 英文 `type`（`expense`）正規化為 `RootType`（否則帶 type 條件規則永不命中且存入無效 type）。
+  - 測試：補 6 整合測試（CRUD 去重/合併重驗；帳單確認 type 正規化 + 外人 tag 過濾）；修 4 個受接線波及的 mock 單元測試（以 no-op mock `categorizationService` 隔離規則引擎）。
+
+> **R9 釐清（wiring 落地）**：分類「fill-when-absent」— 規則/自動建議只在呼叫端無明確分類時填入，**不覆蓋使用者明確選擇**；標籤一律與使用者提供者取聯集。帳單確認時「使用者明確改過」= `data.categoryId` 與自動建議不同，永遠優先。手動/Excel 分類為必填，故規則對其實際只加標籤；分類套用主要發生於帳單確認。
 
 ### Phase C — payee/商家 first-class（本輪不做，另立規格）
 

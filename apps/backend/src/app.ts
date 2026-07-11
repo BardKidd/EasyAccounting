@@ -26,6 +26,7 @@ import currencyRoute from '@/routes/currencyRoute';
 import budgetRoute from '@/routes/budgetRoute';
 import tagRoute from '@/routes/tagRoute';
 import merchantMappingRoute from '@/routes/merchantMappingRoute';
+import transactionRuleRoute from '@/routes/transactionRuleRoute';
 import auditLogRoute from '@/routes/auditLogRoute';
 import {
   startDailyReminderCronJobs,
@@ -110,6 +111,7 @@ app.use('/api', currencyRoute);
 app.use('/api', budgetRoute);
 app.use('/api', tagRoute);
 app.use('/api', merchantMappingRoute);
+app.use('/api', transactionRuleRoute);
 app.use('/api', auditLogRoute);
 
 // env 沒設定預設直接通過。這樣 PRD DEV 都不用去改了。

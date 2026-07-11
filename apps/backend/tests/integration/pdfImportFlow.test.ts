@@ -8,6 +8,16 @@ import request from 'supertest';
 import { app } from '../../src/app';
 import { StatusCodes } from 'http-status-codes';
 import { PendingTransactionStatus, ParseStatus } from '@repo/shared';
+
+// Rules Engine Phase B：本檔以 mock 隔離 DB，而 confirmTransactions 現會呼叫 resolveCategorization
+// （查 TransactionRule/Category）。以 no-op mock 隔離規則引擎；規則引擎自身有專屬真實 DB 整合測試。
+vi.mock('@/services/categorizationService', () => ({
+  resolveCategorization: vi.fn(async () => ({
+    categoryId: null,
+    tagIds: [],
+    source: 'none',
+  })),
+}));
 // Import fixtures
 import {
   mockUser,
