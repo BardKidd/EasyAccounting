@@ -32,6 +32,15 @@ const sequelize = new Sequelize(
     host: process.env.PG_HOST,
     port: parseInt(process.env.PG_PORT || '5432', 10),
     logging: false, // 測試時減少 log
+    // 連線池：遠端 Neon 開新連線 ~1.1s，故保留熱連線避免每次請求重開。
+    // 預設 min:0 + idle:10s 會在閒置 10 秒後關光連線，下次請求再吃冷連線成本。
+    // 測試環境用 min:0，避免測試結束仍有連線影響 teardown。
+    pool: {
+      max: 10,
+      min: isTest ? 0 : 2,
+      idle: 30000,
+      acquire: 30000,
+    },
   },
 );
 

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Outfit, Work_Sans } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
+import { SWRProvider } from '@/components/swr-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
@@ -40,7 +41,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Toaster />
-          {children}
+          <SWRProvider>{children}</SWRProvider>
           <Analytics />
           <SpeedInsights />
         </ThemeProvider>
