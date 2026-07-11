@@ -6,6 +6,7 @@
   "scripts": {
     "start": "tsx ./src/app.ts",
     "dev": "tsx watch ./src/app.ts",
+    "check-types": "tsc --noEmit",
     "db:migrate": "sh -c 'read -p \"Migration Name: \" NAME && npx sequelize-cli migration:generate --name \"$NAME\"'",
     "db:migrate:up": "npx sequelize-cli db:migrate",
     "db:migrate:down": "npx sequelize-cli db:migrate:undo",
