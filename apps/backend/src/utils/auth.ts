@@ -21,6 +21,7 @@ export interface TokenPayload {
   userId: string;
   email: string;
   isGuest?: boolean;
+  tokenVersion?: number;
 }
 
 const isProduction = process.env.NODE_ENV === 'production';

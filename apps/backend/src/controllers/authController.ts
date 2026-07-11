@@ -101,6 +101,7 @@ const login = (req: Request, res: Response) => {
       userId: user.id,
       email: user.email,
       isGuest: false,
+      tokenVersion: user.tokenVersion ?? 0,
     };
 
     const accessToken = await generateAccessToken(tokenPayload);
@@ -167,6 +168,7 @@ const guestLogin = (req: Request, res: Response) => {
       userId: user.id,
       email: user.email,
       isGuest: true,
+      tokenVersion: user.tokenVersion ?? 0,
     };
 
     const accessToken = await generateAccessToken(tokenPayload);
@@ -263,6 +265,7 @@ const promote = (req: Request, res: Response) => {
       userId: promotedUser.id,
       email: promotedUser.email,
       isGuest: false,
+      tokenVersion: promotedUser.tokenVersion ?? 0,
     };
 
     const accessToken = await generateAccessToken(tokenPayload);
@@ -486,7 +489,14 @@ const resetPassword = (req: Request, res: Response) => {
     // DB Transaction: 密碼更新 + token 標記必須原子性完成
     await sequelize.transaction(async (t) => {
       const hashedPassword = await bcrypt.hash(password, 12);
-      await user.update({ password: hashedPassword }, { transaction: t });
+      // 安全性(#8)：改密碼時 tokenVersion +1，使既有 refresh token 立即失效
+      await user.update(
+        {
+          password: hashedPassword,
+          tokenVersion: (user.tokenVersion ?? 0) + 1,
+        },
+        { transaction: t },
+      );
       await resetRecord.update({ usedAt: new Date() }, { transaction: t });
     });
 

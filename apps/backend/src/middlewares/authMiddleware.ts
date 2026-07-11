@@ -68,11 +68,24 @@ export const authMiddleware = async (
         .json(responseHelper(false, null, 'Session expired', null));
     }
 
+    // 安全性(#8)：換證時比對 tokenVersion，改密碼/重設後既有 refresh token 立即失效。
+    const dbUser = await User.findByPk(refreshPayload.userId as string);
+    if (
+      !dbUser ||
+      (refreshPayload.tokenVersion ?? 0) !== (dbUser.tokenVersion ?? 0)
+    ) {
+      clearAuthCookie(req, res);
+      return res
+        .status(StatusCodes.UNAUTHORIZED)
+        .json(responseHelper(false, null, 'Session expired', null));
+    }
+
     // 4. 換證成功
     const newPayload = {
       userId: refreshPayload.userId as string,
       email: refreshPayload.email as string,
       isGuest: (refreshPayload.isGuest as boolean) || false,
+      tokenVersion: dbUser.tokenVersion ?? 0,
     };
 
     const newAccessToken = await generateAccessToken(newPayload);
