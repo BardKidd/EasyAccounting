@@ -156,6 +156,15 @@ export const createTemplate = async (
     },
   );
 
+  // 安全性(IDOR)：驗證 baseTransactionAttrs.accountId 屬於本人，否則週期產生時
+  // 會於 cron 竄改他人帳戶餘額（延遲型 IDOR）。
+  const ownedAccount = await Account.findOne({
+    where: { id: data.baseTransactionAttrs.accountId, userId },
+  });
+  if (!ownedAccount) {
+    throw new Error('Account not found');
+  }
+
   const template = await RecurringTemplate.create({
     userId,
     baseTransactionAttrs: {
@@ -475,7 +484,9 @@ export const processRecurringTemplates = async () => {
 
       // 先載入帳戶並解析多幣別 baseRate（帳戶幣別 → 本位幣 當日匯率）。
       // 外幣帳戶若沿用寫死的 baseRate 1 會落錯 base 快照；同幣或缺匯率時 fallback 1 並告警。
-      const account = await Account.findByPk(attrs.accountId, {
+      // 安全性(IDOR)：以 template.userId scope，避免載入/竄改非擁有者帳戶餘額。
+      const account = await Account.findOne({
+        where: { id: attrs.accountId, userId: template.userId },
         transaction: t,
       });
       if (!account)

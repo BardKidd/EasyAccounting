@@ -170,6 +170,12 @@ describe('processRecurringTemplates', () => {
       balance: 1000,
       save: vi.fn(),
     });
+    // cron 改用 Account.findOne({where:{id,userId:template.userId}})，需同樣回傳帳戶
+    (Account.findOne as any).mockResolvedValue({
+      id: 'acc-1',
+      balance: 1000,
+      save: vi.fn(),
+    });
 
     await processRecurringTemplates();
 
@@ -222,6 +228,12 @@ describe('processRecurringTemplates', () => {
     (RecurringTemplate.findAll as any).mockResolvedValue([mockTemplate]);
     (Transaction.create as any).mockResolvedValue({ id: 'tx-2' });
     (Account.findByPk as any).mockResolvedValue({
+      id: 'acc-1',
+      balance: 1000,
+      save: vi.fn(),
+    });
+    // cron 改用 Account.findOne({where:{id,userId:template.userId}})，需同樣回傳帳戶
+    (Account.findOne as any).mockResolvedValue({
       id: 'acc-1',
       balance: 1000,
       save: vi.fn(),
