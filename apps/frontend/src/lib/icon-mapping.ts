@@ -68,6 +68,11 @@ import {
   RefreshCw,
   CircleHelp,
   Tag,
+  Bike,
+  Droplets,
+  WashingMachine,
+  Package,
+  Flower2,
 } from 'lucide-react';
 
 // DB 值: Icon 值
@@ -180,6 +185,11 @@ export const CATEGORY_ICONS_MAP = {
   ArrowDownToLine,
   Undo2,
   RefreshCw,
+  Bike,
+  Droplets,
+  WashingMachine,
+  Package,
+  Flower2,
 } as const;
 
 export type IconName = keyof typeof ACCOUNT_ICONS;

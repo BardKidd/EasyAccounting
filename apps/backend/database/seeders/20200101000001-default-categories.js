@@ -15,6 +15,9 @@ const COLOR_MAP = {
   晚餐: '#F57C00',
   點心: '#FFAB91',
   飲料: '#8D6E63',
+  咖啡: '#6F4E37', // New
+  手搖飲: '#C48A5A', // New
+  外送: '#FB8C00', // New
   酒類: '#5D4037',
   水果: '#C0CA33',
   食材: '#AED581',
@@ -28,6 +31,7 @@ const COLOR_MAP = {
   停車: '#BDBDBD',
   過路費: '#757575',
   維修保養: '#78909C',
+  洗車: '#4FC3F7', // New
   罰單: '#D32F2F', // New
   娛樂: '#AB47BC',
   電影: '#CE93D8',
@@ -48,6 +52,8 @@ const COLOR_MAP = {
   個人: '#26C6DA',
   剪髮: '#80DEEA',
   化妝品: '#F8BBD0',
+  美甲美睫: '#F48FB1', // New
+  按摩SPA: '#CE93D8', // New
   健身: '#00BCD4',
   進修: '#0097A7', // New
   醫療: '#EF5350',
@@ -65,10 +71,13 @@ const COLOR_MAP = {
   小孩: '#FFE082',
   寵物: '#FFD54F',
   孝親費: '#FF6F00',
+  禮金: '#F4511E', // New
   雜支: '#FFECB3', // New
   生活: '#7E57C2',
   電話費: '#9575CD',
   網路購物: '#B39DDB', // New
+  洗衣費: '#4DB6AC', // New
+  宅配郵寄: '#8D6E63', // New
   學習: '#5C6BC0',
   課程: '#7986CB',
   學費: '#3F51B5',
@@ -97,6 +106,9 @@ const ICON_MAP = {
   晚餐: 'UtensilsCrossed',
   點心: 'Cookie',
   飲料: 'CupSoda',
+  咖啡: 'Coffee',
+  手搖飲: 'CupSoda',
+  外送: 'Bike',
   酒類: 'Wine',
   水果: 'Apple',
   食材: 'ShoppingBasket',
@@ -110,6 +122,7 @@ const ICON_MAP = {
   停車: 'ParkingCircle',
   過路費: 'Ticket',
   維修保養: 'Wrench',
+  洗車: 'Droplets',
   罰單: 'Receipt',
   娛樂: 'PartyPopper',
   電影: 'Film',
@@ -130,6 +143,8 @@ const ICON_MAP = {
   個人: 'User',
   剪髮: 'Scissors',
   化妝品: 'SprayCan',
+  美甲美睫: 'Sparkles',
+  按摩SPA: 'Flower2',
   健身: 'Dumbbell',
   進修: 'GraduationCap',
   醫療: 'Stethoscope',
@@ -147,10 +162,13 @@ const ICON_MAP = {
   小孩: 'Baby',
   寵物: 'PawPrint',
   孝親費: 'HeartHandshake',
+  禮金: 'Gift',
   雜支: 'MoreHorizontal',
   生活: 'Sparkles',
   電話費: 'Phone',
   網路購物: 'ShoppingBag',
+  洗衣費: 'WashingMachine',
+  宅配郵寄: 'Package',
   學習: 'School',
   課程: 'Presentation',
   學費: 'School',
@@ -175,7 +193,19 @@ const ICON_MAP = {
 // 定義分類階層結構 (根據 constants/index.ts 的最新改動)
 const CATEGORY_HIERARCHY = {
   [RootType.EXPENSE]: {
-    飲食: ['早餐', '午餐', '晚餐', '點心', '飲料', '酒類', '水果', '食材'],
+    飲食: [
+      '早餐',
+      '午餐',
+      '晚餐',
+      '點心',
+      '飲料',
+      '咖啡',
+      '手搖飲',
+      '外送',
+      '酒類',
+      '水果',
+      '食材',
+    ],
     交通: [
       '公車',
       '捷運',
@@ -186,15 +216,16 @@ const CATEGORY_HIERARCHY = {
       '停車',
       '過路費',
       '維修保養',
+      '洗車',
       '罰單',
     ],
     娛樂: ['電影', '遊戲', '聚會', '旅遊', '音樂', '訂閱服務', '書籍', '展覽'],
     購物: ['服飾', '3C產品', '生活用品', '美妝保養', '家具', '精品'],
-    個人: ['剪髮', '化妝品', '健身', '進修'],
+    個人: ['剪髮', '化妝品', '美甲美睫', '按摩SPA', '健身', '進修'],
     醫療: ['藥品', '看診', '保險', '治療'],
     家居: ['房租', '水電瓦斯', '網路費', '管理費', '修繕'],
-    家庭: ['小孩', '寵物', '孝親費', '雜支'],
-    生活: ['電話費', '網路購物'],
+    家庭: ['小孩', '寵物', '孝親費', '禮金', '雜支'],
+    生活: ['電話費', '網路購物', '洗衣費', '宅配郵寄'],
     學習: ['課程', '學費', '文具'],
     其他: ['捐款', '稅金', '手續費', '遺失'],
   },

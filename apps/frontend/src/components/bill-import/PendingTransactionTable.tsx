@@ -73,7 +73,11 @@ const CategorySelectItems = React.memo(
         const hasSubs = main.children && main.children.length > 0;
         if (!hasSubs) {
           return (
-            <SelectItem key={main.id} value={main.id}>
+            <SelectItem
+              key={main.id}
+              value={main.id}
+              className="cursor-pointer hover:bg-accent"
+            >
               {main.name}
             </SelectItem>
           );
@@ -84,7 +88,11 @@ const CategorySelectItems = React.memo(
               {main.name}
             </SelectLabel>
             {main.children!.map((sub) => (
-              <SelectItem key={sub.id} value={sub.id} className="pl-6">
+              <SelectItem
+                key={sub.id}
+                value={sub.id}
+                className="pl-6 cursor-pointer hover:bg-accent"
+              >
                 {sub.name}
               </SelectItem>
             ))}
@@ -295,7 +303,7 @@ const TransactionRow = React.memo(
           >
             <SelectTrigger
               className={cn(
-                'h-8 bg-transparent border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors w-[140px] focus:ring-emerald-500 focus:border-emerald-500 font-medium',
+                'h-8 bg-transparent border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-colors w-[140px] focus:ring-emerald-500 focus:border-emerald-500 font-medium cursor-pointer',
                 !tx.transactionData.categoryId &&
                   'border-red-300 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10 text-red-600 dark:text-red-400 hover:border-red-400 dark:hover:border-red-800',
                 tx.transactionData.categoryId &&
