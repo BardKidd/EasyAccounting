@@ -18,6 +18,7 @@ export * from './schemas/chat.schema';
 export * from './schemas/budget.schema';
 export * from './schemas/tag.schema';
 export * from './schemas/merchantMapping.schema';
+export * from './schemas/transactionRule.schema';
 export * from './schemas/auditLog.schema';
 
 // 匯出所有 types
@@ -31,6 +32,7 @@ export * from './types/personnelNotificationTypes';
 export * from './types/pendingTransactionTypes';
 export * from './types/tagTypes';
 export * from './types/merchantMappingTypes';
+export * from './types/transactionRuleTypes';
 export * from './types/auditLogTypes';
 
 export * from './utils/transactionUtils';

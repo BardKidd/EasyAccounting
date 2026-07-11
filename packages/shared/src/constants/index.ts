@@ -5,6 +5,13 @@ export enum RootType {
   OPERATE = '操作',
 }
 
+// 規則引擎（Phase B）：文字條件比對模式。
+export enum RuleMatchMode {
+  CONTAINS = 'contains',
+  EQUALS = 'equals',
+  STARTS_WITH = 'starts_with',
+}
+
 // 主分類 (中間層分類 - User Main Category)
 export enum MainType {
   // 支出類別

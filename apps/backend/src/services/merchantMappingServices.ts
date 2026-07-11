@@ -9,6 +9,35 @@ import type {
 // 一律以 userId scope（per-user 隔離，防跨使用者洩漏，rules-engine-spec R2）。
 // 不含建立：對應由 billParse 確認流程自動學習累加（R5）。
 
+const escapeLike = (str: string): string => str.replace(/[%_\\]/g, '\\$&');
+
+/**
+ * 單一 description 的商家→分類 fallback 查詢（per-user、僅 enabled）。
+ * 供 resolveCategorization 在無規則分類時 fallback（R9 步驟 2）。回傳 categoryId 或 null。
+ * 比對邏輯與 billParseService.batchSuggestCategories 一致（ILIKE + 雙向包含、matchCount 最高優先）。
+ */
+export const lookupMerchantCategory = async (
+  userId: string,
+  description: string | null | undefined,
+): Promise<string | null> => {
+  if (!description) return null;
+  const rows = await MerchantMapping.findAll({
+    where: {
+      userId,
+      isEnabled: true,
+      merchantName: { [Op.iLike]: `%${escapeLike(description)}%` },
+    },
+    order: [['matchCount', 'DESC']],
+  });
+  const lower = description.toLowerCase();
+  const match = rows.find(
+    (m: any) =>
+      m.merchantName.toLowerCase().includes(lower) ||
+      lower.includes(m.merchantName.toLowerCase()),
+  );
+  return match?.categoryId || null;
+};
+
 /**
  * 列出使用者學到的商家→分類對應，夾帶分類顯示資訊。
  * 分類已軟刪時 LEFT JOIN 不命中 → categoryName 等為 null（前端標「已刪除」）。

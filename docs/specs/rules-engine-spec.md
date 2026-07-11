@@ -123,16 +123,16 @@ Transaction **無 `payee` 欄、不新增**。規則對 `description` 文字比�
 - [x] 測試：7 真實 DB 整合測試綠（洩漏修復 / per-user 隔離 / isEnabled / 改分類擁有權+撞鍵 / cascade）；後端全套零回歸
 - [x] 對抗式審查（5 維度 workflow）：2 前端缺陷（list error 吞掉→假空狀態；分類非葉節點→Select 空白）已修；後端/migration/洩漏/cascade 零缺陷
 
-### Phase B — 顯式規則引擎
+### Phase B — 顯式規則引擎（進行中）
 
-- [ ] model `transactionRule` + `transactionRuleTag` + migration
-- [ ] `models/index.ts`：關聯 + afterDestroy（Rule→ruleTag、Tag→ruleTag、User→rule）
-- [ ] `@repo/shared`：rule create/update/list schema + 型別
-- [ ] 核心 `resolveCategorization(userId, draft, ctx)`（logic 層，純運算 + 查詢）+ 單元測試
+- [x] model `transactionRule` + `transactionRuleTag` + migration（`20260711010000-create-transaction-rule`；已套用 dev DB）
+- [x] `models/index.ts`：關聯（Rule↔Tag、Rule→setCategory）+ afterDestroy（Rule→ruleTag、Tag→ruleTag、User→rule）
+- [x] `@repo/shared`：rule create/update/reorder/list schema + 型別（`RuleMatchMode` enum）
+- [x] 核心 `resolveCategorization(userId, draft, ctx)`（`logic/categorizationLogic.ts` 純運算 + `services/categorizationService.ts` DB）+ 12 單元 + 7 整合測試綠（優先序 / AND / 標籤聯集 / merchant+llm fallback / 軟刪分類跳過 / per-user 隔離）
 - [ ] 接入三入口（transactionServices / excelServices / billParseService）
 - [ ] 後端 CRUD route→controller→service
 - [ ] 前端規則管理頁（列表 / 建立 / 編輯 / 排序 priority / 啟停）
-- [ ] 測試：優先序 / AND / 標籤聯集 / 三入口 / 不回溯 / cascade（真實 DB）
+- [ ] 三入口 + 不回溯整合測試
 
 ### Phase C — payee/商家 first-class（本輪不做，另立規格）
 

@@ -19,6 +19,8 @@ import BudgetTarget from './budgetTarget';
 import Tag from './tag';
 import TransactionTag from './transactionTag';
 import TransactionSplit from './transactionSplit';
+import TransactionRule from './transactionRule';
+import TransactionRuleTag from './transactionRuleTag';
 
 // -----------------------------------------------------------------------------
 // Soft Delete Hooks (Cascade)
@@ -55,6 +57,12 @@ User.addHook('afterDestroy', async (user: any, options: any) => {
   await Tag.destroy({ where: { userId }, transaction, individualHooks: true });
   // MerchantMapping（per-user、hard-delete）：刪 User 連帶清其學到的商家→分類對應。
   await MerchantMapping.destroy({ where: { userId }, transaction });
+  // TransactionRule（per-user、hard-delete）：individualHooks 讓 afterDestroy 清 rule_tag。
+  await TransactionRule.destroy({
+    where: { userId },
+    transaction,
+    individualHooks: true,
+  });
 });
 
 // Category 為 soft-delete（paranoid:true）：DB 層的 ON DELETE CASCADE 不會觸發，
@@ -119,11 +127,24 @@ Transaction.addHook('afterDestroy', async (instance: any, options: any) => {
   }
 });
 
-// Tag（hard-delete）：刪 tag 串接清 transaction_tag（交易本身不動）。
+// Tag（hard-delete）：刪 tag 串接清 transaction_tag + transaction_rule_tag（交易/規則本身不動）。
 Tag.addHook('afterDestroy', async (tag: any, options: any) => {
   const transaction = options.transaction;
   await TransactionTag.destroy({
     where: { tagId: tag.id },
+    transaction,
+  });
+  await TransactionRuleTag.destroy({
+    where: { tagId: tag.id },
+    transaction,
+  });
+});
+
+// TransactionRule（hard-delete）：刪規則串接清 transaction_rule_tag。
+TransactionRule.addHook('afterDestroy', async (rule: any, options: any) => {
+  const transaction = options.transaction;
+  await TransactionRuleTag.destroy({
+    where: { ruleId: rule.id },
     transaction,
   });
 });
@@ -341,6 +362,37 @@ TransactionTag.belongsTo(Transaction, {
 });
 
 // -----------------------------------------------------------------------------
+// 規則引擎（Rules Engine Phase B）
+// -----------------------------------------------------------------------------
+User.hasMany(TransactionRule, { foreignKey: 'userId', as: 'rules' });
+TransactionRule.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+// 規則動作：套分類（as setCategory）
+Category.hasMany(TransactionRule, {
+  foreignKey: 'setCategoryId',
+  as: 'rules',
+});
+TransactionRule.belongsTo(Category, {
+  foreignKey: 'setCategoryId',
+  as: 'setCategory',
+});
+
+// 規則動作：套標籤（多對多，through transaction_rule_tag）
+TransactionRule.belongsToMany(Tag, {
+  through: TransactionRuleTag,
+  foreignKey: 'ruleId',
+  otherKey: 'tagId',
+  as: 'tags',
+});
+Tag.belongsToMany(TransactionRule, {
+  through: TransactionRuleTag,
+  foreignKey: 'tagId',
+  otherKey: 'ruleId',
+  as: 'rules',
+});
+TransactionRuleTag.belongsTo(Tag, { foreignKey: 'tagId', as: 'tag' });
+
+// -----------------------------------------------------------------------------
 // 拆分交易（Phase B）：Transaction 1—N TransactionSplit
 // -----------------------------------------------------------------------------
 Transaction.hasMany(TransactionSplit, {
@@ -383,4 +435,6 @@ export {
   Tag,
   TransactionTag,
   TransactionSplit,
+  TransactionRule,
+  TransactionRuleTag,
 };
