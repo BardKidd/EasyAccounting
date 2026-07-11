@@ -322,6 +322,10 @@ export const confirmTransactions = async (
     });
 
     let modifiedCount = 0;
+    // 安全性修補（fix#20）：確認帳單會 bulkCreate 真實交易，過去未同步目標帳戶餘額，
+    // 導致餘額漂移。這裡於同一 transaction 內累積淨變動（比照 calcAccountBalance：
+    // 支出扣、收入加，並計入手續費/折扣），迴圈後一次套用到 targetAccount.balance。
+    let balanceDelta = 0;
 
     // 批次化：所有寫入 payload 先在記憶體收集，迴圈後各一次 bulkCreate
     // （遠端 Neon 每次 round-trip ~170ms，逐筆 create 會 N×）。
@@ -420,10 +424,10 @@ export const confirmTransactions = async (
         userPickedCategory ?? ruleCategoryId ?? autoSuggested;
 
       // 1. TransactionExtra：預先產生 id 供 Transaction.transactionExtraId 引用（免序依賴）
+      const extraAdd = data.extraAdd || 0;
+      const extraMinus = data.extraMinus || 0;
       let transactionExtraId: string | null = null;
-      if (data.extraAdd > 0 || data.extraMinus > 0) {
-        const extraAdd = data.extraAdd || 0;
-        const extraMinus = data.extraMinus || 0;
+      if (extraAdd > 0 || extraMinus > 0) {
         const extraId = uuidv4();
         extraPayloads.push({
           id: extraId,
@@ -458,6 +462,15 @@ export const confirmTransactions = async (
         originalAmount,
         exchangeRate,
       });
+
+      // 安全性修補（fix#20）：以寫入交易的帳戶幣金額（絕對值）累積餘額淨變動，
+      // 比照 calcAccountBalance：支出 = 金額 + 手續費 - 折扣（扣款）、收入 = 金額 - 手續費 + 折扣（入帳）。
+      const netAccountAmount = Math.abs(amountInAccountCurrency);
+      if (txType === RootType.EXPENSE) {
+        balanceDelta -= netAccountAmount + extraMinus - extraAdd;
+      } else if (txType === RootType.INCOME) {
+        balanceDelta += netAccountAmount - extraMinus + extraAdd;
+      }
 
       // 3. 標籤：data.tagIds 可被 client 注入，延後到迴圈外一次做「本人擁有」過濾。
       const providedTagIds = [...new Set((data.tagIds as string[]) || [])];
@@ -506,6 +519,10 @@ export const confirmTransactions = async (
     }
     if (txPayloads.length) {
       await Transaction.bulkCreate(txPayloads, { transaction });
+      // 安全性修補（fix#20）：於同一 transaction 內把累積的餘額淨變動套回目標帳戶，
+      // 避免確認帳單後帳戶餘額漂移。
+      targetAccount.balance = Number(targetAccount.balance) + balanceDelta;
+      await targetAccount.save({ transaction });
     }
     if (tagPairs.length) {
       await TransactionTag.bulkCreate(tagPairs, { transaction });
