@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link, { useLinkStatus } from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -93,6 +93,24 @@ const sidebarItems = [
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 
+/**
+ * 導航點擊的即時回饋：目的地路由尚未載入完成時，在項目右側顯示小圓點。
+ * 必須 render 在 <Link> 內部（useLinkStatus 讀取所屬 Link 的 pending 狀態）。
+ * 150ms 延遲 + fill-mode both：快速導航（已 prefetch）不會閃爍。
+ */
+function NavPendingIndicator() {
+  const { pending } = useLinkStatus();
+  if (!pending) return null;
+  return (
+    <span
+      role="status"
+      aria-label="頁面載入中"
+      className="absolute right-3 top-1/2 -translate-y-1/2 size-1.5 rounded-full bg-emerald-500 animate-in fade-in motion-reduce:animate-none"
+      style={{ animationDelay: '150ms', animationFillMode: 'both' }}
+    />
+  );
+}
+
 function SidebarContent({
   pathname,
   setOpen,
@@ -130,7 +148,7 @@ function SidebarContent({
                 href={item.href}
                 onClick={() => setOpen?.(false)}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-4 py-3 md:px-2 lg:px-4 text-sm font-medium transition-all duration-200 ease-in-out cursor-pointer',
+                  'relative flex items-center gap-3 rounded-lg px-4 py-3 md:px-2 lg:px-4 text-sm font-medium transition-all duration-200 ease-in-out cursor-pointer',
                   'md:justify-center lg:justify-start',
                   isActive
                     ? 'bg-linear-to-r from-emerald-500/15 to-teal-500/5 text-emerald-600 dark:text-emerald-400 border-l-2 border-emerald-500 shadow-sm'
@@ -149,6 +167,7 @@ function SidebarContent({
                 <span className="tracking-wide block md:hidden lg:block whitespace-nowrap">
                   {item.title}
                 </span>
+                <NavPendingIndicator />
               </Link>
             );
           })}

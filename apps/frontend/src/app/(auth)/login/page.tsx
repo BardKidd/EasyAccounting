@@ -109,7 +109,12 @@ export default function LoginPage() {
         </p>
       </div>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+        {/* method="post"：JS 尚未 hydrate 時瀏覽器會原生提交，預設 GET 會把帳密序列化進 URL query */}
+        <form
+          method="post"
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-5"
+        >
           <FormField
             control={form.control}
             name="email"

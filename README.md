@@ -10,6 +10,7 @@ EasyAccounting 是一個現代化的個人記帳與資產管理應用程式，�
   - **階層式的自訂分類系統**：彈性的分類管理
 - **資產與帳戶管理**
   - 支援多帳戶管理與資產追蹤
+  - **多幣別支援 (Multi-currency)**：外幣帳戶、匯率換算與本位幣統一結算
   - **對帳系統 (Reconciliation)**：幫助使用者核對實際資產與系統紀錄
 - **AI 與智慧化輔助**
   - **PDF 帳單解析**：支援上傳信用卡或銀行 PDF 帳單，自動解析並匯入交易
@@ -39,17 +40,20 @@ EasyAccounting 是一個現代化的個人記帳與資產管理應用程式，�
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/), `tw-animate-css`
 - **UI Components**: [Shadcn/ui](https://ui.shadcn.com/), [Radix UI](https://www.radix-ui.com/), [Lucide React](https://lucide.dev/), [Sonner](https://sonner.emilkowal.ski/)
 - **Forms & Validation**: React Hook Form, Zod
+- **Data Fetching**: [SWR](https://swr.vercel.app/)
 - **Visualization**: [ECharts for React](https://git.hust.cc/echarts-for-react/)
-- **Testing**: [Playwright](https://playwright.dev/)
+- **Testing**: [Vitest](https://vitest.dev/) (jsdom), [Playwright](https://playwright.dev/) (E2E)
+- **Dev Port**: `8080`
 
 ### Backend (`apps/backend`)
 
-- **Framework**: [Express](https://expressjs.com/)
-- **Database ORM**: [Sequelize](https://sequelize.org/) (PostgreSQL)
+- **Framework**: [Express](https://expressjs.com/) 5（以 `tsx` 直接執行 TS，無 build 步驟）
+- **Database**: [Sequelize](https://sequelize.org/) (PostgreSQL，主資料庫，schema `accounting`) + [Mongoose](https://mongoosejs.com/) (MongoDB，知識庫 / AI chat)
 - **Email**: [Resend](https://resend.com/), [React Email](https://react.email/)
-- **Authentication**: JWT (JSON Web Tokens)
+- **Authentication**: JWT，存於 httpOnly cookie（access / refresh token）
 - **Job Scheduling**: Node-cron
-- **File Handling & PDF**: Multer, ExcelJS, PDF 解析相關套件
+- **File Handling**: Multer, ExcelJS
+- **Bill Parsing**: [Azure Service Bus](https://azure.microsoft.com/products/service-bus)（佇列）+ [Azure Blob Storage](https://azure.microsoft.com/products/storage/blobs) + LLM（同 process worker）
 - **Testing**: [Vitest](https://vitest.dev/), [Supertest](https://github.com/ladjs/supertest)
 
 ### Shared Packages (`packages/`)
@@ -69,9 +73,10 @@ EasyAccounting 是一個現代化的個人記帳與資產管理應用程式，�
 
 ### 前置需求
 
-- [Node.js](https://nodejs.org/) (>= 22)
-- [pnpm](https://pnpm.io/) (建議使用)
-- [PostgreSQL](https://www.postgresql.org/) 資料庫
+- [Node.js](https://nodejs.org/) (>= 24.14.1)
+- [pnpm](https://pnpm.io/)（強制套件管理器）
+- [PostgreSQL](https://www.postgresql.org/) 資料庫（主資料庫）
+- [MongoDB](https://www.mongodb.com/) 資料庫（知識庫 / AI chat）
 
 ### 安裝依賴
 
@@ -105,15 +110,19 @@ pnpm install
 
 ```
 apps/backend/src
-├── config/         # 環境變數與設定檔
 ├── controllers/    # 處理 HTTP Request 的控制器 (Controller Layer)
 ├── cron/           # 排程任務邏輯 (Cron Jobs)
 ├── emails/         # React Email 郵件樣板
+├── excelColumns/   # Excel 匯入/匯出欄位定義
+├── logic/          # 複雜純運算邏輯 (如 budgetLogic)
 ├── middlewares/    # Express Middlewares (Auth, Logging, Error Handling)
-├── models/         # Sequelize Models (Database Schema)
+├── models/         # Sequelize / Mongoose Models (Database Schema)
 ├── routes/         # API 路由定義
 ├── services/       # 核心業務邏輯 (Service Layer)
+├── types/          # 後端 TypeScript 型別定義
 ├── utils/          # 共用工具函式 (DB 連線, Helper functions)
+├── validation/     # 請求驗證 middleware (衍生自 @repo/shared)
+├── worker.ts       # Bill Parse Worker (Azure Service Bus)
 └── app.ts          # 應用程式進入點 (Entry Point)
 ```
 
@@ -121,12 +130,15 @@ apps/backend/src
 
 ```
 apps/frontend/src
-├── app/            # Next.js App Router 頁面與 Layout
+├── app/            # Next.js App Router 頁面與 Layout (route groups: (auth) / (main))
+├── assets/         # 靜態資源
 ├── components/     # React UI 元件 (包含 landing, ui 等)
+├── contexts/       # React Context Providers
 ├── hooks/          # Custom React Hooks
-├── lib/            # 工具函式與第三方庫設定
-├── services/       # 前端 API 呼叫封裝
-└── types/          # 前端 TypeScript 型別定義
+├── lib/            # 工具函式與第三方庫設定 (apiHandler 等)
+├── mocks/          # 測試用 mock 資料
+├── services/       # 前端 API 呼叫封裝 (透過 SWR)
+└── proxy.ts        # 路由守衛 (依 cookie token 導向 /login)
 ```
 
 ---
@@ -134,3 +146,4 @@ apps/frontend/src
 ## 📝 筆記與備註
 
 - 待開發的功能詳見 `apps/backend/todo.md` 與 `docs/specs/` 目錄下的規格文件。
+- **規則引擎 / 自動分類（進行中）**：匯入時自動套用分類與標籤，規格見 `docs/specs/rules-engine-spec.md`。
