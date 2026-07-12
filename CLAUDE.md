@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-EasyAccounting 是個人記帳與資產管理應用，採 Turborepo + pnpm Monorepo。前端 Next.js 部署於 Vercel，後端 Express 部署於 Railway。
+EasyAccounting 是個人記帳與資產管理應用，採 Turborepo + pnpm Monorepo。前端 Next.js 部署於 Vercel，後端 Express 部署於 Azure Container Apps。
 
 > **進行中：規則引擎（自動分類）** — 任何與規則引擎 / 自動分類 / `MerchantMapping` / 匯入自動套分類或標籤相關的工作，**動工前必須先完整讀 `docs/specs/rules-engine-spec.md`**（唯一真實來源，決策 R1–R14 已於 2026-07-11 拍板不可自行更改）。本規格一併修復既有 `merchant_mapping` 全域表**跨使用者洩漏 bug**（無 `userId`，會把 A 使用者私有 `categoryId` 回給 B）；照其中 Phase 分段與進度追蹤執行，勿自行改方向。
 >
