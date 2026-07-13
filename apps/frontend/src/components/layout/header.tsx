@@ -93,7 +93,7 @@ export function Header() {
 
   return (
     <>
-      <header className="sticky top-4 z-50 mx-4 md:mr-8 mt-4 rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-lg shadow-slate-200/20 dark:shadow-black/20 transition-all duration-300 hover:shadow-xl group">
+      <header className="sticky top-[calc(1rem+var(--safe-area-top))] z-50 mx-4 md:mr-8 mt-[calc(1rem+var(--safe-area-top))] rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-lg shadow-slate-200/20 dark:shadow-black/20 transition-all duration-300 hover:shadow-xl group">
         <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none rounded-2xl" />
         <div className="flex h-16 items-center px-6 gap-4 relative z-10">
           {/* Breadcrumbs or Page Title could go here in future */}

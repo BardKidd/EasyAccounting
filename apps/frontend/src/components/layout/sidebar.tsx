@@ -119,7 +119,7 @@ function SidebarContent({
   setOpen?: (open: boolean) => void;
 }) {
   return (
-    <div className="flex flex-col h-full py-4 bg-white/40 dark:bg-[#0f172a]/40 backdrop-blur-2xl text-slate-800 dark:text-slate-200 border-r border-slate-200/50 dark:border-white/10 overflow-hidden relative">
+    <div className="flex flex-col h-full pt-[calc(1rem+var(--safe-area-top))] pb-[calc(1rem+var(--safe-area-bottom))] bg-white/40 dark:bg-[#0f172a]/40 backdrop-blur-2xl text-slate-800 dark:text-slate-200 border-r border-slate-200/50 dark:border-white/10 overflow-hidden relative">
       <div className="px-6 md:px-2 lg:px-6 py-4 flex items-center justify-center border-b border-slate-200/50 dark:border-white/10 mb-2 transition-all duration-300">
         <Link
           href="/dashboard"
@@ -189,7 +189,7 @@ function Sidebar({ className }: SidebarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden fixed top-4 left-4 z-40 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-xl text-slate-800 dark:text-slate-200 hover:bg-white/80 dark:hover:bg-[#0f172a]/80 border border-slate-200/50 dark:border-white/10 shadow-lg rounded-xl cursor-pointer"
+            className="md:hidden fixed top-[calc(1rem+var(--safe-area-top))] left-[calc(1rem+var(--safe-area-left))] z-40 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-xl text-slate-800 dark:text-slate-200 hover:bg-white/80 dark:hover:bg-[#0f172a]/80 border border-slate-200/50 dark:border-white/10 shadow-lg rounded-xl cursor-pointer"
           >
             <Menu className="h-5 w-5" />
             <span className="sr-only">Toggle Menu</span>

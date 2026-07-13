@@ -32,8 +32,10 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
       {/* Main Content Area */}
       <div className="flex flex-col h-full flex-1 min-w-0 overflow-hidden relative z-10 transition-colors duration-300">
         <Header />
-        <main className="flex-1 overflow-y-auto">
-          <div className="md:container md:mx-auto md:p-8 p-4 pt-4 md:pt-8 pb-24 md:pb-32 w-full max-w-7xl relative transition-all duration-300">
+        {/* 內層捲動容器：防 Safari 過捲彈簧與誤觸下拉更新（NFR-2）；底部避讓 Home Indicator。
+            外殼已 fixed inset-0，故不對全域 html/body 動 position:fixed（spec §3）。 */}
+        <main className="flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+          <div className="md:container md:mx-auto md:p-8 p-4 pt-4 md:pt-8 pb-[calc(6rem+var(--safe-area-bottom))] md:pb-[calc(8rem+var(--safe-area-bottom))] w-full max-w-7xl relative transition-all duration-300">
             {children}
           </div>
         </main>

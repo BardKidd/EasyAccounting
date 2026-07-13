@@ -50,6 +50,13 @@
 :root {
   --radius: 0.75rem; /* rounded-xl (12px) */
 
+  /* iOS Safe Area insets（需 viewport-fit=cover，見 layout.tsx viewport export）。
+     只宣告變數，實際避讓套在 Header / Sidebar / 內層捲動容器（spec §3）。 */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+
   /* Light Mode (Slate 50 Background) */
   --background: oklch(0.984 0.003 247.858); /* slate-50 */
   --foreground: oklch(0.208 0.042 265.755); /* slate-900 */
@@ -154,6 +161,13 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* 移除 iOS 預設灰底點擊高亮（NFR-2） */
+    -webkit-tap-highlight-color: transparent;
+  }
+  html {
+    /* 停用雙擊縮放，行動端點擊更即時（NFR-2）。不對 html/body 動 position:fixed，
+       外殼已是 fixed inset-0，避免弄壞 (auth) 長表單捲動（spec §3）。 */
+    touch-action: manipulation;
   }
   body {
     @apply bg-background text-foreground;
