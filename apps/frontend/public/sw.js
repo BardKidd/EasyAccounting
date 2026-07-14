@@ -18,7 +18,7 @@
  * the version bump exists to drop the old precache (notably a stale /offline) on activate.
  */
 
-const SW_VERSION = 'v1';
+const SW_VERSION = 'v2';
 const PRECACHE = `easyacct-precache-${SW_VERSION}`;
 const RUNTIME = `easyacct-runtime-${SW_VERSION}`;
 const OFFLINE_URL = '/offline';
@@ -138,4 +138,58 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Everything else (e.g. ?_rsc= data fetches): network-only, no caching.
+});
+
+// -----------------------------------------------------------------------------
+// Web Push (spec §6). iOS 16.4+ delivers push only to home-screen (standalone) PWAs.
+// Payload shape (from backend webPushService): { title, body, url?, tag? }.
+// -----------------------------------------------------------------------------
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (err) {
+    data = { body: event.data ? event.data.text() : '' };
+  }
+
+  const title = data.title || 'EasyAccounting';
+  const options = {
+    body: data.body || '',
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-192x192.png',
+    tag: data.tag, // same tag collapses/replaces, avoids notification spam
+    data: { url: data.url || '/dashboard' },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target =
+    (event.notification.data && event.notification.data.url) || '/dashboard';
+
+  event.waitUntil(
+    (async () => {
+      const clientsArr = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      });
+      // Reuse an already-open app window if there is one; else open a new one.
+      for (const client of clientsArr) {
+        if ('focus' in client) {
+          await client.focus();
+          if ('navigate' in client) {
+            try {
+              await client.navigate(target);
+            } catch (err) {
+              /* cross-origin or detached — ignore */
+            }
+          }
+          return;
+        }
+      }
+      if (self.clients.openWindow) await self.clients.openWindow(target);
+    })(),
+  );
 });

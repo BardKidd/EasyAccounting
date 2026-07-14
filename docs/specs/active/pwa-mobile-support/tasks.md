@@ -61,23 +61,29 @@
 
 ### 5. Web Push 推播通知
 
-- [ ] **5.1 後端 PushSubscription 模型 + migration（雙 DB、userId、cascade）**
-  - `src/models/` 新增 `PushSubscription`（`userId` FK、`endpoint` unique、`p256dh`、`auth`）
-  - `database/migrations/` 新增對應 migration（兩處都要）
-  - 接入 `src/models/index.ts` `afterDestroy` cascade（刪 User 連帶刪 subs、`individualHooks: true`）
-- [ ] **5.2 後端 Web Push 與 VAPID**
-  - 安裝 `web-push`；產生 VAPID，私鑰入後端 `.env`，公鑰以 `NEXT_PUBLIC_VAPID_PUBLIC_KEY` 給前端
-  - 實作 `POST /api/notifications/subscribe`（先改 `@repo/shared` Zod schema，見跨層慣例）
-- [ ] **5.3 前端 Push 訂閱開關與權限取得**
+- [x] **5.1 後端 PushSubscription 模型 + migration（userId、cascade）** — 2026-07-14
+  - `src/models/PushSubscription.ts`（`userId` FK CASCADE、`endpoint` unique、`p256dh`、`auth`、hard-delete）
+  - `database/migrations/20260714000000-create-push-subscription.js`（accounting schema、endpoint unique + userId index）
+  - `src/models/index.ts`：import + `User.afterDestroy` 串接 `PushSubscription.destroy({ where: { userId } })` + association + export
+- [x] **5.2 後端 Web Push 與 VAPID（程式部分）** — 2026-07-14
+  - 已安裝 `web-push` + `@types/web-push`；VAPID keypair 已產生（私鑰交付使用者設 `.env`，**未進版控**）
+  - `@repo/shared` 新增 `pushSubscription.schema.ts`（`pushSubscriptionSchema` / `pushUnsubscribeSchema`）+ index 匯出
+  - `services/webPushService.ts`（VAPID init、`sendPushToUser`、410/404 清理）、`services/pushSubscriptionServices.ts`（upsert / remove / has）
+  - `controllers/notificationController.ts` + `routes/notificationRoute.ts`：`POST /api/notifications/subscribe`、`/unsubscribe`、`GET /status`（皆 `authMiddleware` + `validate`）；掛載於 `app.ts`
+  - ⏳ **待使用者**：後端 `.env` 設 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`；前端 `.env` 設 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`；跑 `pnpm db:migrate:up`
+- [ ] **5.3 前端 Push 訂閱開關與權限取得** — ⏳ 等 migration workflow 跑完（避免撞 settings 頁）
   - 個人設定頁「推播通知」開關；**非 standalone 顯示灰態並提示需先加到主畫面**
-  - 於**點擊手勢中**請求 `Notification.requestPermission()`；以 `NEXT_PUBLIC_VAPID_PUBLIC_KEY` 取 `PushSubscription` 上報
-- [ ] **5.4 整合 Cron Job 推播 + 失效清理**
-  - 記帳提醒 cron 觸發時，對 active subs 發送
-  - 送出回 `410`/`404` → 當場刪除該筆 subscription
-- [ ] **5.5 登出 / 共用裝置清理**
-  - 登出時清 SW caches、取消 `pushManager` 訂閱並通知後端刪除（見 spec Edge Cases 4）
+  - 於**點擊手勢中**請求 `Notification.requestPermission()`；以 `NEXT_PUBLIC_VAPID_PUBLIC_KEY` 取 `PushSubscription` 上報 `POST /api/notifications/subscribe`
+- [x] **5.4 整合 Cron Job 推播 + 失效清理** — 2026-07-14
+  - `cron/notificationCron.ts` `checkDailyReminder` 對訂閱使用者呼叫 `webPushService.sendPushToUser`（標題「記帳提醒」、導向 `/transactions?new=1`）
+  - 送出回 `410`/`404` → `webPushService` 當場刪除該筆（單元測試 `tests/unit/webPushService.test.ts` 3 passed）
+  - SW 端 `public/sw.js` 新增 `push` + `notificationclick` handler，`SW_VERSION` bump `v1`→`v2`
+- [ ] **5.5 登出 / 共用裝置清理** — ⏳ 前端部分等 workflow（後端 `/unsubscribe` 已備）
+  - 登出時清 SW caches、取消 `pushManager` 訂閱並呼叫 `POST /api/notifications/unsubscribe`（見 spec Edge Cases 4）
 
 ### 6. 測試與驗證
+
+> **人工驗收清單見 [acceptance-checklist.md](./acceptance-checklist.md)**（需 Vercel Preview HTTPS + iOS 16.4+ 實機）。
 
 - [ ] **6.1 行動端實機測試（需 HTTPS，見 0.2）**
   - 於 Vercel Preview + iOS 實機 Safari 測「加入主畫面」、Safe Area 避讓、狀態列可讀性（淺/深色）

@@ -57,6 +57,11 @@ import {
   moveBudgetMoney,
 } from './budget';
 import { getAuditLogs } from './auditLog';
+import {
+  subscribePush,
+  unsubscribePush,
+  getPushStatus,
+} from './pushNotification';
 
 export default {
   getCategories,
@@ -102,4 +107,7 @@ export default {
   assignBudget,
   moveBudgetMoney,
   getAuditLogs,
+  subscribePush,
+  unsubscribePush,
+  getPushStatus,
 };

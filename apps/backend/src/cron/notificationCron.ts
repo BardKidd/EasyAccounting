@@ -15,6 +15,7 @@ import {
 import { RootType } from '@repo/shared';
 import { quickChartDoughnutProps } from '@/types/email';
 import reportService from '@/services/reportService';
+import webPushService from '@/services/webPushService';
 import { sleep } from '@/utils/common';
 
 /**
@@ -54,6 +55,15 @@ export const checkDailyReminder = async () => {
         });
         await sleep(600);
       }
+
+      // Web Push 推播（spec §6）：對該使用者的有效訂閱發送；失效訂閱於 service 內清理。
+      // 未設定 VAPID 金鑰時 service 靜默略過。
+      await webPushService.sendPushToUser(sub.userId, {
+        title: '記帳提醒',
+        body: `${user?.name ?? '嗨'}，別忘了今天的記帳 ✏️`,
+        url: '/transactions?new=1',
+        tag: 'daily-reminder',
+      });
     }
 
     console.log('[Cron] Daily reminder check completed.');

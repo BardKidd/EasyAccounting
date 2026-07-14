@@ -21,6 +21,7 @@ import TransactionTag from './transactionTag';
 import TransactionSplit from './transactionSplit';
 import TransactionRule from './transactionRule';
 import TransactionRuleTag from './transactionRuleTag';
+import PushSubscription from './PushSubscription';
 
 // -----------------------------------------------------------------------------
 // Soft Delete Hooks (Cascade)
@@ -63,6 +64,9 @@ User.addHook('afterDestroy', async (user: any, options: any) => {
     transaction,
     individualHooks: true,
   });
+  // PushSubscription（per-user、hard-delete）：刪 User 連帶清其推播訂閱端點，
+  // 避免同裝置下一位使用者殘留他人訂閱（spec Edge Cases 4）。
+  await PushSubscription.destroy({ where: { userId }, transaction });
 });
 
 // Category 為 soft-delete（paranoid:true）：DB 層的 ON DELETE CASCADE 不會觸發，
@@ -285,6 +289,13 @@ User.hasMany(PasswordResetToken, {
 });
 PasswordResetToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+// User & PushSubscription（Web Push，多裝置）
+User.hasMany(PushSubscription, {
+  foreignKey: 'userId',
+  as: 'pushSubscriptions',
+});
+PushSubscription.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 // -----------------------------------------------------------------------------
 // Currency / ExchangeRate（共用維度表）
 // ⚠️ 刻意不加入任何 User.afterDestroy cascade：刪 User 不可波及共用幣別/匯率表。
@@ -437,4 +448,5 @@ export {
   TransactionSplit,
   TransactionRule,
   TransactionRuleTag,
+  PushSubscription,
 };

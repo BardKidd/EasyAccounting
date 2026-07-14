@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { logout } from '@/services/authService';
+import { clearPushOnLogout } from '@/lib/pushCleanup';
 import { toast } from 'sonner';
 import { ElegantLoader } from '@/components/ui/elegant-loader';
 
@@ -40,6 +41,7 @@ export function GuestLogoutDialog({
       const result = await logout();
       if (result.isSuccess) {
         localStorage.removeItem('user');
+        await clearPushOnLogout();
         toast.success(result.message);
         window.location.href = '/login';
       }

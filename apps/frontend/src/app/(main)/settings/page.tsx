@@ -2,6 +2,7 @@ import { Container } from '@/components/ui/container';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CategorySettings } from '@/components/settings/categorySettings';
 import { NotificationSettings } from '@/components/settings/notificationSettings';
+import { PushNotificationCard } from '@/components/settings/pushNotificationCard';
 import { CurrencySettings } from '@/components/settings/currencySettings';
 import { TagSettings } from '@/components/settings/tagSettings';
 import service from '@/services';
@@ -66,6 +67,7 @@ export default async function SettingsPage() {
           value="notifications"
           className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-500"
         >
+          <PushNotificationCard />
           <NotificationSettings notifications={notifications} />
         </TabsContent>
         <TabsContent

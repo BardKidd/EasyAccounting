@@ -14,6 +14,7 @@ import { Bell, UserPlus, MessageSquare } from 'lucide-react';
 import { simplifyTryCatch, cn } from '@/lib/utils';
 import { getReconciliationNotifications } from '@/services/reconciliationService';
 import { logout } from '@/services/authService';
+import { clearPushOnLogout } from '@/lib/pushCleanup';
 import { toast } from 'sonner';
 import { useRouter, usePathname } from 'next/navigation';
 import { sidebarItems } from '@/components/layout/sidebar';
@@ -84,6 +85,8 @@ export function Header() {
       const result = await logout();
       if (result.isSuccess) {
         localStorage.removeItem('user');
+        // 共用裝置清理（spec Edge Cases 4）：取消 Push 訂閱 + 清 SW caches，best-effort 不擋登出。
+        await clearPushOnLogout();
         toast.success(result.message);
         window.location.href = '/login';
       }
