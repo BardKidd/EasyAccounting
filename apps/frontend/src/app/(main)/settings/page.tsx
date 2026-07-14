@@ -30,28 +30,28 @@ export default async function SettingsPage() {
         </div>
       </div>
       <Tabs defaultValue="categories" className="space-y-8">
-        <TabsList className="inline-flex h-12 items-center justify-center rounded-full bg-slate-100 dark:bg-[#0f172a]/80 backdrop-blur-md p-1 border border-slate-200/50 dark:border-white/10 mb-4 shadow-sm relative">
+        <TabsList className="inline-flex h-12 items-center justify-center rounded-full bg-slate-100 dark:bg-[#0f172a]/80 backdrop-blur-md p-1 border border-slate-200/50 dark:border-white/10 mb-4 shadow-sm relative max-md:grid max-md:grid-cols-2 max-md:h-auto max-md:w-full max-md:gap-1 max-md:rounded-2xl">
           <TabsTrigger
             value="categories"
-            className="cursor-pointer rounded-full px-8 py-2 md:px-10 text-sm font-medium transition-all duration-300 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/20 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 data-[state=active]:hover:text-white"
+            className="cursor-pointer rounded-full px-8 py-2 md:px-10 text-sm font-medium transition-all duration-300 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/20 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 data-[state=active]:hover:text-white max-md:w-full max-md:px-3"
           >
             分類管理
           </TabsTrigger>
           <TabsTrigger
             value="notifications"
-            className="cursor-pointer rounded-full px-8 py-2 md:px-10 text-sm font-medium transition-all duration-300 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/20 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 data-[state=active]:hover:text-white"
+            className="cursor-pointer rounded-full px-8 py-2 md:px-10 text-sm font-medium transition-all duration-300 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/20 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 data-[state=active]:hover:text-white max-md:w-full max-md:px-3"
           >
             通知設定
           </TabsTrigger>
           <TabsTrigger
             value="currency"
-            className="cursor-pointer rounded-full px-8 py-2 md:px-10 text-sm font-medium transition-all duration-300 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/20 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 data-[state=active]:hover:text-white"
+            className="cursor-pointer rounded-full px-8 py-2 md:px-10 text-sm font-medium transition-all duration-300 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/20 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 data-[state=active]:hover:text-white max-md:w-full max-md:px-3"
           >
             貨幣設定
           </TabsTrigger>
           <TabsTrigger
             value="tags"
-            className="cursor-pointer rounded-full px-8 py-2 md:px-10 text-sm font-medium transition-all duration-300 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/20 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 data-[state=active]:hover:text-white"
+            className="cursor-pointer rounded-full px-8 py-2 md:px-10 text-sm font-medium transition-all duration-300 data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/20 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 data-[state=active]:hover:text-white max-md:w-full max-md:px-3"
           >
             標籤管理
           </TabsTrigger>

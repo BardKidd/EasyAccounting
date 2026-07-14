@@ -73,7 +73,7 @@ export function FileUploader({
                 <Upload className="h-8 w-8" />
               </div>
               <div className="space-y-2">
-                <p className="font-bold text-xl text-slate-800 dark:text-slate-200 font-playfair tracking-wide">
+                <p className="font-bold text-xl text-slate-800 dark:text-slate-200 font-outfit tracking-wide">
                   點擊或拖曳 PDF 檔案至此
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400 font-sans">

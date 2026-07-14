@@ -61,7 +61,7 @@ export function BudgetMonthNav({
         data-testid="month-prev"
         disabled={!canPrev}
         onClick={() => onChange(prevMonth(value))}
-        className="h-9 w-9 rounded-lg cursor-pointer"
+        className="h-11 w-11 md:h-9 md:w-9 rounded-lg cursor-pointer"
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
@@ -85,7 +85,7 @@ export function BudgetMonthNav({
         data-testid="month-next"
         disabled={!canNext}
         onClick={() => onChange(nextMonth(value))}
-        className="h-9 w-9 rounded-lg cursor-pointer"
+        className="h-11 w-11 md:h-9 md:w-9 rounded-lg cursor-pointer"
       >
         <ChevronRight className="h-4 w-4" />
       </Button>

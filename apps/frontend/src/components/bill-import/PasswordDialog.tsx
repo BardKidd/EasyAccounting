@@ -37,7 +37,7 @@ export function PasswordDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border-slate-200/50 dark:border-white/10 rounded-3xl shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold font-playfair bg-linear-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent">
+          <DialogTitle className="text-xl font-bold font-outfit bg-linear-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent">
             輸入 PDF 密碼
           </DialogTitle>
           <DialogDescription className="text-slate-500 dark:text-slate-400">

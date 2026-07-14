@@ -59,8 +59,13 @@ export function BudgetTable({
   } | null>(null);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl shadow-lg">
-      {/* Header */}
+    <>
+      {/* Desktop：固定欄寬 grid（md+ only；窄螢幕會裁切「可用」欄，故 hidden） */}
+      <div
+        data-testid="budget-table-desktop"
+        className="hidden md:block overflow-hidden rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl shadow-lg"
+      >
+        {/* Header */}
       <div
         className={`${GRID_COLS} py-3 bg-slate-50/80 dark:bg-slate-800/30 border-b border-slate-200/50 dark:border-white/5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider`}
       >
@@ -241,9 +246,185 @@ export function BudgetTable({
         <span className="text-right tabular-nums text-slate-700 dark:text-slate-200">
           {fmt(data.totals.available)}
         </span>
+        </div>
       </div>
 
-      {/* Activity 明細 Sheet */}
+      {/* Mobile：可點卡片列（金額與情境同屏、無橫向捲動；R1/R6） */}
+      <div className="md:hidden space-y-2">
+        {data.rows.map((row) => {
+          const activityColor =
+            row.activity < 0
+              ? 'text-red-600 dark:text-red-400'
+              : row.activity > 0
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-slate-400 dark:text-slate-500';
+          return (
+            <div
+              key={row.categoryId}
+              data-category-name={row.name}
+              className="rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-3 space-y-2 shadow-sm"
+            >
+              {/* Line 1：分類 + 目標鈕 + 可用 pill（點開搬錢 Sheet） */}
+              <div className="flex items-center gap-3 min-w-0">
+                {row.icon && (
+                  <div
+                    className="flex items-center justify-center w-9 h-9 rounded-lg shrink-0"
+                    style={{
+                      backgroundColor: row.color ? `${row.color}20` : undefined,
+                    }}
+                  >
+                    <CategoryIcon iconName={row.icon} />
+                  </div>
+                )}
+                <TargetPopover
+                  row={row}
+                  onUpsert={onUpsertTarget}
+                  onDelete={onDeleteTarget}
+                >
+                  <button
+                    title="設定目標"
+                    className="flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-md px-1 py-1 text-left cursor-pointer"
+                  >
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
+                      {row.name}
+                    </span>
+                    <Target
+                      className={`h-3.5 w-3.5 shrink-0 ${
+                        row.target
+                          ? 'text-emerald-500'
+                          : 'text-slate-300 dark:text-slate-600'
+                      }`}
+                    />
+                  </button>
+                </TargetPopover>
+                <div className="ml-auto shrink-0">
+                  <MoveMoneyPopover
+                    rows={data.rows}
+                    currentCategoryId={row.categoryId}
+                    onMove={onMove}
+                  >
+                    <button className="flex min-h-[44px] items-center cursor-pointer rounded-full transition-transform active:scale-95">
+                      <AvailablePill
+                        value={row.available}
+                        formatted={fmt(row.available)}
+                      />
+                    </button>
+                  </MoveMoneyPopover>
+                </div>
+              </div>
+
+              {/* Line 2：目標摘要 + 缺口快速補足 */}
+              {row.target && (
+                <div className="flex items-center gap-1.5 pl-12 text-[11px] text-slate-400 dark:text-slate-500">
+                  <span className="truncate">
+                    {targetLabel(row.target, fmt)}
+                  </span>
+                  <span>·</span>
+                  {row.underfunded > 0 ? (
+                    <button
+                      onClick={() =>
+                        onAssign(
+                          row.categoryId,
+                          row.assigned + row.underfunded,
+                        )
+                      }
+                      className="text-amber-600 dark:text-amber-400 font-medium cursor-pointer"
+                    >
+                      差 {fmt(row.underfunded)}
+                    </button>
+                  ) : (
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      已達標
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Line 3：已分配 + 收支（點開明細 Sheet） */}
+              <div className="flex items-center justify-between gap-2 pl-12">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    已分配
+                  </span>
+                  <AssignedCell
+                    value={row.assigned}
+                    formatted={fmt(row.assigned)}
+                    onSubmit={(v) => onAssign(row.categoryId, v)}
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    收支
+                  </span>
+                  <button
+                    onClick={() =>
+                      setActivityTarget({
+                        categoryId: row.categoryId,
+                        name: row.name,
+                      })
+                    }
+                    className={`min-h-[44px] md:min-h-0 px-2 py-1 rounded-md text-sm tabular-nums cursor-pointer ${activityColor}`}
+                  >
+                    {fmt(row.activity)}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* 轉出（未分類）虛擬卡 */}
+        {data.unclassifiedTransferOut && (
+          <div className="rounded-2xl border border-slate-200/50 dark:border-white/10 bg-slate-50/40 dark:bg-slate-800/20 p-3 space-y-2 shadow-sm">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg shrink-0 bg-slate-200/50 dark:bg-slate-700/50">
+                <ArrowUpRight className="h-4 w-4 text-slate-400" />
+              </div>
+              <span className="text-sm font-medium text-slate-500 dark:text-slate-400 italic truncate">
+                轉出（未分類）
+              </span>
+              <div className="ml-auto shrink-0">
+                <AvailablePill
+                  value={data.unclassifiedTransferOut.available}
+                  formatted={fmt(data.unclassifiedTransferOut.available)}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 pl-12">
+              <span className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                收支
+              </span>
+              <span className="text-sm tabular-nums text-red-600 dark:text-red-400">
+                {fmt(data.unclassifiedTransferOut.activity)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* 合計卡 */}
+        <div className="rounded-2xl border border-slate-200/50 dark:border-white/10 bg-slate-50/60 dark:bg-slate-800/30 p-3 flex items-center justify-between gap-2 text-sm font-semibold shadow-sm">
+          <span className="text-slate-600 dark:text-slate-300">合計</span>
+          <div className="flex items-center gap-4 tabular-nums">
+            <span className="text-slate-700 dark:text-slate-200">
+              {fmt(data.totals.assigned)}
+            </span>
+            <span
+              className={
+                data.totals.activity < 0
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-slate-700 dark:text-slate-200'
+              }
+            >
+              {fmt(data.totals.activity)}
+            </span>
+            <span className="text-slate-700 dark:text-slate-200">
+              {fmt(data.totals.available)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Activity 明細 Sheet（桌面 grid 與手機卡片共用） */}
       <CategoryActivitySheet
         open={activityTarget !== null}
         onOpenChange={(o) => !o && setActivityTarget(null)}
@@ -252,6 +433,6 @@ export function BudgetTable({
         month={month}
         baseCurrencyCode={baseCurrencyCode}
       />
-    </div>
+    </>
   );
 }

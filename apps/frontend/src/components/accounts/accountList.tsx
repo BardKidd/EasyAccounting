@@ -32,6 +32,7 @@ import AccountArchiveConfirmDialog from '@/components/accounts/accountArchiveCon
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Archive, RefreshCw, Pencil, Trash2 } from 'lucide-react';
+import { MobileRowActions } from '@/components/ui/mobile-row-actions';
 import services from '@/services';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -210,68 +211,99 @@ function CollapsibleAccountGroup({
                           )}
                       </span>
 
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">Open menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            className="cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEdit(account);
-                            }}
-                          >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            編輯
-                          </DropdownMenuItem>
-
-                          {account.isArchived ? (
+                      <div className="hidden md:block">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                              <span className="sr-only">Open menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
                             <DropdownMenuItem
                               className="cursor-pointer"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onUnarchive(account);
+                                onEdit(account);
                               }}
                             >
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              解除封存
+                              <Pencil className="mr-2 h-4 w-4" />
+                              編輯
                             </DropdownMenuItem>
-                          ) : (
+
+                            {account.isArchived ? (
+                              <DropdownMenuItem
+                                className="cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUnarchive(account);
+                                }}
+                              >
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                解除封存
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                className="cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onArchive(account);
+                                }}
+                              >
+                                <Archive className="mr-2 h-4 w-4" />
+                                封存帳戶
+                              </DropdownMenuItem>
+                            )}
+
                             <DropdownMenuItem
-                              className="cursor-pointer"
+                              className="text-destructive cursor-pointer"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onArchive(account);
+                                onDelete(account);
                               }}
                             >
-                              <Archive className="mr-2 h-4 w-4" />
-                              封存帳戶
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              刪除
                             </DropdownMenuItem>
-                          )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
 
-                          <DropdownMenuItem
-                            className="text-destructive cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDelete(account);
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            刪除
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="md:hidden">
+                        <MobileRowActions
+                          actions={[
+                            {
+                              label: '編輯',
+                              icon: Pencil,
+                              onSelect: () => onEdit(account),
+                            },
+                            account.isArchived
+                              ? {
+                                  label: '解除封存',
+                                  icon: RefreshCw,
+                                  onSelect: () => onUnarchive(account),
+                                }
+                              : {
+                                  label: '封存帳戶',
+                                  icon: Archive,
+                                  onSelect: () => onArchive(account),
+                                },
+                            {
+                              label: '刪除',
+                              icon: Trash2,
+                              onSelect: () => onDelete(account),
+                              destructive: true,
+                            },
+                          ]}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}

@@ -111,7 +111,7 @@ export function InitBudgetDialog({
                 .map((acc) => (
                   <label
                     key={acc.id}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
+                    className="flex items-center gap-3 p-2 min-h-[44px] md:min-h-0 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer transition-colors"
                   >
                     <Checkbox
                       checked={overrides[acc.id] ?? false}

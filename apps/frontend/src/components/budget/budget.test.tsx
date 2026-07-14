@@ -84,10 +84,12 @@ describe('CreditCardPaymentSection', () => {
         onAssign={onAssign}
       />,
     );
+    // R1：桌面 grid 與手機卡片同時渲染於 jsdom，將重複文字查詢限縮到桌面容器
+    const ccDesktop = within(screen.getByTestId('cc-payment-desktop'));
     expect(screen.getByText('信用卡付款')).toBeInTheDocument();
-    expect(screen.getByText('Visa')).toBeInTheDocument();
-    expect(screen.getByText('卡債')).toBeInTheDocument();
-    // 撥備：點 cell 的 button 進入編輯、送出
+    expect(ccDesktop.getByText('Visa')).toBeInTheDocument();
+    expect(ccDesktop.getByText('卡債')).toBeInTheDocument();
+    // 撥備：點 cell 的 button 進入編輯、送出（cc-assigned-cell 僅桌面有此 testid）
     const cell = screen.getByTestId('cc-assigned-cell');
     fireEvent.click(within(cell).getByRole('button'));
     const input = screen.getByRole('spinbutton');
@@ -269,10 +271,12 @@ describe('BudgetTable', () => {
         onDeleteTarget={vi.fn()}
       />,
     );
-    expect(screen.getByText('飲食')).toBeInTheDocument();
-    expect(screen.getByText('交通')).toBeInTheDocument();
-    expect(screen.getByText('轉出（未分類）')).toBeInTheDocument();
-    expect(screen.getByText('合計')).toBeInTheDocument();
+    // R1：桌面 grid 與手機卡片同時渲染於 jsdom，將重複文字查詢限縮到桌面容器
+    const desktop = within(screen.getByTestId('budget-table-desktop'));
+    expect(desktop.getByText('飲食')).toBeInTheDocument();
+    expect(desktop.getByText('交通')).toBeInTheDocument();
+    expect(desktop.getByText('轉出（未分類）')).toBeInTheDocument();
+    expect(desktop.getByText('合計')).toBeInTheDocument();
   });
 
   it('無跨邊界轉出時不顯示虛擬列', () => {
@@ -304,7 +308,9 @@ describe('BudgetTable', () => {
       />,
     );
     // cat-b（交通）target=REFILL 500、underfunded 300
-    expect(screen.getByText(/補滿到/)).toBeInTheDocument();
+    // R1：桌面/手機同時渲染，補滿到摘要限縮到桌面容器；underfunded-fill testid 僅桌面有
+    const desktop = within(screen.getByTestId('budget-table-desktop'));
+    expect(desktop.getByText(/補滿到/)).toBeInTheDocument();
     const fill = screen.getByTestId('underfunded-fill');
     expect(fill).toHaveTextContent('差');
     fireEvent.click(fill);

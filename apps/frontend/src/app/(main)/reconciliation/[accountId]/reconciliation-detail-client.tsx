@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { getErrorMessage, formatCurrency } from '@/lib/utils';
+import { getErrorMessage, formatCurrency, cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -155,7 +155,7 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
   }, [data, selectedIds]);
 
   return (
-    <div className="space-y-6 pb-24">
+    <div className="space-y-6 pb-40 md:pb-24">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button
@@ -179,7 +179,7 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
       <Card className="shadow-xl bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border-slate-200/50 dark:border-white/10 rounded-3xl overflow-hidden">
         <CardHeader className="pb-4 border-b border-slate-200/50 dark:border-white/5">
           <div className="flex items-center justify-between">
-            <CardTitle className="font-playfair text-xl">
+            <CardTitle className="font-outfit text-xl">
               待核對交易列表
             </CardTitle>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -208,6 +208,8 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
+          {/* 桌面：表格（維持原樣） */}
+          <div className="hidden md:block">
           <Table>
             <TableHeader className="bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-sm">
               <TableRow className="hover:bg-transparent border-slate-200/50 dark:border-white/5">
@@ -300,18 +302,100 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
               )}
             </TableBody>
           </Table>
+          </div>
+
+          {/* 手機：全選列 + 可點 card 列（金額與日期/分類同屏、無橫向捲動） */}
+          <div className="md:hidden">
+            {data.transactions.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground">
+                此區間無待核對交易
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100/50 dark:border-white/5">
+                  <span className="text-xs text-muted-foreground">
+                    共 {data.transactions.length} 筆
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9"
+                    onClick={toggleAll}
+                  >
+                    {selectedIds.size === data.transactions.length
+                      ? '取消全選'
+                      : '全選'}
+                  </Button>
+                </div>
+                <div className="space-y-2 p-4">
+                  {data.transactions.map((txn) => {
+                    const selected = selectedIds.has(txn.id);
+                    return (
+                      <button
+                        key={txn.id}
+                        type="button"
+                        onClick={() => toggleSelection(txn.id)}
+                        className={cn(
+                          'flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-colors active:bg-accent',
+                          selected
+                            ? 'border-emerald-300 bg-emerald-50/60 dark:border-emerald-500/40 dark:bg-emerald-500/10'
+                            : 'border-slate-200 bg-card dark:border-slate-800',
+                        )}
+                      >
+                        <Checkbox
+                          checked={selected}
+                          aria-label="選取交易"
+                          className="pointer-events-none shrink-0 border-slate-300 dark:border-slate-600 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 rounded flex w-4 h-4"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                              {txn.description}
+                            </span>
+                            <span className="shrink-0 font-mono text-base font-semibold text-slate-700 dark:text-slate-300">
+                              {formatCurrency(Number(txn.amount))}
+                            </span>
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span className="shrink-0">
+                              {new Date(txn.date).toLocaleDateString()}
+                            </span>
+                            {txn.category ? (
+                              <>
+                                <span
+                                  className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm"
+                                  style={{
+                                    backgroundColor: txn.category.color || '#ccc',
+                                  }}
+                                />
+                                <span className="truncate">
+                                  {txn.category.name}
+                                </span>
+                              </>
+                            ) : (
+                              <span>-</span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
 
       {/* Footer Summary Bar */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 border-t border-slate-200/50 dark:border-white/10 bg-white/70 dark:bg-[#060c15]/70 backdrop-blur-2xl z-10 md:pl-64 transition-all duration-300 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
+      <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 p-4 border-t border-slate-200/50 dark:border-white/10 bg-white/70 dark:bg-[#060c15]/70 backdrop-blur-2xl z-10 md:pl-64 transition-all duration-300 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
         <div className="container max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex flex-col md:flex-row md:gap-12 gap-2">
             <div className="flex items-baseline gap-2">
               <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
                 已選取
               </span>
-              <span className="text-xl font-bold font-playfair text-slate-900 dark:text-white">
+              <span className="text-xl font-bold font-outfit text-slate-900 dark:text-white">
                 {summary.selectedCount}
                 <span className="text-base font-normal text-slate-400 font-sans ml-1">
                   / {summary.totalCount} 筆
@@ -322,7 +406,7 @@ export default function ReconciliationDetailClient({ data, accountId }: Props) {
               <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
                 總金額
               </span>
-              <span className="text-xl font-bold font-playfair text-emerald-600 dark:text-emerald-400">
+              <span className="text-xl font-bold font-outfit text-emerald-600 dark:text-emerald-400">
                 {formatCurrency(summary.selectedAmount)}
               </span>
               <span className="text-xs text-slate-400 font-mono ml-1">

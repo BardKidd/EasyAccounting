@@ -97,13 +97,13 @@ export function CurrencySettings() {
           </span>
           <span className="font-medium">{labelOf(baseCode)}</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 max-md:flex-col max-md:items-stretch">
           <Select
             value={selected}
             onValueChange={setSelected}
             disabled={loading || switching}
           >
-            <SelectTrigger className="w-60">
+            <SelectTrigger className="w-60 max-md:w-full">
               <SelectValue placeholder="選擇本位幣" />
             </SelectTrigger>
             <SelectContent>

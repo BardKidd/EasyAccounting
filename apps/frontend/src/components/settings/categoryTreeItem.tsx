@@ -11,6 +11,10 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  MobileRowActions,
+  type MobileRowAction,
+} from '@/components/ui/mobile-row-actions';
 import { cn } from '@/lib/utils';
 import { ExtendedCategoryType } from './types';
 import { CategoryIcon } from '@/components/ui/category-icon';
@@ -95,8 +99,8 @@ export function CategoryTreeItem({
           </span>
         </div>
 
-        {/* Hover Actions */}
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-2 group-hover:translate-x-0">
+        {/* Hover Actions（桌面：hover 顯示；手機無 hover 故 max-md:hidden） */}
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-2 group-hover:translate-x-0 max-md:hidden">
           {/* 只有 MainCategory 才可以新增 SubCategory */}
           {isMain && (
             <Button
@@ -140,6 +144,40 @@ export function CategoryTreeItem({
             </>
           )}
         </div>
+
+        {/* 手機：以 ⋯ 觸控選單取代 hover 動作，動作可見性與桌面邏輯完全一致 */}
+        {(() => {
+          const actions: MobileRowAction[] = [];
+          if (isMain) {
+            actions.push({
+              label: '新增子分類',
+              icon: Plus,
+              onSelect: () => onAddSub(node),
+            });
+          }
+          if (hasUser) {
+            actions.push({
+              label: '編輯',
+              icon: Pencil,
+              onSelect: () => onEdit(node),
+            });
+            actions.push({
+              label: '刪除',
+              icon: Trash2,
+              onSelect: () => onDelete(node),
+              destructive: true,
+            });
+          }
+          if (actions.length === 0) return null;
+          return (
+            <div
+              className="absolute right-2 top-1/2 -translate-y-1/2 md:hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MobileRowActions actions={actions} />
+            </div>
+          );
+        })()}
       </div>
 
       {isExpanded && hasChildren && (

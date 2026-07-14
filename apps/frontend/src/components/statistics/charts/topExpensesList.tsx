@@ -16,7 +16,7 @@ export function TopExpensesList({
     <Card className="h-full border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden group rounded-3xl">
       <CardHeader className="pb-2 border-b border-slate-200/50 dark:border-white/10 bg-white/40 dark:bg-white/5 relative overflow-hidden">
         <div className="absolute inset-0 bg-linear-to-r from-emerald-500/0 via-emerald-500/5 to-teal-500/0 dark:from-emerald-400/0 dark:via-emerald-400/5 dark:to-teal-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-        <CardTitle className="text-lg font-bold font-playfair text-slate-900 dark:text-white relative z-10 transition-colors duration-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+        <CardTitle className="text-lg font-bold font-outfit text-slate-900 dark:text-white relative z-10 transition-colors duration-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
           單筆支出 Top 3
         </CardTitle>
       </CardHeader>
@@ -47,7 +47,7 @@ export function TopExpensesList({
                   </div>
 
                   <div className="flex flex-col space-y-0.5">
-                    <span className="font-bold text-sm text-slate-700 dark:text-slate-200 font-playfair group-hover/item:text-slate-900 dark:group-hover/item:text-white transition-colors">
+                    <span className="font-bold text-sm text-slate-700 dark:text-slate-200 font-outfit group-hover/item:text-slate-900 dark:group-hover/item:text-white transition-colors">
                       {item.category.name}
                     </span>
                     <span className="text-xs text-slate-500 font-mono">
