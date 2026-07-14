@@ -44,6 +44,8 @@ export const viewport: Viewport = {
   // viewport-fit=cover 是 Safe Area 的必要開關，必須放在 viewport export，
   // 不可寫 CSS @viewport（已被瀏覽器移除）（spec §1 / §3）。
   viewportFit: 'cover',
+  // iOS 軟鍵盤彈出時縮排版視窗（而非覆蓋），讓底部彈出的 Sheet/Dialog 送出鈕不被鍵盤蓋住。
+  interactiveWidget: 'resizes-content',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
     { media: '(prefers-color-scheme: dark)', color: '#09090b' },

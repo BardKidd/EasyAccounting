@@ -4,6 +4,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* iOS safe-area padding utilities（Tailwind v4）。
+   Radix portal（Sheet/Dialog/DropdownMenu）render 在 <body>，吃不到 shell 套在
+   Header/Sidebar 的 --safe-area-* 避讓，故提供可直接套用的 utility。
+   （修正 ChatInput 原本用的 `pb-safe` 是未定義 no-op 的問題。） */
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

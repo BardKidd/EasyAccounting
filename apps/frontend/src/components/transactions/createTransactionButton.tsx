@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TransactionSheet } from './transactionSheet';
@@ -16,6 +17,24 @@ export function CreateTransactionButton({
   accounts,
 }: CreateTransactionButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // 手機底部導覽的中央「+」FAB 會導到 /transactions?new=1，於此自動開啟新增交易 sheet。
+  useEffect(() => {
+    if (searchParams.get('new') === '1') setIsOpen(true);
+  }, [searchParams]);
+
+  const handleClose = () => {
+    setIsOpen(false);
+    // 關閉後清掉 ?new=1，保留其餘篩選參數，避免返回/重整時又自動開啟。
+    if (searchParams.get('new')) {
+      const params = new URLSearchParams(Array.from(searchParams.entries()));
+      params.delete('new');
+      const qs = params.toString();
+      router.replace(`/transactions${qs ? `?${qs}` : ''}`, { scroll: false });
+    }
+  };
 
   return (
     <>
@@ -27,7 +46,7 @@ export function CreateTransactionButton({
       </Button>
       <TransactionSheet
         isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
+        onClose={handleClose}
         categories={categories}
         accounts={accounts}
       />

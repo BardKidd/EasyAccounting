@@ -2,6 +2,7 @@
 
 import ReactECharts from 'echarts-for-react';
 import * as echarts from 'echarts';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import useDark from '@/hooks/useDark';
 import { format } from 'date-fns';
@@ -27,6 +28,16 @@ export default function AssetTrendChart({
   hasMultiCurrency,
 }: AssetTrendChartProps) {
   const isDark = useDark();
+
+  // 手機（<md）：關掉會攔截單指捲動的 inside dataZoom（scroll-trap P1）、精簡雙軸標籤。
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   const option = {
     tooltip: {
@@ -89,34 +100,37 @@ export default function AssetTrendChart({
       bottom: '12%',
       containLabel: true,
     },
-    dataZoom: [
-      {
-        type: 'slider',
-        show: true,
-        xAxisIndex: [0],
-        bottom: 0,
-        height: 16,
-        borderColor: 'transparent',
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        fillerColor: 'rgba(255,255,255,0.1)',
-        handleSize: '100%',
-        handleStyle: {
-          color: '#64748b',
-          shadowBlur: 3,
-          shadowColor: 'rgba(0, 0, 0, 0.6)',
-        },
-        textStyle: { color: 'transparent' },
-        brushSelect: false,
-        start: 0,
-        end: 100, // Show all by default, user can zoom
-      },
-      {
-        type: 'inside',
-        xAxisIndex: [0],
-        zoomOnMouseWheel: true,
-        moveOnMouseWheel: true,
-      },
-    ],
+    // 手機不放 dataZoom：inside 版會把單指拖曳吃成平移，導致頁面捲不過圖表（scroll-trap）。
+    dataZoom: isMobile
+      ? []
+      : [
+          {
+            type: 'slider',
+            show: true,
+            xAxisIndex: [0],
+            bottom: 0,
+            height: 16,
+            borderColor: 'transparent',
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            fillerColor: 'rgba(255,255,255,0.1)',
+            handleSize: '100%',
+            handleStyle: {
+              color: '#64748b',
+              shadowBlur: 3,
+              shadowColor: 'rgba(0, 0, 0, 0.6)',
+            },
+            textStyle: { color: 'transparent' },
+            brushSelect: false,
+            start: 0,
+            end: 100, // Show all by default, user can zoom
+          },
+          {
+            type: 'inside',
+            xAxisIndex: [0],
+            zoomOnMouseWheel: true,
+            moveOnMouseWheel: true,
+          },
+        ],
     xAxis: [
       {
         type: 'category',
@@ -128,7 +142,7 @@ export default function AssetTrendChart({
           },
           color: isDark ? '#94a3b8' : '#64748b',
           fontFamily: 'Geist Mono',
-          fontSize: 10,
+          fontSize: isMobile ? 11 : 10,
           margin: 14,
         },
         axisLine: { show: false },
@@ -138,7 +152,7 @@ export default function AssetTrendChart({
     yAxis: [
       {
         type: 'value',
-        name: '收支',
+        name: isMobile ? '' : '收支',
         nameTextStyle: {
           color: '#64748b',
           align: 'right',
@@ -149,7 +163,7 @@ export default function AssetTrendChart({
           formatter: (value: number) => `${(value / 1000).toFixed(0)}k`,
           color: isDark ? '#64748b' : '#94a3b8',
           fontFamily: 'Geist Mono',
-          fontSize: 10,
+          fontSize: isMobile ? 11 : 10,
         },
         splitLine: {
           lineStyle: {
@@ -159,7 +173,7 @@ export default function AssetTrendChart({
       },
       {
         type: 'value',
-        name: '總資產',
+        name: isMobile ? '' : '總資產',
         nameTextStyle: {
           color: '#64748b',
           align: 'left',
@@ -170,7 +184,7 @@ export default function AssetTrendChart({
           formatter: (value: number) => `${(value / 1000).toFixed(0)}k`,
           color: isDark ? '#64748b' : '#94a3b8',
           fontFamily: 'Geist Mono',
-          fontSize: 10,
+          fontSize: isMobile ? 11 : 10,
         },
         splitLine: { show: false },
       },
@@ -227,11 +241,10 @@ export default function AssetTrendChart({
   };
 
   return (
-    <Card className="h-[450px] border-0 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/40 ring-1 ring-white/50 dark:ring-white/10 group dark:shadow-teal-glow relative overflow-hidden">
-      <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none" />
+    <Card className="h-auto min-h-[380px] md:h-[450px] border border-slate-200 dark:border-slate-800 bg-card shadow-sm group relative overflow-hidden">
       <CardHeader className="pb-2 border-b border-slate-200 dark:border-white/5 flex flex-row items-center justify-between relative z-10">
         <div className="space-y-1">
-          <CardTitle className="text-xl font-bold font-playfair tracking-wide text-slate-800 dark:text-slate-100">
+          <CardTitle className="text-xl font-bold font-outfit tracking-wide text-slate-800 dark:text-slate-100">
             財務概況
           </CardTitle>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
@@ -247,7 +260,7 @@ export default function AssetTrendChart({
           </span>
         )}
       </CardHeader>
-      <CardContent className="h-[370px] pt-4 relative z-10">
+      <CardContent className="h-[320px] md:h-[370px] pt-4 relative z-10">
         {isLoading ? (
           <div className="h-full w-full flex items-center justify-center bg-white/5 animate-pulse rounded-lg">
             <span className="text-slate-400">載入中...</span>

@@ -159,7 +159,7 @@ export const ChatInput = ({ onSend, onStop, isGenerating, disabled }: ChatInputP
             onPaste={handlePaste}
             placeholder={isGenerating ? "AI 正在回覆..." : "請輸入文字或貼上截圖..."}
             disabled={isGenerating || disabled}
-            className="min-h-[44px] max-h-[120px] resize-none border-0 shadow-none focus-visible:ring-0 py-3 px-4 text-sm scrollbar-hide bg-transparent"
+            className="min-h-[44px] max-h-[120px] resize-none border-0 shadow-none focus-visible:ring-0 py-3 px-4 text-base md:text-sm scrollbar-hide bg-transparent"
             rows={1}
           />
         </div>

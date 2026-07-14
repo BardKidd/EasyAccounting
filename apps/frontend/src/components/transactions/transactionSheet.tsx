@@ -1083,6 +1083,7 @@ export function TransactionSheet({
                           </span>
                           <Input
                             type="number"
+                            inputMode="decimal"
                             placeholder="0.00"
                             {...field}
                             className={cn(

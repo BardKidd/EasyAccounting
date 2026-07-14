@@ -15,7 +15,8 @@ import { simplifyTryCatch, cn } from '@/lib/utils';
 import { getReconciliationNotifications } from '@/services/reconciliationService';
 import { logout } from '@/services/authService';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import { sidebarItems } from '@/components/layout/sidebar';
 import { ElegantLoader } from '@/components/ui/elegant-loader';
 import { useMemo, useState, useEffect } from 'react';
 import { GuestLogoutDialog } from '@/components/auth/guest-logout-dialog';
@@ -25,6 +26,12 @@ import { useChatState } from '@/contexts/chatContext';
 
 export function Header() {
   const router = useRouter();
+  const pathname = usePathname();
+  // 頁面標題：填補原本空白的左側區塊，手機上提供所在位置脈絡（桌面亦受惠）。
+  const pageTitle =
+    sidebarItems.find(
+      (i) => pathname === i.href || pathname.startsWith(`${i.href}/`),
+    )?.title ?? '';
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<{
     name: string;
@@ -97,8 +104,10 @@ export function Header() {
         <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none rounded-2xl" />
         <div className="flex h-16 items-center px-6 gap-4 relative z-10">
           {/* Breadcrumbs or Page Title could go here in future */}
-          <div className="flex-1">
-            {/* Placeholder for potential breadcrumbs */}
+          <div className="flex-1 min-w-0">
+            <h1 className="truncate font-outfit text-lg font-bold tracking-tight text-slate-800 dark:text-slate-100">
+              {pageTitle}
+            </h1>
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
@@ -106,8 +115,8 @@ export function Header() {
 
             <Button
               variant="ghost"
-              size="icon"
-              className="h-10 w-10 cursor-pointer relative rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              size="icon-lg"
+              className="cursor-pointer relative rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               onClick={() => router.push('/reconciliation')}
             >
               <Bell className="h-5 w-5 text-slate-500 dark:text-slate-400" />
@@ -119,9 +128,9 @@ export function Header() {
 
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-lg"
               className={cn(
-                "h-10 w-10 cursor-pointer relative rounded-full transition-colors",
+                "cursor-pointer relative rounded-full transition-colors",
                 isChatOpen 
                   ? "bg-emerald-100/50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400" 
                   : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
@@ -138,7 +147,8 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="relative h-10 w-10 rounded-full border border-slate-200/50 dark:border-white/10 p-0 font-bold hover:scale-105 transition-all cursor-pointer ring-offset-background focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 overflow-hidden shadow-sm"
+                  size="icon-lg"
+                  className="relative rounded-full border border-slate-200/50 dark:border-white/10 p-0 font-bold hover:scale-105 transition-all cursor-pointer ring-offset-background focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 overflow-hidden shadow-sm"
                 >
                   <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-emerald-500 to-teal-400 text-white shadow-inner">
                     {getFirstLetterAsAvatar}

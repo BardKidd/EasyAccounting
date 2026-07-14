@@ -3,14 +3,12 @@
 import Link, { useLinkStatus } from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
   Receipt,
   Wallet,
   Settings,
   PieChart,
-  Menu,
   Command,
   FileCheck,
   Repeat,
@@ -20,15 +18,9 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-  SheetTitle,
-} from '@/components/ui/sheet';
-import { useState } from 'react';
 
-const sidebarItems = [
+// 導覽項目單一真實來源：桌面 Sidebar 與手機 BottomTabBar/「更多」sheet 共用。
+export const sidebarItems = [
   {
     title: '儀表板',
     href: '/dashboard',
@@ -179,43 +171,20 @@ function SidebarContent({
 
 function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
 
+  // 桌面固定側欄。手機導覽改由 BottomTabBar + 「更多」sheet 提供
+  // （見 components/layout/bottomTabBar.tsx），故移除舊的左上漢堡抽屜
+  // —— 它與浮動 Header 重疊造成抽屜開不了（spec 導覽 P0）。
   return (
-    <>
-      {/* Mobile Sidebar */}
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden fixed top-[calc(1rem+var(--safe-area-top))] left-[calc(1rem+var(--safe-area-left))] z-40 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-xl text-slate-800 dark:text-slate-200 hover:bg-white/80 dark:hover:bg-[#0f172a]/80 border border-slate-200/50 dark:border-white/10 shadow-lg rounded-xl cursor-pointer"
-          >
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle Menu</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent
-          side="left"
-          className="w-[280px] p-0 border-r-0 bg-transparent"
-        >
-          <SheetTitle className="sr-only">Navigation Menu</SheetTitle>{' '}
-          {/* Accessibility */}
-          <SidebarContent pathname={pathname} setOpen={setOpen} />
-        </SheetContent>
-      </Sheet>
-
-      {/* Desktop Sidebar */}
-      <div
-        className={cn(
-          'hidden md:flex h-screen flex-col border-r border-slate-200/50 dark:border-white/10 shadow-lg shadow-slate-200/20 dark:shadow-black/20 z-50 transition-all duration-300',
-          'w-[64px] lg:w-[250px]',
-          className,
-        )}
-      >
-        <SidebarContent pathname={pathname} />
-      </div>
-    </>
+    <div
+      className={cn(
+        'hidden md:flex h-screen flex-col border-r border-slate-200/50 dark:border-white/10 shadow-lg shadow-slate-200/20 dark:shadow-black/20 z-50 transition-all duration-300',
+        'w-[64px] lg:w-[250px]',
+        className,
+      )}
+    >
+      <SidebarContent pathname={pathname} />
+    </div>
   );
 }
 
