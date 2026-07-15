@@ -16,6 +16,7 @@ import {
   getDay,
   startOfMonth,
   endOfMonth,
+  isSameMonth,
 } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -27,6 +28,8 @@ import useSWR from 'swr';
 import { TransactionType, CategoryType, AccountType } from '@repo/shared';
 import { CalendarEvent } from './calendarEvent';
 import { CalendarDayModal } from './calendarDayModal';
+import { MobileMonthCalendar } from './mobileMonthCalendar';
+import { DayTransactionList } from './dayTransactionList';
 import { TransactionSheet } from './transactionSheet';
 import { toast } from 'sonner';
 import { getTransactions, updateTransaction } from '@/services/transaction';
@@ -36,6 +39,7 @@ import { getErrorMessage } from '@/lib/utils';
 import {
   filterForCalendar,
   transactionToCalendarEvent,
+  getDayIndicators,
   CalendarEventType,
 } from '@/lib/calendarUtils';
 
@@ -129,11 +133,26 @@ export default function TransactionCalendar({
     return () => mq.removeEventListener('change', update);
   }, []);
 
+  // 手機版（<md）改用自製月曆＋當日 List；桌機維持 react-big-calendar
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
   // 與 URL 同步內部日期
   // 如果 URL 只有 ?view=calendar 沒有 date，我們就用今日
   const dateParam = searchParams.get('date');
   const [date, setDate] = useState(
     dateParam ? new Date(dateParam) : new Date(),
+  );
+
+  // 手機版選取日（yyyy-MM-dd），預設今天或 URL 指定日
+  const [selectedDate, setSelectedDate] = useState(
+    dateParam ?? format(new Date(), 'yyyy-MM-dd'),
   );
 
   // SWR: Client-side fetching with caching
@@ -160,12 +179,13 @@ export default function TransactionCalendar({
   useEffect(() => {
     if (dateParam) {
       setDate(new Date(dateParam));
+      setSelectedDate(dateParam);
     }
   }, [dateParam]);
 
-  // Modal 狀態
+  // Modal 狀態（桌機）
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [modalDate, setModalDate] = useState<Date | null>(null);
   const [dayTransactions, setDayTransactions] = useState<TransactionType[]>([]);
 
   // 編輯 Sheet 狀態
@@ -177,6 +197,20 @@ export default function TransactionCalendar({
   const events = useMemo(() => {
     return filterForCalendar(transactions).map(transactionToCalendarEvent);
   }, [transactions]);
+
+  // 手機版：各日類型小點與選取日交易
+  const dayIndicators = useMemo(
+    () => getDayIndicators(transactions),
+    [transactions],
+  );
+  const selectedDayTransactions = useMemo(
+    () => transactions.filter((tx) => tx.date === selectedDate),
+    [transactions, selectedDate],
+  );
+  const selectedDateObj = useMemo(
+    () => new Date(`${selectedDate}T00:00:00`),
+    [selectedDate],
+  );
 
   // 處理日曆導航 (使用 shallow routing)
   const onNavigate = useCallback(
@@ -250,7 +284,7 @@ export default function TransactionCalendar({
       // 無交易時不開啟 modal
       if (txsForDay.length === 0) return;
 
-      setSelectedDate(start);
+      setModalDate(start);
       setDayTransactions(txsForDay);
       setIsModalOpen(true);
     },
@@ -276,6 +310,33 @@ export default function TransactionCalendar({
     [handleEditTransaction],
   );
 
+  // 手機版：點日期格（跨月補位日則一併導航至該月）
+  const onSelectMobileDate = useCallback(
+    (dateStr: string) => {
+      setSelectedDate(dateStr);
+      const target = new Date(`${dateStr}T00:00:00`);
+      if (!isSameMonth(target, date)) {
+        onNavigate(target);
+      }
+    },
+    [date, onNavigate],
+  );
+
+  // 手機版：工具列換月／今天，同步選取日
+  const onNavigateMobile = useCallback(
+    (newDate: Date) => {
+      onNavigate(newDate);
+      setSelectedDate(format(newDate, 'yyyy-MM-dd'));
+    },
+    [onNavigate],
+  );
+
+  // 手機版空狀態的新增入口：開 create mode sheet（日期帶入選取日）
+  const handleCreateTransaction = useCallback(() => {
+    setSelectedTransaction(null);
+    setIsEditSheetOpen(true);
+  }, []);
+
   // 5. 自訂事件元件與 Toolbar
   const components = useMemo(
     () => ({
@@ -289,6 +350,25 @@ export default function TransactionCalendar({
 
   return (
     <div className="bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl rounded-3xl shadow-xl border border-slate-200/50 dark:border-white/10 overflow-hidden">
+      {isMobile ? (
+        <div className="pb-1">
+          <MobileMonthCalendar
+            date={date}
+            selectedDate={selectedDate}
+            indicators={dayIndicators}
+            onSelectDate={onSelectMobileDate}
+            onNavigate={onNavigateMobile}
+          />
+          <DayTransactionList
+            date={selectedDateObj}
+            transactions={selectedDayTransactions}
+            categories={categories}
+            accounts={accounts}
+            onEdit={handleEditTransaction}
+            onCreate={handleCreateTransaction}
+          />
+        </div>
+      ) : (
       <div className="h-[70dvh] min-h-[460px] md:h-[calc(100vh-220px)] md:min-h-[750px] p-0">
         <DnDCalendar
           localizer={localizer}
@@ -321,19 +401,22 @@ export default function TransactionCalendar({
           className="rounded-b-2xl border-none"
         />
       </div>
+      )}
 
-      <CalendarDayModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        date={selectedDate}
-        transactions={dayTransactions}
-        categories={categories}
-        accounts={accounts}
-        onEdit={(id) => {
-          setIsModalOpen(false);
-          handleEditTransaction(id);
-        }}
-      />
+      {!isMobile && (
+        <CalendarDayModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          date={modalDate}
+          transactions={dayTransactions}
+          categories={categories}
+          accounts={accounts}
+          onEdit={(id) => {
+            setIsModalOpen(false);
+            handleEditTransaction(id);
+          }}
+        />
+      )}
 
       <TransactionSheet
         isOpen={isEditSheetOpen}
@@ -343,6 +426,7 @@ export default function TransactionCalendar({
           mutate(); // 關閉 Sheet 時也重新整理 SWR (如果有修改)
         }}
         transaction={selectedTransaction}
+        defaultDate={selectedDateObj}
         categories={categories}
         accounts={accounts}
       />

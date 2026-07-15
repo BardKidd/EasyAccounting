@@ -95,6 +95,7 @@ interface TransactionSheetProps {
   categories: CategoryType[];
   accounts: AccountType[];
   transaction?: TransactionType | null; // If provided, Edit Mode
+  defaultDate?: Date; // Create Mode 的日期初始值（如日曆選取日），未提供則為今天
   hideDelete?: boolean;
   mode?: 'transaction' | 'template';
   recurringTemplate?: RecurringTemplateType | null;
@@ -106,6 +107,7 @@ export function TransactionSheet({
   categories,
   accounts,
   transaction,
+  defaultDate,
   hideDelete = false,
   mode = 'transaction',
   recurringTemplate = null,
@@ -424,7 +426,7 @@ export function TransactionSheet({
           amount: 0,
           type: RootType.EXPENSE,
           description: '',
-          date: now,
+          date: defaultDate ?? now,
           time: format(now, 'HH:mm:ss'),
           mainCategory: '',
           subCategory: '',
@@ -450,7 +452,7 @@ export function TransactionSheet({
         setSplitMode(false);
       }
     }
-  }, [isOpen, isEditMode, transaction, categories, form]);
+  }, [isOpen, isEditMode, transaction, categories, form, defaultDate]);
 
   const currentMainCategory = useMemo(() => {
     if (!categories) return [];
