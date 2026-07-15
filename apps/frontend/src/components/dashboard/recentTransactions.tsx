@@ -7,6 +7,7 @@ import {
 } from '@repo/shared';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { formatCurrency, calculateNetAmount } from '@/lib/utils';
+import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 function RecentTransactions({
@@ -68,14 +69,22 @@ function RecentTransactions({
   };
 
   return (
-    <Card className="border border-slate-200 dark:border-slate-800 bg-card shadow-sm relative overflow-hidden flex flex-col h-auto md:h-[460px]">
-      <CardHeader className="border-b border-slate-200 dark:border-white/5 pb-4 relative z-10">
-        <CardTitle className="text-lg font-bold font-outfit text-slate-800 dark:text-slate-100">
+    // 手機拆掉卡片外殼（無框、透明底），以「區塊標題＋原生清單」呈現；桌面維持卡片
+    <Card className="border border-slate-200 dark:border-slate-800 bg-card shadow-sm relative overflow-hidden flex flex-col h-auto md:h-[460px] max-md:border-0 max-md:bg-transparent max-md:dark:bg-transparent max-md:shadow-none max-md:rounded-none max-md:overflow-visible">
+      <CardHeader className="border-b border-slate-200 dark:border-white/5 pb-4 relative z-10 flex flex-row items-baseline justify-between max-md:border-0 max-md:p-0 max-md:pb-1">
+        <CardTitle className="text-lg font-bold font-outfit text-slate-800 dark:text-slate-100 max-md:text-base">
           近期交易
         </CardTitle>
+        <Link
+          href="/transactions"
+          className="flex items-center text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline active:opacity-70"
+        >
+          查看全部
+          <ChevronRight className="size-4" />
+        </Link>
       </CardHeader>
       {/* 手機讓清單自然增高、由頁面主捲軸負責；桌面才固定高度內捲，避免巢狀捲動彈簧衝突 */}
-      <CardContent className="flex-1 pt-4 px-2 md:overflow-hidden">
+      <CardContent className="flex-1 pt-4 px-2 md:overflow-hidden max-md:p-0 max-md:pt-1">
         {transactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center h-full">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
@@ -83,12 +92,15 @@ function RecentTransactions({
               <div className="w-8 h-8 rounded-md border-2 border-dashed border-muted-foreground/30" />
             </div>
             <p className="text-muted-foreground font-medium">尚無交易記錄</p>
-            <p className="text-sm text-muted-foreground/80 mt-2">
+            <p className="text-sm text-muted-foreground/80 mt-2 md:hidden">
+              點下方「＋」開始記帳
+            </p>
+            <p className="text-sm text-muted-foreground/80 mt-2 hidden md:block">
               點擊右上角「新增交易」按鈕開始記帳
             </p>
           </div>
         ) : (
-          <div className="space-y-2 pr-2 custom-scrollbar md:h-full md:overflow-y-auto">
+          <div className="space-y-2 pr-2 max-md:pr-0 custom-scrollbar md:h-full md:overflow-y-auto">
             {transactions.map((item) => {
               const category = findCategory(item.categoryId, categories);
               const account = accounts.find((a) => a.id === item.accountId);
@@ -98,7 +110,7 @@ function RecentTransactions({
                 <Link
                   key={item.id}
                   href="/transactions"
-                  className="flex min-h-[44px] items-center p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800/70 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:shadow-md transition-all duration-300 group border border-transparent hover:border-slate-200 dark:hover:border-slate-700/50 hover:-translate-y-0.5"
+                  className="flex min-h-[44px] items-center p-3 max-md:-mx-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800/70 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:shadow-md transition-all duration-300 group border border-transparent hover:border-slate-200 dark:hover:border-slate-700/50 hover:-translate-y-0.5"
                 >
                   <div
                     className={`flex h-10 w-10 items-center justify-center rounded-xl shadow-inner ${

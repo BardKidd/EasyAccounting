@@ -241,13 +241,14 @@ export default function AssetTrendChart({
   };
 
   return (
-    <Card className="h-auto min-h-[380px] md:h-[450px] border border-slate-200 dark:border-slate-800 bg-card shadow-sm group relative overflow-hidden">
-      <CardHeader className="pb-2 border-b border-slate-200 dark:border-white/5 flex flex-row items-center justify-between relative z-10">
+    <Card className="h-auto min-h-[340px] md:h-[450px] border border-slate-200 dark:border-slate-800 bg-card shadow-sm group relative overflow-hidden">
+      {/* 手機縮小標題層級與內距（p-6 → 16px），把空間留給圖表本體 */}
+      <CardHeader className="pb-2 border-b border-slate-200 dark:border-white/5 flex flex-row items-center justify-between relative z-10 max-md:px-4 max-md:pt-4">
         <div className="space-y-1">
-          <CardTitle className="text-xl font-bold font-outfit tracking-wide text-slate-800 dark:text-slate-100">
+          <CardTitle className="text-xl font-bold font-outfit tracking-wide text-slate-800 dark:text-slate-100 max-md:text-base">
             財務概況
           </CardTitle>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 max-md:hidden">
             收支與資產趨勢分析
           </p>
         </div>
@@ -260,7 +261,7 @@ export default function AssetTrendChart({
           </span>
         )}
       </CardHeader>
-      <CardContent className="h-[320px] md:h-[370px] pt-4 relative z-10">
+      <CardContent className="h-[280px] md:h-[370px] pt-4 max-md:px-2 max-md:pt-2 relative z-10">
         {isLoading ? (
           <div className="h-full w-full flex items-center justify-center bg-white/5 animate-pulse rounded-lg">
             <span className="text-slate-400">載入中...</span>

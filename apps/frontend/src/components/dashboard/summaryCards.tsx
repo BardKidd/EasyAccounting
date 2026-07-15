@@ -2,6 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AccountType } from '@repo/shared';
 import { Wallet, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
+import {
+  calcThisMonthFinances,
+  calcTotalAssets,
+  MonthlySummaryPoint,
+} from './summaryMath';
 
 const summaryCardsData = (values = [0, 0, 0, 0] as number[]) => {
   return [
@@ -49,39 +54,8 @@ function SummaryCards({
   summaryData,
 }: {
   accounts: AccountType[];
-  summaryData: {
-    type: string;
-    date: string;
-    income: number;
-    expense: number;
-  }[];
+  summaryData: MonthlySummaryPoint[];
 }) {
-  const calcThisMonthFinances = (
-    data: { type: string; date: string; income: number; expense: number }[],
-  ) => {
-    const now = new Date();
-    // Format: YYYY-MM
-    const currentKey = `${now.getFullYear()}-${String(
-      now.getMonth() + 1,
-    ).padStart(2, '0')}`;
-
-    const thisPeriodData = data.find((item) => item.date === currentKey);
-
-    if (thisPeriodData) {
-      const profit = thisPeriodData.income - thisPeriodData.expense;
-      return [thisPeriodData.income, thisPeriodData.expense, profit];
-    }
-    return [0, 0, 0];
-  };
-
-  const calcTotalAssets = (data: AccountType[]) => {
-    const totalAssets = data.reduce(
-      (total, item) => total + Number(item.balance),
-      0,
-    );
-    return totalAssets;
-  };
-
   const finances = calcThisMonthFinances(summaryData);
 
   const summary = summaryCardsData([
