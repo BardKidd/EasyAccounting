@@ -84,7 +84,7 @@
 │     │   └─ image: ghcr.io/<owner>/backend:prod │
 │     │   └─ minReplicas: 1                      │
 │     │   └─ 0.25 vCPU / 0.5 GiB                │
-│     └─ dev:  api.dev.riinouo-eaccounting.win   │
+│     └─ dev:  api-dev.riinouo-eaccounting.win   │
 │         └─ image: ghcr.io/<owner>/backend:dev  │
 │         └─ minReplicas: 0 (scale to zero)      │
 │         └─ 0.25 vCPU / 0.5 GiB                │
@@ -114,7 +114,7 @@
 | Git Branch | Docker Tag | Container Apps 環境 | Domain                            | minReplicas |
 | ---------- | ---------- | ------------------- | --------------------------------- | ----------- |
 | `product`  | `:prod`    | production          | `api.riinouo-eaccounting.win`     | 1           |
-| `main`     | `:dev`     | development         | `api.dev.riinouo-eaccounting.win` | 0           |
+| `main`     | `:dev`     | development         | `api-dev.riinouo-eaccounting.win` | 0           |
 
 ---
 
@@ -210,7 +210,7 @@ EXPOSE 3000
 
 # 健康檢查（Container Apps 用來判斷 container 是否正常）
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "fetch('http://localhost:3000/api/deploy-health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
+  CMD node -e "fetch('http://localhost:3000/api/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
 
 # 使用 tsx 直接執行 TypeScript（跟本地開發一致）
 CMD ["npx", "tsx", "./src/app.ts"]
@@ -283,7 +283,7 @@ services:
 docker compose -f docker-compose.prod.yml up --build
 
 # 驗證 health check
-curl http://localhost:3000/api/deploy-health
+curl http://localhost:3000/api/health
 
 # 清理
 docker compose -f docker-compose.prod.yml down
@@ -372,9 +372,9 @@ Container Apps 會用 HTTP probe 來確認 container 是否健康：
 
 | Probe         | Path                 | 間隔                      | 用途                                             |
 | ------------- | -------------------- | ------------------------- | ------------------------------------------------ |
-| **Liveness**  | `/api/deploy-health` | 30s                       | Container 是否還活著                             |
-| **Readiness** | `/api/deploy-health` | 10s                       | Container 是否準備好接收流量                     |
-| **Startup**   | `/api/deploy-health` | 5s (failureThreshold: 10) | Container 啟動是否成功（給 cold start 足夠時間） |
+| **Liveness**  | `/api/health` | 30s                       | Container 是否還活著                             |
+| **Readiness** | `/api/health` | 10s                       | Container 是否準備好接收流量                     |
+| **Startup**   | `/api/health` | 5s (failureThreshold: 10) | Container 啟動是否成功（給 cold start 足夠時間） |
 
 你的 backend 已經有 `deployHealthRoute`，這個 endpoint 剛好能用。
 
@@ -621,7 +621,7 @@ docker images easyaccounting-backend:test
 docker compose -f docker-compose.prod.yml up --build
 
 # 4. Smoke test
-curl http://localhost:3000/api/deploy-health
+curl http://localhost:3000/api/health
 # 預期：200 OK
 ```
 
@@ -637,7 +637,7 @@ curl http://localhost:3000/api/deploy-health
 
 | 測試項目     | 方法                                                             | 預期結果             |
 | ------------ | ---------------------------------------------------------------- | -------------------- |
-| Health check | `curl https://api.dev.riinouo-eaccounting.win/api/deploy-health` | 200 OK               |
+| Health check | `curl https://api-dev.riinouo-eaccounting.win/api/health` | 200 OK               |
 | 使用者登入   | 前端登入功能                                                     | JWT cookie 正常設定  |
 | 資料讀取     | 查看交易列表                                                     | 從 Neon 正常查詢     |
 | 資料寫入     | 新增一筆交易                                                     | 寫入 Neon + MongoDB  |

@@ -20,22 +20,14 @@ EasyAccounting 是個人記帳與資產管理應用，採 Turborepo + pnpm Monor
 根目錄（透過 turbo 跨所有 workspace）：
 
 ```bash
-pnpm install            # 安裝（pnpm 為強制套件管理器，node >= 24.14.1）
-pnpm dev                # 同時啟動前後端
-pnpm build              # 建置全部
-pnpm lint               # 全部 lint
 pnpm check-types        # 全部型別檢查（單一 package 修改後驗證的首選）
-pnpm format             # Prettier
 ```
 
 後端（`cd apps/backend`）：
 
 ```bash
-pnpm dev                # tsx watch src/app.ts
 pnpm test               # vitest（watch）— 需可連線的 PostgreSQL
 pnpm test:run           # vitest 單次
-pnpm test:run path/to/file.test.ts   # 執行單一測試檔
-pnpm test:run -t "名稱"               # 依測試名稱過濾
 pnpm db:migrate:up      # 套用 migration
 pnpm db:migrate:down    # 還原上一個 migration
 pnpm db:migrate         # 互動式建立新 migration（會 prompt 名稱）
@@ -45,9 +37,7 @@ pnpm email              # React Email 樣板預覽（埠 3001）
 前端（`cd apps/frontend`）：
 
 ```bash
-pnpm dev                # next dev -p 8080
 pnpm test:run           # vitest（jsdom）單次
-pnpm test:run src/lib/calendarUtils.test.ts   # 單一測試檔
 pnpm test:e2e           # Playwright（testDir e2e，baseURL :8080，需先啟動 app）
 pnpm test:e2e:ui        # Playwright UI 模式
 ```
@@ -91,11 +81,11 @@ pnpm test:e2e:ui        # Playwright UI 模式
 | 改任何 symbol 前 | GitNexus `impact`（upstream，回報 blast radius；HIGH/CRITICAL 先警告） | — |
 | commit 前 | GitNexus `detect_changes`（比對 `main` 確認只碰預期範圍） | — |
 | 除錯 / 測試失敗 / 非預期行為 | `superpowers:systematic-debugging`（**唯一預設**，勿再另跑 `diagnose`） | — |
-| 前端 UI（新建 / 改版 / UX 審查） | `impeccable`（**強制進場**，見下方 UI 設計慣例） | `frontend-design` 補美學；`ui-ux-pro-max` 色盤/字體；`chrome-devtools` / `playwright` 驗證 |
+| 前端 UI（新建 / 改版 / UX 審查） | `impeccable`（**強制進場**，動工前先叫它定方向） | `chrome-devtools` 驗證 |
 | API 請求/回應形狀改動 | 先改 `@repo/shared` Zod schema（見上方跨層慣例） | — |
-| 實作程式 | TDD 先測後碼（`superpowers:test-driven-development` / `tdd`） | `context7` 查外部 library 文件 |
+| 實作程式 | TDD 先測後碼（`superpowers:test-driven-development` / `tdd`） | — |
 | 找 bug 的 review | `code-review` skill | `cavecrew-reviewer` 快掃 diff |
-| 純清理 / 簡化（不找 bug） | `simplify` / `code-simplifier` | — |
+| 純清理 / 簡化（不找 bug） | `simplify` | — |
 | 拆 plan 成 issue / PRD | `to-issues` / `to-prd` | — |
 | commit / push / PR（**僅使用者明說**，且不在 `main` 直接動） | `commit-commands` | `caveman-commit` 產訊息 |
 
@@ -104,10 +94,6 @@ pnpm test:e2e:ui        # Playwright UI 模式
 ## 環境變數重點
 
 後端需 `PG_USER/PG_PASSWORD/PG_DATABASE/PG_HOST/PG_PORT`（schema 固定 `accounting`，雲端 host 自動開 SSL）、`ORIGIN_URL`（CORS 白名單）、`AZURE_SERVICE_BUS_CONNECTION_STRING` 與 `AZURE_BLOB_CONNECTION_STRING`（帳單解析）、`RESEND_API_KEY`（寄信）、LLM 金鑰、MongoDB 連線。前端需 `NEXT_PUBLIC_API_DOMAIN`。
-
-## UI 設計慣例
-
-- 任何前端 UI 工作（新建或改版介面、元件、表單、排版、配色、動效、UX 審查）**動工前先叫 `impeccable` skill**（或使用者打 `/impeccable`），依其指引定方向再實作。
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
