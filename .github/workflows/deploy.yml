@@ -81,17 +81,25 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # Deploy to Azure Container Apps
-      # 目前 ghcr package 為 public，Azure 可匿名拉取，registryPassword 用
-      # GITHUB_TOKEN 即可（部署當下有效；public image 之後重啟/擴縮再拉也免憑證）。
-      # ⚠️ 若日後把 package 改成 private（或刪除後重推，新 package 預設 private），
-      #    GITHUB_TOKEN 會在 job 結束後失效導致之後重啟拉取失敗；
-      #    屆時須改用長效 PAT（classic, read:packages）存成 secret GHCR_PAT。
-      - name: Deploy to Azure Container Apps
-        uses: azure/container-apps-deploy-action@v2
-        with:
-          containerAppName: ${{ steps.vars.outputs.app_name }}
-          resourceGroup: EasyAccounting
-          imageToDeploy: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.workflow_run.head_sha }}
-          registryUrl: ghcr.io
-          registryUsername: ${{ github.actor }}
-          registryPassword: ${{ secrets.GITHUB_TOKEN }}
+      # ghcr package 為 public → 讓 ACA 匿名拉取，不在 app 設定存任何 registry 憑證。
+      #
+      # 舊做法把 ephemeral GITHUB_TOKEN 當 registryPassword 存進 app 設定：deploy 當下有效，
+      # 但 token 在 job 結束後失效。之後任何「重啟 / 擴縮 / 改 env」建立新 revision 時，ACA
+      # 會拿那組死 token 去 ghcr 認證（不是匿名）→ 401 → ImagePullBackOff → ingress 502。
+      #
+      # 修法：deploy 前先移除殘留的 ghcr 憑證，再用 az 直接更新 image（無憑證 → 匿名拉 public image）。
+      # 每次 deploy 都會 idempotent 清一次，確保 app 設定永遠不留死憑證。
+      - name: Deploy image (public ghcr, anonymous pull)
+        env:
+          APP_NAME: ${{ steps.vars.outputs.app_name }}
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.workflow_run.head_sha }}
+        run: |
+          az config set extension.use_dynamic_install=yes_without_prompt
+          az containerapp registry remove \
+            --name "$APP_NAME" \
+            --resource-group EasyAccounting \
+            --server ghcr.io --yes || true
+          az containerapp update \
+            --name "$APP_NAME" \
+            --resource-group EasyAccounting \
+            --image "$IMAGE"
