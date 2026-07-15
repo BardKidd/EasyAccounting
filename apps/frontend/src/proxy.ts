@@ -13,6 +13,9 @@ export function proxy(req: NextRequest) {
     '/api/login',
     '/api/register',
     '/',
+    // PWA 離線 fallback：必須公開，否則 SW precache `/offline` 會抓到 302→/login，
+    // 且離線頁本就應在任何登入狀態下都能顯示（spec §4 / FR-3）。
+    '/offline',
   ];
   const isInPublicPath = publicPath.includes(path);
 

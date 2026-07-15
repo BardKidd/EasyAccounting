@@ -11,6 +11,7 @@ import {
 import { Card } from '@/components/ui/card';
 import {
   TransactionResponse,
+  TransactionType,
   RootType,
   CategoryType,
   AccountType,
@@ -27,6 +28,7 @@ import {
   Tag as TagIcon,
   X,
   Loader2,
+  ListChecks,
 } from 'lucide-react';
 import { ACCOUNT_ICONS, IconName } from '@/lib/icon-mapping';
 import { CategoryIcon } from '@/components/ui/category-icon';
@@ -51,6 +53,7 @@ import {
 import { getTags } from '@/services/tagService';
 import services from '@/services';
 import { calculateNetAmount, formatCurrency, cn } from '@/lib/utils';
+import { TransactionSheet } from './transactionSheet';
 
 interface TransactionTableProps {
   transactions: TransactionResponse;
@@ -69,6 +72,14 @@ function TransactionTable({
   const [tags, setTags] = useState<TagType[]>([]);
   const [isBusy, setIsBusy] = useState(false);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  // 手機：選取模式（預設點卡片＝編輯；選取模式＝勾選批次）＋ 單筆編輯 sheet
+  const [selectMode, setSelectMode] = useState(false);
+  const [editTx, setEditTx] = useState<TransactionType | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const openEdit = (tx: TransactionType) => {
+    setEditTx(tx);
+    setEditOpen(true);
+  };
 
   // 換頁 / 篩選導致清單改變時清空選取
   useEffect(() => {
@@ -236,7 +247,7 @@ function TransactionTable({
                   variant="outline"
                   size="sm"
                   disabled={isBusy}
-                  className="h-8 gap-1.5"
+                  className="h-9 md:h-8 gap-1.5"
                 >
                   <TagIcon className="h-3.5 w-3.5" /> 加標籤
                 </Button>
@@ -276,7 +287,7 @@ function TransactionTable({
                   variant="outline"
                   size="sm"
                   disabled={isBusy}
-                  className="h-8 gap-1.5 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/30 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                  className="h-9 md:h-8 gap-1.5 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/30 hover:bg-rose-50 dark:hover:bg-rose-500/10"
                 >
                   {isBusy ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -310,7 +321,7 @@ function TransactionTable({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8"
+              className="h-9 md:h-8"
               onClick={() => setSelectedIds(new Set())}
             >
               <X className="h-3.5 w-3.5" />
@@ -318,7 +329,117 @@ function TransactionTable({
           </div>
         </div>
       )}
-      <Card className="rounded-3xl bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border-slate-200/50 dark:border-white/10 shadow-xl overflow-hidden transition-all duration-300">
+      {/* 手機：選取模式切換列（預設點卡片即編輯，避免常駐小勾選框） */}
+      <div className="md:hidden flex items-center justify-between px-1">
+        <span className="text-xs text-muted-foreground">共 {items.length} 筆</span>
+        <div className="flex items-center gap-1">
+          {selectMode && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9"
+              onClick={toggleAll}
+            >
+              {allSelected ? '取消全選' : '全選'}
+            </Button>
+          )}
+          <Button
+            variant={selectMode ? 'secondary' : 'ghost'}
+            size="sm"
+            className="h-9 gap-1.5"
+            onClick={() => {
+              if (selectMode) setSelectedIds(new Set());
+              setSelectMode((v) => !v);
+            }}
+          >
+            <ListChecks className="h-4 w-4" />
+            {selectMode ? '完成' : '選取'}
+          </Button>
+        </div>
+      </div>
+
+      {/* 手機：可點 card 列（金額與情境同屏、無橫向捲動；點擊開單筆編輯） */}
+      <div className="md:hidden space-y-2">
+        {items.map((transaction) => {
+          const category = findCategory(transaction.categoryId, categories);
+          const account = getAccount(transaction.accountId);
+          const selected = selectedIds.has(transaction.id!);
+          return (
+            <button
+              key={transaction.id}
+              type="button"
+              onClick={() =>
+                selectMode
+                  ? toggleOne(transaction.id!)
+                  : openEdit(transaction)
+              }
+              className={cn(
+                'flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-colors active:bg-accent',
+                selected
+                  ? 'border-emerald-300 bg-emerald-50/60 dark:border-emerald-500/40 dark:bg-emerald-500/10'
+                  : 'border-slate-200 bg-card dark:border-slate-800',
+              )}
+            >
+              {selectMode && (
+                <Checkbox
+                  checked={selected}
+                  aria-label="選取交易"
+                  className="pointer-events-none shrink-0"
+                />
+              )}
+              <div
+                className={cn(
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                  !category?.color && 'bg-muted',
+                )}
+                style={{
+                  backgroundColor: category?.color
+                    ? `${category.color}20`
+                    : undefined,
+                }}
+              >
+                <CategoryIcon
+                  iconName={category?.icon}
+                  className="h-5 w-5"
+                  style={{ color: category?.color || 'currentColor' }}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center truncate text-sm font-medium text-foreground">
+                    {category?.name || '未分類'}
+                    {isTransfer(transaction) && (
+                      <ArrowRightLeft className="ml-1 inline h-3.5 w-3.5 shrink-0 text-amber-500" />
+                    )}
+                  </span>
+                  <span className="shrink-0 text-sm">
+                    {formatAmount(transaction)}
+                  </span>
+                </div>
+                <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="shrink-0 font-mono">
+                    {format(new Date(transaction.date), 'MM/dd')}
+                  </span>
+                  <span>·</span>
+                  <span className="truncate">
+                    {account?.name || '未知帳戶'}
+                  </span>
+                  {transaction.description && (
+                    <>
+                      <span>·</span>
+                      <span className="truncate">
+                        {transaction.description}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <Card className="hidden md:block rounded-3xl bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl border-slate-200/50 dark:border-white/10 shadow-xl overflow-hidden transition-all duration-300">
         <div className="rounded-md">
           <Table data-testid="transaction-table">
             <TableHeader>
@@ -534,6 +655,19 @@ function TransactionTable({
         </div>
       </Card>
       <CustomPagination pagination={transactions.pagination} />
+
+      {/* 點列開啟的單筆編輯 sheet（TransactionSheet 依 transaction prop 進入編輯模式） */}
+      <TransactionSheet
+        isOpen={editOpen}
+        onClose={() => {
+          setEditOpen(false);
+          setEditTx(null);
+          router.refresh();
+        }}
+        transaction={editTx}
+        categories={categories}
+        accounts={accounts}
+      />
     </div>
   );
 }

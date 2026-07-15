@@ -113,24 +113,26 @@ function AuditRow({ log }: { log: AuditLogType }) {
       {open && (
         <div className="border-t border-slate-200/60 dark:border-white/10 px-4 py-3 text-xs space-y-2 bg-slate-50/60 dark:bg-black/20">
           {log.action === AuditAction.UPDATE && log.changes.length > 0 ? (
-            <table className="w-full">
-              <tbody>
-                {log.changes.map((c) => (
-                  <tr key={c.field} className="align-top">
-                    <td className="py-0.5 pr-3 font-mono text-slate-500 whitespace-nowrap">
-                      {c.field}
-                    </td>
-                    <td className="py-0.5 pr-2 text-rose-500 line-through break-all">
-                      {fmtVal(c.from)}
-                    </td>
-                    <td className="py-0.5 pr-2 text-slate-400">→</td>
-                    <td className="py-0.5 text-emerald-600 dark:text-emerald-400 break-all">
-                      {fmtVal(c.to)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="max-md:overflow-x-auto">
+              <table className="w-full">
+                <tbody>
+                  {log.changes.map((c) => (
+                    <tr key={c.field} className="align-top">
+                      <td className="py-0.5 pr-3 font-mono text-slate-500 whitespace-nowrap">
+                        {c.field}
+                      </td>
+                      <td className="py-0.5 pr-2 text-rose-500 line-through break-all">
+                        {fmtVal(c.from)}
+                      </td>
+                      <td className="py-0.5 pr-2 text-slate-400">→</td>
+                      <td className="py-0.5 text-emerald-600 dark:text-emerald-400 break-all">
+                        {fmtVal(c.to)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <pre className="max-h-60 overflow-auto rounded-lg bg-slate-900/90 p-3 text-[11px] leading-relaxed text-slate-200">
               {JSON.stringify(
@@ -271,7 +273,7 @@ function FilterGroup<T>({
           type="button"
           onClick={() => onSelect(opt.value)}
           className={cn(
-            'rounded-md px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer',
+            'rounded-md px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer max-md:inline-flex max-md:items-center max-md:min-h-[44px] max-md:px-3',
             active === opt.value
               ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
               : 'text-slate-500 hover:bg-slate-500/10',
@@ -298,7 +300,7 @@ function PagerButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="rounded-md border border-slate-200/60 dark:border-white/10 p-1.5 text-slate-600 dark:text-slate-300 enabled:hover:bg-slate-500/10 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+      className="rounded-md border border-slate-200/60 dark:border-white/10 p-1.5 text-slate-600 dark:text-slate-300 enabled:hover:bg-slate-500/10 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer max-md:flex max-md:items-center max-md:justify-center max-md:min-h-[44px] max-md:min-w-[44px]"
     >
       {children}
     </button>

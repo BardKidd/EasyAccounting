@@ -92,15 +92,15 @@ function SummaryCards({
   ]);
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       {summary.map((item, index) => (
         <Card
           key={item.title}
           className={cn(
-            'border-0 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/40 ring-1 ring-white/50 dark:ring-white/10 transition-all duration-300 group hover:-translate-y-1 hover:shadow-2xl dark:shadow-teal-glow overflow-hidden relative',
+            // 內容卡片：實心 bg-card（非玻璃）；玻璃只留給 chrome（DESIGN.md）。移除 backdrop-blur 也解 iOS 捲動卡頓。
+            'border border-slate-200 dark:border-slate-800 bg-card shadow-sm transition-all duration-300 group hover:-translate-y-1 hover:shadow-md overflow-hidden relative',
           )}
         >
-          <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
             <CardTitle className="text-sm font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">
               {item.title}
@@ -114,7 +114,7 @@ function SummaryCards({
           <CardContent className="relative z-10 pt-4">
             <div
               className={cn(
-                'text-3xl font-bold font-playfair tracking-tight transition-colors duration-300',
+                'text-2xl sm:text-3xl font-bold font-outfit tracking-tight transition-colors duration-300',
                 item.title === '本月支出' && item.rawValue > 0
                   ? 'text-rose-500 dark:text-rose-400'
                   : item.title === '本月損益'

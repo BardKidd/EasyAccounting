@@ -41,6 +41,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Trash2, Store } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // 攤平分類樹為可選項（支出：主 / 主｜子），供改分類下拉。
 function useExpenseOptions(categories: CategoryType[] | undefined) {
@@ -151,7 +152,8 @@ export function MerchantMappingPanel() {
           </p>
         </div>
       ) : (
-        <div className="rounded-2xl border border-slate-100 dark:border-white/5 overflow-hidden">
+        <>
+        <div className="hidden md:block rounded-2xl border border-slate-100 dark:border-white/5 overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -254,6 +256,99 @@ export function MerchantMappingPanel() {
             </TableBody>
           </Table>
         </div>
+
+        {/* 手機：可觸控卡片列（分類 Select 全寬、金額/情境同屏、無橫向捲動） */}
+        <div className="md:hidden space-y-2">
+          {mappings.map((m: MerchantMappingListItem) => (
+            <div
+              key={m.id}
+              className={cn(
+                'rounded-2xl border border-slate-100 dark:border-white/5 bg-card p-3',
+                !m.isEnabled && 'opacity-60',
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
+                  <Store className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {m.merchantName}
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <Badge variant="secondary">學習 {m.matchCount} 次</Badge>
+                    {m.categoryName === null && (
+                      <Badge variant="destructive">分類已刪除</Badge>
+                    )}
+                  </div>
+                </div>
+                <Switch
+                  checked={m.isEnabled}
+                  disabled={busyId === m.id}
+                  onCheckedChange={(v) =>
+                    runUpdate(m.id, { isEnabled: v }, v ? '已啟用' : '已停用')
+                  }
+                  aria-label={m.isEnabled ? '停用此對應' : '啟用此對應'}
+                />
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <Select
+                  value={m.categoryId}
+                  onValueChange={(v) =>
+                    runUpdate(m.id, { categoryId: v }, '分類已更新')
+                  }
+                  disabled={busyId === m.id}
+                >
+                  <SelectTrigger className="h-11 w-full">
+                    <SelectValue placeholder="選擇分類" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* 目前分類非現行葉節點選項時，補一個合成選項顯示現值，避免 Select 空白無提示。 */}
+                    {m.categoryName !== null &&
+                      !options.some((o) => o.id === m.categoryId) && (
+                        <SelectItem value={m.categoryId}>
+                          {m.categoryName}（目前）
+                        </SelectItem>
+                      )}
+                    {options.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11 shrink-0"
+                      disabled={busyId === m.id}
+                      aria-label="刪除對應"
+                    >
+                      <Trash2 className="h-4 w-4 text-rose-500" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>刪除商家分類對應</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        確定刪除「{m.merchantName}」的自動分類對應？此後解析帳單將不再自動套用此分類。
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>取消</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => runDelete(m.id)}>
+                        刪除
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          ))}
+        </div>
+        </>
       )}
     </div>
   );

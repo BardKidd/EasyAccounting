@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-13T00:00:00Z",
+  "title": "Design System: EasyAccounting",
+  "extensions": {
+    "colorMeta": {
+      "emerald-primary": {
+        "role": "primary",
+        "displayName": "Vault Emerald",
+        "canonical": "oklch(0.62 0.16 150)",
+        "tonalRamp": ["oklch(0.22 0.06 150)", "oklch(0.30 0.09 150)", "oklch(0.40 0.12 150)", "oklch(0.50 0.15 150)", "oklch(0.62 0.16 150)", "oklch(0.70 0.17 150)", "oklch(0.80 0.12 150)", "oklch(0.92 0.05 150)"]
+      },
+      "teal-accent": {
+        "role": "secondary",
+        "displayName": "Teal Horizon",
+        "canonical": "oklch(0.72 0.16 175)",
+        "tonalRamp": ["oklch(0.24 0.06 175)", "oklch(0.32 0.09 175)", "oklch(0.42 0.12 175)", "oklch(0.55 0.15 175)", "oklch(0.66 0.16 175)", "oklch(0.72 0.16 175)", "oklch(0.82 0.11 175)", "oklch(0.93 0.05 175)"]
+      },
+      "surface-abyss": {
+        "role": "neutral",
+        "displayName": "Abyss",
+        "canonical": "#060c15",
+        "tonalRamp": ["#060c15", "oklch(0.20 0.04 265)", "oklch(0.28 0.04 260)", "oklch(0.34 0.04 262)", "oklch(0.55 0.045 257)", "oklch(0.70 0.04 257)", "oklch(0.90 0.016 263)", "oklch(0.984 0.003 248)"]
+      },
+      "rose-destructive": {
+        "role": "tertiary",
+        "displayName": "Signal Rose",
+        "canonical": "oklch(0.57 0.21 27)",
+        "tonalRamp": ["oklch(0.25 0.09 27)", "oklch(0.35 0.13 27)", "oklch(0.45 0.17 27)", "oklch(0.57 0.21 27)", "oklch(0.63 0.22 25)", "oklch(0.74 0.17 25)", "oklch(0.85 0.10 25)", "oklch(0.94 0.04 25)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page titles and empty-state headlines. Outfit, product scale (~1.875rem), never a marketing hero." },
+      "headline": { "displayName": "Headline", "purpose": "Section / card / sheet titles. Outfit 700." },
+      "body": { "displayName": "Body", "purpose": "Default reading text. Work Sans 400, line-height 1.6, cap 65-75ch." },
+      "label": { "displayName": "Label", "purpose": "Uppercase overline / wordmark tail. Outfit 700, tracking 0.2em. Used sparingly." }
+    },
+    "shadows": [
+      { "name": "ambient-chrome", "value": "0 10px 25px rgba(15,23,42,0.2)", "purpose": "Diffuse lift under the floating glass header and sidebar." },
+      { "name": "emerald-lift", "value": "0 10px 25px rgba(16,185,129,0.25)", "purpose": "Colored glow under primary gradient CTAs and the avatar — signals 'interactive'." },
+      { "name": "card-whisper", "value": "0 1px 2px rgba(0,0,0,0.05)", "purpose": "Hairline shadow on content cards in light mode; cards go flat (tonal) in dark." }
+    ],
+    "motion": [
+      { "name": "ease-out-quart", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Sheet / offline-beacon entrances and expressive easing." },
+      { "name": "transition-standard", "value": "all 0.3s ease", "purpose": "Default chrome + hover state transitions." },
+      { "name": "ambient-pulse", "value": "animate-pulse 7-10s ease-in-out infinite", "purpose": "Slow breathing of the background emerald/teal glow blobs." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Gradient Primary Button",
+      "kind": "button",
+      "refersTo": "button-gradient",
+      "description": "The signature highest-intent CTA. Emerald→teal gradient with an emerald glow lift.",
+      "html": "<button class=\"ds-btn-gradient\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\"/><path d=\"M3 3v5h5\"/></svg>重新整理</button>",
+      "css": ".ds-btn-gradient { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 32px; border: none; border-radius: 12px; font-family: 'Work Sans', sans-serif; font-size: 1rem; font-weight: 600; color: #fff; background-image: linear-gradient(to bottom right, #10b981, #2dd4bf); box-shadow: 0 10px 25px rgba(16,185,129,0.3); cursor: pointer; transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s; } .ds-btn-gradient:hover { transform: scale(1.03); box-shadow: 0 12px 30px rgba(16,185,129,0.4); } .ds-btn-gradient:active { transform: scale(1.0); }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Standard primary action. Solid emerald, 3px emerald focus ring.",
+      "html": "<button class=\"ds-btn-primary\">儲存</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 8px 16px; border: none; border-radius: 8px; font-family: 'Work Sans', sans-serif; font-size: 0.875rem; font-weight: 500; color: #052e1a; background: oklch(0.7 0.17 150); cursor: pointer; transition: background 0.2s; } .ds-btn-primary:hover { background: oklch(0.66 0.17 150); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklch, oklch(0.7 0.17 150) 50%, transparent); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Transparent field with hairline border and an emerald focus glow.",
+      "html": "<input class=\"ds-input\" placeholder=\"輸入金額\" />",
+      "css": ".ds-input { height: 36px; width: 240px; padding: 4px 12px; border: 1px solid oklch(0.338 0.042 262.181); border-radius: 8px; background: rgba(30,41,59,0.3); color: oklch(0.985 0.002 247.839); font-family: 'Work Sans', sans-serif; font-size: 0.875rem; outline: none; transition: color 0.2s, box-shadow 0.2s, border-color 0.2s; } .ds-input::placeholder { color: oklch(0.704 0.04 256.788); } .ds-input:focus-visible { border-color: oklch(0.7 0.17 150); box-shadow: 0 0 0 3px color-mix(in oklch, oklch(0.7 0.17 150) 50%, transparent); }"
+    },
+    {
+      "name": "Sidebar Nav Item (active)",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Active navigation row: emerald tint gradient, emerald text, 2px emerald left state-border.",
+      "html": "<a class=\"ds-nav-item ds-nav-item--active\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\"/><rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\"/></svg><span>儀表板</span></a>",
+      "css": ".ds-nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; border-left: 2px solid transparent; font-family: 'Work Sans', sans-serif; font-size: 0.875rem; font-weight: 500; letter-spacing: 0.01em; color: oklch(0.704 0.04 256.788); cursor: pointer; transition: all 0.2s ease; } .ds-nav-item:hover { color: oklch(0.985 0.002 247.839); background: rgba(255,255,255,0.05); } .ds-nav-item--active { border-left-color: #10b981; color: oklch(0.7 0.17 150); background-image: linear-gradient(to right, rgba(16,185,129,0.15), rgba(20,184,166,0.05)); }"
+    },
+    {
+      "name": "Content Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat content container — NOT glass. Tonal slate surface, hairline border.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card__title\">本月支出</div><div class=\"ds-card__desc\">較上月下降 12%</div></div>",
+      "css": ".ds-card { padding: 24px; border-radius: 12px; border: 1px solid oklch(0.338 0.042 262.181); background: oklch(0.279 0.041 260.031); color: oklch(0.985 0.002 247.839); font-family: 'Work Sans', sans-serif; } .ds-card__title { font-weight: 600; font-size: 1rem; } .ds-card__desc { margin-top: 6px; font-size: 0.875rem; color: oklch(0.704 0.04 256.788); }"
+    },
+    {
+      "name": "Glass Header Pill",
+      "kind": "custom",
+      "refersTo": "glass-chrome",
+      "description": "The signature floating frosted-glass chrome that hovers over the ambient glow field.",
+      "html": "<header class=\"ds-header\"><span class=\"ds-header__title\">儀表板</span><span class=\"ds-avatar\">V</span></header>",
+      "css": ".ds-header { display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: rgba(15,23,42,0.6); backdrop-filter: blur(24px); box-shadow: 0 10px 25px rgba(0,0,0,0.2); font-family: 'Work Sans', sans-serif; color: oklch(0.985 0.002 247.839); } .ds-header__title { font-family: Outfit, sans-serif; font-weight: 700; } .ds-avatar { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 9999px; color: #fff; font-weight: 700; background-image: linear-gradient(to bottom right, #10b981, #2dd4bf); box-shadow: inset 0 1px 2px rgba(255,255,255,0.2); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Ledger",
+    "overview": "EasyAccounting is a personal finance and asset-management app, and its interface behaves the way a good ledger should: calm, ordered, and quietly premium. A near-black abyss or bright slate canvas holds a slow field of emerald/teal ambient glow, and the chrome — a floating glass header, a slide-in glass sidebar — hovers over it like frosted panels. The mood is Calm, Premium, Trustworthy: nothing shouts, everything is legible, and the single emerald accent does the pointing. Depth is built from translucency and soft light, not hard drop shadows.",
+    "keyCharacteristics": [
+      "One accent (emerald→teal), spent sparingly; slate neutrals carry the rest.",
+      "Glass + ambient glow is the chrome signature — not applied to content cards.",
+      "Depth via translucency, blur, and tonal layering, not dark drop shadows.",
+      "OKLCH tokens, dark-default with a fully-realized light theme.",
+      "Geometric display (Outfit) vs. humanist body (Work Sans)."
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Emerald (and its teal twin) is the only accent. If a screen needs a second 'color to mean something', use weight, size, or a neutral — not a new hue. Emerald stays on ≤10–15% of any screen.", "section": "colors" },
+      { "name": "The Ghost Border Rule", "body": "On glass chrome, borders are the neutral hairline at low alpha, never a solid opaque line.", "section": "colors" },
+      { "name": "The Outfit-For-Voice Rule", "body": "Outfit is reserved for brand and headings; body and dense data stay in Work Sans.", "section": "typography" },
+      { "name": "The Frosted-Chrome Rule", "body": "backdrop-blur belongs to structural chrome (header, sidebar, sheets, dialogs). Forbidden as decoration on content cards, rows, or metrics.", "section": "elevation" },
+      { "name": "The Glow-Is-Interactive Rule", "body": "Colored emerald shadow means 'this is an action'. Neutral ambient shadow means 'this floats'.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do spend emerald sparingly (≤10–15% of a screen). It marks the one action that matters.",
+      "Do reserve backdrop-blur glass for chrome (header, sidebar, sheets, dialogs).",
+      "Do build depth from translucency, soft ambient shadow, and emerald glow on interactive accents.",
+      "Do keep body text at Muted Ink or darker — bump toward Ink if contrast is even close to 4.5:1.",
+      "Do use OKLCH tokens from globals.css; add insets via the --safe-area-* vars on mobile.",
+      "Do use the 3px emerald focus ring on every interactive control.",
+      "Do set headings in Outfit, body in Work Sans."
+    ],
+    "donts": [
+      "Don't put glassmorphism on content cards, data rows, or metric tiles. Chrome only.",
+      "Don't introduce a second accent hue. Use weight, size, or a neutral for emphasis.",
+      "Don't use gradient text (background-clip: text); emphasis comes from weight and size.",
+      "Don't use a colored side-stripe as decoration. A 2px left border is allowed only as the sidebar active-state marker.",
+      "Don't ship hard, dark drop shadows. Shadows are large, soft, low-opacity, or absent.",
+      "Don't set body copy or dense data in Outfit.",
+      "Don't let muted-gray text drift lighter 'for elegance' — it fails contrast and reads as AI slop."
+    ]
+  }
+}

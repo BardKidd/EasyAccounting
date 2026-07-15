@@ -25,8 +25,13 @@ export function CreditCardPaymentSection({
   const fmt = (v: number) => formatCurrency(v, baseCurrencyCode);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl shadow-lg">
-      {/* Header */}
+    <>
+      {/* Desktop：固定欄寬 grid（md+ only；窄螢幕會裁切欄，故 hidden） */}
+      <div
+        data-testid="cc-payment-desktop"
+        className="hidden md:block overflow-hidden rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl shadow-lg"
+      >
+        {/* Header */}
       <div
         className={`${GRID_COLS} py-3 bg-slate-50/80 dark:bg-slate-800/30 border-b border-slate-200/50 dark:border-white/5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider`}
       >
@@ -90,7 +95,70 @@ export function CreditCardPaymentSection({
             </div>
           </div>
         ))}
+        </div>
       </div>
-    </div>
+
+      {/* Mobile：可點卡片列（撥備/可付同屏、無橫向捲動；R1/R6） */}
+      <div className="md:hidden space-y-2">
+        {rows.map((row) => {
+          const activityColor =
+            row.activity < 0
+              ? 'text-red-600 dark:text-red-400'
+              : row.activity > 0
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-slate-400 dark:text-slate-500';
+          return (
+            <div
+              key={row.accountId}
+              data-card-name={row.name}
+              className="rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl p-3 space-y-2 shadow-sm"
+            >
+              {/* Line 1：卡片 + 卡債徽章 + 可付 pill */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center justify-center w-9 h-9 rounded-lg shrink-0 bg-indigo-500/10">
+                  <CreditCard className="h-4 w-4 text-indigo-500" />
+                </div>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
+                  {row.name}
+                </span>
+                {row.isDebt && (
+                  <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-red-500/15 text-red-600 dark:text-red-400">
+                    卡債
+                  </span>
+                )}
+                <div className="ml-auto shrink-0">
+                  <AvailablePill
+                    value={row.available}
+                    formatted={fmt(row.available)}
+                  />
+                </div>
+              </div>
+
+              {/* Line 2：撥備 + 收支 */}
+              <div className="flex items-center justify-between gap-2 pl-12">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    撥備
+                  </span>
+                  <AssignedCell
+                    value={row.assigned}
+                    formatted={fmt(row.assigned)}
+                    onSubmit={(v) => onAssign(row.accountId, v)}
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    收支
+                  </span>
+                  <span className={`text-sm tabular-nums ${activityColor}`}>
+                    {fmt(row.activity)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }

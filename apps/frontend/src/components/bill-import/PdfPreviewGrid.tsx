@@ -53,7 +53,7 @@ export function PdfPreviewGrid({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold font-playfair bg-linear-to-r from-slate-900 to-slate-700 dark:from-white dark:to-white/60 bg-clip-text text-transparent">
+          <h2 className="text-2xl font-bold font-outfit bg-linear-to-r from-slate-900 to-slate-700 dark:from-white dark:to-white/60 bg-clip-text text-transparent">
             預覽與篩選
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 font-sans">
@@ -127,7 +127,7 @@ export function PdfPreviewGrid({
                 e.stopPropagation();
                 setZoomedImage(img.previewUrl);
               }}
-              className="absolute top-4 right-4 p-2.5 rounded-full bg-white/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 hover:bg-white hover:text-emerald-600 dark:hover:bg-slate-700 dark:hover:text-emerald-400 opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg scale-90 group-hover:scale-100 z-10 backdrop-blur-md"
+              className="absolute top-4 right-4 p-2.5 rounded-full bg-white/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 hover:bg-white hover:text-emerald-600 dark:hover:bg-slate-700 dark:hover:text-emerald-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300 shadow-lg scale-100 md:scale-90 md:group-hover:scale-100 z-10 backdrop-blur-md"
               title="放大預覽"
             >
               <ZoomIn className="w-5 h-5" />
@@ -196,7 +196,7 @@ export function PdfPreviewGrid({
               <Button
                 size="icon"
                 variant="outline"
-                className="h-8 w-8"
+                className="h-9 w-9 md:h-8 md:w-8"
                 onClick={() => setScale((s) => Math.max(s - 0.25, 0.5))}
               >
                 <ZoomOut className="h-4 w-4" />
@@ -207,7 +207,7 @@ export function PdfPreviewGrid({
               <Button
                 size="icon"
                 variant="outline"
-                className="h-8 w-8"
+                className="h-9 w-9 md:h-8 md:w-8"
                 onClick={() => setScale((s) => Math.min(s + 0.5, 3))}
               >
                 <ZoomIn className="h-4 w-4" />
@@ -215,7 +215,7 @@ export function PdfPreviewGrid({
               <Button
                 size="icon"
                 variant="outline"
-                className="h-8 w-8 ml-2"
+                className="h-9 w-9 md:h-8 md:w-8 ml-2"
                 onClick={() => setScale(1)}
                 title="重置大小"
               >

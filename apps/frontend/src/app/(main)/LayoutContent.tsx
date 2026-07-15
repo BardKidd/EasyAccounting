@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Sidebar, Header } from '@/components/layout';
+import { BottomTabBar } from '@/components/layout/bottomTabBar';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { useChatState } from '@/contexts/chatContext';
 import { cn } from '@/lib/utils';
@@ -13,16 +14,18 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
     <div className="flex fixed inset-0 overflow-hidden bg-slate-50 dark:bg-[#060c15] transition-colors duration-500">
       {/* Animated Ambient Glow */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        {/* 手機只保留 1 層靜態光暈（max-md:animate-none）、隱藏另兩層，
+            避免 3 個 blur-[100–120px] 動畫層在 iOS Safari 造成捲動卡頓與耗電。 */}
         <div
-          className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 blur-[120px] animate-pulse"
+          className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full bg-emerald-500/10 dark:bg-emerald-500/15 blur-[120px] animate-pulse max-md:animate-none motion-reduce:animate-none"
           style={{ animationDuration: '8s' }}
         />
         <div
-          className="absolute top-[20%] -right-[10%] w-[30%] h-[50%] rounded-full bg-teal-500/10 dark:bg-teal-500/15 blur-[100px] animate-pulse"
+          className="absolute top-[20%] -right-[10%] w-[30%] h-[50%] rounded-full bg-teal-500/10 dark:bg-teal-500/15 blur-[100px] animate-pulse max-md:hidden motion-reduce:animate-none"
           style={{ animationDuration: '10s' }}
         />
         <div
-          className="absolute -bottom-[10%] left-[20%] w-[35%] h-[40%] rounded-full bg-emerald-400/10 dark:bg-emerald-600/15 blur-[110px] animate-pulse"
+          className="absolute -bottom-[10%] left-[20%] w-[35%] h-[40%] rounded-full bg-emerald-400/10 dark:bg-emerald-600/15 blur-[110px] animate-pulse max-md:hidden motion-reduce:animate-none"
           style={{ animationDuration: '7s' }}
         />
       </div>
@@ -32,12 +35,17 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
       {/* Main Content Area */}
       <div className="flex flex-col h-full flex-1 min-w-0 overflow-hidden relative z-10 transition-colors duration-300">
         <Header />
-        <main className="flex-1 overflow-y-auto">
-          <div className="md:container md:mx-auto md:p-8 p-4 pt-4 md:pt-8 pb-24 md:pb-32 w-full max-w-7xl relative transition-all duration-300">
+        {/* 內層捲動容器：防 Safari 過捲彈簧與誤觸下拉更新（NFR-2）；底部避讓 Home Indicator。
+            外殼已 fixed inset-0，故不對全域 html/body 動 position:fixed（spec §3）。 */}
+        <main className="flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+          <div className="md:container md:mx-auto md:p-8 p-4 pt-4 md:pt-8 pb-[calc(6rem+var(--safe-area-bottom))] md:pb-[calc(8rem+var(--safe-area-bottom))] w-full max-w-7xl relative transition-all duration-300">
             {children}
           </div>
         </main>
       </div>
+
+      {/* 手機底部導覽（桌面隱藏）：3 主要 tab + 中央新增 FAB + 更多 sheet */}
+      <BottomTabBar />
 
       {/* Backdrop for Mobile */}
       {isChatOpen && (

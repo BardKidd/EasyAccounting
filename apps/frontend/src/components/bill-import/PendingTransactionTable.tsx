@@ -35,8 +35,9 @@ import {
   normalizeCurrencyCode,
 } from '@repo/shared';
 import { cn } from '@/lib/utils';
-import { Link, AlertTriangle, MoreHorizontal, X } from 'lucide-react';
+import { Link, AlertTriangle, MoreHorizontal, X, Combine } from 'lucide-react';
 import { MergeDiscountDialog } from './MergeDiscountDialog';
+import { MobileRowActions } from '@/components/ui/mobile-row-actions';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface PendingTransactionTableProps {
@@ -358,6 +359,260 @@ const TransactionRow = React.memo(
 );
 TransactionRow.displayName = 'TransactionRow';
 
+// 手機卡片版：與 TransactionRow 同一組 inline 編輯控制（同樣呼叫 onUpdate），
+// 但改為直式卡片版面，避免橫向捲動、觸控目標放大到 h-10。桌面沿用上方虛擬化 Table。
+const MobileTransactionCard = React.memo(
+  ({
+    tx,
+    mainCategories,
+    selectedAccountId,
+    onUpdate,
+    onOpenMergeDialog,
+  }: {
+    tx: PendingTransaction;
+    mainCategories: CategoryType[];
+    selectedAccountId: string;
+    onUpdate: (id: string, updates: Partial<PendingTransaction>) => void;
+    onOpenMergeDialog: (tx: PendingTransaction) => void;
+  }) => {
+    const isSkipped = tx.status === PendingTransactionStatus.SKIPPED;
+    const isConfirmed = tx.status === PendingTransactionStatus.CONFIRMED;
+    const hasMatch = !!tx.matchedTransactionId;
+    const rowValid = isValid(tx, selectedAccountId);
+
+    return (
+      <div
+        className={cn(
+          'rounded-2xl border border-slate-200/60 dark:border-white/10 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl p-3 space-y-3 shadow-sm',
+          isSkipped && 'opacity-50',
+          isConfirmed && 'bg-emerald-50/50 dark:bg-emerald-900/10',
+        )}
+      >
+        {/* Header：勾選匯入 + 狀態指示 + 更多動作 */}
+        <div className="flex items-center gap-2">
+          <Checkbox
+            checked={!isSkipped}
+            className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 border-slate-300 dark:border-slate-600"
+            onCheckedChange={(checked) => {
+              onUpdate(tx.id, {
+                status: checked
+                  ? PendingTransactionStatus.PENDING
+                  : PendingTransactionStatus.SKIPPED,
+              });
+            }}
+          />
+          {!rowValid && !isSkipped && (
+            <div title="欄位缺漏">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+            </div>
+          )}
+          {hasMatch && (
+            <div title="疑似重複 / 分期匹配">
+              <Link className="h-4 w-4 text-amber-500" />
+            </div>
+          )}
+          {tx.isInstallment && (
+            <span className="text-[10px] font-semibold bg-emerald-100/80 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 px-2 py-0.5 rounded-full ring-1 ring-inset ring-emerald-500/20 dark:ring-emerald-500/30">
+              {tx.installmentNumber ? `第 ${tx.installmentNumber} 期` : '分期'}
+            </span>
+          )}
+          <div className="ml-auto">
+            <MobileRowActions
+              actions={[
+                {
+                  label: '作為折扣/手續費合併',
+                  icon: Combine,
+                  onSelect: () => onOpenMergeDialog(tx),
+                },
+              ]}
+            />
+          </div>
+        </div>
+
+        {/* 商家/描述（主要欄位，truncate placeholder） */}
+        <Input
+          defaultValue={tx.transactionData.description}
+          onBlur={(e) => {
+            if (e.target.value !== tx.transactionData.description) {
+              onUpdate(tx.id, {
+                transactionData: {
+                  ...tx.transactionData,
+                  description: e.target.value,
+                },
+              });
+            }
+          }}
+          className="h-10 bg-background/60 border-slate-200 dark:border-slate-800 focus:border-ring transition-colors w-full font-medium"
+          placeholder="請輸入商家/描述"
+        />
+
+        {/* 日期 + 時間 */}
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            type="date"
+            defaultValue={tx.transactionData.date}
+            onBlur={(e) => {
+              if (e.target.value !== tx.transactionData.date) {
+                onUpdate(tx.id, {
+                  transactionData: {
+                    ...tx.transactionData,
+                    date: e.target.value,
+                  },
+                });
+              }
+            }}
+            className="h-10 bg-background/60 border-slate-200 dark:border-slate-800 focus:border-ring transition-colors cursor-pointer w-full"
+          />
+          <Input
+            type="time"
+            step="1"
+            defaultValue={tx.transactionData.time || ''}
+            onBlur={(e) => {
+              if (e.target.value !== (tx.transactionData.time || '')) {
+                onUpdate(tx.id, {
+                  transactionData: {
+                    ...tx.transactionData,
+                    time: e.target.value || null,
+                  },
+                });
+              }
+            }}
+            className="h-10 bg-background/60 border-slate-200 dark:border-slate-800 focus:border-ring transition-colors cursor-pointer w-full"
+          />
+        </div>
+
+        {/* 支出/收入 切換 + 金額（同一行，金額靠右） */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() =>
+              onUpdate(tx.id, {
+                transactionData: {
+                  ...tx.transactionData,
+                  type:
+                    tx.transactionData.type === 'expense'
+                      ? 'income'
+                      : 'expense',
+                },
+              })
+            }
+            className={cn(
+              'text-xs font-medium px-3 h-10 rounded-lg cursor-pointer transition-all duration-200 shrink-0 select-none',
+              tx.transactionData.type === 'income'
+                ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 ring-1 ring-inset ring-emerald-500/20 dark:ring-emerald-500/30'
+                : 'bg-red-100/80 text-red-700 dark:bg-red-500/10 dark:text-red-400 ring-1 ring-inset ring-red-500/20 dark:ring-red-500/30',
+            )}
+            title="點擊切換支出/收入"
+          >
+            {tx.transactionData.type === 'income' ? '收入' : '支出'}
+          </button>
+          <Input
+            type="number"
+            defaultValue={tx.transactionData.amount}
+            onBlur={(e) => {
+              const val = Number(e.target.value);
+              if (val !== tx.transactionData.amount) {
+                onUpdate(tx.id, {
+                  transactionData: {
+                    ...tx.transactionData,
+                    amount: val,
+                  },
+                });
+              }
+            }}
+            className="h-10 bg-background/60 border-slate-200 dark:border-slate-800 focus:border-ring transition-colors font-medium flex-1 text-right"
+          />
+        </div>
+
+        {/* 折扣 / 手續費：手機常駐顯示移除鈕（不使用 hover-reveal） */}
+        {(!!tx.transactionData.extraAdd || !!tx.transactionData.extraMinus) && (
+          <div className="flex flex-col gap-1 border-t border-dashed border-slate-200 dark:border-slate-800 pt-2">
+            {!!tx.transactionData.extraAdd &&
+              tx.transactionData.extraAdd > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    折扣 -{tx.transactionData.extraAdd}
+                  </span>
+                  <button
+                    onClick={() =>
+                      onUpdate(tx.id, {
+                        transactionData: {
+                          ...tx.transactionData,
+                          extraAdd: 0,
+                        },
+                      })
+                    }
+                    className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 transition-all duration-200 cursor-pointer"
+                    title="移除折扣"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            {!!tx.transactionData.extraMinus &&
+              tx.transactionData.extraMinus > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                    手續費 +{tx.transactionData.extraMinus}
+                  </span>
+                  <button
+                    onClick={() =>
+                      onUpdate(tx.id, {
+                        transactionData: {
+                          ...tx.transactionData,
+                          extraMinus: 0,
+                        },
+                      })
+                    }
+                    className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-amber-100 dark:hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 transition-all duration-200 cursor-pointer"
+                    title="移除手續費"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+          </div>
+        )}
+
+        {/* 類別 */}
+        <Select
+          value={tx.transactionData.categoryId || undefined}
+          onValueChange={(val) =>
+            onUpdate(tx.id, {
+              transactionData: {
+                ...tx.transactionData,
+                categoryId: val,
+              },
+            })
+          }
+        >
+          <SelectTrigger
+            className={cn(
+              'h-10 w-full transition-colors focus:ring-emerald-500 focus:border-emerald-500 font-medium cursor-pointer',
+              !tx.transactionData.categoryId &&
+                'border-red-300 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10 text-red-600 dark:text-red-400',
+              tx.transactionData.categoryId &&
+                'text-emerald-700 dark:text-emerald-400',
+            )}
+          >
+            <SelectValue placeholder="選擇類別" />
+          </SelectTrigger>
+          <SelectContent>
+            <CategorySelectItems mainCategories={mainCategories} />
+          </SelectContent>
+        </Select>
+
+        {/* 幣別（唯讀，來自帳單原幣） */}
+        {tx.transactionData.currency && (
+          <div className="text-xs text-muted-foreground">
+            原幣：{tx.transactionData.currency}
+          </div>
+        )}
+      </div>
+    );
+  },
+);
+MobileTransactionCard.displayName = 'MobileTransactionCard';
+
 const ROW_HEIGHT = 52; // 每列預估高度 (px)
 
 export function PendingTransactionTable({
@@ -468,14 +723,14 @@ export function PendingTransactionTable({
   return (
     <div className="space-y-4">
       {/* 帳戶選擇器 — 整批共用 */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col items-start gap-2 md:flex-row md:items-center md:gap-3">
         <label className="text-sm font-medium text-foreground whitespace-nowrap">
           匯入帳戶
         </label>
         <Select value={selectedAccountId} onValueChange={onAccountChange}>
           <SelectTrigger
             className={cn(
-              'w-[240px] rounded-xl border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium',
+              'w-full md:w-[240px] rounded-xl border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/50 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium',
               !selectedAccountId && 'border-red-500 ring-2 ring-red-500/20',
             )}
           >
@@ -504,10 +759,10 @@ export function PendingTransactionTable({
         </div>
       )}
 
-      {/* Virtualized Table */}
+      {/* Virtualized Table（桌面）— 手機改用下方卡片版 */}
       <div
         ref={scrollContainerRef}
-        className="rounded-3xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl overflow-auto"
+        className="hidden md:block rounded-3xl border border-slate-200/50 dark:border-white/10 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl overflow-auto"
         style={{ maxHeight: '65vh' }}
       >
         <Table>
@@ -577,6 +832,20 @@ export function PendingTransactionTable({
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* 手機卡片版（同一份 sortedTransactions，inline 編輯，無橫向捲動） */}
+      <div className="md:hidden space-y-2">
+        {sortedTransactions.map((tx) => (
+          <MobileTransactionCard
+            key={tx.id}
+            tx={tx}
+            mainCategories={mainCategories}
+            selectedAccountId={selectedAccountId}
+            onUpdate={onUpdate}
+            onOpenMergeDialog={handleOpenMergeDialog}
+          />
+        ))}
       </div>
 
       <MergeDiscountDialog

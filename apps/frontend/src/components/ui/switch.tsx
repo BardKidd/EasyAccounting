@@ -14,6 +14,8 @@ function Switch({
       data-slot="switch"
       className={cn(
         'group peer relative inline-flex h-7 w-14 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent outline-none focus-visible:ring-[3px] focus-visible:ring-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-50 shadow-inner backdrop-blur-sm transition-colors duration-300',
+        // 手機：透明 ::before 把可點區域上下各撐 8px（28px→44px 垂直觸控），視覺不變。
+        "max-md:before:absolute max-md:before:-inset-y-2 max-md:before:inset-x-0 max-md:before:content-['']",
         'data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-200 dark:data-[state=unchecked]:bg-slate-800',
         className,
       )}

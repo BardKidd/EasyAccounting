@@ -50,7 +50,7 @@ export function ReadyToAssignCard({
             <PopoverTrigger asChild>
               <button
                 data-testid="rta-info"
-                className="p-1 rounded-lg hover:bg-white/50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                className="p-2 md:p-1 rounded-lg hover:bg-white/50 dark:hover:bg-white/5 transition-colors cursor-pointer"
               >
                 <Info className="h-4 w-4 text-slate-400" />
               </button>

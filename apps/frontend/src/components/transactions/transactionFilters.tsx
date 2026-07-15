@@ -197,6 +197,16 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
     });
   };
 
+  // 手機：日期範圍改單月，避免雙月 popover（~510px）超出視窗被裁切/點不到。
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch sm:flex-wrap">
       {/* 關鍵字搜尋（比對備註 description） */}
@@ -238,13 +248,13 @@ function TransactionFilters({ accounts }: TransactionFiltersProps) {
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] p-0" align="start">
           <Calendar
             mode="range"
             defaultMonth={date?.from}
             selected={date}
             onSelect={handleDateChange}
-            numberOfMonths={2}
+            numberOfMonths={isMobile ? 1 : 2}
           />
         </PopoverContent>
       </Popover>

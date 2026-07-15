@@ -29,6 +29,13 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -53,6 +60,8 @@ export function StatisticsHeader({
   today,
 }: StatisticsHeaderProps) {
   const [open, setOpen] = useState(false);
+  // Mobile 底部 Sheet 專用 state，與 desktop popover 的 open 分離，避免互相干擾 active ring 樣式
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   // --- 導航處理函數 (上一頁) ---
   const handlePrev = () => {
@@ -160,59 +169,123 @@ export function StatisticsHeader({
           <ChevronLeft className="h-4 w-4" />
         </Button>
 
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
+        {/* Desktop (md+)：週期選擇維持原本的 Popover。用 hidden md:contents 讓 wrapper 在
+            md+ 不產生 box，trigger Button 仍是 flex 直接子元素，與左右 chevron 的 gap-2 排版一致；
+            <md 則整組隱藏，改由下方 md:hidden 的底部 Sheet 呈現。 */}
+        <div className="hidden md:contents">
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  'w-auto h-auto flex-row items-center justify-center py-2 px-4 gap-2 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer bg-white/50 dark:bg-transparent backdrop-blur-sm transition-all duration-200 shadow-sm rounded-xl',
+                  open && 'border-emerald-500/50 ring-2 ring-emerald-500/20',
+                )}
+              >
+                <CalendarIcon className="w-4 h-4 text-emerald-500/70 dark:text-emerald-400/70" />
+                <span className="font-bold text-lg font-outfit text-slate-800 dark:text-slate-100">
+                  {getMainLabel(date)}
+                </span>
+                <span className="text-sm text-slate-500 dark:text-slate-400 font-normal hidden sm:inline-block font-mono">
+                  ({getRangeLabel(date)})
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-[320px] p-0 border-0 bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 ring-1 ring-slate-200 dark:ring-white/10 rounded-3xl"
+              align="center"
+            >
+              <ScrollArea className="h-[300px]">
+                <div className="flex flex-col p-2 space-y-1">
+                  {periodList.map((item, idx) => {
+                    const isSelected =
+                      getMainLabel(item.date) === getMainLabel(date);
+                    return (
+                      <Button
+                        key={idx}
+                        variant="ghost"
+                        className={cn(
+                          'justify-start h-auto py-3 px-4 flex-row items-center gap-2 font-normal rounded-2xl transition-all duration-200',
+                          isSelected
+                            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-200',
+                        )}
+                        onClick={() => {
+                          onDateChange(item.date);
+                          setOpen(false);
+                        }}
+                      >
+                        <span className="text-base">{item.mainLabel}</span>
+                        <span className="text-xs text-muted-foreground ml-auto font-mono opacity-70">
+                          {item.rangeLabel}
+                        </span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Mobile (<md)：同一組週期選擇改用底部 Sheet。觸發鈕與 desktop 視覺一致，
+            但用獨立 sheetOpen state，並套用最小 44px 觸控高度 (R5)。 */}
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetTrigger asChild>
             <Button
               variant="outline"
               className={cn(
-                'w-auto h-auto flex-row items-center justify-center py-2 px-4 gap-2 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer bg-white/50 dark:bg-transparent backdrop-blur-sm transition-all duration-200 shadow-sm rounded-xl',
-                open && 'border-emerald-500/50 ring-2 ring-emerald-500/20',
+                'md:hidden w-auto min-h-[44px] h-auto flex-row items-center justify-center py-2 px-4 gap-2 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer bg-white/50 dark:bg-transparent backdrop-blur-sm transition-all duration-200 shadow-sm rounded-xl',
+                sheetOpen && 'border-emerald-500/50 ring-2 ring-emerald-500/20',
               )}
             >
               <CalendarIcon className="w-4 h-4 text-emerald-500/70 dark:text-emerald-400/70" />
-              <span className="font-bold text-lg font-playfair text-slate-800 dark:text-slate-100">
+              <span className="font-bold text-lg font-outfit text-slate-800 dark:text-slate-100">
                 {getMainLabel(date)}
               </span>
               <span className="text-sm text-slate-500 dark:text-slate-400 font-normal hidden sm:inline-block font-mono">
                 ({getRangeLabel(date)})
               </span>
             </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className="w-[320px] p-0 border-0 bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 ring-1 ring-slate-200 dark:ring-white/10 rounded-3xl"
-            align="center"
+          </SheetTrigger>
+          <SheetContent
+            side="bottom"
+            className="p-0 border-0 bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-2xl rounded-t-3xl"
           >
-            <ScrollArea className="h-[300px]">
-              <div className="flex flex-col p-2 space-y-1">
-                {periodList.map((item, idx) => {
-                  const isSelected =
-                    getMainLabel(item.date) === getMainLabel(date);
-                  return (
-                    <Button
-                      key={idx}
-                      variant="ghost"
-                      className={cn(
-                        'justify-start h-auto py-3 px-4 flex-row items-center gap-2 font-normal rounded-2xl transition-all duration-200',
-                        isSelected
-                          ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium'
-                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-200',
-                      )}
-                      onClick={() => {
-                        onDateChange(item.date);
-                        setOpen(false);
-                      }}
-                    >
-                      <span className="text-base">{item.mainLabel}</span>
-                      <span className="text-xs text-muted-foreground ml-auto font-mono opacity-70">
-                        {item.rangeLabel}
-                      </span>
-                    </Button>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          </PopoverContent>
-        </Popover>
+            <SheetHeader className="border-b border-slate-200/50 dark:border-white/10">
+              <SheetTitle className="font-outfit text-slate-800 dark:text-slate-100">
+                選擇週期
+              </SheetTitle>
+            </SheetHeader>
+            <div className="flex flex-col p-2 space-y-1 max-h-[60vh] overflow-y-auto">
+              {periodList.map((item, idx) => {
+                const isSelected =
+                  getMainLabel(item.date) === getMainLabel(date);
+                return (
+                  <Button
+                    key={idx}
+                    variant="ghost"
+                    className={cn(
+                      'justify-start min-h-[52px] h-auto py-3 px-4 flex-row items-center gap-2 font-normal rounded-2xl transition-all duration-200',
+                      isSelected
+                        ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-200',
+                    )}
+                    onClick={() => {
+                      onDateChange(item.date);
+                      setSheetOpen(false);
+                    }}
+                  >
+                    <span className="text-base">{item.mainLabel}</span>
+                    <span className="text-xs text-muted-foreground ml-auto font-mono opacity-70">
+                      {item.rangeLabel}
+                    </span>
+                  </Button>
+                );
+              })}
+            </div>
+          </SheetContent>
+        </Sheet>
 
         <Button
           variant="ghost"

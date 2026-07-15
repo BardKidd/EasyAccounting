@@ -30,6 +30,7 @@ import {
 } from '@repo/shared';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { MobileRowActions } from '@/components/ui/mobile-row-actions';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -232,59 +233,99 @@ export function RecurringTemplatePanel({
                       {FREQ_LABEL[template.frequency]}
                     </span>
 
-                    {isActive ? (
+                    {/* 桌面：維持原本的行內動作按鈕（hover 可見） */}
+                    <div className="hidden md:flex items-center gap-1">
+                      {isActive ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled={loading}
+                          onClick={() => handleArchive(template.id)}
+                          title="暫停"
+                        >
+                          <Pause className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled={loading}
+                          onClick={() => handleResume(template.id)}
+                          title="恢復"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
                         disabled={loading}
-                        onClick={() => handleArchive(template.id)}
-                        title="暫停"
+                        onClick={() => {
+                          setEditTemplate(template);
+                          setIsEditOpen(true);
+                        }}
+                        title="編輯"
                       >
-                        <Pause className="h-3.5 w-3.5" />
+                        <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                    ) : (
+
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
                         disabled={loading}
-                        onClick={() => handleResume(template.id)}
-                        title="恢復"
+                        onClick={() => setDeleteId(template.id)}
+                        title="刪除設定"
                       >
-                        <RefreshCw className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
-                    )}
+                    </div>
+
+                    {/* 手機：收合成單顆 44px kebab，點開底部 Sheet（≥52px 動作列） */}
+                    <MobileRowActions
+                      triggerClassName="md:hidden"
+                      title="週期規則操作"
+                      actions={[
+                        isActive
+                          ? {
+                              label: '暫停',
+                              icon: Pause,
+                              onSelect: () => handleArchive(template.id),
+                              disabled: loading,
+                            }
+                          : {
+                              label: '恢復',
+                              icon: RefreshCw,
+                              onSelect: () => handleResume(template.id),
+                              disabled: loading,
+                            },
+                        {
+                          label: '編輯',
+                          icon: Pencil,
+                          onSelect: () => {
+                            setEditTemplate(template);
+                            setIsEditOpen(true);
+                          },
+                          disabled: loading,
+                        },
+                        {
+                          label: '刪除設定',
+                          icon: Trash2,
+                          onSelect: () => setDeleteId(template.id),
+                          destructive: true,
+                          disabled: loading,
+                        },
+                      ]}
+                    />
 
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
-                      disabled={loading}
-                      onClick={() => {
-                        setEditTemplate(template);
-                        setIsEditOpen(true);
-                      }}
-                      title="編輯"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive hover:text-destructive"
-                      disabled={loading}
-                      onClick={() => setDeleteId(template.id)}
-                      title="刪除設定"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
+                      className="h-9 w-9 md:h-7 md:w-7"
                       onClick={() =>
                         setExpanded((prev) => ({
                           ...prev,

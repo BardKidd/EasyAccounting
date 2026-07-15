@@ -326,7 +326,7 @@ export default function BudgetPage() {
             variant="outline"
             size="sm"
             onClick={() => handleAutoAssign('UNDERFUNDED')}
-            className="cursor-pointer"
+            className="h-9 md:h-8 cursor-pointer"
           >
             補足不足額
           </Button>
@@ -334,7 +334,7 @@ export default function BudgetPage() {
             variant="outline"
             size="sm"
             onClick={() => handleAutoAssign('LAST_MONTH')}
-            className="cursor-pointer"
+            className="h-9 md:h-8 cursor-pointer"
           >
             沿用上月
           </Button>

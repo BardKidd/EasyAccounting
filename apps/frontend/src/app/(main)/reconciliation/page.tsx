@@ -43,7 +43,7 @@ export default async function ReconciliationPage() {
             >
               <CardHeader className="relative overflow-hidden">
                 <div className="absolute inset-0 bg-linear-to-b from-emerald-500/5 to-transparent dark:from-emerald-400/5 dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                <CardTitle className="flex items-center gap-3 font-playfair text-xl relative z-10 transition-colors duration-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+                <CardTitle className="flex items-center gap-3 font-outfit text-xl relative z-10 transition-colors duration-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
                   <div className="p-2.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 font-bold shadow-sm ring-1 ring-emerald-100 dark:ring-emerald-500/20 group-hover:scale-110 transition-transform duration-300">
                     <FileCheck className="h-5 w-5" />
                   </div>
@@ -54,7 +54,7 @@ export default async function ReconciliationPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-1">
-                <div className="text-3xl font-bold text-slate-700 dark:text-slate-200 mb-2 font-playfair">
+                <div className="text-3xl font-bold text-slate-700 dark:text-slate-200 mb-2 font-outfit">
                   {notification.unreconciledCount}
                   <span className="text-sm text-muted-foreground ml-2 font-sans font-normal">
                     筆待核對
@@ -83,7 +83,7 @@ export default async function ReconciliationPage() {
           <div className="p-6 rounded-3xl bg-emerald-50 dark:bg-emerald-500/10 shadow-sm mb-6 ring-1 ring-emerald-100 dark:ring-emerald-500/20">
             <CheckCircle2 className="h-12 w-12 text-emerald-500" />
           </div>
-          <h3 className="text-2xl font-bold mb-3 text-slate-800 dark:text-slate-200 font-playfair">
+          <h3 className="text-2xl font-bold mb-3 text-slate-800 dark:text-slate-200 font-outfit">
             目前沒有需要對帳的項目
           </h3>
           <p className="text-slate-500 dark:text-slate-400 text-center max-w-md leading-relaxed">

@@ -145,11 +145,10 @@ function AccountSummaryCard({ accounts }: AccountSummaryCardProps) {
   ];
 
   return (
-    <Card className="h-[460px] flex flex-col border-0 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/40 ring-1 ring-white/50 dark:ring-white/10 dark:shadow-teal-glow relative overflow-hidden">
-      <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none" />
+    <Card className="h-auto md:h-[460px] flex flex-col border border-slate-200 dark:border-slate-800 bg-card shadow-sm relative overflow-hidden">
       <CardHeader className="pb-4 border-b border-slate-200 dark:border-white/5 relative z-10">
         <CardTitle className="text-lg font-medium flex justify-between items-center text-slate-700 dark:text-slate-200">
-          <span className="font-playfair font-bold text-slate-800 dark:text-slate-100">
+          <span className="font-outfit font-bold text-slate-800 dark:text-slate-100">
             帳戶概覽
           </span>
           <span className="text-2xl font-bold tracking-tight font-outfit text-slate-900 dark:text-white drop-shadow-sm">
@@ -157,7 +156,7 @@ function AccountSummaryCard({ accounts }: AccountSummaryCardProps) {
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar pt-4 relative z-10">
+      <CardContent className="flex-1 pr-2 space-y-3 custom-scrollbar pt-4 relative z-10 md:overflow-y-auto">
         {accountTypeOrder.map((type) => {
           const typeAccounts = groupedAccounts[type] || [];
           return (

@@ -7,6 +7,7 @@ import {
 } from '@repo/shared';
 import { CategoryIcon } from '@/components/ui/category-icon';
 import { formatCurrency, calculateNetAmount } from '@/lib/utils';
+import Link from 'next/link';
 
 function RecentTransactions({
   transactions,
@@ -67,14 +68,14 @@ function RecentTransactions({
   };
 
   return (
-    <Card className="col-span-3 border-0 bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/40 ring-1 ring-white/50 dark:ring-white/10 dark:shadow-teal-glow hover:shadow-2xl transition-shadow relative overflow-hidden h-[460px] flex flex-col">
-      <div className="absolute inset-0 bg-linear-to-br from-white/40 to-white/0 dark:from-white/5 dark:to-transparent pointer-events-none" />
+    <Card className="border border-slate-200 dark:border-slate-800 bg-card shadow-sm relative overflow-hidden flex flex-col h-auto md:h-[460px]">
       <CardHeader className="border-b border-slate-200 dark:border-white/5 pb-4 relative z-10">
-        <CardTitle className="text-lg font-bold font-playfair text-slate-800 dark:text-slate-100">
+        <CardTitle className="text-lg font-bold font-outfit text-slate-800 dark:text-slate-100">
           近期交易
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 overflow-hidden pt-4 px-2">
+      {/* 手機讓清單自然增高、由頁面主捲軸負責；桌面才固定高度內捲，避免巢狀捲動彈簧衝突 */}
+      <CardContent className="flex-1 pt-4 px-2 md:overflow-hidden">
         {transactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center h-full">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
@@ -87,16 +88,17 @@ function RecentTransactions({
             </p>
           </div>
         ) : (
-          <div className="space-y-2 h-full overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-2 pr-2 custom-scrollbar md:h-full md:overflow-y-auto">
             {transactions.map((item) => {
               const category = findCategory(item.categoryId, categories);
               const account = accounts.find((a) => a.id === item.accountId);
               const { color, prefix, amount } = getAmountStyle(item);
 
               return (
-                <div
+                <Link
                   key={item.id}
-                  className="flex items-center p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:shadow-md transition-all duration-300 group border border-transparent hover:border-slate-200 dark:hover:border-slate-700/50 hover:-translate-y-0.5"
+                  href="/transactions"
+                  className="flex min-h-[44px] items-center p-3 rounded-2xl active:bg-slate-100 dark:active:bg-slate-800/70 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:shadow-md transition-all duration-300 group border border-transparent hover:border-slate-200 dark:hover:border-slate-700/50 hover:-translate-y-0.5"
                 >
                   <div
                     className={`flex h-10 w-10 items-center justify-center rounded-xl shadow-inner ${
@@ -138,7 +140,7 @@ function RecentTransactions({
                     {prefix}
                     {formatCurrency(Math.abs(amount))}
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

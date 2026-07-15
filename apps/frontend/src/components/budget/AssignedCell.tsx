@@ -51,7 +51,7 @@ export function AssignedCell({
             setDraft(String(value));
           }
         }}
-        className="h-8 w-28 text-right text-sm font-medium bg-white/50 dark:bg-slate-800/50 border-emerald-300 dark:border-emerald-600 focus-visible:ring-emerald-500/30"
+        className="h-11 md:h-8 w-full md:w-28 text-right text-sm font-medium bg-white/50 dark:bg-slate-800/50 border-emerald-300 dark:border-emerald-600 focus-visible:ring-emerald-500/30"
       />
     );
   }
@@ -63,7 +63,7 @@ export function AssignedCell({
         setDraft(String(value));
         setEditing(true);
       }}
-      className="px-2 py-1 rounded-md text-sm font-medium text-right hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors cursor-pointer tabular-nums min-w-[80px] text-slate-700 dark:text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+      className="px-2 py-1 rounded-md text-sm font-medium text-right hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors cursor-pointer tabular-nums min-w-[80px] min-h-[44px] md:min-h-0 text-slate-700 dark:text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {formatted}
     </button>

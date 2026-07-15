@@ -20,6 +20,7 @@ export * from './schemas/tag.schema';
 export * from './schemas/merchantMapping.schema';
 export * from './schemas/transactionRule.schema';
 export * from './schemas/auditLog.schema';
+export * from './schemas/pushSubscription.schema';
 
 // 匯出所有 types
 export * from './types/categoryTypes';

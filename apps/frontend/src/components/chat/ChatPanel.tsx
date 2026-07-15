@@ -51,8 +51,8 @@ export const ChatPanel = ({ isOpen, onClose, className }: ChatPanelProps) => {
         <div className="absolute top-0 right-0 w-[80%] h-[30%] rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 blur-[80px]" />
       </div>
 
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200/50 dark:border-white/10 bg-white/40 dark:bg-[#0f172a]/40 backdrop-blur-md z-10 shrink-0">
+      {/* Header — 手機全螢幕時避開狀態列/動態島（standalone PWA） */}
+      <div className="flex items-center justify-between px-4 py-3 max-md:pt-[max(0.75rem,env(safe-area-inset-top))] border-b border-slate-200/50 dark:border-white/10 bg-white/40 dark:bg-[#0f172a]/40 backdrop-blur-md z-10 shrink-0">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400">
             <BotMessageSquare className="h-4 w-4" />

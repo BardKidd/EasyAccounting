@@ -60,6 +60,10 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TagMultiSelect } from '@/components/transactions/tagMultiSelect';
 import { Trash2, Plus, Pencil, ArrowUp, ArrowDown, SlidersHorizontal } from 'lucide-react';
+import {
+  MobileRowActions,
+  type MobileRowAction,
+} from '@/components/ui/mobile-row-actions';
 
 const MATCH_MODE_LABEL: Record<RuleMatchMode, string> = {
   [RuleMatchMode.CONTAINS]: '包含',
@@ -135,6 +139,9 @@ export function TransactionRulePanel() {
     id: string;
     label: string;
   } | null>(null);
+  // 手機刪除確認：MobileRowActions 選取後會用 SheetClose 關閉自身 Sheet，
+  // 無法沿用桌面「每列 AlertDialogTrigger」，故改用單一受控 AlertDialog。
+  const [mobileDeleteId, setMobileDeleteId] = useState<string | null>(null);
 
   const {
     data: rules,
@@ -301,7 +308,8 @@ export function TransactionRulePanel() {
           </p>
         </div>
       ) : (
-        <div className="rounded-2xl border border-slate-100 dark:border-white/5 overflow-x-auto">
+        <>
+        <div className="hidden md:block rounded-2xl border border-slate-100 dark:border-white/5 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -416,7 +424,109 @@ export function TransactionRulePanel() {
             </TableBody>
           </Table>
         </div>
+
+        {/* 手機：可點卡片列（隱藏會橫向捲動的表格，金額 / 條件 / 動作同屏一欄呈現） */}
+        <div className="md:hidden space-y-2">
+          {rules.map((r, i) => (
+            <div
+              key={r.id}
+              className={`rounded-2xl border border-slate-200 dark:border-slate-800 p-3 ${
+                r.isEnabled ? '' : 'opacity-60'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate font-medium">
+                  {r.name || <span className="text-slate-400">（未命名）</span>}
+                </span>
+                <Switch
+                  checked={r.isEnabled}
+                  disabled={busyId === r.id}
+                  onCheckedChange={(v) => runToggle(r, v)}
+                />
+                <MobileRowActions
+                  actions={
+                    [
+                      {
+                        label: '上移',
+                        icon: ArrowUp,
+                        onSelect: () => move(i, -1),
+                        disabled: i === 0 || reordering || !includeDisabled,
+                      },
+                      {
+                        label: '下移',
+                        icon: ArrowDown,
+                        onSelect: () => move(i, 1),
+                        disabled:
+                          i === rules.length - 1 ||
+                          reordering ||
+                          !includeDisabled,
+                      },
+                      {
+                        label: '編輯',
+                        icon: Pencil,
+                        onSelect: () => openEdit(r),
+                      },
+                      {
+                        label: '刪除',
+                        icon: Trash2,
+                        onSelect: () => setMobileDeleteId(r.id),
+                        destructive: true,
+                      },
+                    ] satisfies MobileRowAction[]
+                  }
+                />
+              </div>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {conditionSummary(r)}
+              </p>
+              {(r.setCategoryId || r.tags.length > 0) && (
+                <div className="mt-2 flex flex-wrap items-center gap-1">
+                  {r.setCategoryId && (
+                    <Badge variant="secondary">
+                      {r.setCategoryName ?? '（分類已刪除）'}
+                    </Badge>
+                  )}
+                  {r.tags.map((t) => (
+                    <Badge
+                      key={t.id}
+                      style={{ backgroundColor: t.color, color: '#fff' }}
+                    >
+                      {t.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        </>
       )}
+
+      {/* 手機：刪除確認（受控，因 MobileRowActions 選取後自行以 SheetClose 關閉 Sheet） */}
+      <AlertDialog
+        open={!!mobileDeleteId}
+        onOpenChange={(o) => !o && setMobileDeleteId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>刪除規則</AlertDialogTitle>
+            <AlertDialogDescription>
+              確定刪除此規則？此後新交易將不再自動套用。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                runDelete(mobileDeleteId!);
+                setMobileDeleteId(null);
+              }}
+            >
+              刪除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 建立 / 編輯 表單 */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

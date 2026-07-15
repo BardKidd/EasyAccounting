@@ -21,12 +21,13 @@ const buttonVariants = cva(
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {
-        default: 'h-9 px-4 py-2 has-[>svg]:px-3',
-        sm: 'h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5',
-        lg: 'h-10 rounded-md px-6 has-[>svg]:px-4',
-        icon: 'size-9',
-        'icon-sm': 'size-8',
-        'icon-lg': 'size-10',
+        // max-md：手機（<768px）觸控目標拉到 44px（doctrine 觸控最小），桌面尺寸不變。
+        default: 'h-9 px-4 py-2 has-[>svg]:px-3 max-md:h-11',
+        sm: 'h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5 max-md:h-10',
+        lg: 'h-10 rounded-md px-6 has-[>svg]:px-4 max-md:h-11',
+        icon: 'size-9 max-md:size-11',
+        'icon-sm': 'size-8 max-md:size-10',
+        'icon-lg': 'size-10 max-md:size-11',
       },
     },
     defaultVariants: {

@@ -1,4 +1,4 @@
-'use clients';
+'use client';
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -500,7 +500,7 @@ const AccountForm = ({
         <div className="flex justify-end">
           <Button
             type="submit"
-            className="cursor-pointer bg-slate-900 dark:bg-slate-50 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 shadow-lg shadow-slate-300/50 dark:shadow-none transition-all duration-300 hover:scale-[1.02] rounded-full px-8 font-medium font-playfair tracking-wide"
+            className="cursor-pointer bg-slate-900 dark:bg-slate-50 hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 shadow-lg shadow-slate-300/50 dark:shadow-none transition-all duration-300 hover:scale-[1.02] rounded-full px-8 font-medium font-outfit tracking-wide"
           >
             {isEditMode ? '更新帳戶' : '建立帳戶'}
           </Button>

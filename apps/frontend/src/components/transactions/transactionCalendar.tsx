@@ -77,7 +77,7 @@ const CustomToolbar = ({ date, onNavigate, label }: ToolbarProps) => {
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8 rounded-full bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/50 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 shadow-sm transition-all duration-300"
+          className="h-10 w-10 md:h-8 md:w-8 rounded-full bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/50 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 shadow-sm transition-all duration-300"
           onClick={() => onNavigate('PREV')}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -88,7 +88,7 @@ const CustomToolbar = ({ date, onNavigate, label }: ToolbarProps) => {
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8 rounded-full bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/50 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 shadow-sm transition-all duration-300"
+          className="h-10 w-10 md:h-8 md:w-8 rounded-full bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-slate-200/50 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 shadow-sm transition-all duration-300"
           onClick={() => onNavigate('NEXT')}
         >
           <ChevronRight className="h-4 w-4" />
@@ -98,7 +98,7 @@ const CustomToolbar = ({ date, onNavigate, label }: ToolbarProps) => {
       <Button
         variant="outline"
         size="sm"
-        className="h-8 px-4 text-xs font-medium rounded-full bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200/50 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 hover:text-emerald-800 dark:hover:text-emerald-200 transition-all shadow-sm"
+        className="h-9 md:h-8 px-4 text-xs font-medium rounded-full bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200/50 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 hover:text-emerald-800 dark:hover:text-emerald-200 transition-all shadow-sm"
         onClick={() => onNavigate('TODAY')}
       >
         今天
@@ -118,6 +118,16 @@ export default function TransactionCalendar({
 
   // 強制鎖定在 Month View
   const view = Views.MONTH;
+
+  // 觸控裝置：停用事件拖放，避免單指拖曳與捲動衝突、誤改交易日期（資料異動）。
+  const [isCoarse, setIsCoarse] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse)');
+    const update = () => setIsCoarse(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   // 與 URL 同步內部日期
   // 如果 URL 只有 ?view=calendar 沒有 date，我們就用今日
@@ -279,7 +289,7 @@ export default function TransactionCalendar({
 
   return (
     <div className="bg-white/60 dark:bg-[#0f172a]/60 backdrop-blur-2xl rounded-3xl shadow-xl border border-slate-200/50 dark:border-white/10 overflow-hidden">
-      <div className="h-[calc(100vh-220px)] min-h-[750px] p-0">
+      <div className="h-[70dvh] min-h-[460px] md:h-[calc(100vh-220px)] md:min-h-[750px] p-0">
         <DnDCalendar
           localizer={localizer}
           events={events}
@@ -292,9 +302,10 @@ export default function TransactionCalendar({
           onNavigate={onNavigate}
           selectable
           resizable={false}
+          draggableAccessor={() => !isCoarse}
           onSelectSlot={onSelectSlot}
           onSelectEvent={onSelectEvent}
-          onEventDrop={onEventDrop}
+          onEventDrop={isCoarse ? undefined : onEventDrop}
           components={components as any}
           popup
           messages={{
