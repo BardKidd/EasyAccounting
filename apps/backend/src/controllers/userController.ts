@@ -114,6 +114,20 @@ const deleteUser = (req: Request, res: Response) => {
   });
 };
 
+// ── 個人檔案（self-scoped）：身分一律取自 token，不吃 URL/body 的 userId ──
+
+const updateProfile = async (req: Request, res: Response) => {
+  await simplifyTryCatch(req, res, async () => {
+    const userInstance = await userServices.getUserFromDB(req, res);
+    if (!userInstance) return; // getUserFromDB 已回 404
+    const { name } = req.body;
+    await userInstance.update({ name });
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, { name }, '個人資料已更新', null));
+  });
+};
+
 // 切換本位幣（決策 Q1：用歷史匯率一次性重算 amountInBase；缺匯率則整批中止並回報）
 const changeBaseCurrencyHandler = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -143,5 +157,6 @@ export default {
   getUser,
   editUser,
   deleteUser,
+  updateProfile,
   changeBaseCurrency: changeBaseCurrencyHandler,
 };
