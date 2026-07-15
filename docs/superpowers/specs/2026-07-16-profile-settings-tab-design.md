@@ -74,7 +74,7 @@ export const changePasswordFormSchema = changePasswordSchema
 |---|---|---|---|
 | PATCH | `/api/user/profile` | `authMiddleware` + `validate(updateProfileSchema)` | 只更新 `name`，身分取自 token |
 | PATCH | `/api/user/password` | `authMiddleware` + `validate(changePasswordSchema)` | `bcrypt.compare` 驗目前密碼，錯 → 400「目前密碼不正確」；對 → hash(12) 新密碼、`tokenVersion + 1` |
-| DELETE | `/api/user/me` | `authMiddleware` | soft-delete 自己（token 身分），觸發 cascade hooks |
+| DELETE | `/api/user/me` | `authMiddleware` | soft-delete 自己（token 身分），觸發 cascade hooks，並以 `clearAuthCookie` 清除 auth cookies |
 
 注意：
 
@@ -86,7 +86,7 @@ export const changePasswordFormSchema = changePasswordSchema
 - `updateProfile(data)` → `PATCH /user/profile`
 - `changePassword(data)` → `PATCH /user/password`
 - `deleteAccount()` → `DELETE /user/me`
-- 全部走既有 `apiHandler`；改名成功後 mutate SWR 的 `auth/me` 快取，header 顯示名稱即時更新。
+- 全部走既有 `apiHandler`；改名成功後更新 `localStorage('user')` 並發出 `user-updated` 事件，header（讀 localStorage）監聽該事件即時更新顯示名稱。
 
 ## 測試計畫
 
