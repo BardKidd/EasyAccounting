@@ -38,6 +38,8 @@ export const config = {
     '/dashboard',
     '/dashboard/:path*',
     '/transaction/:path*',
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    // 排除含 `.` 的路徑（靜態資產：manifest.json / sw.js / icons、splash 圖檔等），
+    // 否則未登入時 middleware 會把 /manifest.json 302 導向 /login → 回 HTML → PWA manifest 解析失敗。
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 };

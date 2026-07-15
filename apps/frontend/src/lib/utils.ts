@@ -63,13 +63,33 @@ export async function simplifyTryCatch(
     setIsLoading(false);
   }
 }
+// localhost / loopback / 私網 IP / .local mDNS —— 前後端同機、僅差 port 的 LAN dev 情境
+function isLocalOrPrivateHost(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '0.0.0.0' ||
+    hostname === '::1' ||
+    hostname === '[::1]' ||
+    /^10\./.test(hostname) ||
+    /^192\.168\./.test(hostname) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
+    hostname.endsWith('.local')
+  );
+}
+
 export function getApiDomain(): string {
   let domain = process.env.NEXT_PUBLIC_API_DOMAIN || '';
   if (typeof window !== 'undefined') {
     try {
       const urlObj = new URL(domain);
-      urlObj.hostname = window.location.hostname;
-      domain = urlObj.origin + urlObj.pathname;
+      // 僅在 API 指向本機/私網（LAN dev，前後端同機差 port）時，才把 hostname 換成
+      // 瀏覽器目前的 host —— 支援用 LAN IP 存取 dev。部署環境前端(dev.)與後端(api.dev.)
+      // 是不同 hostname，覆蓋會把 API 打回前端自己 → 404，故此處不改寫、原封使用 env。
+      if (isLocalOrPrivateHost(urlObj.hostname)) {
+        urlObj.hostname = window.location.hostname;
+        domain = urlObj.origin + urlObj.pathname;
+      }
       if (domain.endsWith('/')) {
         domain = domain.slice(0, -1);
       }
