@@ -128,6 +128,29 @@ const updateProfile = async (req: Request, res: Response) => {
   });
 };
 
+const changePassword = async (req: Request, res: Response) => {
+  await simplifyTryCatch(req, res, async () => {
+    const userInstance = await userServices.getUserFromDB(req, res);
+    if (!userInstance) return;
+    const { currentPassword, newPassword } = req.body;
+    const isMatch = await bcrypt.compare(currentPassword, userInstance.password);
+    if (!isMatch) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json(responseHelper(false, null, '目前密碼不正確', null));
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    // 安全性：與 reset-password 一致，tokenVersion +1 使全裝置既有 session 立即失效
+    await userInstance.update({
+      password: hashedPassword,
+      tokenVersion: (userInstance.tokenVersion ?? 0) + 1,
+    });
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, '密碼已更新，請重新登入', null));
+  });
+};
+
 // 切換本位幣（決策 Q1：用歷史匯率一次性重算 amountInBase；缺匯率則整批中止並回報）
 const changeBaseCurrencyHandler = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -158,5 +181,6 @@ export default {
   editUser,
   deleteUser,
   updateProfile,
+  changePassword,
   changeBaseCurrency: changeBaseCurrencyHandler,
 };

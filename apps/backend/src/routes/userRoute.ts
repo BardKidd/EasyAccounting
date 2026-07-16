@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { validate } from '@/middlewares/validate';
-import { createUserSchema, changeBaseCurrencySchema, updateProfileSchema } from '@repo/shared';
+import { createUserSchema, changeBaseCurrencySchema, updateProfileSchema, changePasswordSchema } from '@repo/shared';
 import userController from '@/controllers/userController';
 import { authMiddleware } from '@/middlewares/authMiddleware';
 
@@ -23,6 +23,13 @@ router.patch(
   authMiddleware,
   validate(updateProfileSchema),
   userController.updateProfile,
+);
+
+router.patch(
+  '/user/password',
+  authMiddleware,
+  validate(changePasswordSchema),
+  userController.changePassword,
 );
 
 router.get('/user/:id', authMiddleware, userController.getUser);
