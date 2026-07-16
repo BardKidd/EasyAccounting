@@ -57,3 +57,19 @@ test('成功送出只帶 currentPassword/newPassword', async () => {
     }),
   );
 });
+
+test('目前密碼錯誤時顯示欄位錯誤，不清除本地狀態或導頁', async () => {
+  localStorage.setItem('user', '{"name":"x"}');
+  changePasswordMock.mockRejectedValueOnce({
+    isSuccess: false,
+    data: null,
+    message: '目前密碼不正確',
+  });
+  render(<ChangePasswordCard />);
+  fill('目前密碼', 'old-password');
+  fill('新密碼', 'NewPassword123');
+  fill('確認新密碼', 'NewPassword123');
+  fireEvent.click(screen.getByRole('button', { name: '更新密碼' }));
+  expect(await screen.findByText('目前密碼不正確')).toBeInTheDocument();
+  expect(localStorage.getItem('user')).toBe('{"name":"x"}');
+});

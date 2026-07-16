@@ -47,19 +47,21 @@ export function ChangePasswordCard() {
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
       });
-      if (res.isSuccess) {
-        // tokenVersion 已 +1，所有裝置舊 session 作廢；本地也清乾淨後重登
-        toast.success(res.message || '密碼已更新，請重新登入');
-        localStorage.removeItem('user');
-        await clearPushOnLogout();
-        window.location.href = '/login';
-      } else {
-        form.setError('currentPassword', {
-          message: res.message || '目前密碼不正確',
-        });
-      }
+      // tokenVersion 已 +1，所有裝置舊 session 作廢；本地也清乾淨後重登
+      toast.success(res.message || '密碼已更新，請重新登入');
+      localStorage.removeItem('user');
+      await clearPushOnLogout();
+      window.location.href = '/login';
     } catch (err: any) {
-      toast.error(err?.message || '更新失敗，請再試一次');
+      // apiHandler 在 !isSuccess 時會 throw result，因此密碼錯誤等後端業務失敗
+      // 會落在這裡而非 res.isSuccess === false 分支
+      if (err && err.isSuccess === false) {
+        form.setError('currentPassword', {
+          message: err.message || '目前密碼不正確',
+        });
+      } else {
+        toast.error(err?.message || '更新失敗，請再試一次');
+      }
     } finally {
       setSaving(false);
     }
