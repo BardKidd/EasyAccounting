@@ -9,6 +9,7 @@ import personnelNotificationServices from '@/services/personnelNotificationServi
 import emailService from '@/services/emailService';
 import { changeBaseCurrency } from '@/services/baseCurrencyService';
 import { clearAuthCookie } from '@/utils/auth';
+import sequelize from '@/utils/postgres';
 
 const getUser = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -146,6 +147,9 @@ const changePassword = async (req: Request, res: Response) => {
       password: hashedPassword,
       tokenVersion: (userInstance.tokenVersion ?? 0) + 1,
     });
+    // 安全性：access token 效期內（≤15 分鐘）仍可用舊 cookie 通過驗證，
+    // 明確清除本裝置 cookie，避免使用者被要求重新登入後又能直接返回
+    clearAuthCookie(req, res);
     res
       .status(StatusCodes.OK)
       .json(responseHelper(true, null, '密碼已更新，請重新登入', null));
@@ -156,8 +160,12 @@ const deleteMe = async (req: Request, res: Response) => {
   await simplifyTryCatch(req, res, async () => {
     const userInstance = await userServices.getUserFromDB(req, res);
     if (!userInstance) return;
-    // soft-delete；models/index.ts 的 afterDestroy cascade hooks 連帶清理子資料
-    await userInstance.destroy();
+    // soft-delete；models/index.ts 的 afterDestroy cascade hooks 連帶清理子資料。
+    // 包一層 transaction 讓 destroy 與 cascade 子刪除是同一個 all-or-nothing 操作，
+    // 避免 cascade 中途失敗留下「使用者已軟刪但子資料孤兒殘留」的不一致狀態。
+    await sequelize.transaction(async (t) => {
+      await userInstance.destroy({ transaction: t });
+    });
     clearAuthCookie(req, res);
     res
       .status(StatusCodes.OK)

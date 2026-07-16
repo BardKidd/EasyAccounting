@@ -22,7 +22,12 @@ vi.mock('@/models/user', () => ({ default: createMockModel() }));
 
 vi.mock('@/utils/postgres', () => {
   const mSequelize = {
-    transaction: vi.fn(() => ({ commit: vi.fn(), rollback: vi.fn() })),
+    // 支援兩種呼叫風格：callback-style（deleteMe 用） + legacy 手動 commit/rollback 風格
+    transaction: vi.fn((arg?: any) =>
+      typeof arg === 'function'
+        ? arg({})
+        : { commit: vi.fn(), rollback: vi.fn() },
+    ),
     define: vi.fn(() => ({
       hasMany: vi.fn(),
       belongsTo: vi.fn(),
@@ -163,12 +168,13 @@ describe('userController self-scoped endpoints', () => {
       const arg = (instance.update as any).mock.calls[0][0];
       expect(arg.tokenVersion).toBe(6);
       expect(await bcrypt.compare('NewPassword123', arg.password)).toBe(true);
+      expect(clearAuthCookie).toHaveBeenCalledWith(req, res);
       expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
     });
   });
 
   describe('deleteMe', () => {
-    it('soft-delete token 使用者並清除 auth cookies', async () => {
+    it('soft-delete token 使用者（包在 transaction 內）並清除 auth cookies', async () => {
       const instance = { destroy: vi.fn().mockResolvedValue(undefined) };
       (User.findByPk as any).mockResolvedValue(instance);
 
@@ -178,8 +184,14 @@ describe('userController self-scoped endpoints', () => {
 
       expect(User.findByPk).toHaveBeenCalledWith('user-123');
       expect(instance.destroy).toHaveBeenCalledTimes(1);
+      expect(instance.destroy).toHaveBeenCalledWith(
+        expect.objectContaining({ transaction: expect.anything() }),
+      );
       expect(clearAuthCookie).toHaveBeenCalledWith(req, res);
       expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ isSuccess: true, message: '帳號已刪除' }),
+      );
     });
   });
 });
