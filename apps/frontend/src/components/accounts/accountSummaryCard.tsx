@@ -2,32 +2,17 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Account as AccountEnum, AccountType } from '@repo/shared';
-import {
-  Wallet,
-  CreditCard,
-  Banknote,
-  Landmark,
-  CircleDollarSign,
-  ChevronDown,
-  ChevronUp,
-} from 'lucide-react';
+import { Wallet, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
+import { accountIcons } from './accountIcons';
 
 interface AccountSummaryCardProps {
   accounts: AccountType[];
 }
-
-const accountIcons = {
-  [AccountEnum.CASH]: Banknote,
-  [AccountEnum.BANK]: Landmark,
-  [AccountEnum.CREDIT_CARD]: CreditCard,
-  [AccountEnum.SECURITIES_ACCOUNT]: CircleDollarSign,
-  [AccountEnum.OTHER]: Wallet,
-};
 
 function DashboardAccountGroup({
   type,

@@ -72,7 +72,8 @@ function SheetContent({
         {...props}
       >
         {children}
-        <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 flex size-9 max-md:size-11 items-center justify-center rounded-md opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+        {/* top/right 依 SheetHeader（p-4 + 單行標題）的視覺中線 28px 對齊：桌面 size-9 → top 10px、手機 size-11 → top 6px */}
+        <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-2.5 right-2.5 max-md:top-1.5 max-md:right-1.5 flex size-9 max-md:size-11 items-center justify-center rounded-md opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
           <XIcon className="size-4 cursor-pointer" />
           <span className="sr-only">Close</span>
         </SheetPrimitive.Close>
