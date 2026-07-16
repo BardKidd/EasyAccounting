@@ -46,6 +46,64 @@ export function filterForCalendar(
   return transactions.filter((tx) => !isIncomingTransfer(tx));
 }
 
+export interface DayIndicators {
+  expense: boolean;
+  income: boolean;
+  transfer: boolean;
+}
+
+/**
+ * 依日期彙整當日出現的交易類型（手機版日曆的小點指示）。
+ * 轉帳只計扣款方（與 filterForCalendar 同一套排除規則）。
+ */
+export function getDayIndicators(
+  transactions: TransactionType[],
+): Map<string, DayIndicators> {
+  const map = new Map<string, DayIndicators>();
+
+  for (const tx of filterForCalendar(transactions)) {
+    let indicators = map.get(tx.date);
+    if (!indicators) {
+      indicators = { expense: false, income: false, transfer: false };
+      map.set(tx.date, indicators);
+    }
+
+    if (isOperateTransaction(tx)) {
+      indicators.transfer = true;
+    } else if (tx.type === RootType.INCOME) {
+      indicators.income = true;
+    } else if (tx.type === RootType.EXPENSE) {
+      indicators.expense = true;
+    }
+  }
+
+  return map;
+}
+
+export interface DaySummary {
+  income: number;
+  expense: number;
+  balance: number;
+}
+
+/**
+ * 計算一組（單日）交易的收入 / 支出 / 結餘。轉帳不列入。
+ */
+export function getDaySummary(transactions: TransactionType[]): DaySummary {
+  const summary = transactions.reduce(
+    (acc, tx) => {
+      if (isOperateTransaction(tx)) return acc;
+      const amount = Number(tx.amount) || 0;
+      if (tx.type === RootType.INCOME) acc.income += amount;
+      if (tx.type === RootType.EXPENSE) acc.expense += amount;
+      return acc;
+    },
+    { income: 0, expense: 0 },
+  );
+
+  return { ...summary, balance: summary.income - summary.expense };
+}
+
 /**
  * 根據交易類型取得顏色 class（使用統一常數）
  */
