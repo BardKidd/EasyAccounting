@@ -32,6 +32,8 @@ router.patch(
   userController.changePassword,
 );
 
+router.delete('/user/me', authMiddleware, userController.deleteMe);
+
 router.get('/user/:id', authMiddleware, userController.getUser);
 router.put(
   '/user/:id',

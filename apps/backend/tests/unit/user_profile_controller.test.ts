@@ -166,4 +166,20 @@ describe('userController self-scoped endpoints', () => {
       expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
     });
   });
+
+  describe('deleteMe', () => {
+    it('soft-delete token 使用者並清除 auth cookies', async () => {
+      const instance = { destroy: vi.fn().mockResolvedValue(undefined) };
+      (User.findByPk as any).mockResolvedValue(instance);
+
+      const req = mockRequest();
+      const res = mockResponse();
+      await userController.deleteMe(req, res);
+
+      expect(User.findByPk).toHaveBeenCalledWith('user-123');
+      expect(instance.destroy).toHaveBeenCalledTimes(1);
+      expect(clearAuthCookie).toHaveBeenCalledWith(req, res);
+      expect(res.status).toHaveBeenCalledWith(StatusCodes.OK);
+    });
+  });
 });

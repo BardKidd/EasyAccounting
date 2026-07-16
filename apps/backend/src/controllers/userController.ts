@@ -8,6 +8,7 @@ import userServices from '@/services/userServices';
 import personnelNotificationServices from '@/services/personnelNotificationServices';
 import emailService from '@/services/emailService';
 import { changeBaseCurrency } from '@/services/baseCurrencyService';
+import { clearAuthCookie } from '@/utils/auth';
 
 const getUser = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -151,6 +152,19 @@ const changePassword = async (req: Request, res: Response) => {
   });
 };
 
+const deleteMe = async (req: Request, res: Response) => {
+  await simplifyTryCatch(req, res, async () => {
+    const userInstance = await userServices.getUserFromDB(req, res);
+    if (!userInstance) return;
+    // soft-delete；models/index.ts 的 afterDestroy cascade hooks 連帶清理子資料
+    await userInstance.destroy();
+    clearAuthCookie(req, res);
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, '帳號已刪除', null));
+  });
+};
+
 // 切換本位幣（決策 Q1：用歷史匯率一次性重算 amountInBase；缺匯率則整批中止並回報）
 const changeBaseCurrencyHandler = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -182,5 +196,6 @@ export default {
   deleteUser,
   updateProfile,
   changePassword,
+  deleteMe,
   changeBaseCurrency: changeBaseCurrencyHandler,
 };
