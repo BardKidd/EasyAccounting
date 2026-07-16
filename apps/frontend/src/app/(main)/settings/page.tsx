@@ -41,7 +41,7 @@ export default async function SettingsPage(props: PageProps) {
           <ExcelExportButton type={PageType.SETTINGS} /> */}
         </div>
       </div>
-      <Tabs defaultValue={activeTab} className="space-y-8">
+      <Tabs key={activeTab} defaultValue={activeTab} className="space-y-8">
         <TabsList className="inline-flex h-12 items-center justify-center rounded-full bg-slate-100 dark:bg-[#0f172a]/80 backdrop-blur-md p-1 border border-slate-200/50 dark:border-white/10 mb-4 shadow-sm relative max-md:grid max-md:grid-cols-2 max-md:h-auto max-md:w-full max-md:gap-1 max-md:rounded-2xl">
           <TabsTrigger
             value="categories"
