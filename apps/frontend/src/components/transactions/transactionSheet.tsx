@@ -88,6 +88,8 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
 import { TRANSACTION_COLORS } from '@/lib/transactionColors';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { MobileTransactionLayout } from './mobile/mobileTransactionLayout';
 
 interface TransactionSheetProps {
   isOpen: boolean;
@@ -119,6 +121,9 @@ export function TransactionSheet({
   const [splitMode, setSplitMode] = useState(false);
   const isEditMode = !!transaction;
   const isRecurring = !!transaction?.recurringTemplateId;
+  // 手機（<sm）改用 bottom sheet 版面；template 模式沿用原版面
+  const isMobile = useIsMobile();
+  const useMobileLayout = isMobile && mode === 'transaction';
 
   // Recurring state
   const [showRecurring, setShowRecurring] = useState(false);
@@ -794,24 +799,54 @@ export function TransactionSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-[540px] p-0 flex flex-col h-dvh bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-2xl border-l border-slate-200/50 dark:border-white/10 shadow-2xl">
-        <SheetHeader className="px-6 py-6 border-b border-slate-200/50 dark:border-white/5 bg-transparent">
-          <SheetTitle className="text-2xl font-bold font-playfair text-slate-800 dark:text-slate-100">
-            {mode === 'template'
-              ? isEditMode
-                ? '編輯週期事件'
-                : '新增週期事件'
-              : isEditMode
-                ? '編輯交易'
-                : '新增交易'}
-          </SheetTitle>
-        </SheetHeader>
+      <SheetContent
+        side={useMobileLayout ? 'bottom' : 'right'}
+        className={cn(
+          'w-full sm:max-w-[540px] p-0 flex flex-col h-dvh bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-2xl border-l border-slate-200/50 dark:border-white/10 shadow-2xl',
+          useMobileLayout &&
+            'h-[94dvh] max-h-[94dvh] overflow-hidden rounded-t-3xl border-l-0 border-t pb-0',
+        )}
+      >
+        {!useMobileLayout && (
+          <SheetHeader className="px-6 py-6 border-b border-slate-200/50 dark:border-white/5 bg-transparent">
+            <SheetTitle className="text-2xl font-bold font-playfair text-slate-800 dark:text-slate-100">
+              {mode === 'template'
+                ? isEditMode
+                  ? '編輯週期事件'
+                  : '新增週期事件'
+                : isEditMode
+                  ? '編輯交易'
+                  : '新增交易'}
+            </SheetTitle>
+          </SheetHeader>
+        )}
 
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="flex flex-col flex-1 overflow-hidden"
+            className="flex flex-col flex-1 min-h-0 overflow-hidden"
           >
+            {useMobileLayout ? (
+              <MobileTransactionLayout
+                form={form}
+                categories={categories}
+                accounts={accounts}
+                currentMainCategory={currentMainCategory}
+                isEditMode={isEditMode}
+                hideDelete={hideDelete}
+                isLoading={isLoading}
+                isDeleting={isDeleting}
+                splitMode={splitMode}
+                setSplitMode={setSplitMode}
+                isCreditCard={isCreditCard}
+                isCrossCurrencyTransfer={isCrossCurrencyTransfer}
+                selectedAccount={selectedAccount}
+                targetAccount={targetAccount}
+                suggestedFxRate={suggestedFxRate}
+                onDelete={handleDelete}
+              />
+            ) : (
+              <>
             <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
               {/* Type Selection */}
               <FormField
@@ -1829,29 +1864,6 @@ export function TransactionSheet({
                 </AlertDialog>
               )}
 
-              {/* Recurring Edit/Delete Dialog */}
-              <RecurringEditDialog
-                isOpen={recurringEditDialogOpen}
-                mode={recurringDialogMode}
-                onClose={() => setRecurringEditDialogOpen(false)}
-                onSelectSingle={
-                  recurringDialogMode === 'delete'
-                    ? handleRecurringDeleteSingle
-                    : () => {
-                        setRecurringEditDialogOpen(false);
-                        if (pendingData) handleUpdate(pendingData);
-                      }
-                }
-                onSelectAll={
-                  recurringDialogMode === 'delete'
-                    ? handleRecurringDeleteAll
-                    : () => {
-                        if (pendingData) handleRecurringEditAll(pendingData);
-                      }
-                }
-                isLoading={isLoading || isDeleting}
-              />
-
               <Button
                 type="button"
                 variant="outline"
@@ -1871,6 +1883,31 @@ export function TransactionSheet({
                 {isLoading ? '儲存中...' : isEditMode ? '儲存' : '儲存交易'}
               </Button>
             </SheetFooter>
+              </>
+            )}
+
+            {/* Recurring Edit/Delete Dialog（兩種版面共用） */}
+            <RecurringEditDialog
+              isOpen={recurringEditDialogOpen}
+              mode={recurringDialogMode}
+              onClose={() => setRecurringEditDialogOpen(false)}
+              onSelectSingle={
+                recurringDialogMode === 'delete'
+                  ? handleRecurringDeleteSingle
+                  : () => {
+                      setRecurringEditDialogOpen(false);
+                      if (pendingData) handleUpdate(pendingData);
+                    }
+              }
+              onSelectAll={
+                recurringDialogMode === 'delete'
+                  ? handleRecurringDeleteAll
+                  : () => {
+                      if (pendingData) handleRecurringEditAll(pendingData);
+                    }
+              }
+              isLoading={isLoading || isDeleting}
+            />
           </form>
         </Form>
       </SheetContent>
