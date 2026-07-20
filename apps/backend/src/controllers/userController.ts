@@ -8,6 +8,8 @@ import userServices from '@/services/userServices';
 import personnelNotificationServices from '@/services/personnelNotificationServices';
 import emailService from '@/services/emailService';
 import { changeBaseCurrency } from '@/services/baseCurrencyService';
+import { clearAuthCookie } from '@/utils/auth';
+import sequelize from '@/utils/postgres';
 
 const getUser = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -114,6 +116,63 @@ const deleteUser = (req: Request, res: Response) => {
   });
 };
 
+// ── 個人檔案（self-scoped）：身分一律取自 token，不吃 URL/body 的 userId ──
+
+const updateProfile = async (req: Request, res: Response) => {
+  await simplifyTryCatch(req, res, async () => {
+    const userInstance = await userServices.getUserFromDB(req, res);
+    if (!userInstance) return; // getUserFromDB 已回 404
+    const { name } = req.body;
+    await userInstance.update({ name });
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, { name }, '個人資料已更新', null));
+  });
+};
+
+const changePassword = async (req: Request, res: Response) => {
+  await simplifyTryCatch(req, res, async () => {
+    const userInstance = await userServices.getUserFromDB(req, res);
+    if (!userInstance) return;
+    const { currentPassword, newPassword } = req.body;
+    const isMatch = await bcrypt.compare(currentPassword, userInstance.password);
+    if (!isMatch) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json(responseHelper(false, null, '目前密碼不正確', null));
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    // 安全性：與 reset-password 一致，tokenVersion +1 使全裝置既有 session 立即失效
+    await userInstance.update({
+      password: hashedPassword,
+      tokenVersion: (userInstance.tokenVersion ?? 0) + 1,
+    });
+    // 安全性：access token 效期內（≤15 分鐘）仍可用舊 cookie 通過驗證，
+    // 明確清除本裝置 cookie，避免使用者被要求重新登入後又能直接返回
+    clearAuthCookie(req, res);
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, '密碼已更新，請重新登入', null));
+  });
+};
+
+const deleteMe = async (req: Request, res: Response) => {
+  await simplifyTryCatch(req, res, async () => {
+    const userInstance = await userServices.getUserFromDB(req, res);
+    if (!userInstance) return;
+    // soft-delete；models/index.ts 的 afterDestroy cascade hooks 連帶清理子資料。
+    // 包一層 transaction 讓 destroy 與 cascade 子刪除是同一個 all-or-nothing 操作，
+    // 避免 cascade 中途失敗留下「使用者已軟刪但子資料孤兒殘留」的不一致狀態。
+    await sequelize.transaction(async (t) => {
+      await userInstance.destroy({ transaction: t });
+    });
+    clearAuthCookie(req, res);
+    res
+      .status(StatusCodes.OK)
+      .json(responseHelper(true, null, '帳號已刪除', null));
+  });
+};
+
 // 切換本位幣（決策 Q1：用歷史匯率一次性重算 amountInBase；缺匯率則整批中止並回報）
 const changeBaseCurrencyHandler = (req: Request, res: Response) => {
   simplifyTryCatch(req, res, async () => {
@@ -143,5 +202,8 @@ export default {
   getUser,
   editUser,
   deleteUser,
+  updateProfile,
+  changePassword,
+  deleteMe,
   changeBaseCurrency: changeBaseCurrencyHandler,
 };

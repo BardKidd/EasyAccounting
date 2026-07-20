@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -50,10 +51,16 @@ export function Header() {
   const [showPromote, setShowPromote] = useState(false);
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      setUser(JSON.parse(userStr));
-    }
+    const syncUser = () => {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        setUser(JSON.parse(userStr));
+      }
+    };
+    syncUser();
+    // 個人檔案改名後（profileInfoCard 發出）即時更新 header 顯示
+    window.addEventListener('user-updated', syncUser);
+    return () => window.removeEventListener('user-updated', syncUser);
   }, []);
 
   const isGuest = user.isGuest === true;
@@ -191,11 +198,17 @@ export function Header() {
 
                 {!isGuest && (
                   <>
-                    <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent focus:text-accent-foreground rounded-md m-1">
-                      個人檔案
+                    <DropdownMenuItem
+                      asChild
+                      className="cursor-pointer py-2.5 px-3 focus:bg-accent focus:text-accent-foreground rounded-md m-1"
+                    >
+                      <Link href="/settings?tab=profile">個人檔案</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer py-2.5 px-3 focus:bg-accent focus:text-accent-foreground rounded-md m-1">
-                      設定
+                    <DropdownMenuItem
+                      asChild
+                      className="cursor-pointer py-2.5 px-3 focus:bg-accent focus:text-accent-foreground rounded-md m-1"
+                    >
+                      <Link href="/settings">設定</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-border" />
                   </>

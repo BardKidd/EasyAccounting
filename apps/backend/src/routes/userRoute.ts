@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { validate } from '@/middlewares/validate';
-import { createUserSchema, changeBaseCurrencySchema } from '@repo/shared';
+import { createUserSchema, changeBaseCurrencySchema, updateProfileSchema, changePasswordSchema } from '@repo/shared';
 import userController from '@/controllers/userController';
 import { authMiddleware } from '@/middlewares/authMiddleware';
 
@@ -15,6 +15,24 @@ router.patch(
   validate(changeBaseCurrencySchema),
   userController.changeBaseCurrency,
 );
+
+// 個人檔案（self-scoped）：一律以 token 身分操作，禁止 :id。
+// 必須註冊在 /user/:id 系列之前，避免被萬用參數路由攔截。
+router.patch(
+  '/user/profile',
+  authMiddleware,
+  validate(updateProfileSchema),
+  userController.updateProfile,
+);
+
+router.patch(
+  '/user/password',
+  authMiddleware,
+  validate(changePasswordSchema),
+  userController.changePassword,
+);
+
+router.delete('/user/me', authMiddleware, userController.deleteMe);
 
 router.get('/user/:id', authMiddleware, userController.getUser);
 router.put(
